@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ryan-suites:SourceRecord:1.0.0",
+  "title": "SourceRecord",
+  "type": "object",
+  "required": ["schema_version", "source_id", "acquired_at", "sha256", "size_bytes", "media_type", "origin", "provenance"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "source_id": {"type": "string", "minLength": 3},
+    "acquired_at": {"type": "string", "format": "date-time"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "size_bytes": {"type": "integer", "minimum": 0},
+    "media_type": {"type": "string", "minLength": 1},
+    "origin": {"type": "string", "minLength": 1},
+    "provenance": {"type": "object"}
+  },
+  "additionalProperties": true
+}
+

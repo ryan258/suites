@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ryan-suites:BrandPackage:1.0.0",
+  "title": "BrandPackage",
+  "type": "object",
+  "required": ["schema_version", "package_id", "brand_id", "version", "approved_at", "identity", "voice", "audience", "approved_claims", "assets", "usage_rules", "provenance"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "package_id": {"type": "string", "minLength": 3},
+    "brand_id": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "approved_at": {"type": "string", "format": "date-time"},
+    "identity": {"type": "object"},
+    "voice": {"type": "object"},
+    "audience": {"type": "object"},
+    "approved_claims": {"type": "array"},
+    "assets": {"type": "array"},
+    "usage_rules": {"type": "array"},
+    "provenance": {"type": "array", "minItems": 1}
+  },
+  "additionalProperties": true
+}
+

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ryan-suites:A11yFinding:1.0.0",
+  "title": "A11yFinding",
+  "type": "object",
+  "required": ["schema_version", "finding_id", "rule_id", "severity", "summary", "target", "evidence", "evidence_kind", "needs_review", "status"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "finding_id": {"type": "string", "minLength": 3},
+    "rule_id": {"type": "string", "minLength": 1},
+    "severity": {"enum": ["info", "minor", "moderate", "serious", "critical"]},
+    "summary": {"type": "string", "minLength": 1},
+    "target": {"type": "string", "minLength": 1},
+    "evidence": {"type": "array"},
+    "evidence_kind": {"enum": ["deterministic", "ai-assisted", "manual"]},
+    "needs_review": {"type": "boolean"},
+    "status": {"enum": ["open", "accepted", "fixed", "false-positive", "deferred"]}
+  },
+  "additionalProperties": true
+}
+

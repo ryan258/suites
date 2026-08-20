@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ryan-suites:ExperimentRun:1.0.0",
+  "title": "ExperimentRun",
+  "type": "object",
+  "required": ["schema_version", "run_id", "benchmark_id", "benchmark_version", "provider", "model", "parameters", "scorer", "scorer_version", "status", "iterations", "evidence", "errors"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "run_id": {"type": "string", "minLength": 3},
+    "benchmark_id": {"type": "string", "minLength": 1},
+    "benchmark_version": {"type": "string", "minLength": 1},
+    "provider": {"type": "string", "minLength": 1},
+    "model": {"type": "string", "minLength": 1},
+    "parameters": {"type": "object"},
+    "scorer": {"type": "string", "minLength": 1},
+    "scorer_version": {"type": "string", "minLength": 1},
+    "status": {"enum": ["planned", "running", "partial", "failed", "completed"]},
+    "iterations": {"type": "array"},
+    "evidence": {"type": "array"},
+    "errors": {"type": "array"}
+  },
+  "additionalProperties": true
+}
+
