@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ryan Project Suites — Portfolio Control Plane</title>
+  <meta name="description" content="Local-first, evidence-bound portfolio control plane for Ryan's 8 interoperable product suites.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+  <!-- Top Navigation & Status Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">
+        <span class="logo-icon">◈</span>
+        <div class="logo-text">
+          <span class="brand-title">RYAN PROJECT SUITES</span>
+          <span class="brand-subtitle">PORTFOLIO CONTROL PLANE v1.0.0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Stats in Header -->
+    <div class="header-metrics" id="header-metrics">
+      <div class="metric-pill">
+        <span class="pill-label">Projects</span>
+        <span class="pill-val" id="stat-projects">-</span>
+      </div>
+      <div class="metric-pill">
+        <span class="pill-label">Suites</span>
+        <span class="pill-val" id="stat-suites">8</span>
+      </div>
+      <div class="metric-pill">
+        <span class="pill-label">Waves</span>
+        <span class="pill-val" id="stat-waves">-</span>
+      </div>
+      <div class="metric-pill">
+        <span class="pill-label">Health</span>
+        <span class="pill-badge badge-green" id="stat-health">CHECKING</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary" id="btn-refresh" title="Refresh portfolio state">
+        <span class="btn-icon">⟳</span> Refresh
+      </button>
+      <button class="btn btn-primary" id="btn-run-all-waves" title="Run all wave verification gates">
+        <span class="btn-icon">▶</span> Verify All Waves
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Layout -->
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">CONTROL PLANE</div>
+        <button class="nav-item active" data-tab="overview">
+          <span class="nav-icon">◫</span> Overview & Metrics
+        </button>
+        <button class="nav-item" data-tab="suites">
+          <span class="nav-icon">❖</span> Eight Product Suites
+        </button>
+        <button class="nav-item" data-tab="projects">
+          <span class="nav-icon">☰</span> Project Ledger (70)
+        </button>
+        <button class="nav-item" data-tab="contracts">
+          <span class="nav-icon">⚖</span> Contracts Studio
+        </button>
+        <button class="nav-item" data-tab="waves">
+          <span class="nav-icon">⚡</span> Wave Runner & Gates
+        </button>
+        <button class="nav-item" data-tab="drift">
+          <span class="nav-icon">⚲</span> Live Drift Inspector
+        </button>
+        <button class="nav-item" data-tab="nested">
+          <span class="nav-icon">⌥</span> Nested Repos (35)
+        </button>
+
+        <div class="nav-section-title">DOCUMENTATION</div>
+        <a href="#doc-bible" class="nav-link-item" id="link-bible">
+          <span class="nav-icon">📖</span> Project Bible
+        </a>
+        <a href="#doc-migration" class="nav-link-item" id="link-migration">
+          <span class="nav-icon">📋</span> Migration Program
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="local-badge">
+          <span class="dot live-dot"></span> Local-first & Zero Dependencies
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- TAB 1: OVERVIEW & COMMAND CENTER -->
+      <section id="tab-overview" class="tab-pane active">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Portfolio Command Center</h1>
+            <p class="pane-desc">Real-time status of the eight interoperable product suites, project ledger, and migration progress.</p>
+          </div>
+          <div class="snapshot-tag" id="snapshot-timestamp">Snapshot: loading...</div>
+        </div>
+
+        <!-- Metric Cards Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Reviewed Projects</span>
+              <span class="stat-icon">📁</span>
+            </div>
+            <div class="stat-number" id="card-total-projects">70</div>
+            <div class="stat-footer">
+              <span class="subtext"><strong id="card-suite-projects">56</strong> owned by suites &bull; <strong id="card-ind-projects">14</strong> independent/archive</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Product Suites</span>
+              <span class="stat-icon">🏛</span>
+            </div>
+            <div class="stat-number">8</div>
+            <div class="stat-footer">
+              <span class="subtext">Accessibility &bull; Operator OS &bull; Brand &bull; Production</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Migration Progress</span>
+              <span class="stat-icon">📈</span>
+            </div>
+            <div class="stat-number" id="card-progress-pct">0%</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="card-progress-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Cross-Suite Contracts</span>
+              <span class="stat-icon">🔒</span>
+            </div>
+            <div class="stat-number">6</div>
+            <div class="stat-footer">
+              <span class="subtext">Strict JSON Schema & Version Enforced</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suites Grid in Overview -->
+        <div class="section-block">
+          <div class="section-header-row">
+            <h2 class="section-heading">Eight Product Suites</h2>
+            <button class="btn btn-sm btn-secondary" onclick="app.switchTab('suites')">View Full Suites Detail →</button>
+          </div>
+          <div class="suites-overview-grid" id="suites-overview-grid">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: SUITES EXPLORER -->
+      <section id="tab-suites" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Eight Product Suites</h1>
+            <p class="pane-desc">Explore promises, member repositories, anchors, shared contracts, and migration waves.</p>
+          </div>
+        </div>
+
+        <div class="suite-detail-container" id="suite-detail-cards">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- TAB 3: PROJECT LEDGER -->
+      <section id="tab-projects" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Project Ledger (70 Repositories)</h1>
+            <p class="pane-desc">Comprehensive inventory of all top-level checkouts with suite ownership and dispositions.</p>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="project-search-input" placeholder="Search project name, suite, disposition...">
+          </div>
+          <div class="filter-group">
+            <select id="project-suite-filter" class="select-input">
+              <option value="all">All Suites</option>
+              <option value="accessibility">Accessibility</option>
+              <option value="operator-os">Operator OS</option>
+              <option value="brand-publishing">Brand & Publishing</option>
+              <option value="production-house">Production House</option>
+              <option value="model-behavior-lab">Model Behavior Lab</option>
+              <option value="discovery-decision">Discovery & Decision</option>
+              <option value="agent-reliability">Agent Reliability</option>
+              <option value="game-design">Game Design</option>
+              <option value="none">Independent / Archive</option>
+            </select>
+
+            <select id="project-disposition-filter" class="select-input">
+              <option value="all">All Dispositions</option>
+              <option value="anchor">Anchor</option>
+              <option value="donor">Donor / Duplicate</option>
+              <option value="adapter">Adapter</option>
+              <option value="independent">Independent</option>
+              <option value="archive">Archive</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Projects Table -->
+        <div class="table-container">
+          <table class="data-table" id="projects-table">
+            <thead>
+              <tr>
+                <th>Project Name</th>
+                <th>Primary Suite</th>
+                <th>Disposition</th>
+                <th>Migration Wave</th>
+                <th>Git Snapshot</th>
+                <th>Working Tree</th>
+              </tr>
+            </thead>
+            <tbody id="projects-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 4: CONTRACTS STUDIO -->
+      <section id="tab-contracts" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Cross-Suite Contracts Studio</h1>
+            <p class="pane-desc">Validate, inspect, and generate contract payloads across the 6 core portfolio contracts.</p>
+          </div>
+        </div>
+
+        <div class="split-pane">
+          <!-- Left: Contract Selector & Specs -->
+          <div class="pane-col col-left">
+            <div class="card">
+              <h3 class="card-title">Select Contract</h3>
+              <div class="contract-buttons" id="contract-btn-group">
+                <button class="btn btn-tab active" data-contract="A11yFinding">A11yFinding</button>
+                <button class="btn btn-tab" data-contract="SourceRecord">SourceRecord</button>
+                <button class="btn btn-tab" data-contract="BrandPackage">BrandPackage</button>
+                <button class="btn btn-tab" data-contract="ProductionJob">ProductionJob</button>
+                <button class="btn btn-tab" data-contract="ExperimentRun">ExperimentRun</button>
+                <button class="btn btn-tab" data-contract="InvestigationRecord">InvestigationRecord</button>
+              </div>
+
+              <div class="contract-spec-box" id="contract-spec-display">
+                <!-- Spec details -->
+              </div>
+
+              <div class="action-row">
+                <button class="btn btn-secondary btn-block" id="btn-load-sample">Load Valid Sample Payload</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Interactive JSON Editor & Live Validator -->
+          <div class="pane-col col-right">
+            <div class="card">
+              <div class="card-header-row">
+                <h3 class="card-title">Contract JSON Payload</h3>
+                <button class="btn btn-sm btn-primary" id="btn-validate-contract">Validate Payload</button>
+              </div>
+
+              <div class="editor-container">
+                <textarea id="contract-json-editor" class="code-editor" spellcheck="false"></textarea>
+              </div>
+
+              <div class="validation-result-box" id="contract-validation-result">
+                <div class="result-placeholder">Click "Validate Payload" or "Load Sample" to inspect.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: WAVES RUNNER & GATES -->
+      <section id="tab-waves" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Wave Runner & Migration Gates</h1>
+            <p class="pane-desc">Execute deterministic verification gates and generate structured evidence records across all 24 waves.</p>
+          </div>
+          <div>
+            <button class="btn btn-primary" id="btn-run-all-waves-tab">Run & Record All Waves</button>
+          </div>
+        </div>
+
+        <div class="waves-grid" id="waves-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- TAB 6: LIVE DRIFT INSPECTOR -->
+      <section id="tab-drift" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Live Drift Inspector</h1>
+            <p class="pane-desc">Compares live local repository Git states (HEAD, branch, dirty files) against recorded project ledger snapshots.</p>
+          </div>
+          <button class="btn btn-secondary" id="btn-rescan-drift">Re-scan Repositories</button>
+        </div>
+
+        <div class="drift-summary-bar" id="drift-summary-bar">
+          <!-- Summary count -->
+        </div>
+
+        <div class="table-container">
+          <table class="data-table" id="drift-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Suite</th>
+                <th>Snapshot State</th>
+                <th>Live Git State</th>
+                <th>Working Tree Changes</th>
+                <th>Drift Status</th>
+              </tr>
+            </thead>
+            <tbody id="drift-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 7: NESTED REPOSITORIES -->
+      <section id="tab-nested" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Nested Repositories Ledger (35 Markers)</h1>
+            <p class="pane-desc">Classification of submodules, embedded checkouts, and auxiliary Git repositories.</p>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table" id="nested-table">
+            <thead>
+              <tr>
+                <th>Path</th>
+                <th>Parent Project</th>
+                <th>Classification</th>
+                <th>Origin / Upstream</th>
+              </tr>
+            </thead>
+            <tbody id="nested-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Evidence Modal -->
+  <div class="modal-backdrop" id="evidence-modal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="evidence-modal-title">Evidence Viewer</h3>
+        <button class="modal-close" id="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre class="evidence-content" id="evidence-modal-content"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
