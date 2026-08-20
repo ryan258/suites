@@ -1,66 +1,182 @@
 {
+  "wave": "B1",
+  "status": "verified_candidate",
   "brand_package": {
     "schema_version": "1.0.0",
-    "package_id": "pkg-brand-cyborg-v1",
+    "package_id": "pkg-cyborg-brand-v1",
     "brand_id": "brand-cyborg-systems",
     "version": "1.0.0",
-    "approved_at": "2026-08-20T15:51:40.496340+00:00",
+    "approved_at": "2026-08-20T20:08:04.969162+00:00",
     "identity": {
-      "name": "Cyborg Systems",
-      "tagline": "Cognitive amplifier for high-signal operators",
-      "palette": {
-        "primary": "#00f0ff",
-        "surface": "#0a0d14",
-        "accent": "#7928ca"
+      "brand_name": "Cyborg Systems",
+      "tagline": "Cognitive infrastructure for the modern operator",
+      "mission": "Turn high-context vision into durable, compoundable production systems without cognitive drag.",
+      "color_palette": {
+        "primary": "#0F172A",
+        "accent": "#38BDF8",
+        "background": "#F8FAFC",
+        "surface": "#FFFFFF"
+      },
+      "typography": {
+        "display": "Outfit",
+        "body": "Inter",
+        "code": "JetBrains Mono"
       }
     },
     "voice": {
-      "tone": "direct, grounded, recoverable",
-      "guidelines": [
-        "No hype",
-        "Lead with outcomes",
-        "Clear recovery steps"
+      "archetype": "Architect-Operator",
+      "tone_adjectives": [
+        "lucid",
+        "rigorous",
+        "unvarnished",
+        "composed"
+      ],
+      "taboo_words": [
+        "synergy",
+        "paradigm",
+        "disruptive",
+        "game-changing"
+      ],
+      "say_never_say": [
+        {
+          "say": "Verified against test fixtures",
+          "never_say": "Completely bug-free"
+        },
+        {
+          "say": "Compoundable capability",
+          "never_say": "Next-gen silver bullet"
+        }
       ]
     },
     "audience": {
-      "primary": "Autonomous technical operators and high-cognitive builders"
+      "primary": "Autonomous solo builders and technical leaders",
+      "pain_points": [
+        "Context thrashing",
+        "Drifting unowned repos",
+        "Prompt fatigue"
+      ],
+      "desired_outcomes": [
+        "Durable compounding assets",
+        "Traceable provenance",
+        "Clean cognitive state"
+      ]
     },
     "approved_claims": [
       {
-        "id": "clm-1",
-        "claim": "Zero-dependency local-first portfolio control plane"
+        "claim_id": "claim-001",
+        "claim": "Zero-dependency local-first portfolio control plane",
+        "verification": "Standalone stdlib-only Python architecture verified across 70 repositories."
+      },
+      {
+        "claim_id": "claim-002",
+        "claim": "Full evidence provenance before donor retirement",
+        "verification": "Automated multi-stage gate and content-addressed hash receipts required for wave completion."
       }
     ],
     "assets": [
       {
-        "asset_id": "logo-svg",
-        "type": "image/svg+xml",
-        "path": "assets/logo.svg"
+        "asset_id": "asset-logo-svg",
+        "name": "Cyborg Monogram",
+        "kind": "vector_logo",
+        "path": "assets/brand/logo.svg",
+        "sha256": "420daf7b762f91d48f18e2d8d6c870a4933db5355964626f49256a8a94e846ed"
       }
     ],
     "usage_rules": [
-      "Always pair cyan accent with dark surface",
-      "Never omit provenance links"
+      "Never publish unapproved claims without verifiable evidence.",
+      "Always preserve operator attribution on human-authored decisions.",
+      "Version-bump required on any voice or identity token modifications."
     ],
     "provenance": [
       {
-        "source_id": "src-brand-canon-v1",
-        "applied_by": "brand_maker"
+        "source": "brand-maker-spec",
+        "commit": "cb5bc9a3091835e0426f1533a468ef4246836b10",
+        "operator": "Ryan Johnson",
+        "timestamp": "2026-08-20T20:08:04.969162+00:00"
       }
     ]
   },
-  "receipt": {
-    "receipt_id": "pub-dry-1787241100",
+  "source_record": {
+    "schema_version": "1.0.0",
+    "source_id": "src-manifesto-draft-001",
+    "acquired_at": "2026-08-20T20:08:04.969162+00:00",
+    "sha256": "b058afcc9f6feea84f00e027ef5aec6d2b1a750e923d17a0559beec453560c73",
+    "size_bytes": 94,
+    "media_type": "text/markdown",
+    "origin": "docs/manifesto.md",
+    "provenance": {
+      "author": "Ryan Johnson",
+      "channel": "blog",
+      "system": "cyborg"
+    }
+  },
+  "publishing_receipt": {
+    "receipt_id": "pub-dry-1787256484",
     "channel": "blog",
     "status": "dry_run_verified",
-    "timestamp": "2026-08-20T15:51:40.496418+00:00",
-    "brand_package_id": "pkg-brand-cyborg-v1",
+    "timestamp": "2026-08-20T20:08:04.969162+00:00",
+    "brand_package_id": "pkg-cyborg-brand-v1",
     "brand_version": "1.0.0",
-    "source_id": "src-2026-08-brand-notes",
-    "source_sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
+    "source_id": "src-manifesto-draft-001",
+    "source_sha256": "b058afcc9f6feea84f00e027ef5aec6d2b1a750e923d17a0559beec453560c73",
     "matched_approved_claims_count": 1,
+    "matched_claims": [
+      "Zero-dependency local-first portfolio control plane"
+    ],
+    "mutation_protection_verified": true,
     "dry_run_only": true,
-    "live_published": false,
-    "notes": "Draft successfully verified against brand constraints. Awaiting explicit manual release."
+    "live_published": false
+  },
+  "mutation_tests": [
+    {
+      "case": "unmodified_identical",
+      "passed": true,
+      "violations": []
+    },
+    {
+      "case": "mutated_identity_detected",
+      "passed": true,
+      "violations": [
+        "Unauthorized mutation of 'identity' under identical version pin."
+      ]
+    },
+    {
+      "case": "mutated_voice_detected",
+      "passed": true,
+      "violations": [
+        "Unauthorized mutation of 'voice' under identical version pin."
+      ]
+    },
+    {
+      "case": "mutated_claims_detected",
+      "passed": true,
+      "violations": [
+        "Unauthorized modification of 'approved_claims' under identical version pin."
+      ]
+    }
+  ],
+  "mutation_protection_passed": true,
+  "target": {
+    "name": "brand-maker-spec",
+    "path": "/Users/ryanjohnson/Projects/brand-maker-spec",
+    "fingerprint": {
+      "branch": "main",
+      "head": "cb5bc9a3091835e0426f1533a468ef4246836b10",
+      "short": "main@cb5bc9a",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "adce86f15706fa60369f647eb6a88e6f4297ba3675cf8218e09d2e40b180153e",
+      "tested_files_fingerprint": {
+        "pyproject.toml": "b42865abc1f13242c8e071040d8bf810b7bba602e983ededfbdb48af4df16594",
+        "README.md": "31e06570370cf0657b43ce492ab430ba8e3fc76b188d24716d1003953a80572d",
+        "spec.md": "103673230e034bb2998722ac545b0815fcbe87109d339559056c504cc0fceb01",
+        "src/brand_maker/publishing/developer_exports.py": "3cb59ac122999db87cc270099a37c2d219754afea1c66a19614f2161b69c6c2e"
+      },
+      "target_state": "clean_commit"
+    },
+    "has_developer_exports": true,
+    "has_spec": true
   }
 }

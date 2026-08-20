@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .adapters.accessibility import AccessibilitySourceAdapter
+from .adapters.brand_publishing import BrandPublishingSourceAdapter
 from .contracts import generate_sample, validate_contract
 from .engines.accessibility import AccessibilityEngine
 from .engines.agent_reliability import AgentReliabilityEngine
@@ -436,54 +437,69 @@ class WaveRunner:
 
     @classmethod
     def _run_brand_publishing_b1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        pkg = generate_sample("BrandPackage")
-        src = generate_sample("SourceRecord")
-        receipt = BrandPublishingEngine.dry_run_publish(pkg, src, "Cyborg Systems Zero-dependency local-first portfolio control plane")
-        passed = receipt.get("dry_run_only") is True and receipt.get("matched_approved_claims_count") >= 1
+        result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
+        receipt = result.get("publishing_receipt", {})
+        pkg = result.get("brand_package", {})
+        passed = (
+            result.get("mutation_protection_passed") is True
+            and receipt.get("dry_run_only") is True
+            and receipt.get("matched_approved_claims_count", 0) >= 1
+            and receipt.get("live_published") is False
+            and pkg.get("schema_version") == "1.0.0"
+        )
         evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "B1-BRAND-PACKAGE-DRY-RUN.json"
 
         if write_evidence:
             with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump({"brand_package": pkg, "receipt": receipt}, f, indent=2)
+                json.dump(result, f, indent=2)
 
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            "Exported and validated BrandPackage with dry-run mutation protection.",
+            "Exported and validated canonical BrandPackage with dry-run mutation protection and zero live publishing side-effects.",
             str(evidence_file) if write_evidence else None,
-            receipt,
+            result.get("publishing_receipt"),
         )
 
     @classmethod
     def _run_brand_publishing_b2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        phases = BrandPublishingEngine.get_brand_workshop_phases()
-        passed = len(phases) == 9
+        result = BrandPublishingSourceAdapter.execute_b2_phase_mapping()
+        passed = result.get("total_phases_mapped") == 9
         evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "B2-BRAND-WORKSHOP-PHASES.json"
 
         if write_evidence:
             with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(phases, f, indent=2)
+                json.dump(result, f, indent=2)
 
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            "Mapped all 9 Brand Workshop low-typing intake phases onto Brand Maker state.",
+            "Mapped all 9 Brand Workshop low-typing intake phases (00-spark to 08-living-brand) onto Brand Maker workspace gates.",
             str(evidence_file) if write_evidence else None,
-            {"phases_count": len(phases)},
+            {"phases_count": result.get("total_phases_mapped")},
         )
 
     @classmethod
     def _run_brand_publishing_b3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        pkg = generate_sample("BrandPackage")
-        src = generate_sample("SourceRecord")
-        receipt = BrandPublishingEngine.dry_run_publish(pkg, src, "Governed draft tested against Cyborg VCC review.", channel="cyborg-vcc")
-        passed = receipt.get("status") == "dry_run_verified"
+        b1_result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
+        pkg = b1_result["brand_package"]
+        src = b1_result["source_record"]
+        receipt = BrandPublishingEngine.dry_run_publish(
+            pkg, src, "Zero-dependency local-first portfolio control plane verified through Cyborg VCC review.", channel="cyborg-vcc"
+        )
+        passed = (
+            receipt.get("status") == "dry_run_verified"
+            and receipt.get("brand_package_id") == "pkg-cyborg-brand-v1"
+            and receipt.get("source_id") == "src-manifesto-draft-001"
+            and receipt.get("matched_approved_claims_count", 0) >= 1
+            and receipt.get("dry_run_only") is True
+        )
         evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "B3-VCC-PUBLISHING-RECEIPT.json"
@@ -503,10 +519,16 @@ class WaveRunner:
 
     @classmethod
     def _run_brand_publishing_b4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        pkg = generate_sample("BrandPackage")
+        b1_result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
+        pkg = b1_result["brand_package"]
         v1 = BrandPublishingEngine.verify_package_consumer(pkg, "site-fixture-consumer", "1.0.0")
         v2 = BrandPublishingEngine.verify_package_consumer(pkg, "portfolio-validator-consumer", "1.0.0")
-        passed = v1.get("status") == "verified" and v2.get("status") == "verified"
+        passed = (
+            v1.get("status") == "verified"
+            and v2.get("status") == "verified"
+            and v1.get("package_id") == "pkg-cyborg-brand-v1"
+            and v2.get("package_id") == "pkg-cyborg-brand-v1"
+        )
         evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "B4-MULTI-CONSUMER-VERIFICATION.json"
@@ -568,8 +590,9 @@ class WaveRunner:
 
     @classmethod
     def _run_brand_publishing_b6(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        pkg = generate_sample("BrandPackage")
-        src = generate_sample("SourceRecord")
+        b1_result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
+        pkg = b1_result["brand_package"]
+        src = b1_result["source_record"]
 
         # Test approved decision on draft containing approved claim
         approved_receipt = BrandPublishingEngine.simulate_vcc_human_approval(
@@ -589,6 +612,8 @@ class WaveRunner:
             and rejected_receipt.get("status") == "blocked_rejected"
             and unmatched_receipt.get("status") == "blocked_unmatched_claims"
             and approved_receipt.get("human_gate", {}).get("boundary_check") == "stopped_before_live_publish"
+            and approved_receipt.get("brand_package_id") == "pkg-cyborg-brand-v1"
+            and approved_receipt.get("source_id") == "src-manifesto-draft-001"
         )
         evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -599,8 +624,7 @@ class WaveRunner:
                 json.dump({
                     "approved_review": approved_receipt,
                     "rejected_probe_status": rejected_receipt.get("status"),
-                    "unmatched_claims_probe_status": unmatched_receipt.get("status"),
-                    "human_gate_verified": True,
+                    "unmatched_probe_status": unmatched_receipt.get("status"),
                 }, f, indent=2)
 
         return WaveRunResult(
@@ -609,7 +633,7 @@ class WaveRunner:
             passed,
             "Simulated VCC editorial review with human approval gate; verified rejection and claim validation branching.",
             str(evidence_file) if write_evidence else None,
-            approved_receipt,
+            {"approved": approved_receipt.get("status"), "rejected": rejected_receipt.get("status")},
         )
 
     @classmethod

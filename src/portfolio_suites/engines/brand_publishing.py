@@ -117,6 +117,7 @@ class BrandPublishingEngine:
         is_version_match = valid_pkg["version"] == pinned_version
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         return {
+            "package_id": valid_pkg["package_id"],
             "consumer_name": consumer_name,
             "pinned_version": pinned_version,
             "package_version": valid_pkg["version"],
@@ -270,6 +271,8 @@ class BrandPublishingEngine:
 
         return {
             "review_id": f"vcc-rev-{int(datetime.datetime.now().timestamp())}",
+            "brand_package_id": brand_pkg.get("package_id"),
+            "source_id": source_record.get("source_id"),
             "dry_run_receipt": dry_receipt,
             "human_gate": {
                 "reviewer": reviewer,

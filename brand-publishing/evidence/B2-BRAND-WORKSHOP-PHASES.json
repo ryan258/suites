@@ -1,81 +1,122 @@
-[
-  {
-    "phase": 1,
-    "name": "Vision & Core Truth",
-    "state": "intake_vision",
-    "required_inputs": [
-      "one_liner",
-      "enemy"
+{
+  "wave": "B2",
+  "status": "all_phases_mapped",
+  "donor": {
+    "name": "brand-workshop",
+    "path": "/Users/ryanjohnson/Projects/brand-workshop",
+    "fingerprint": {
+      "branch": "main",
+      "head": "a49af8115691113c1eea77e9949ed95ea4cb5174",
+      "short": "main@a49af81",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "f26c653f90f543ceb46c1af36d27c3ad101046b3d88a0e7c642bb83c3a08411c",
+      "tested_files_fingerprint": {
+        "pyproject.toml": "a6ebbee7c6bffed12b822354b3fd8ca118bccab3d3e5acd4e7d709b47b2bef78",
+        "README.md": "c9bcacb15a78ac32307b34d98b0b02b28661b5bc220ad29b6af5b2a828e450db",
+        "brand_workshop/phases.py": "54afb7a9df121613cc1ca642331721e8cd914595e5da3dd44bf698457057eecd"
+      },
+      "target_state": "clean_commit"
+    },
+    "extracted_phases_from_source": [
+      "00-spark",
+      "01-discovery",
+      "02-strategy",
+      "03-identity",
+      "04-language",
+      "05-expression",
+      "06-system",
+      "07-launch",
+      "08-living-brand"
     ]
   },
-  {
-    "phase": 2,
-    "name": "Audience Archetypes",
-    "state": "intake_audience",
-    "required_inputs": [
-      "primary_operator",
-      "pain_points"
-    ]
+  "target": {
+    "name": "brand-maker-spec",
+    "path": "/Users/ryanjohnson/Projects/brand-maker-spec",
+    "fingerprint": {
+      "branch": "main",
+      "head": "cb5bc9a3091835e0426f1533a468ef4246836b10",
+      "short": "main@cb5bc9a",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "adce86f15706fa60369f647eb6a88e6f4297ba3675cf8218e09d2e40b180153e",
+      "tested_files_fingerprint": {
+        "pyproject.toml": "b42865abc1f13242c8e071040d8bf810b7bba602e983ededfbdb48af4df16594",
+        "README.md": "31e06570370cf0657b43ce492ab430ba8e3fc76b188d24716d1003953a80572d",
+        "spec.md": "103673230e034bb2998722ac545b0815fcbe87109d339559056c504cc0fceb01",
+        "src/brand_maker/publishing/developer_exports.py": "3cb59ac122999db87cc270099a37c2d219754afea1c66a19614f2161b69c6c2e"
+      },
+      "target_state": "clean_commit"
+    }
   },
-  {
-    "phase": 3,
-    "name": "Brand Voice Pillars",
-    "state": "intake_voice",
-    "required_inputs": [
-      "tone_adjectives",
-      "taboo_words"
-    ]
-  },
-  {
-    "phase": 4,
-    "name": "Visual Foundation",
-    "state": "intake_visual",
-    "required_inputs": [
-      "palette_hex",
-      "typeface_pair"
-    ]
-  },
-  {
-    "phase": 5,
-    "name": "Approved Claims Registry",
-    "state": "intake_claims",
-    "required_inputs": [
-      "verifiable_claims"
-    ]
-  },
-  {
-    "phase": 6,
-    "name": "Asset Inventory",
-    "state": "intake_assets",
-    "required_inputs": [
-      "logo_paths",
-      "icon_set"
-    ]
-  },
-  {
-    "phase": 7,
-    "name": "Usage & Constraint Rules",
-    "state": "intake_rules",
-    "required_inputs": [
-      "do_list",
-      "dont_list"
-    ]
-  },
-  {
-    "phase": 8,
-    "name": "Channel Archetypes",
-    "state": "intake_channels",
-    "required_inputs": [
-      "formats",
-      "cadence"
-    ]
-  },
-  {
-    "phase": 9,
-    "name": "Canonical Package Approval",
-    "state": "approved_package",
-    "required_inputs": [
-      "approver_signoff"
-    ]
-  }
-]
+  "total_phases_mapped": 9,
+  "phase_mappings": [
+    {
+      "phase": "00-spark",
+      "name": "Spark",
+      "maker_gate": "intake_tension",
+      "port_action": "port-as-starter-brief",
+      "status": "mapped"
+    },
+    {
+      "phase": "01-discovery",
+      "name": "Discovery",
+      "maker_gate": "context_landscape",
+      "port_action": "port-as-category-audit",
+      "status": "mapped"
+    },
+    {
+      "phase": "02-strategy",
+      "name": "Strategy",
+      "maker_gate": "core_strategy",
+      "port_action": "port-as-one-true-thing",
+      "status": "mapped"
+    },
+    {
+      "phase": "03-identity",
+      "name": "Identity",
+      "maker_gate": "visual_tokens",
+      "port_action": "port-as-palette-and-type",
+      "status": "mapped"
+    },
+    {
+      "phase": "04-language",
+      "name": "Language",
+      "maker_gate": "voice_guidance",
+      "port_action": "port-as-say-never-say",
+      "status": "mapped"
+    },
+    {
+      "phase": "05-expression",
+      "name": "Expression",
+      "maker_gate": "touchpoints",
+      "port_action": "port-as-channel-playbook",
+      "status": "mapped"
+    },
+    {
+      "phase": "06-system",
+      "name": "System",
+      "maker_gate": "rules_and_tokens",
+      "port_action": "port-as-css-export",
+      "status": "mapped"
+    },
+    {
+      "phase": "07-launch",
+      "name": "Launch",
+      "maker_gate": "launch_brief",
+      "port_action": "port-as-announcement-kit",
+      "status": "mapped"
+    },
+    {
+      "phase": "08-living-brand",
+      "name": "Living Brand",
+      "maker_gate": "governance",
+      "port_action": "port-as-monitoring-register",
+      "status": "mapped"
+    }
+  ]
+}

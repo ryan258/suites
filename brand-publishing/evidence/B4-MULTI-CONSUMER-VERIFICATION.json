@@ -1,20 +1,22 @@
 {
   "consumer_1": {
+    "package_id": "pkg-cyborg-brand-v1",
     "consumer_name": "site-fixture-consumer",
     "pinned_version": "1.0.0",
     "package_version": "1.0.0",
     "version_match": true,
     "mutation_shield_active": true,
-    "verified_at": "2026-08-20T15:51:40.497641+00:00",
+    "verified_at": "2026-08-20T20:08:05.390488+00:00",
     "status": "verified"
   },
   "consumer_2": {
+    "package_id": "pkg-cyborg-brand-v1",
     "consumer_name": "portfolio-validator-consumer",
     "pinned_version": "1.0.0",
     "package_version": "1.0.0",
     "version_match": true,
     "mutation_shield_active": true,
-    "verified_at": "2026-08-20T15:51:40.497659+00:00",
+    "verified_at": "2026-08-20T20:08:05.390523+00:00",
     "status": "verified"
   },
   "status": "verified"
