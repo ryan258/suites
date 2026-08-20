@@ -1,0 +1,99 @@
+# Portfolio Suites — Changelog & Milestone History
+
+This document records genuine, verified milestones for the `/Users/ryanjohnson/Projects/suites` portfolio control plane.
+
+---
+
+## 2026-08-20 — Truth Model, Evidence Boundary, and Execution Semantics Hardened
+
+### Outcome
+
+Repaired the control plane so passing suite-local prototypes cannot present themselves as completed migrations. Wave execution, CLI exit behavior, API responses, dashboard labels, retained evidence, and AI configuration now use the same fail-closed truth model.
+
+```text
+MIGRATION PROGRESS: 1/43 verified (A1); 42/43 reference prototype checks passing
+TESTS: 57/57 passing
+REGISTRY: 0 errors; 1 expected allys-tools working-tree drift warning
+EXECUTION DEFAULT: ephemeral; evidence recording requires explicit authorization
+AI BOUNDARY: OpenRouter configured for future hosted-AI roles; no live provider call claimed
+```
+
+### Repairs and Alignment
+
+1. **Consistent Wave Result Taxonomy**:
+   - Dedicated incomplete runners report `execution_kind: "prototype_check"` and preserve their passing result as `prototype_passed` without increasing verified migration progress.
+   - Completed source-backed waves report verified execution; waves without an adapter fail closed as unintegrated; runner exceptions remain execution errors.
+   - Portfolio totals now distinguish verified migrations, passing prototypes, failed checks, unintegrated specifications, and execution errors.
+
+2. **Fail-Closed CLI, API, and Dashboard Behavior**:
+   - Unknown suites and waves return errors and non-zero CLI status instead of synthetic success.
+   - Wave execution is ephemeral by default in both the CLI and dashboard API.
+   - Evidence mutation requires `--record` or `record=true`, and the dashboard exposes the result classification instead of displaying every pass as migration completion.
+
+3. **Deterministic Chess Prototype Correctness**:
+   - Expanded move evaluation to account for attacked kings, check resolution, castling rook movement and path constraints, en passant state, promotion, and illegal king capture.
+   - Added explicit expected-legality outcomes to the fixture corpus and made the M4 prototype gate depend on all cases matching those expectations.
+   - Retained the chess evaluator's honest classification as a deterministic reference prototype rather than representing it as an external model or provider run.
+
+4. **Evidence Corrections**:
+   - Regenerated affected A6, O5, O6, M4, and M5 artifacts from the repaired runners.
+   - Renamed the A6 artifact from an `INSTITUTED` claim to a `PROTOTYPE` artifact so its filename and contents agree with its evidence strength.
+   - Preserved historical M1 provider provenance instead of rewriting earlier Anthropic-attributed evidence as OpenRouter execution.
+
+5. **OpenRouter Role Boundary Alignment**:
+   - Aligned committed role defaults to `openrouter/auto` while retaining `.env` process overrides for operator-selected models.
+   - Kept credentials local, ignored, redacted from diagnostics, and outside retained wave evidence.
+   - No live OpenRouter request was needed or claimed for deterministic reference checks.
+
+6. **Verification Expansion**:
+   - Increased coverage from 52 to 57 tests across contracts, registry behavior, wave classifications, chess rules, OpenRouter isolation, CLI exit semantics, and dashboard APIs.
+   - Verified 57/57 unit tests, zero registry errors, clean Python and JavaScript syntax checks, and zero trailing-whitespace errors.
+
+### Boundaries Preserved
+
+- No canonical donor repository was modified, frozen, retired, or redirected.
+- No wave beyond A1 was promoted to verified migration status.
+- No credentials were committed or written into evidence.
+- No staging, commit, push, deployment, or publication action is part of this milestone.
+
+---
+
+## 2026-08-20 — Portfolio Control Plane & Governance Foundation Established
+
+### Summary
+Established the eight-suite portfolio control plane, unified contracts, registry inspection tools, local-first zero-dependency dashboard, and OpenRouter configuration boundary.
+
+```text
+STATUS: Control Plane & Prototype Domain Kernels Operational
+COVERAGE: 8 Suite Definitions | 6 Shared Contracts | 70 Projects Dispositioned
+VERIFICATION: 57/57 Unit Tests PASS | 0 Registry Errors
+WAVE VERIFICATION: 1/43 Waves Verified (A1 Parity Matrix); 42 Waves Specified with Prototype Runners
+```
+
+### Key Deliverables Established
+
+1. **Portfolio Taxonomy & Structure**:
+   - Defined 8 coherent suite boundaries: [Accessibility](file:///Users/ryanjohnson/Projects/suites/accessibility/README.md), [Operator OS](file:///Users/ryanjohnson/Projects/suites/operator-os/README.md), [Brand + Publishing](file:///Users/ryanjohnson/Projects/suites/brand-publishing/README.md), [Production House](file:///Users/ryanjohnson/Projects/suites/production-house/README.md), [Model Behavior Lab](file:///Users/ryanjohnson/Projects/suites/model-behavior-lab/README.md), [Discovery + Decision](file:///Users/ryanjohnson/Projects/suites/discovery-decision/README.md), [Agent Reliability Lab](file:///Users/ryanjohnson/Projects/suites/agent-reliability/README.md), and [Game Design](file:///Users/ryanjohnson/Projects/suites/game-design/README.md).
+   - Mapped 70 top-level projects and 35 nested git repositories in [project-ledger.json](file:///Users/ryanjohnson/Projects/suites/portfolio/project-ledger.json) and [nested-repositories.json](file:///Users/ryanjohnson/Projects/suites/portfolio/nested-repositories.json).
+
+2. **Unified Contract System**:
+   - Implemented 6 core schemas: `A11yFinding`, `SourceRecord`, `BrandPackage`, `InvestigationRecord`, `ProductionJob`, and `AgentRun`.
+   - Added automated JSON schema generator and bidirectional schema/contract validation tests.
+
+3. **Control Plane CLI & Dashboard**:
+   - Zero-dependency Python standard library CLI: `status`, `list`, `next`, `validate`, `drift`, `inspect`, `contract`, `wave`, `ai-config`, `serve`.
+   - Zero-dependency local web dashboard on port 8383 with live SVG dependency graph and ephemeral wave runner triggers.
+
+4. **OpenRouter Configuration Boundary**:
+   - Standard-library `.env` parser with process-level overrides and strict fail-closed key validation.
+   - Redacted diagnostics and dataclass representations to prevent key leakage.
+   - Pinned role routing budgets for orchestrator, analyst, reviewer, creative, and accessibility roles.
+
+5. **Wave Specification & Parity Artifacts**:
+   - **A1 Parity Matrix**: Verified rule, crawl, and deliverable parity matrix between `wcag-auditor` and `allys-tools` ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md)).
+   - **42 Wave Specifications**: Detailed acceptance criteria and reference prototype runners for incremental source migrations.
+
+6. **Truth-Bound Execution Model**:
+   - Separates verified migrations, passing prototype checks, unintegrated specifications, and execution errors across the CLI and dashboard API.
+   - Runs wave checks ephemerally by default; evidence replacement requires an explicit `--record` or `record=true` request.
+   - Fails closed on unknown waves and failed checks while preserving the verified progress count at 1/43.

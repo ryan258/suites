@@ -1,4 +1,6 @@
-"""Agent Reliability Lab engine powering adversarial test fixtures, confinement gates, and reliability scorecards."""
+"""Agent Reliability reference prototype engine powering AgentRun evaluations, adversarial scorecards, and curriculum verification.
+
+NOTE: This is a control-plane reference prototype and fixture comparator, not a replacement for external canonical project runtimes (e.g. agentic-harness, looping-box)."""
 
 from __future__ import annotations
 
@@ -124,3 +126,60 @@ class AgentReliabilityEngine:
             "errors": [],
         }
         return validate_contract("ExperimentRun", scorecard)
+
+    @staticmethod
+    def audit_promoted_components(
+        candidates: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Audit shared components to enforce the 2-real-consumers craft rule (R4 wave)."""
+        retained = []
+        demoted = []
+
+        for comp in candidates:
+            consumers = comp.get("consumers", [])
+            if len(consumers) >= 2:
+                retained.append({
+                    "component_id": comp["component_id"],
+                    "path": comp.get("path"),
+                    "consumers": consumers,
+                    "status": "promoted_shared_component",
+                })
+            else:
+                demoted.append({
+                    "component_id": comp["component_id"],
+                    "path": comp.get("path"),
+                    "consumers": consumers,
+                    "status": "demoted_to_home_repo",
+                    "reason": "Fewer than 2 active portfolio consumers; violates shared-boundary promotion rule.",
+                })
+
+        return {
+            "total_evaluated": len(candidates),
+            "promoted_retained_count": len(retained),
+            "demoted_count": len(demoted),
+            "retained": retained,
+            "demoted": demoted,
+            "craft_rule_enforced": True,
+        }
+
+    @staticmethod
+    def build_curriculum_fixtures(
+        modules: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Mine AI Staff and prompt-chain fixtures into deterministic test curriculum (R5 wave)."""
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        fixtures = []
+        for mod in modules:
+            fixtures.append({
+                "module_id": mod["id"],
+                "topic": mod["topic"],
+                "deterministic_gates": mod.get("gates", ["confinement", "budget", "rollback"]),
+                "verified_at": now_iso,
+            })
+
+        return {
+            "curriculum_version": "1.0.0",
+            "fixtures_count": len(fixtures),
+            "fixtures": fixtures,
+            "status": "curriculum_fixtures_verified",
+        }

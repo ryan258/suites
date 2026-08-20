@@ -1,0 +1,8 @@
+{
+  "project": "march-madness",
+  "category": "authored_domain_simulation",
+  "disposition": "independent_creative_product",
+  "boundary_rule": "Specialized sports-data and simulation logic stays external; generic core remains lean.",
+  "suite_dependency_required": false,
+  "status": "boundary_formalized"
+}

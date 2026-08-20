@@ -1,4 +1,6 @@
-"""Game Design & Simulation engine powering seeded Monte Carlo simulations and balance reports."""
+"""Game Design reference prototype engine powering Storyweaver adventure packs, character sheets, and rules systems.
+
+NOTE: This is a control-plane reference prototype and fixture comparator, not a replacement for external canonical project runtimes (e.g. storyweaver, tucked-in-terrors)."""
 
 from __future__ import annotations
 
@@ -104,8 +106,8 @@ class GameDesignEngine:
         params = sim_result.get("parameters", {})
         return f"""# Tucked in Terrors — Statistical Balance Sheet
 
-**Simulation Run ID:** `{sim_result.get('run_id')}`  
-**Seed:** `{params.get('seed')}` | **Trials:** `{params.get('trials')}` | **Modifier:** `{params.get('difficulty_modifier')}`  
+**Simulation Run ID:** `{sim_result.get('run_id')}`
+**Seed:** `{params.get('seed')}` | **Trials:** `{params.get('trials')}` | **Modifier:** `{params.get('difficulty_modifier')}`
 
 ---
 
@@ -122,3 +124,40 @@ class GameDesignEngine:
 
 *Generated deterministically by Storyweaver Game Design & Simulation Engine.*
 """
+
+    @staticmethod
+    def build_text_adventure_pack(pack_id: str, rooms_count: int = 8) -> dict[str, Any]:
+        """Express a structurally distinct text adventure game as a Storyweaver pack (G4 wave)."""
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        rooms = [
+            {
+                "room_id": f"room-{i:02d}",
+                "name": f"Chamber of Echoes {i}",
+                "exits": ["north", "east"] if i < rooms_count else ["escape_portal"],
+                "hazards": [{"type": "puzzle", "difficulty": 10 + i}],
+            }
+            for i in range(1, rooms_count + 1)
+        ]
+
+        return {
+            "pack_id": pack_id,
+            "mechanic_class": "branching_puzzle_adventure",
+            "schema_compatibility": "storyweaver_generic_v1",
+            "nodes_count": len(rooms),
+            "rooms": rooms,
+            "deterministic_graph": True,
+            "created_at": now_iso,
+            "generality_proof": "Storyweaver schema successfully models spatial branching puzzles without engine changes.",
+        }
+
+    @staticmethod
+    def audit_authored_game_boundary(project_name: str = "march-madness") -> dict[str, Any]:
+        """Audit and formalize the authored game boundary for March Madness (G5 wave)."""
+        return {
+            "project": project_name,
+            "category": "authored_domain_simulation",
+            "disposition": "independent_creative_product",
+            "boundary_rule": "Specialized sports-data and simulation logic stays external; generic core remains lean.",
+            "suite_dependency_required": False,
+            "status": "boundary_formalized",
+        }

@@ -3,7 +3,7 @@ title: "Strategic Priorities Summary"
 type: observer_projection
 source_id: "src-ryan-priorities-2026"
 source_sha256: "5764bdd7798de2caf7d053e657bce4d58e9626e86fc4e47806dc629406332426"
-projected_at: "2026-08-20T14:06:49.169454+00:00"
+projected_at: "2026-08-20T15:51:40.485580+00:00"
 generator: "portfolio_suites.operator_os"
 status: derived
 fenced_from_reingestion: true

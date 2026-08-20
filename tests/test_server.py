@@ -25,6 +25,16 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             return json.loads(response.read().decode("utf-8"))
 
+    def _post_json(self, path: str):
+        req = urllib.request.Request(
+            f"http://127.0.0.1:8399{path}",
+            data=b"",
+            method="POST",
+        )
+        with urllib.request.urlopen(req) as response:
+            self.assertEqual(response.status, 200)
+            return json.loads(response.read().decode("utf-8"))
+
     def test_summary_endpoint(self):
         data = self._get_json("/api/summary")
         self.assertEqual(data["total_projects"], 70)
@@ -49,7 +59,29 @@ class ServerTests(unittest.TestCase):
 
     def test_waves_endpoint(self):
         data = self._get_json("/api/waves")
-        self.assertEqual(len(data), 24)
+        self.assertEqual(len(data), 43)
+        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_migration"), 1)
+        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "prototype_check"), 42)
+        self.assertTrue(all("prototype_passed" in row for row in data))
+
+    def test_wave_post_is_ephemeral_and_classified(self):
+        data = self._post_json("/api/waves/accessibility/A2/run")
+        self.assertFalse(data["recorded"])
+        self.assertFalse(data["passed"])
+        self.assertTrue(data["prototype_passed"])
+        self.assertEqual(data["execution_kind"], "prototype_check")
+        self.assertIsNone(data["evidence_path"])
+        self.assertIsNotNone(data["data"])
+
+    def test_unknown_wave_post_returns_not_found(self):
+        req = urllib.request.Request(
+            "http://127.0.0.1:8399/api/waves/missing-suite/X1/run",
+            data=b"",
+            method="POST",
+        )
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(req)
+        self.assertEqual(ctx.exception.code, 404)
 
     def test_evidence_endpoint_security_confinement(self):
         # Path escaping outside workspace should return 404

@@ -31,6 +31,20 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(len(AccessibilityEngine.audit_html_snippet(labeled_btn_1)), 0)
         self.assertEqual(len(AccessibilityEngine.audit_html_snippet(labeled_btn_2)), 0)
 
+        # Link with img alt text or text should NOT be flagged as empty link (Finding 6 fix)
+        img_link = '<a href="/"><img src="home.png" alt="Home page"></a>'
+        self.assertEqual(len(AccessibilityEngine.audit_html_snippet(img_link)), 0)
+
+        # Table with <th> in first row should NOT be flagged as missing headers (Finding 6 fix)
+        table_with_th = '<table><tr><th>Header</th></tr><tr><td>Data</td></tr></table>'
+        table_findings = AccessibilityEngine.audit_rule_families(table_with_th)
+        self.assertFalse(any(f["rule_id"] == "wcag-1.3.1-info-and-relationships-table-header" for f in table_findings))
+
+        # Table with only <td> SHOULD be flagged as heuristic needs_review
+        table_no_th = '<table><tr><td>Data 1</td><td>Data 2</td></tr></table>'
+        table_no_th_findings = AccessibilityEngine.audit_rule_families(table_no_th)
+        self.assertTrue(any(f["rule_id"] == "wcag-1.3.1-info-and-relationships-table-header" and f["needs_review"] is True for f in table_no_th_findings))
+
         ai_finding = AccessibilityEngine.create_ai_assisted_finding(
             "find-ai-1", "wcag-alt-quality", "Generic alt", "img.logo", "Hypothesis: Alt text too vague"
         )
@@ -38,6 +52,23 @@ class EngineTests(unittest.TestCase):
 
         reconcile = AccessibilityEngine.reconcile_keyboard_overlays()
         self.assertEqual(reconcile["canonical_target"], "kb-overlay")
+
+        kitchen = AccessibilityEngine.roundtrip_kitchen_learning_finding(findings[0])
+        self.assertEqual(kitchen["roundtrip_status"], "verified")
+        self.assertFalse(kitchen["evidence_loss"])
+
+        final_overlay = AccessibilityEngine.finalize_overlay_reconciliation()
+        self.assertEqual(final_overlay["artifact_kind"], "reference_prototype")
+        self.assertEqual(len(final_overlay["proposed_frozen_donors"]), 2)
+
+        # Test full candidate backlog evaluation
+        backlog_res = AccessibilityEngine.evaluate_wcag_auditor_backlog_catalog([
+            {"id": "inline-language-change", "kind": "single-page", "setup": "Spanish in English", "expected": "needs-review"},
+            {"id": "input-assistance-error-msg", "kind": "single-page", "setup": "aria-invalid", "expected": "deterministic error"},
+        ])
+        self.assertEqual(backlog_res["total_candidates_evaluated"], 2)
+        self.assertEqual(backlog_res["port_review_count"], 1)
+        self.assertEqual(backlog_res["port_narrow_count"], 1)
 
     def test_operator_os_engine(self):
         src = OperatorOSEngine.capture_source("# Test Note", "note://test", "src-test-01")
@@ -50,6 +81,26 @@ class EngineTests(unittest.TestCase):
 
         preview = OperatorOSEngine.preview_jarvis_action("backup_data", {"vault": "ai-vault"})
         self.assertTrue(preview["requires_human_approval"])
+
+        notes_batch = [{"source_id": "src-test-node-01", "origin": "note://s1", "content": "Note 1", "title": "T1"}]
+        stream = OperatorOSEngine.capture_live_pkos_stream(notes_batch)
+        self.assertEqual(len(stream), 1)
+
+        ryos_disp = OperatorOSEngine.reconcile_ryos_disposition()
+        self.assertEqual(ryos_disp["artifact_kind"], "reference_prototype")
+        self.assertEqual(ryos_disp["duplicate_row_proposal"], "close_on_verification")
+
+        # Test fail-closed without approval (Finding 2 fix)
+        chk_blocked = OperatorOSEngine.execute_jarvis_action_checkpoint("audit_secrets", {"path": "/"}, operator_approved=False)
+        self.assertEqual(chk_blocked["status"], "blocked_missing_approval")
+        self.assertFalse(chk_blocked["operator_approval_verified"])
+        self.assertIsNone(chk_blocked["execution_receipt"])
+
+        # Test approved execution
+        chk_success = OperatorOSEngine.execute_jarvis_action_checkpoint("audit_secrets", {"path": "/"}, operator_approved=True)
+        self.assertEqual(chk_success["status"], "success")
+        self.assertTrue(chk_success["operator_approval_verified"])
+        self.assertTrue(chk_success["execution_result"]["clean"])
 
     def test_brand_publishing_engine(self):
         pkg = generate_sample("BrandPackage")
@@ -71,6 +122,40 @@ class EngineTests(unittest.TestCase):
         phases = BrandPublishingEngine.get_brand_workshop_phases()
         self.assertEqual(len(phases), 9)
 
+        v_cons = BrandPublishingEngine.verify_package_consumer(pkg, "site-fixture", "1.0.0")
+        self.assertEqual(v_cons["status"], "verified")
+
+        # Test empty intake: must NOT claim 9 phases or produce package (Finding 5 fix)
+        bm_res_empty = BrandPublishingEngine.execute_brand_maker_intake("test-brand", {})
+        self.assertEqual(bm_res_empty["phases_completed"], 0)
+        self.assertIsNone(bm_res_empty["resulting_package"])
+
+        # Test complete intake: must produce valid BrandPackage
+        full_inputs = {
+            1: {"one_liner": "A", "enemy": "B", "brand_name": "Test Brand"},
+            2: {"primary_operator": "Ryan", "pain_points": ["drift"], "target_audience": "Devs"},
+            3: {"tone_adjectives": ["crisp"], "taboo_words": ["bad"]},
+            4: {"palette_hex": ["#000"], "typeface_pair": "Inter", "tagline": "Tag"},
+            5: {"verifiable_claims": ["Fast"]},
+            6: {"logo_paths": ["l.svg"], "icon_set": "lucide"},
+            7: {"do_list": ["Pin"], "dont_list": ["Mutate"], "usage_rules": ["Rule 1"]},
+            8: {"formats": ["json"], "cadence": "daily"},
+            9: {"approver_signoff": "Ryan"},
+        }
+        bm_res_full = BrandPublishingEngine.execute_brand_maker_intake("test-brand", full_inputs)
+        self.assertEqual(bm_res_full["phases_completed"], 9)
+        self.assertIsNotNone(bm_res_full["resulting_package"])
+
+        # Test human approval branching (Finding 3 fix)
+        vcc_rev_app = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency local-first portfolio control plane", human_decision="approved")
+        self.assertEqual(vcc_rev_app["status"], "ready_for_operator_release")
+
+        vcc_rev_rej = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency draft", human_decision="rejected")
+        self.assertEqual(vcc_rev_rej["status"], "blocked_rejected")
+
+        vcc_rev_unmatched = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Unrelated text with no claims", human_decision="approved")
+        self.assertEqual(vcc_rev_unmatched["status"], "blocked_unmatched_claims")
+
     def test_production_house_engine(self):
         job = ProductionHouseEngine.create_job("job-test-01", "groundwire-audio", "synthesis", [{"name": "script.fountain"}])
         self.assertEqual(job["status"], "queued")
@@ -81,6 +166,12 @@ class EngineTests(unittest.TestCase):
         gw_job = ProductionHouseEngine.build_groundwire_pipeline_job("ep-01", "a" * 64)
         self.assertEqual(gw_job["status"], "completed")
 
+        doc_job = ProductionHouseEngine.build_investigative_documentary_job("ep-14", "b" * 64)
+        self.assertEqual(doc_job["status"], "completed")
+
+        wr_map = ProductionHouseEngine.map_writers_room_events("story-1", [{"scene_number": 1, "revision_id": "v1"}])
+        self.assertEqual(wr_map["mapped_job"]["status"], "completed")
+
     def test_model_behavior_engine(self):
         run = ModelBehaviorEngine.execute_ethics_scenario_run("run-test-01", "anthropic", "claude-3-5-sonnet", 5)
         self.assertEqual(run["status"], "completed")
@@ -88,6 +179,31 @@ class EngineTests(unittest.TestCase):
 
         comp = ModelBehaviorEngine.compare_runs([run])
         self.assertEqual(len(comp["comparisons"]), 1)
+
+        # Test real deterministic chess evaluation (Finding 1 fix)
+        chess = ModelBehaviorEngine.execute_chess_benchmark_run("run-chess-01", "deterministic-oracle", "chess-rules-evaluator-v1", 10)
+        self.assertEqual(chess["status"], "completed")
+        self.assertEqual(len(chess["iterations"]), 10)
+        self.assertTrue(all("fen" in it and "candidate_move" in it for it in chess["iterations"]))
+        self.assertTrue(all(it["passed"] for it in chess["iterations"]))
+        self.assertEqual(chess["evidence"][0]["pass_rate"], 1.0)
+        rejected = next(it for it in chess["iterations"] if it["scenario_id"] == "chess-puzzle-05")
+        self.assertFalse(rejected["observed_legal"])
+        self.assertTrue(rejected["passed"])
+
+        illegal_moves = [
+            ("4k3/8/8/r4pPK/8/8/8/8 w - f6 0 1", "g5f6"),
+            ("4k3/8/8/8/8/8/8/4K3 w K - 0 1", "e1g1"),
+            ("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "a1a2q"),
+        ]
+        for fen, move in illegal_moves:
+            legal, _, _ = ModelBehaviorEngine._evaluate_chess_move(fen, move, move)
+            self.assertFalse(legal, f"Expected illegal move to be rejected: {move} in {fen}")
+
+        corpus = ModelBehaviorEngine.build_versioned_corpus("corpus-01", [run, chess])
+        self.assertEqual(len(corpus["benchmarks_included"]), 2)
+        # Test valid re-run command (Finding 7 fix)
+        self.assertEqual(corpus["reproducibility_contract"]["re_run_script"], "PYTHONPATH=src python3 -m portfolio_suites wave model-behavior-lab M4")
 
     def test_discovery_decision_engine(self):
         inv = DiscoveryDecisionEngine.create_investigation("inv-test-01", "Test Question?")
@@ -102,6 +218,12 @@ class EngineTests(unittest.TestCase):
         disc = DiscoveryDecisionEngine.discover_across_sources(src_a, src_b, "test query")
         self.assertGreater(disc["novelty_score"], 0.5)
 
+        sif_analogy = DiscoveryDecisionEngine.execute_sif_analogy_stage("inv-ana-1", "Test Analogy?")
+        self.assertEqual(sif_analogy["status"], "completed")
+
+        excav = DiscoveryDecisionEngine.ingest_insight_excavator_source(inv, src_a, "Insight")
+        self.assertEqual(excav["insight_excavator_runtime"], "retired_into_forge_citations")
+
     def test_agent_reliability_engine(self):
         confined, _ = AgentReliabilityEngine.verify_path_confinement("/Users/ryan/Projects", "suites/README.md")
         self.assertTrue(confined)
@@ -115,6 +237,16 @@ class EngineTests(unittest.TestCase):
         for it in scorecard["iterations"]:
             self.assertTrue(it["passed"])
 
+        audit = AgentReliabilityEngine.audit_promoted_components([
+            {"component_id": "c1", "consumers": ["p1", "p2"]},
+            {"component_id": "c2", "consumers": ["p1"]},
+        ])
+        self.assertEqual(audit["promoted_retained_count"], 1)
+        self.assertEqual(audit["demoted_count"], 1)
+
+        curr = AgentReliabilityEngine.build_curriculum_fixtures([{"id": "m1", "topic": "Gates"}])
+        self.assertEqual(curr["fixtures_count"], 1)
+
     def test_game_design_engine(self):
         sim = GameDesignEngine.simulate_tucked_in_terrors(seed=42, trials=500)
         self.assertEqual(sim["status"], "completed")
@@ -125,6 +257,12 @@ class EngineTests(unittest.TestCase):
 
         sheet = GameDesignEngine.generate_printable_balance_sheet(sim)
         self.assertIn("Statistical Balance Sheet", sheet)
+
+        pack = GameDesignEngine.build_text_adventure_pack("pack-echo", rooms_count=4)
+        self.assertEqual(pack["nodes_count"], 4)
+
+        b_audit = GameDesignEngine.audit_authored_game_boundary("march-madness")
+        self.assertEqual(b_audit["status"], "boundary_formalized")
 
 
 if __name__ == "__main__":

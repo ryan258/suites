@@ -1,0 +1,21 @@
+{
+  "artifact_kind": "reference_prototype",
+  "fail_closed_verification": {
+    "action_id": "act-jarvis-1787243973",
+    "action_name": "audit_secrets",
+    "parameters": {
+      "path": "/Users/ryanjohnson/Projects/suites"
+    },
+    "state": "blocked_missing_approval",
+    "preview_at": "2026-08-20T16:39:33.703362+00:00",
+    "requires_human_approval": true,
+    "destructive": false,
+    "recovery_path": "undo_via_backup_or_clean_revert",
+    "status": "blocked_missing_approval",
+    "operator_approval_verified": false,
+    "execution_receipt": null
+  },
+  "human_approval_recorded": false,
+  "status": "fail_closed_verified_pending_operator_token",
+  "note": "Automated runner verified fail-closed boundary without manufacturing operator approval."
+}

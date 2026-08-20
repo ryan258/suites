@@ -1,11 +1,11 @@
 {
-  "action_id": "act-jarvis-1787234809",
+  "action_id": "act-jarvis-1787241100",
   "action_name": "run_portfolio_backup",
   "parameters": {
     "target": "local_encrypted_vault"
   },
   "state": "preview_ready",
-  "preview_at": "2026-08-20T14:06:49.170205+00:00",
+  "preview_at": "2026-08-20T15:51:40.486256+00:00",
   "requires_human_approval": true,
   "destructive": false,
   "recovery_path": "undo_via_backup_or_clean_revert"

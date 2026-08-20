@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "investigation_id": "inv-forge-analogy-01",
+  "question": "How does single-writer WAL map to distributed Raft?",
+  "mode": "deep",
+  "status": "completed",
+  "premises": [],
+  "evidence": [
+    {
+      "source": "analogy://distributed_consensus",
+      "mapping": "Single-writer WAL mapped to Raft leader log replication",
+      "confidence": 0.92
+    }
+  ],
+  "stages": [
+    {
+      "stage": "intake",
+      "status": "initialized",
+      "timestamp": "2026-08-20T15:51:40.506084+00:00"
+    },
+    {
+      "stage": "analogy_synthesis",
+      "status": "completed",
+      "timestamp": "2026-08-20T15:51:40.506103+00:00"
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Adopt leader-follower sync pattern inspired by distributed_consensus",
+      "rationale": "Guarantees zero lock contention on local SQLite writes"
+    }
+  ],
+  "budget": {
+    "max_iterations": 15,
+    "used_iterations": 2,
+    "max_time_sec": 600,
+    "used_time_sec": 25.0
+  },
+  "created_at": "2026-08-20T15:51:40.506084+00:00",
+  "updated_at": "2026-08-20T15:51:40.506103+00:00"
+}

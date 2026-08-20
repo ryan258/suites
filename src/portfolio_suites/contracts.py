@@ -271,8 +271,8 @@ def generate_sample(name: str) -> dict[str, Any]:
             "run_id": "run-mbl-ethics-042",
             "benchmark_id": "bench-ethics-scenarios",
             "benchmark_version": "2.1.0",
-            "provider": "anthropic",
-            "model": "claude-3-5-sonnet",
+            "provider": "openrouter",
+            "model": "openrouter/auto",
             "parameters": {
                 "temperature": 0.2,
                 "max_tokens": 2048,

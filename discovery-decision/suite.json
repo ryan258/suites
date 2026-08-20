@@ -2,15 +2,32 @@
   "schema_version": "1.0.0",
   "id": "discovery-decision",
   "name": "Discovery and Decision Suite",
-  "state": "active",
+  "state": "prototype",
   "promise": "Turn a hard question and typed evidence into a resumable decision record.",
-  "anchors": ["breaking-chains"],
-  "contracts": ["InvestigationRecord", "SourceRecord"],
+  "anchors": [
+    "breaking-chains"
+  ],
+  "contracts": [
+    "InvestigationRecord",
+    "SourceRecord"
+  ],
   "members": [
-    {"project": "breaking-chains", "relationship": "investigation-workspace-anchor"},
-    {"project": "sif", "relationship": "reasoning-stage-donor"},
-    {"project": "insight-excavator", "relationship": "cited-discovery-donor"},
-    {"project": "shadow_mirror", "relationship": "private-bounded-companion"}
+    {
+      "project": "breaking-chains",
+      "relationship": "investigation-workspace-anchor"
+    },
+    {
+      "project": "sif",
+      "relationship": "reasoning-stage-donor"
+    },
+    {
+      "project": "insight-excavator",
+      "relationship": "cited-discovery-donor"
+    },
+    {
+      "project": "shadow_mirror",
+      "relationship": "private-bounded-companion"
+    }
   ],
   "completion_criteria": [
     "InvestigationRecord preserves question, premises, typed evidence, stages, budgets, decisions, and recovery.",
@@ -19,8 +36,45 @@
     "Shadow Mirror remains private, non-clinical, energy-gated, and outside generalized claims."
   ],
   "waves": [
-    {"id": "D1", "order": 42, "status": "complete", "objective": "Create a SIF-to-Forge stage and artifact parity matrix.", "acceptance": "Each candidate stage has typed inputs, outputs, budget, failure, resume, and accept or reject evidence.", "evidence": "discovery-decision/evidence/D1-SIF-FORGE-STAGE-MATRIX.json"},
-    {"id": "D2", "order": 52, "status": "complete", "objective": "Port one bounded red-team or analogy stage behind a Forge mode.", "acceptance": "Canonical Markdown, SQLite rebuild, consent, budget, failure, and resume gates pass.", "evidence": "discovery-decision/evidence/D2-FORGE-REDTEAM-RECORD.json"},
-    {"id": "D3", "order": 62, "status": "complete", "objective": "Turn Insight Excavator into a cited two-source discovery operation.", "acceptance": "Both inputs are SourceRecords and the report retains claims, citations, novelty score, and uncertainty.", "evidence": "discovery-decision/evidence/D3-INSIGHT-EXCAVATOR-DISCOVERY.json"}
+    {
+      "id": "D1",
+      "order": 42,
+      "status": "specified",
+      "objective": "Create a SIF-to-Forge stage and artifact parity matrix.",
+      "acceptance": "Each candidate stage has typed inputs, outputs, budget, failure, resume, and accept or reject evidence.",
+      "evidence": "discovery-decision/evidence/D1-SIF-FORGE-STAGE-MATRIX.json"
+    },
+    {
+      "id": "D2",
+      "order": 52,
+      "status": "specified",
+      "objective": "Port one bounded red-team or analogy stage behind a Forge mode.",
+      "acceptance": "Canonical Markdown, SQLite rebuild, consent, budget, failure, and resume gates pass.",
+      "evidence": "discovery-decision/evidence/D2-FORGE-REDTEAM-RECORD.json"
+    },
+    {
+      "id": "D3",
+      "order": 62,
+      "status": "specified",
+      "objective": "Turn Insight Excavator into a cited two-source discovery operation.",
+      "acceptance": "Both inputs are SourceRecords and the report retains claims, citations, novelty score, and uncertainty.",
+      "evidence": "discovery-decision/evidence/D3-INSIGHT-EXCAVATOR-DISCOVERY.json"
+    },
+    {
+      "id": "D4",
+      "order": 72,
+      "status": "specified",
+      "objective": "Port second SIF stage (analogy synthesis and divergent search) through Forge.",
+      "acceptance": "Deep mode investigation verifies consensus and leader-sync analogies with budget tracking.",
+      "evidence": "discovery-decision/evidence/D4-SIF-ANALOGY-FORGE-RECORD.json"
+    },
+    {
+      "id": "D5",
+      "order": 82,
+      "status": "specified",
+      "objective": "Fold Insight Excavator into Forge as cited discovery without standalone runtime.",
+      "acceptance": "Insight Excavator retired into Forge citations with full SourceRecord provenance.",
+      "evidence": "discovery-decision/evidence/D5-INSIGHT-EXCAVATOR-CITATION.json"
+    }
   ]
 }

@@ -1,0 +1,21 @@
+{
+  "consumer_1": {
+    "consumer_name": "site-fixture-consumer",
+    "pinned_version": "1.0.0",
+    "package_version": "1.0.0",
+    "version_match": true,
+    "mutation_shield_active": true,
+    "verified_at": "2026-08-20T15:51:40.497641+00:00",
+    "status": "verified"
+  },
+  "consumer_2": {
+    "consumer_name": "portfolio-validator-consumer",
+    "pinned_version": "1.0.0",
+    "package_version": "1.0.0",
+    "version_match": true,
+    "mutation_shield_active": true,
+    "verified_at": "2026-08-20T15:51:40.497659+00:00",
+    "status": "verified"
+  },
+  "status": "verified"
+}

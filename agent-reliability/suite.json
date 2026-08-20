@@ -2,21 +2,56 @@
   "schema_version": "1.0.0",
   "id": "agent-reliability",
   "name": "Agent Reliability and Teaching Lab",
-  "state": "active",
+  "state": "prototype",
   "promise": "Teach and test bounded agent behavior with deterministic gates.",
-  "anchors": ["looping-box"],
-  "contracts": ["ExperimentRun", "SourceRecord"],
+  "anchors": [
+    "looping-box"
+  ],
+  "contracts": [
+    "ExperimentRun",
+    "SourceRecord"
+  ],
   "members": [
-    {"project": "looping-box", "relationship": "bounded-worker-anchor"},
-    {"project": "sssf", "relationship": "test-and-revert-pattern-donor"},
-    {"project": "agentic-harness", "relationship": "teaching-loop"},
-    {"project": "promptchaining-for-5th-graders", "relationship": "curriculum-donor"},
-    {"project": "promptchaining-tools", "relationship": "historical-workflow-donor"},
-    {"project": "AI-Staff-HQ", "relationship": "skill-and-workflow-donor"},
-    {"project": "components", "relationship": "proven-shared-package-home"},
-    {"project": "code-tutorial-builder", "relationship": "curriculum-ordering-candidate"},
-    {"project": "ry-dev-toolkit", "relationship": "reference-and-skill-donor"},
-    {"project": "skill-audit", "relationship": "routing-and-library-auditor"}
+    {
+      "project": "looping-box",
+      "relationship": "bounded-worker-anchor"
+    },
+    {
+      "project": "sssf",
+      "relationship": "test-and-revert-pattern-donor"
+    },
+    {
+      "project": "agentic-harness",
+      "relationship": "teaching-loop"
+    },
+    {
+      "project": "promptchaining-for-5th-graders",
+      "relationship": "curriculum-donor"
+    },
+    {
+      "project": "promptchaining-tools",
+      "relationship": "historical-workflow-donor"
+    },
+    {
+      "project": "AI-Staff-HQ",
+      "relationship": "skill-and-workflow-donor"
+    },
+    {
+      "project": "components",
+      "relationship": "proven-shared-package-home"
+    },
+    {
+      "project": "code-tutorial-builder",
+      "relationship": "curriculum-ordering-candidate"
+    },
+    {
+      "project": "ry-dev-toolkit",
+      "relationship": "reference-and-skill-donor"
+    },
+    {
+      "project": "skill-audit",
+      "relationship": "routing-and-library-auditor"
+    }
   ],
   "completion_criteria": [
     "A shared eval covers path confinement, malformed plans, retries, budgets, rollback, and reviewer artifacts.",
@@ -25,8 +60,45 @@
     "Shared packages have at least two verified consumers before promotion."
   ],
   "waves": [
-    {"id": "R1", "order": 70, "status": "complete", "objective": "Define adversarial reliability fixtures as ExperimentRuns.", "acceptance": "Confinement, malformed output, retry, budget, rollback, and reviewer cases have deterministic expected outcomes.", "evidence": "agent-reliability/evidence/R1-ADVERSARIAL-HARNESS-SCORECARD.json"},
-    {"id": "R2", "order": 80, "status": "complete", "objective": "Run fixtures across Looping Box, SSSF, and Agentic Harness.", "acceptance": "Results retain harness version, configuration, raw evidence, scorer, failures, and limitations.", "evidence": "agent-reliability/evidence/R2-CROSS-HARNESS-EVAL.json"},
-    {"id": "R3", "order": 90, "status": "complete", "objective": "Extract only proven shared behavior and curriculum.", "acceptance": "Every extraction has two consumers or remains local; duplicate generic runtimes are not expanded.", "evidence": "agent-reliability/evidence/R3-PROMOTED-COMPONENTS.json"}
+    {
+      "id": "R1",
+      "order": 70,
+      "status": "specified",
+      "objective": "Define adversarial reliability fixtures as ExperimentRuns.",
+      "acceptance": "Confinement, malformed output, retry, budget, rollback, and reviewer cases have deterministic expected outcomes.",
+      "evidence": "agent-reliability/evidence/R1-ADVERSARIAL-HARNESS-SCORECARD.json"
+    },
+    {
+      "id": "R2",
+      "order": 80,
+      "status": "specified",
+      "objective": "Run fixtures across Looping Box, SSSF, and Agentic Harness.",
+      "acceptance": "Results retain harness version, configuration, raw evidence, scorer, failures, and limitations.",
+      "evidence": "agent-reliability/evidence/R2-CROSS-HARNESS-EVAL.json"
+    },
+    {
+      "id": "R3",
+      "order": 90,
+      "status": "specified",
+      "objective": "Extract only proven shared behavior and curriculum.",
+      "acceptance": "Every extraction has two consumers or remains local; duplicate generic runtimes are not expanded.",
+      "evidence": "agent-reliability/evidence/R3-PROMOTED-COMPONENTS.json"
+    },
+    {
+      "id": "R4",
+      "order": 100,
+      "status": "specified",
+      "objective": "Verify 2-real-consumers craft rule for promoted components and demote single-consumer packages.",
+      "acceptance": "Shared components boundary strictly verified; single-consumer packages demoted to home repos.",
+      "evidence": "agent-reliability/evidence/R4-PROMOTED-COMPONENTS-AUDIT.json"
+    },
+    {
+      "id": "R5",
+      "order": 110,
+      "status": "specified",
+      "objective": "Mine AI Staff and prompt-chain fixtures into deterministic test curriculum.",
+      "acceptance": "Deterministic tool gating and recovery curriculum verified against agent reliability standards.",
+      "evidence": "agent-reliability/evidence/R5-CURRICULUM-FIXTURES-VERIFIED.json"
+    }
   ]
 }

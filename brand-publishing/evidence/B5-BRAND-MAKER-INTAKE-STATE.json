@@ -1,0 +1,184 @@
+{
+  "brand_id": "cyborg-brand",
+  "phases_total": 9,
+  "phases_completed": 9,
+  "intake_log": [
+    {
+      "phase": 1,
+      "name": "Vision & Core Truth",
+      "state": "intake_vision",
+      "captured_data": {
+        "one_liner": "Local-first portfolio suite",
+        "enemy": "Fragile unversioned schemas",
+        "brand_name": "Cyborg Suites"
+      },
+      "missing_inputs": [],
+      "completed": true
+    },
+    {
+      "phase": 2,
+      "name": "Audience Archetypes",
+      "state": "intake_audience",
+      "captured_data": {
+        "primary_operator": "Ryan Johnson",
+        "pain_points": [
+          "drift",
+          "cognitive load"
+        ],
+        "target_audience": "Technical Operators"
+      },
+      "missing_inputs": [],
+      "completed": true
+    },
+    {
+      "phase": 3,
+      "name": "Brand Voice Pillars",
+      "state": "intake_voice",
+      "captured_data": {
+        "tone_adjectives": [
+          "clear",
+          "grounded",
+          "concise"
+        ],
+        "taboo_words": [
+          "vague",
+          "magic",
+          "untested"
+        ]
+      },
+      "missing_inputs": [],
+      "completed": true
+    },
+    {
+      "phase": 4,
+      "name": "Visual Foundation",
+      "state": "intake_visual",
+      "captured_data": {
+        "palette_hex": [
+          "#111827",
+          "#3b82f6"
+        ],
+        "typeface_pair": "Inter / JetBrains Mono",
+        "tagline": "Instituted Brand Package"
+      },
+      "missing_inputs": [],
+      "completed": true
+    },
+    {
+      "phase": 5,
+      "name": "Approved Claims Registry",
+      "state": "intake_claims",
+      "captured_data": {
+        "verifiable_claims": [
+          "Zero-dependency local control",
+          "Deterministic test gates"
+        ]
+      },
+      "missing_inputs": [],
+      "completed": true
+    },
+    {
+      "phase": 6,
+      "name": "Asset Inventory",
+      "state": "intake_assets",
+      "captured_data": {
+        "logo_paths": [
+          "assets/logo.svg"
+        ],
+        "icon_set": "lucide"
+      },
+      "missing_inputs": [],
+      "completed": true
+    },
+    {
+      "phase": 7,
+      "name": "Usage & Constraint Rules",
+      "state": "intake_rules",
+      "captured_data": {
+        "do_list": [
+          "Pin versions"
+        ],
+        "dont_list": [
+          "Silent mutations"
+        ],
+        "usage_rules": [
+          "Never modify without explicit version bump"
+        ]
+      },
+      "missing_inputs": [],
+      "completed": true
+    },
+    {
+      "phase": 8,
+      "name": "Channel Archetypes",
+      "state": "intake_channels",
+      "captured_data": {
+        "formats": [
+          "markdown",
+          "json"
+        ],
+        "cadence": "on_demand"
+      },
+      "missing_inputs": [],
+      "completed": true
+    },
+    {
+      "phase": 9,
+      "name": "Canonical Package Approval",
+      "state": "approved_package",
+      "captured_data": {
+        "approver_signoff": "Ryan Johnson"
+      },
+      "missing_inputs": [],
+      "completed": true
+    }
+  ],
+  "resulting_package": {
+    "schema_version": "1.0.0",
+    "package_id": "pkg-bm-cyborg-brand-1.0.0",
+    "brand_id": "cyborg-brand",
+    "version": "1.0.0",
+    "approved_at": "2026-08-20T15:51:40.498015+00:00",
+    "identity": {
+      "name": "Cyborg Suites",
+      "tagline": "Instituted Brand Package"
+    },
+    "voice": {
+      "tone": [
+        "clear",
+        "grounded",
+        "concise"
+      ]
+    },
+    "audience": {
+      "primary": "Technical Operators"
+    },
+    "approved_claims": [
+      {
+        "claim_id": "claim-01",
+        "claim": "Zero-dependency local control"
+      },
+      {
+        "claim_id": "claim-02",
+        "claim": "Deterministic test gates"
+      }
+    ],
+    "assets": [
+      {
+        "asset_type": "logo",
+        "path": "assets/logo.svg"
+      }
+    ],
+    "usage_rules": [
+      "Never modify without explicit version bump"
+    ],
+    "provenance": [
+      {
+        "author": "Ryan Johnson",
+        "method": "brand_maker_9_phase_intake",
+        "timestamp": "2026-08-20T15:51:40.498015+00:00"
+      }
+    ]
+  },
+  "reconciliation_status": "brand_workshop_intake_ported_to_brand_maker"
+}

@@ -1,8 +1,8 @@
 {
-  "receipt_id": "pub-dry-1787234809",
+  "receipt_id": "pub-dry-1787241100",
   "channel": "cyborg-vcc",
   "status": "dry_run_verified",
-  "timestamp": "2026-08-20T14:06:49.171476+00:00",
+  "timestamp": "2026-08-20T15:51:40.497255+00:00",
   "brand_package_id": "pkg-brand-cyborg-v1",
   "brand_version": "1.0.0",
   "source_id": "src-2026-08-brand-notes",

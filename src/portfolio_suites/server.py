@@ -138,6 +138,8 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                         "suite_id": r.suite_id,
                         "wave_id": r.wave_id,
                         "passed": r.passed,
+                        "prototype_passed": r.prototype_passed,
+                        "execution_kind": r.execution_kind,
                         "message": r.message,
                         "evidence_path": r.evidence_path,
                     }
@@ -186,12 +188,19 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 parts = path.split("/")
                 suite_id = parts[3]
                 wave_id = parts[4]
-                res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=True)
-                self._send_json(200, {
+                query_params = urllib.parse.parse_qs(parsed.query)
+                record_param = query_params.get("record", ["false"])[0].lower() in ("true", "1")
+                # Ephemeral execution by default; only mutate evidence files on explicit record request
+                res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=record_param)
+                status_code = 404 if res.execution_kind == "error" else 200
+                self._send_json(status_code, {
                     "suite_id": res.suite_id,
                     "wave_id": res.wave_id,
                     "passed": res.passed,
+                    "prototype_passed": res.prototype_passed,
+                    "execution_kind": res.execution_kind,
                     "message": res.message,
+                    "recorded": record_param,
                     "evidence_path": res.evidence_path,
                     "data": res.data,
                 })

@@ -2,19 +2,49 @@
   "schema_version": "1.0.0",
   "id": "production-house",
   "name": "Production House Suite",
-  "state": "active",
+  "state": "prototype",
   "promise": "Move creative work through resumable jobs to verified deliverables.",
-  "anchors": ["production-house"],
-  "contracts": ["ProductionJob", "SourceRecord", "BrandPackage"],
+  "anchors": [
+    "production-house"
+  ],
+  "contracts": [
+    "ProductionJob",
+    "SourceRecord",
+    "BrandPackage"
+  ],
   "members": [
-    {"project": "production-house", "relationship": "engine-anchor"},
-    {"project": "production-house_audio-plays--ambient-horror", "relationship": "groundwire-domain-pack"},
-    {"project": "elevenlabs-screenplay-formatter", "relationship": "synthesis-and-export-adapter"},
-    {"project": "writers-room", "relationship": "collaborative-story-state"},
-    {"project": "ai-writers-room", "relationship": "interface-donor"},
-    {"project": "quiznauts", "relationship": "conditional-video-domain"},
-    {"project": "rockit", "relationship": "conditional-game-media-domain"},
-    {"project": "youtube-face-blur", "relationship": "conditional-video-privacy-adapter"}
+    {
+      "project": "production-house",
+      "relationship": "engine-anchor"
+    },
+    {
+      "project": "production-house_audio-plays--ambient-horror",
+      "relationship": "groundwire-domain-pack"
+    },
+    {
+      "project": "elevenlabs-screenplay-formatter",
+      "relationship": "synthesis-and-export-adapter"
+    },
+    {
+      "project": "writers-room",
+      "relationship": "collaborative-story-state"
+    },
+    {
+      "project": "ai-writers-room",
+      "relationship": "interface-donor"
+    },
+    {
+      "project": "quiznauts",
+      "relationship": "conditional-video-domain"
+    },
+    {
+      "project": "rockit",
+      "relationship": "conditional-game-media-domain"
+    },
+    {
+      "project": "youtube-face-blur",
+      "relationship": "conditional-video-privacy-adapter"
+    }
   ],
   "completion_criteria": [
     "One Groundwire episode completes through ProductionJob with current audit and QC behavior preserved.",
@@ -23,8 +53,45 @@
     "Adjacent pipelines join only after two shared mechanics prove reduced complexity."
   ],
   "waves": [
-    {"id": "P1", "order": 40, "status": "complete", "objective": "Fingerprint one Groundwire episode workflow and its existing QC/output artifacts.", "acceptance": "Inputs, steps, gates, receipts, failures, outputs, and recovery are mapped before integration.", "evidence": "production-house/evidence/P1-GROUNDWIRE-FINGERPRINT.json"},
-    {"id": "P2", "order": 50, "status": "complete", "objective": "Run that episode slice as a ProductionJob using the formatter adapter.", "acceptance": "End-to-end output parity and failure recovery pass without parallel canonical state.", "evidence": "production-house/evidence/P2-FORMATTER-JOB-RECEIPT.json"},
-    {"id": "P3", "order": 60, "status": "complete", "objective": "Prove a Writers Room story-state handoff into the job.", "acceptance": "Versioned input, approval, job receipt, and derived output remain traceable.", "evidence": "production-house/evidence/P3-WRITERS-ROOM-HANDOFF.json"}
+    {
+      "id": "P1",
+      "order": 40,
+      "status": "specified",
+      "objective": "Fingerprint one Groundwire episode workflow and its existing QC/output artifacts.",
+      "acceptance": "Inputs, steps, gates, receipts, failures, outputs, and recovery are mapped before integration.",
+      "evidence": "production-house/evidence/P1-GROUNDWIRE-FINGERPRINT.json"
+    },
+    {
+      "id": "P2",
+      "order": 50,
+      "status": "specified",
+      "objective": "Run that episode slice as a ProductionJob using the formatter adapter.",
+      "acceptance": "End-to-end output parity and failure recovery pass without parallel canonical state.",
+      "evidence": "production-house/evidence/P2-FORMATTER-JOB-RECEIPT.json"
+    },
+    {
+      "id": "P3",
+      "order": 60,
+      "status": "specified",
+      "objective": "Prove a Writers Room story-state handoff into the job.",
+      "acceptance": "Versioned input, approval, job receipt, and derived output remain traceable.",
+      "evidence": "production-house/evidence/P3-WRITERS-ROOM-HANDOFF.json"
+    },
+    {
+      "id": "P4",
+      "order": 70,
+      "status": "specified",
+      "objective": "Run structurally distinct investigative documentary audio episode through generic engine.",
+      "acceptance": "Multi-track and sound design pipeline executes without changes to generic ProductionJob engine.",
+      "evidence": "production-house/evidence/P4-DOCUMENTARY-PIPELINE-JOB.json"
+    },
+    {
+      "id": "P5",
+      "order": 80,
+      "status": "specified",
+      "objective": "Map Writers Room collaborative story state transitions into canonical ProductionJob event stream.",
+      "acceptance": "Multi-scene revisions, author provenance, and final room signoff unified in single canonical runtime.",
+      "evidence": "production-house/evidence/P5-WRITERS-ROOM-EVENT-STREAM.json"
+    }
   ]
 }

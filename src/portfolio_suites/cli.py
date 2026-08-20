@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from .ai_config import AIConfigError, load_openrouter_config
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
 from .registry import (
     get_live_drift_report,
@@ -49,6 +50,9 @@ def _next() -> int:
             if wave["status"] != "complete":
                 candidates.append((wave["order"], manifest["id"], wave))
                 break
+    if not candidates:
+        print("All migration waves across all 8 suites are complete and instituted.")
+        return 0
     for _, suite_id, wave in sorted(candidates):
         print(f"{suite_id} / {wave['id']}: {wave['objective']}")
         print(f"  acceptance: {wave['acceptance']}")
@@ -69,6 +73,36 @@ def _validate(as_json: bool) -> int:
             f"{len(report.errors)} error(s), {len(report.warnings)} warning(s)"
         )
     return 0 if report.ok else 1
+
+
+def _ai_config(as_json: bool, require_key: bool) -> int:
+    try:
+        config = load_openrouter_config(require_api_key=require_key)
+    except AIConfigError as error:
+        if as_json:
+            print(json.dumps({"ok": False, "error": str(error)}, indent=2))
+        else:
+            print(f"INVALID: {error}", file=sys.stderr)
+        return 1
+
+    summary = config.safe_summary()
+    if as_json:
+        print(json.dumps({"ok": True, **summary}, indent=2))
+        return 0
+
+    key_status = "configured" if config.api_key_configured else "missing"
+    print(f"OpenRouter API key: {key_status}")
+    print(f"Endpoint: {config.base_url}")
+    print(f"App attribution: {config.app_title} ({config.app_url or 'disabled'})")
+    print("Roles:")
+    for role in config.roles.values():
+        print(
+            f"  {role.name:<14} model={role.model:<24} "
+            f"temperature={role.temperature:<3} max_tokens={role.max_tokens}"
+        )
+    if not config.api_key_configured:
+        print("Add OPENROUTER_API_KEY to the git-ignored .env before making network requests.")
+    return 0
 
 
 def _inspect(target: str) -> int:
@@ -144,24 +178,56 @@ def _contract_cmd(name: str, action: str, file_path: str | None) -> int:
 def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_evidence: bool) -> int:
     if run_all or (not suite_id and not wave_id):
         results = WaveRunner.run_all(write_evidence=write_evidence)
-        passed_count = sum(1 for r in results if r.passed)
+        verified_count = sum(1 for r in results if r.execution_kind == "verified_migration" and r.passed)
+        prototype_count = sum(1 for r in results if r.execution_kind == "prototype_check" and r.prototype_passed)
+        failed_count = sum(
+            1
+            for r in results
+            if r.execution_kind in {"verified_migration", "prototype_check"}
+            and not (r.passed or r.prototype_passed)
+        )
+        unintegrated_count = sum(1 for r in results if r.execution_kind == "unintegrated_specification")
+        error_count = sum(1 for r in results if r.execution_kind == "error")
+
         for r in results:
-            status = "PASS" if r.passed else "FAIL"
-            print(f"[{status}] {r.suite_id:<20} {r.wave_id:<4} : {r.message}")
+            if r.execution_kind == "error":
+                tag = "[ERROR]"
+            elif r.execution_kind == "verified_migration" and r.passed:
+                tag = "[VERIFIED]"
+            elif r.execution_kind == "prototype_check" and r.prototype_passed:
+                tag = "[PROTOTYPE]"
+            elif r.execution_kind == "unintegrated_specification":
+                tag = "[SPECIFIED]"
+            else:
+                tag = "[FAIL]"
+            print(f"{tag:<12} {r.suite_id:<20} {r.wave_id:<4} : {r.message}")
         print("-" * 65)
-        print(f"Results: {passed_count}/{len(results)} waves passed.")
-        return 0 if passed_count == len(results) else 1
+        print(
+            f"Results: {verified_count}/{len(results)} waves verified, "
+            f"{prototype_count} prototype checks passed, {failed_count} checks failed, "
+            f"{unintegrated_count} unintegrated, {error_count} errors."
+        )
+        return 1 if failed_count or unintegrated_count or error_count else 0
 
     if not suite_id or not wave_id:
         print("Error: Specify suite and wave (e.g. 'suites wave accessibility A2') or '--all'", file=sys.stderr)
         return 1
 
     result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=write_evidence)
-    status = "PASS" if result.passed else "FAIL"
-    print(f"[{status}] {result.suite_id} / {result.wave_id}: {result.message}")
+    if result.execution_kind == "error":
+        tag = "[ERROR]"
+    elif result.execution_kind == "verified_migration" and result.passed:
+        tag = "[VERIFIED]"
+    elif result.execution_kind == "prototype_check" and result.prototype_passed:
+        tag = "[PROTOTYPE]"
+    elif result.execution_kind == "unintegrated_specification":
+        tag = "[SPECIFIED]"
+    else:
+        tag = "[FAIL]"
+    print(f"{tag} {result.suite_id} / {result.wave_id} ({result.execution_kind}): {result.message}")
     if result.evidence_path:
         print(f"Evidence recorded at: {result.evidence_path}")
-    return 0 if result.passed else 1
+    return 0 if result.passed or result.prototype_passed else 1
 
 
 def _drift() -> int:
@@ -202,6 +268,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     sub.add_parser("drift", help="scan live git status and report drift against baseline snapshots")
     sub.add_parser("export", help="export consolidated portfolio data as JSON")
 
+    ai_config = sub.add_parser("ai-config", help="inspect safe OpenRouter role configuration")
+    ai_config.add_argument("--json", action="store_true", help="emit a machine-readable redacted summary")
+    ai_config.add_argument(
+        "--require-key",
+        action="store_true",
+        help="fail unless OPENROUTER_API_KEY is configured",
+    )
+
     validate = sub.add_parser("validate", help="validate manifests, coverage, and live source drift")
     validate.add_argument("--json", action="store_true", help="emit a machine-readable report")
 
@@ -216,8 +290,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     wave_p = sub.add_parser("wave", help="run and verify migration wave gates and generate evidence")
     wave_p.add_argument("suite", nargs="?", default=None, help="suite ID (e.g. accessibility)")
     wave_p.add_argument("wave_id", nargs="?", default=None, help="wave ID (e.g. A2, O1, B1)")
-    wave_p.add_argument("--all", action="store_true", help="run all 24 migration waves across all suites")
-    wave_p.add_argument("--record", action=argparse.BooleanOptionalAction, default=True, help="write evidence files to suite directories (use --no-record to disable)")
+    wave_p.add_argument("--all", action="store_true", help="run all 43 migration wave checks across all suites")
+    wave_p.add_argument(
+        "--record",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="write evidence files to suite directories (ephemeral by default)",
+    )
 
     serve_p = sub.add_parser("serve", help="launch local portfolio web dashboard server")
     serve_p.add_argument("--port", type=int, default=8383, help="port number (default: 8383)")
@@ -234,6 +313,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _drift()
     if args.command == "export":
         return _export()
+    if args.command == "ai-config":
+        return _ai_config(args.json, args.require_key)
     if args.command == "validate":
         return _validate(args.json)
     if args.command == "inspect":

@@ -1,0 +1,46 @@
+{
+  "investigation": {
+    "schema_version": "1.0.0",
+    "investigation_id": "inv-forge-cite-01",
+    "question": "Cross-system architectural boundaries",
+    "mode": "standard",
+    "status": "completed",
+    "premises": [],
+    "evidence": [
+      {
+        "source_id": "src-2026-08-brand-notes",
+        "sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
+        "origin": "local://notes/brand-brief.md",
+        "extracted_insight": "WAL ensures ACID safety without network overhead.",
+        "cited_at": "2026-08-20T15:51:40.506635+00:00"
+      }
+    ],
+    "stages": [
+      {
+        "stage": "intake",
+        "status": "initialized",
+        "timestamp": "2026-08-20T15:51:40.506600+00:00"
+      },
+      {
+        "stage": "insight_excavation_citation",
+        "status": "completed",
+        "timestamp": "2026-08-20T15:51:40.506637+00:00"
+      }
+    ],
+    "decisions": [
+      {
+        "decision": "Incorporate cited insight from src-2026-08-brand-notes"
+      }
+    ],
+    "budget": {
+      "max_iterations": 10,
+      "used_iterations": 1,
+      "max_time_sec": 300,
+      "used_time_sec": 8.5
+    },
+    "created_at": "2026-08-20T15:51:40.506600+00:00",
+    "updated_at": "2026-08-20T15:51:40.506637+00:00"
+  },
+  "insight_excavator_runtime": "retired_into_forge_citations",
+  "provenance_retained": true
+}

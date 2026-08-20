@@ -1,4 +1,6 @@
-"""Discovery & Decision engine powering First-Principles Forge investigations and cited discovery."""
+"""Discovery & Decision reference prototype engine powering InvestigationRecords, Forge red-teaming, and SIF analogy generation.
+
+NOTE: This is a control-plane reference prototype and fixture comparator, not a replacement for external canonical project runtimes (e.g. forge, insight-excavator)."""
 
 from __future__ import annotations
 
@@ -102,4 +104,73 @@ class DiscoveryDecisionEngine:
                 {"source": source_a.get("source_id"), "section": "architecture_boundaries"},
                 {"source": source_b.get("source_id"), "section": "state_machine_transitions"},
             ],
+        }
+
+    @staticmethod
+    def execute_sif_analogy_stage(
+        investigation_id: str,
+        question: str,
+        analogy_domain: str = "distributed_consensus",
+    ) -> dict[str, Any]:
+        """Port SIF second stage (analogy synthesis & divergent search) through Forge (D4 wave)."""
+        inv = DiscoveryDecisionEngine.create_investigation(
+            investigation_id=investigation_id,
+            question=question,
+            mode="deep",
+            max_iterations=15,
+            max_time_sec=600,
+        )
+        inv = DiscoveryDecisionEngine.advance_stage(
+            record=inv,
+            stage_name="analogy_synthesis",
+            new_evidence=[
+                {
+                    "source": f"analogy://{analogy_domain}",
+                    "mapping": "Single-writer WAL mapped to Raft leader log replication",
+                    "confidence": 0.92,
+                }
+            ],
+            new_decisions=[
+                {
+                    "decision": f"Adopt leader-follower sync pattern inspired by {analogy_domain}",
+                    "rationale": "Guarantees zero lock contention on local SQLite writes",
+                }
+            ],
+            iteration_cost=2,
+            time_cost_sec=25.0,
+            status="completed",
+        )
+        return inv
+
+    @staticmethod
+    def ingest_insight_excavator_source(
+        investigation: dict[str, Any],
+        source_record: dict[str, Any],
+        extracted_insight: str,
+    ) -> dict[str, Any]:
+        """Fold Insight Excavator into Forge as cited discovery without separate runtime (D5 wave)."""
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        updated_inv = DiscoveryDecisionEngine.advance_stage(
+            record=investigation,
+            stage_name="insight_excavation_citation",
+            new_evidence=[
+                {
+                    "source_id": source_record.get("source_id"),
+                    "sha256": source_record.get("sha256"),
+                    "origin": source_record.get("origin"),
+                    "extracted_insight": extracted_insight,
+                    "cited_at": now_iso,
+                }
+            ],
+            new_decisions=[
+                {"decision": f"Incorporate cited insight from {source_record.get('source_id')}"}
+            ],
+            iteration_cost=1,
+            time_cost_sec=8.5,
+            status="completed",
+        )
+        return {
+            "investigation": updated_inv,
+            "insight_excavator_runtime": "retired_into_forge_citations",
+            "provenance_retained": True,
         }

@@ -1,0 +1,39 @@
+{
+  "artifact_kind": "reference_prototype",
+  "reconciliation_id": "rec-ryos-dotfiles-2026",
+  "migration_acceptance_verified": false,
+  "canonical_anchors": {
+    "system_runtime": "dotfiles",
+    "knowledge_corpus": "PKos",
+    "projection_view": "Observer",
+    "orchestration_gateway": "JARVIS"
+  },
+  "proposed_ports": [
+    {
+      "name": "cli_launcher",
+      "source": "ryos",
+      "proposed_target": "dotfiles/bin/ryos-quick",
+      "expected_disposition": "port_candidate"
+    },
+    {
+      "name": "status_daemon_helpers",
+      "source": "ryos",
+      "proposed_target": "dotfiles/functions",
+      "expected_disposition": "port_candidate"
+    }
+  ],
+  "superseded_features": [
+    {
+      "name": "master-upgrade-plan",
+      "expected_disposition": "superseded_by_suites_bible",
+      "reason": "Centralized under suites/docs/ROADMAP.md"
+    },
+    {
+      "name": "coos_ad_hoc_state",
+      "expected_disposition": "rejected",
+      "reason": "Redundant with PKos SourceRecord architecture"
+    }
+  ],
+  "duplicate_row_proposal": "close_on_verification",
+  "donor_freeze_status": "unverified_prototype"
+}

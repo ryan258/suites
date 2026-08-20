@@ -2,16 +2,36 @@
   "schema_version": "1.0.0",
   "id": "model-behavior-lab",
   "name": "Model Behavior Lab",
-  "state": "active",
+  "state": "prototype",
   "promise": "Produce reproducible, evidence-linked model capability profiles.",
-  "anchors": ["ai-strength-comparator"],
-  "contracts": ["ExperimentRun", "SourceRecord"],
+  "anchors": [
+    "ai-strength-comparator"
+  ],
+  "contracts": [
+    "ExperimentRun",
+    "SourceRecord"
+  ],
   "members": [
-    {"project": "ai-strength-comparator", "relationship": "experiment-kernel-anchor"},
-    {"project": "ai-ethics-comparator", "relationship": "scenario-pack-donor"},
-    {"project": "ai-chess", "relationship": "game-strategy-adapter"},
-    {"project": "AI_Tic_Tac_Toe_V2", "relationship": "collaborator-owned-external-adapter"},
-    {"project": "node-oai-structured-output", "relationship": "structured-output-fixture"}
+    {
+      "project": "ai-strength-comparator",
+      "relationship": "experiment-kernel-anchor"
+    },
+    {
+      "project": "ai-ethics-comparator",
+      "relationship": "scenario-pack-donor"
+    },
+    {
+      "project": "ai-chess",
+      "relationship": "game-strategy-adapter"
+    },
+    {
+      "project": "AI_Tic_Tac_Toe_V2",
+      "relationship": "collaborator-owned-external-adapter"
+    },
+    {
+      "project": "node-oai-structured-output",
+      "relationship": "structured-output-fixture"
+    }
   ],
   "completion_criteria": [
     "Every run pins benchmark, scorer, provider, model, request parameters, and iteration policy.",
@@ -20,8 +40,45 @@
     "Collaborator-owned sources remain externally owned and are changed or republished only by agreement."
   ],
   "waves": [
-    {"id": "M1", "order": 41, "status": "complete", "objective": "Map one ethics scenario and result into ExperimentRun.", "acceptance": "The original and normalized result match on prompt, response, score, metadata, and failures.", "evidence": "model-behavior-lab/evidence/M1-ETHICS-EXPERIMENT-RUN.json"},
-    {"id": "M2", "order": 51, "status": "complete", "objective": "Extract ethics as a benchmark pack over the comparator kernel.", "acceptance": "No duplicate provider client, run store, report lifecycle, or identifier system remains in the slice.", "evidence": "model-behavior-lab/evidence/M2-COMPARATOR-KERNEL-MATRIX.json"},
-    {"id": "M3", "order": 61, "status": "complete", "objective": "Add one legal-move chess adapter fixture.", "acceptance": "Rules, scorer version, invalid move behavior, repeat policy, and evidence are deterministic.", "evidence": "model-behavior-lab/evidence/M3-CHESS-ADAPTER-FIXTURE.json"}
+    {
+      "id": "M1",
+      "order": 41,
+      "status": "specified",
+      "objective": "Map one ethics scenario and result into ExperimentRun.",
+      "acceptance": "The original and normalized result match on prompt, response, score, metadata, and failures.",
+      "evidence": "model-behavior-lab/evidence/M1-ETHICS-EXPERIMENT-RUN.json"
+    },
+    {
+      "id": "M2",
+      "order": 51,
+      "status": "specified",
+      "objective": "Extract ethics as a benchmark pack over the comparator kernel.",
+      "acceptance": "No duplicate provider client, run store, report lifecycle, or identifier system remains in the slice.",
+      "evidence": "model-behavior-lab/evidence/M2-COMPARATOR-KERNEL-MATRIX.json"
+    },
+    {
+      "id": "M3",
+      "order": 61,
+      "status": "specified",
+      "objective": "Add one legal-move chess adapter fixture.",
+      "acceptance": "Rules, scorer version, invalid move behavior, repeat policy, and evidence are deterministic.",
+      "evidence": "model-behavior-lab/evidence/M3-CHESS-ADAPTER-FIXTURE.json"
+    },
+    {
+      "id": "M4",
+      "order": 71,
+      "status": "specified",
+      "objective": "Extract second benchmark pack (chess legal moves and tactics) over comparator kernel.",
+      "acceptance": "Deterministic chess scoring rules verify kernel generality across disparate benchmark domains.",
+      "evidence": "model-behavior-lab/evidence/M4-CHESS-BENCHMARK-RUN.json"
+    },
+    {
+      "id": "M5",
+      "order": 81,
+      "status": "specified",
+      "objective": "Define versioned benchmark corpus format and back-fill ethics and chess packs.",
+      "acceptance": "Corpus manifest provides 100% reproducible re-run path for all historical and live evaluations.",
+      "evidence": "model-behavior-lab/evidence/M5-BENCHMARK-CORPUS-MANIFEST.json"
+    }
   ]
 }

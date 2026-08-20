@@ -1,0 +1,38 @@
+{
+  "total_evaluated": 3,
+  "promoted_retained_count": 2,
+  "demoted_count": 1,
+  "retained": [
+    {
+      "component_id": "comp-confinement-validator",
+      "path": "components/confinement",
+      "consumers": [
+        "looping-box",
+        "sssf",
+        "agentic-harness"
+      ],
+      "status": "promoted_shared_component"
+    },
+    {
+      "component_id": "comp-rollback-guard",
+      "path": "components/rollback",
+      "consumers": [
+        "looping-box",
+        "sssf"
+      ],
+      "status": "promoted_shared_component"
+    }
+  ],
+  "demoted": [
+    {
+      "component_id": "comp-ad-hoc-sampler",
+      "path": "components/sampler",
+      "consumers": [
+        "sssf"
+      ],
+      "status": "demoted_to_home_repo",
+      "reason": "Fewer than 2 active portfolio consumers; violates shared-boundary promotion rule."
+    }
+  ],
+  "craft_rule_enforced": true
+}

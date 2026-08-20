@@ -18,13 +18,14 @@ migration prove parity before an older runtime can be retired.
 
 ```text
 PROJECT: Ryan Project Suites
-STATUS: Fully Built Control Plane & Evidence-Backed Migration Program
-GATE CHECK: 42/42 Tests PASS | 24/24 Migration Waves PASS | 8/8 Domain Engines Ready
+STATUS: Portfolio control plane and suite prototypes established
+GATE CHECK: 57/57 Unit Tests PASS | 8 Suite Boundaries | 6 Shared Contracts | 70 Projects Dispositioned
 BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
-OUTPUTS: Full CLI, Zero-dependency Web Dashboard, 8 Suite Engines, 6 Contracts, 24 Wave Gates
+OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 6 Contracts, 43 Wave Specifications
+PROGRESS: 1/43 Waves Verified (A1 Parity Matrix); 42 Waves Specified with Prototype Runners
 ```
 
 ## The eight suites
@@ -58,20 +59,24 @@ PYTHONPATH=src python3 -m portfolio_suites next
 PYTHONPATH=src python3 -m portfolio_suites validate
 PYTHONPATH=src python3 -m portfolio_suites inspect accessibility
 PYTHONPATH=src python3 -m portfolio_suites drift
+PYTHONPATH=src python3 -m portfolio_suites ai-config
 
 # Cross-suite contract inspection & testing
 PYTHONPATH=src python3 -m portfolio_suites contract A11yFinding sample
 PYTHONPATH=src python3 -m portfolio_suites contract BrandPackage spec
 PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.json>
 
-# Automated wave gates & evidence generation
+# Ephemeral wave checks (1 verified migration + 42 prototype checks)
 PYTHONPATH=src python3 -m portfolio_suites wave --all
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2
+
+# Explicitly replace a wave's evidence artifact after reviewing its runner
+PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record
 
 # Launch the zero-dependency local web dashboard
 PYTHONPATH=src python3 -m portfolio_suites serve --port 8383
 
-# Run complete test suite (42 tests)
+# Run complete test suite (57 tests)
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
@@ -93,4 +98,5 @@ reported without modifying any source repository.
 7. “Complete” means the suite completion criteria are evidenced, not that a scaffold exists.
 
 See [the project bible](docs/PROJECT-BIBLE.md), [the review](docs/PORTFOLIO-REVIEW-2026-08-19.md),
-and [the migration program](docs/MIGRATION-PROGRAM.md).
+[the migration program](docs/MIGRATION-PROGRAM.md), [the institution roadmap](docs/ROADMAP.md),
+and [the OpenRouter configuration guide](docs/OPENROUTER.md).

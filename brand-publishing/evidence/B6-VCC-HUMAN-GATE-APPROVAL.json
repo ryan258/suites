@@ -1,0 +1,30 @@
+{
+  "approved_review": {
+    "review_id": "vcc-rev-1787241100",
+    "dry_run_receipt": {
+      "receipt_id": "pub-dry-1787241100",
+      "channel": "vcc-focus-group",
+      "status": "dry_run_verified",
+      "timestamp": "2026-08-20T15:51:40.498596+00:00",
+      "brand_package_id": "pkg-brand-cyborg-v1",
+      "brand_version": "1.0.0",
+      "source_id": "src-2026-08-brand-notes",
+      "source_sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
+      "matched_approved_claims_count": 1,
+      "dry_run_only": true,
+      "live_published": false,
+      "notes": "Draft successfully verified against brand constraints. Awaiting explicit manual release."
+    },
+    "human_gate": {
+      "reviewer": "Ryan",
+      "decision": "approved",
+      "timestamp": "2026-08-20T15:51:40.498601+00:00",
+      "boundary_check": "stopped_before_live_publish",
+      "notes": "Verified against BrandPackage truth; human signoff recorded; live publish authority preserved for operator."
+    },
+    "status": "ready_for_operator_release"
+  },
+  "rejected_probe_status": "blocked_rejected",
+  "unmatched_claims_probe_status": "blocked_unmatched_claims",
+  "human_gate_verified": true
+}

@@ -1,6 +1,7 @@
 import io
 import unittest
 from contextlib import redirect_stdout
+from pathlib import Path
 
 from portfolio_suites.cli import main
 
@@ -82,18 +83,45 @@ class CLITests(unittest.TestCase):
     def test_wave_run(self):
         f = io.StringIO()
         with redirect_stdout(f):
-            code = main(["wave", "accessibility", "A2", "--no-record"])
+            code = main(["wave", "accessibility", "A1", "--no-record"])
         self.assertEqual(code, 0)
         output = f.getvalue()
-        self.assertIn("[PASS]", output)
+        self.assertIn("[VERIFIED]", output)
 
     def test_wave_run_no_record(self):
         f = io.StringIO()
         with redirect_stdout(f):
-            code = main(["wave", "operator-os", "O1", "--no-record"])
+            code = main(["wave", "accessibility", "A2", "--no-record"])
         self.assertEqual(code, 0)
         output = f.getvalue()
-        self.assertIn("[PASS]", output)
+        self.assertIn("[PROTOTYPE]", output)
+
+    def test_wave_run_is_ephemeral_by_default(self):
+        evidence = Path("accessibility/evidence/A2-WCAG-331-EVIDENCE.json")
+        before = evidence.read_bytes()
+        f = io.StringIO()
+        with redirect_stdout(f):
+            code = main(["wave", "accessibility", "A2"])
+        self.assertEqual(code, 0)
+        self.assertEqual(evidence.read_bytes(), before)
+        self.assertNotIn("Evidence recorded at", f.getvalue())
+
+    def test_wave_unknown_fails_closed(self):
+        f = io.StringIO()
+        with redirect_stdout(f):
+            code = main(["wave", "missing-suite", "X1", "--no-record"])
+        self.assertEqual(code, 1)
+        self.assertIn("[ERROR]", f.getvalue())
+
+    def test_wave_all_reports_consistent_classifications(self):
+        f = io.StringIO()
+        with redirect_stdout(f):
+            code = main(["wave", "--all", "--no-record"])
+        self.assertEqual(code, 0)
+        output = f.getvalue()
+        self.assertIn("1/43 waves verified", output)
+        self.assertIn("42 prototype checks passed", output)
+        self.assertIn("0 checks failed, 0 unintegrated, 0 errors", output)
 
 
 if __name__ == "__main__":

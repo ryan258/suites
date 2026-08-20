@@ -1,7 +1,7 @@
 # Tucked in Terrors — Statistical Balance Sheet
 
-**Simulation Run ID:** `run-sim-tit-42-500`  
-**Seed:** `42` | **Trials:** `500` | **Modifier:** `1.0`  
+**Simulation Run ID:** `run-sim-tit-42-500`
+**Seed:** `42` | **Trials:** `500` | **Modifier:** `1.0`
 
 ---
 

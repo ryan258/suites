@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "job-gw-doc-episode-14-shadow-grid",
+  "domain": "groundwire-documentary",
+  "task": "render-investigative-podcast",
+  "status": "completed",
+  "inputs": [
+    {
+      "name": "episode-14-shadow-grid.fountain",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "type": "script"
+    },
+    {
+      "name": "archival-tape-01.wav",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "type": "field_audio"
+    },
+    {
+      "name": "interview-lead-researcher.flac",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "type": "dialogue"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "episode-14-shadow-grid-broadcast-master.wav",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "duration_sec": 1420.5
+    },
+    {
+      "name": "episode-14-shadow-grid-transcript.vtt",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cues": 310
+    },
+    {
+      "name": "episode-14-shadow-grid-provenance-manifest.json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "lufs": -16.0,
+      "sources": 3
+    }
+  ],
+  "events": [
+    {
+      "time": "2026-08-20T15:51:40.500439+00:00",
+      "stage": "multi_source_intake",
+      "status": "ok",
+      "notes": "Ingested archival tape and multi-mic stems"
+    },
+    {
+      "time": "2026-08-20T15:51:40.500439+00:00",
+      "stage": "dialogue_clean_dereverb",
+      "status": "ok",
+      "notes": "Noise reduction gate applied"
+    },
+    {
+      "time": "2026-08-20T15:51:40.500439+00:00",
+      "stage": "dynamic_ducking_mix",
+      "status": "ok",
+      "notes": "Automated voice-over ducking at -18dB"
+    },
+    {
+      "time": "2026-08-20T15:51:40.500439+00:00",
+      "stage": "broadcast_qc_audit",
+      "status": "ok",
+      "notes": "EBU R128 compliance verified"
+    }
+  ],
+  "created_at": "2026-08-20T15:51:40.500439+00:00",
+  "updated_at": "2026-08-20T15:51:40.500439+00:00"
+}

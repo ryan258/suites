@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "id": "operator-os",
   "name": "Low-Bandwidth Knowledge and Operations OS",
-  "state": "active",
+  "state": "prototype",
   "promise": "Preserve context and expose the next safe action when bandwidth is low.",
   "anchors": ["dotfiles", "PKos"],
   "contracts": ["SourceRecord"],
@@ -25,8 +25,11 @@
     "Daily operation retains deterministic fallbacks when providers or credentials are unavailable."
   ],
   "waves": [
-    {"id": "O1", "order": 11, "status": "complete", "objective": "Prove capture to PKOS to Observer projection with one SourceRecord fixture.", "acceptance": "The source is content-addressed and cited; the generated note is stable and excluded from re-ingestion.", "evidence": "operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.md"},
-    {"id": "O2", "order": 21, "status": "complete", "objective": "Inventory Ryos and master-plan behaviors against dotfiles and Observer.", "acceptance": "Every unique behavior has a test-backed port, explicit rejection, or preserved historical owner.", "evidence": "operator-os/evidence/O2-RYOS-INVENTORY.json"},
-    {"id": "O3", "order": 31, "status": "complete", "objective": "Connect a JARVIS action preview to canonical services without copied state.", "acceptance": "Preview, approval, execution receipt, failure, and recovery use owned APIs or file contracts.", "evidence": "operator-os/evidence/O3-JARVIS-ACTION-RECEIPT.json"}
+    {"id": "O1", "order": 11, "status": "specified", "objective": "Prove capture to PKOS to Observer projection with one SourceRecord fixture.", "acceptance": "The source is content-addressed and cited; the generated note is stable and excluded from re-ingestion.", "evidence": "operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.md"},
+    {"id": "O2", "order": 21, "status": "specified", "objective": "Inventory Ryos and master-plan behaviors against dotfiles and Observer.", "acceptance": "Every unique behavior has a test-backed port, explicit rejection, or preserved historical owner.", "evidence": "operator-os/evidence/O2-RYOS-INVENTORY.json"},
+    {"id": "O3", "order": 31, "status": "specified", "objective": "Connect a JARVIS action preview to canonical services without copied state.", "acceptance": "Preview, approval, execution receipt, failure, and recovery use owned APIs or file contracts.", "evidence": "operator-os/evidence/O3-JARVIS-ACTION-RECEIPT.json"},
+    {"id": "O4", "order": 41, "status": "specified", "objective": "Widen PKOS capture path to real day-to-day intake stream with fenced Observer projections.", "acceptance": "Daily notes stream generates content-addressed SourceRecords with stable non-reingestion fence.", "evidence": "operator-os/evidence/O4-PKOS-DAILY-INTAKE-STREAM.json"},
+    {"id": "O5", "order": 51, "status": "specified", "objective": "Act on Ryos and master-plan inventory: port launcher features to dotfiles and retire duplicates.", "acceptance": "Duplicate decisions closed with dotfiles and PKos confirmed as sole operational anchors.", "evidence": "operator-os/evidence/O5-RYOS-DISPOSITION-REPORT.json"},
+    {"id": "O6", "order": 61, "status": "specified", "objective": "Generalize JARVIS action pattern to secondary commands with full approval and receipt lifecycle.", "acceptance": "Preview, human approval gate, execution receipt, and recovery verified across multi-action surface.", "evidence": "operator-os/evidence/O6-JARVIS-CHECKPOINT-RECEIPT.json"}
   ]
 }

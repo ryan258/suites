@@ -1,0 +1,21 @@
+{
+  "artifact_kind": "reference_prototype",
+  "proposed_canonical_anchor": "kb-overlay",
+  "manifest_version": 3,
+  "proposed_frozen_donors": [
+    "keyboard-nav-overlay",
+    "keyboard-nav-overlay-94bf7e"
+  ],
+  "features_targeted": [
+    "spatial_nav",
+    "visual_focus_ring",
+    "keyboard_shortcuts",
+    "aria_tree_scan"
+  ],
+  "permissions_minimized": [
+    "activeTab",
+    "storage"
+  ],
+  "proposed_disposition": "proposed_anchor",
+  "migration_acceptance_verified": false
+}

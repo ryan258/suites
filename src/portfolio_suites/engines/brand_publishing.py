@@ -1,4 +1,6 @@
-"""Brand & Publishing engine powering BrandPackage truth, immutability, and dry-run publishing."""
+"""Brand Publishing reference prototype engine powering BrandPackage validation, VCC publishing, and intake workflows.
+
+NOTE: This is a control-plane reference prototype and fixture comparator, not a replacement for external canonical project runtimes (e.g. brand-maker, vcc)."""
 
 from __future__ import annotations
 
@@ -102,3 +104,179 @@ class BrandPublishingEngine:
             {"phase": 8, "name": "Channel Archetypes", "state": "intake_channels", "required_inputs": ["formats", "cadence"]},
             {"phase": 9, "name": "Canonical Package Approval", "state": "approved_package", "required_inputs": ["approver_signoff"]},
         ]
+
+    @staticmethod
+    def verify_package_consumer(
+        brand_pkg: dict[str, Any],
+        consumer_name: str,
+        pinned_version: str,
+        read_only_intent: bool = True,
+    ) -> dict[str, Any]:
+        """Validate multi-caller BrandPackage consumption with version pinning (B4 wave)."""
+        valid_pkg = validate_contract("BrandPackage", brand_pkg)
+        is_version_match = valid_pkg["version"] == pinned_version
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        return {
+            "consumer_name": consumer_name,
+            "pinned_version": pinned_version,
+            "package_version": valid_pkg["version"],
+            "version_match": is_version_match,
+            "mutation_shield_active": read_only_intent,
+            "verified_at": now_iso,
+            "status": "verified" if is_version_match else "version_mismatch",
+        }
+
+    @staticmethod
+    def execute_brand_maker_intake(
+        brand_id: str,
+        phase_inputs: dict[int, dict[str, Any]],
+        approver: str = "Ryan",
+    ) -> dict[str, Any]:
+        """Execute Brand Workshop 9-phase intake within Brand Maker state machine (B5 wave)."""
+        phases = BrandPublishingEngine.get_brand_workshop_phases()
+        completed_phases = []
+        all_completed = True
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        for phase in phases:
+            p_num = phase["phase"]
+            user_input = phase_inputs.get(p_num, {})
+            reqs = phase.get("required_inputs", [])
+            missing = [k for k in reqs if not user_input.get(k)]
+            is_phase_complete = len(missing) == 0 and len(user_input) > 0
+
+            if not is_phase_complete:
+                all_completed = False
+
+            completed_phases.append({
+                "phase": p_num,
+                "name": phase["name"],
+                "state": phase["state"],
+                "captured_data": user_input,
+                "missing_inputs": missing,
+                "completed": is_phase_complete,
+            })
+
+        completed_count = sum(1 for p in completed_phases if p["completed"])
+
+        if not all_completed:
+            return {
+                "brand_id": brand_id,
+                "phases_total": len(phases),
+                "phases_completed": completed_count,
+                "intake_log": completed_phases,
+                "resulting_package": None,
+                "reconciliation_status": "intake_incomplete",
+            }
+
+        # Dynamically compile package from actual user intake data across phases
+        p1 = phase_inputs.get(1, {})
+        p2 = phase_inputs.get(2, {})
+        p3 = phase_inputs.get(3, {})
+        p4 = phase_inputs.get(4, {})
+        p5 = phase_inputs.get(5, {})
+        p6 = phase_inputs.get(6, {})
+        p7 = phase_inputs.get(7, {})
+        p9 = phase_inputs.get(9, {})
+
+        claims_raw = p5.get("verifiable_claims") or p5.get("claims") or ["Default validated brand claim"]
+        approved_claims = [
+            {"claim_id": f"claim-{i+1:02d}", "claim": c} if isinstance(c, str) else c
+            for i, c in enumerate(claims_raw)
+        ]
+
+        logos_raw = p6.get("logo_paths") or p6.get("assets") or ["assets/logo.svg"]
+        assets = [
+            {"asset_type": "logo", "path": a} if isinstance(a, str) else a
+            for a in logos_raw
+        ]
+
+        usage_rules_list = p7.get("usage_rules")
+        if not usage_rules_list:
+            usage_rules_list = [f"DO: {d}" for d in p7.get("do_list", [])] + [f"DONT: {d}" for d in p7.get("dont_list", [])]
+        if not usage_rules_list:
+            usage_rules_list = ["Never modify without explicit version bump"]
+
+        audience_val = p2.get("target_audience") or p2.get("primary_operator") or "Technical Operators and Engineering Leads"
+        tone_val = p3.get("tone_adjectives") or p3.get("tone_words") or ["precise", "concise", "operator-first"]
+        tagline_val = p4.get("tagline") or p1.get("one_liner") or "Instituted Brand Package"
+        name_val = p1.get("brand_name") or brand_id.replace("-", " ").title()
+
+        pkg = {
+            "schema_version": SCHEMA_VERSION,
+            "package_id": f"pkg-bm-{brand_id}-1.0.0",
+            "brand_id": brand_id,
+            "version": "1.0.0",
+            "approved_at": now_iso,
+            "identity": {
+                "name": name_val,
+                "tagline": tagline_val,
+            },
+            "voice": {
+                "tone": tone_val,
+            },
+            "audience": {
+                "primary": audience_val,
+            },
+            "approved_claims": approved_claims,
+            "assets": assets,
+            "usage_rules": usage_rules_list,
+            "provenance": [{
+                "author": p9.get("approver_signoff") or approver,
+                "method": "brand_maker_9_phase_intake",
+                "timestamp": now_iso,
+            }],
+        }
+        validated_pkg = validate_contract("BrandPackage", pkg)
+
+        return {
+            "brand_id": brand_id,
+            "phases_total": len(phases),
+            "phases_completed": completed_count,
+            "intake_log": completed_phases,
+            "resulting_package": validated_pkg,
+            "reconciliation_status": "brand_workshop_intake_ported_to_brand_maker",
+        }
+
+    @staticmethod
+    def simulate_vcc_human_approval(
+        brand_pkg: dict[str, Any],
+        source_record: dict[str, Any],
+        draft_content: str,
+        human_decision: str = "approved",
+        reviewer: str = "Ryan",
+    ) -> dict[str, Any]:
+        """Simulate VCC editorial review with human approval gate stopping short of live publish (B6 wave)."""
+        valid_decisions = {"approved", "rejected", "needs_revision"}
+        if human_decision not in valid_decisions:
+            return {
+                "review_id": f"vcc-rev-{int(datetime.datetime.now().timestamp())}",
+                "error": f"Invalid human_decision '{human_decision}'. Must be one of {valid_decisions}",
+                "status": "blocked_invalid_decision",
+            }
+
+        dry_receipt = BrandPublishingEngine.dry_run_publish(brand_pkg, source_record, draft_content, channel="vcc-focus-group")
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        # Derive final status from human decision and dry-run claim match
+        if human_decision == "rejected":
+            status = "blocked_rejected"
+        elif human_decision == "needs_revision":
+            status = "blocked_revision_required"
+        elif dry_receipt.get("matched_approved_claims_count", 0) == 0:
+            status = "blocked_unmatched_claims"
+        else:
+            status = "ready_for_operator_release"
+
+        return {
+            "review_id": f"vcc-rev-{int(datetime.datetime.now().timestamp())}",
+            "dry_run_receipt": dry_receipt,
+            "human_gate": {
+                "reviewer": reviewer,
+                "decision": human_decision,
+                "timestamp": now_iso,
+                "boundary_check": "stopped_before_live_publish",
+                "notes": "Verified against BrandPackage truth; human signoff recorded; live publish authority preserved for operator.",
+            },
+            "status": status,
+        }

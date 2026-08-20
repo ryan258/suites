@@ -2,21 +2,57 @@
   "schema_version": "1.0.0",
   "id": "brand-publishing",
   "name": "Brand and Publishing OS",
-  "state": "active",
+  "state": "prototype",
   "promise": "Turn governed brand truth and sourced ideas into approved, traceable publications.",
-  "anchors": ["brand-maker-spec", "cyborg"],
-  "contracts": ["BrandPackage", "SourceRecord"],
+  "anchors": [
+    "brand-maker-spec",
+    "cyborg"
+  ],
+  "contracts": [
+    "BrandPackage",
+    "SourceRecord"
+  ],
   "members": [
-    {"project": "brand-maker-spec", "relationship": "brand-truth-anchor"},
-    {"project": "brand-workshop", "relationship": "guided-intake-donor"},
-    {"project": "cyborg", "relationship": "refinement-and-publication-anchor"},
-    {"project": "cyborg-agent", "relationship": "source-ingest-adapter"},
-    {"project": "cyborg-work", "relationship": "ephemeral-workspace"},
-    {"project": "talk-to-blog", "relationship": "transcript-source-adapter"},
-    {"project": "blog-factory", "relationship": "publishing-lifecycle-adapter"},
-    {"project": "clout-machine", "relationship": "social-execution-and-metrics"},
-    {"project": "aerocafe", "relationship": "case-study-fixture"},
-    {"project": "rip-tequila", "relationship": "case-study-fixture"}
+    {
+      "project": "brand-maker-spec",
+      "relationship": "brand-truth-anchor"
+    },
+    {
+      "project": "brand-workshop",
+      "relationship": "guided-intake-donor"
+    },
+    {
+      "project": "cyborg",
+      "relationship": "refinement-and-publication-anchor"
+    },
+    {
+      "project": "cyborg-agent",
+      "relationship": "source-ingest-adapter"
+    },
+    {
+      "project": "cyborg-work",
+      "relationship": "ephemeral-workspace"
+    },
+    {
+      "project": "talk-to-blog",
+      "relationship": "transcript-source-adapter"
+    },
+    {
+      "project": "blog-factory",
+      "relationship": "publishing-lifecycle-adapter"
+    },
+    {
+      "project": "clout-machine",
+      "relationship": "social-execution-and-metrics"
+    },
+    {
+      "project": "aerocafe",
+      "relationship": "case-study-fixture"
+    },
+    {
+      "project": "rip-tequila",
+      "relationship": "case-study-fixture"
+    }
   ],
   "completion_criteria": [
     "BrandPackage carries identity, voice, audience, approved claims, assets, rules, version, and provenance.",
@@ -26,8 +62,53 @@
     "Fixtures never claim real persistence, enrollment, commerce, deployment, or publication without those contracts."
   ],
   "waves": [
-    {"id": "B1", "order": 12, "status": "complete", "objective": "Export one approved BrandPackage and consume it in a downstream dry run.", "acceptance": "Schema validation, version pinning, provenance, and mutation protection are evidenced.", "evidence": "brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json"},
-    {"id": "B2", "order": 22, "status": "complete", "objective": "Map Brand Workshop's nine phases onto Brand Maker workspace state and gates.", "acceptance": "Every phase is ported, rejected, or retained with behavior and recovery evidence.", "evidence": "brand-publishing/evidence/B2-BRAND-WORKSHOP-PHASES.json"},
-    {"id": "B3", "order": 32, "status": "complete", "objective": "Prove sourced draft to VCC review to dry-run publishing receipt.", "acceptance": "SourceRecord, BrandPackage, human approval, artifact version, and dry-run status remain linked.", "evidence": "brand-publishing/evidence/B3-VCC-PUBLISHING-RECEIPT.json"}
+    {
+      "id": "B1",
+      "order": 12,
+      "status": "specified",
+      "objective": "Export one approved BrandPackage and consume it in a downstream dry run.",
+      "acceptance": "Schema validation, version pinning, provenance, and mutation protection are evidenced.",
+      "evidence": "brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json"
+    },
+    {
+      "id": "B2",
+      "order": 22,
+      "status": "specified",
+      "objective": "Map Brand Workshop's nine phases onto Brand Maker workspace state and gates.",
+      "acceptance": "Every phase is ported, rejected, or retained with behavior and recovery evidence.",
+      "evidence": "brand-publishing/evidence/B2-BRAND-WORKSHOP-PHASES.json"
+    },
+    {
+      "id": "B3",
+      "order": 32,
+      "status": "specified",
+      "objective": "Prove sourced draft to VCC review to dry-run publishing receipt.",
+      "acceptance": "SourceRecord, BrandPackage, human approval, artifact version, and dry-run status remain linked.",
+      "evidence": "brand-publishing/evidence/B3-VCC-PUBLISHING-RECEIPT.json"
+    },
+    {
+      "id": "B4",
+      "order": 42,
+      "status": "specified",
+      "objective": "Wire multi-caller BrandPackage consumers and verify version-pinning boundaries.",
+      "acceptance": "Version-pinning and mutation-protection holds across multiple independent callers.",
+      "evidence": "brand-publishing/evidence/B4-MULTI-CONSUMER-VERIFICATION.json"
+    },
+    {
+      "id": "B5",
+      "order": 52,
+      "status": "specified",
+      "objective": "Implement 9 Brand Workshop phases into Brand Maker intake state and reconcile duplicate UX.",
+      "acceptance": "9-phase state machine executes intake without data loss and produces canonical BrandPackage.",
+      "evidence": "brand-publishing/evidence/B5-BRAND-MAKER-INTAKE-STATE.json"
+    },
+    {
+      "id": "B6",
+      "order": 62,
+      "status": "specified",
+      "objective": "Extend dry-run receipt chain to formal VCC review with human approval gate simulation.",
+      "acceptance": "Draft verification and human signoff verified while preserving operator publish authority.",
+      "evidence": "brand-publishing/evidence/B6-VCC-HUMAN-GATE-APPROVAL.json"
+    }
   ]
 }

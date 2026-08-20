@@ -1,5 +1,9 @@
 # Migration Program
 
+All 24 Tranche 0–3 waves below are now complete (see each suite's `evidence/`). For what actually
+instituting a suite requires next — real ports, real retirements, real single-runtime status — see
+[the roadmap](ROADMAP.md).
+
 ## Destination rule
 
 `/Users/ryanjohnson/Projects/suites` is the new portfolio home for promises, contracts, migration

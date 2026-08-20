@@ -406,7 +406,14 @@ class SuitesApp {
   async runSingleWave(suiteId, waveId) {
     try {
       const res = await fetch(`/api/waves/${suiteId}/${waveId}/run`, { method: 'POST' }).then(r => r.json());
-      alert(`Wave ${suiteId}/${waveId} Result:\n\nPassed: ${res.passed}\nMessage: ${res.message}\n${res.evidence_path ? 'Evidence: ' + res.evidence_path : ''}`);
+      const resultLabel = res.execution_kind === 'verified_migration' && res.passed
+        ? 'VERIFIED MIGRATION'
+        : res.execution_kind === 'prototype_check' && res.prototype_passed
+          ? 'PROTOTYPE CHECK PASSED'
+          : res.execution_kind === 'unintegrated_specification'
+            ? 'SPECIFIED / NOT INTEGRATED'
+            : 'FAILED';
+      alert(`Wave ${suiteId}/${waveId} Result:\n\n${resultLabel}\nMessage: ${res.message}\n${res.evidence_path ? 'Evidence: ' + res.evidence_path : ''}`);
       await this.refreshData();
     } catch (err) {
       alert(`Failed to run wave: ${err.message}`);
@@ -422,13 +429,26 @@ class SuitesApp {
         (s.waves || []).forEach(w => waves.push({ sId: s.id, wId: w.id }));
       });
 
-      let passedCount = 0;
+      let verifiedCount = 0;
+      let prototypeCount = 0;
+      let unresolvedCount = 0;
       for (const w of waves) {
         const res = await fetch(`/api/waves/${w.sId}/${w.wId}/run`, { method: 'POST' }).then(r => r.json());
-        if (res.passed) passedCount++;
+        if (res.execution_kind === 'verified_migration' && res.passed) {
+          verifiedCount++;
+        } else if (res.execution_kind === 'prototype_check' && res.prototype_passed) {
+          prototypeCount++;
+        } else {
+          unresolvedCount++;
+        }
       }
 
-      alert(`Verification complete! Executed ${waves.length} waves. All ${passedCount} gates passed.`);
+      alert(
+        `Wave checks complete.\n\n` +
+        `${verifiedCount}/${waves.length} verified migrations\n` +
+        `${prototypeCount} prototype checks passed\n` +
+        `${unresolvedCount} failed or unintegrated`
+      );
       await this.refreshData();
     } catch (err) {
       alert(`Wave execution error: ${err.message}`);

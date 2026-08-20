@@ -1,0 +1,122 @@
+{
+  "pack_id": "pack-storyweaver-echo-chambers",
+  "mechanic_class": "branching_puzzle_adventure",
+  "schema_compatibility": "storyweaver_generic_v1",
+  "nodes_count": 8,
+  "rooms": [
+    {
+      "room_id": "room-01",
+      "name": "Chamber of Echoes 1",
+      "exits": [
+        "north",
+        "east"
+      ],
+      "hazards": [
+        {
+          "type": "puzzle",
+          "difficulty": 11
+        }
+      ]
+    },
+    {
+      "room_id": "room-02",
+      "name": "Chamber of Echoes 2",
+      "exits": [
+        "north",
+        "east"
+      ],
+      "hazards": [
+        {
+          "type": "puzzle",
+          "difficulty": 12
+        }
+      ]
+    },
+    {
+      "room_id": "room-03",
+      "name": "Chamber of Echoes 3",
+      "exits": [
+        "north",
+        "east"
+      ],
+      "hazards": [
+        {
+          "type": "puzzle",
+          "difficulty": 13
+        }
+      ]
+    },
+    {
+      "room_id": "room-04",
+      "name": "Chamber of Echoes 4",
+      "exits": [
+        "north",
+        "east"
+      ],
+      "hazards": [
+        {
+          "type": "puzzle",
+          "difficulty": 14
+        }
+      ]
+    },
+    {
+      "room_id": "room-05",
+      "name": "Chamber of Echoes 5",
+      "exits": [
+        "north",
+        "east"
+      ],
+      "hazards": [
+        {
+          "type": "puzzle",
+          "difficulty": 15
+        }
+      ]
+    },
+    {
+      "room_id": "room-06",
+      "name": "Chamber of Echoes 6",
+      "exits": [
+        "north",
+        "east"
+      ],
+      "hazards": [
+        {
+          "type": "puzzle",
+          "difficulty": 16
+        }
+      ]
+    },
+    {
+      "room_id": "room-07",
+      "name": "Chamber of Echoes 7",
+      "exits": [
+        "north",
+        "east"
+      ],
+      "hazards": [
+        {
+          "type": "puzzle",
+          "difficulty": 17
+        }
+      ]
+    },
+    {
+      "room_id": "room-08",
+      "name": "Chamber of Echoes 8",
+      "exits": [
+        "escape_portal"
+      ],
+      "hazards": [
+        {
+          "type": "puzzle",
+          "difficulty": 18
+        }
+      ]
+    }
+  ],
+  "deterministic_graph": true,
+  "created_at": "2026-08-20T15:51:40.512766+00:00",
+  "generality_proof": "Storyweaver schema successfully models spatial branching puzzles without engine changes."
+}

@@ -1,0 +1,652 @@
+{
+  "wave": "A4",
+  "catalog_evaluation": {
+    "total_candidates_evaluated": 20,
+    "port_review_count": 18,
+    "port_narrow_count": 1,
+    "port_options_count": 1,
+    "evaluations": [
+      {
+        "candidate_id": "inline-language-change",
+        "success_criterion": "3.1.2",
+        "owner_module": "page-scanner-ext",
+        "disposition": "port-review",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-inline-language-ch-001",
+          "rule_id": "wcag-3.1.2-inline-language-change",
+          "severity": "moderate",
+          "summary": "Evaluated candidate inline-language-change against setup 'English page containing an unmarked long Spanish phrase plus a correctly marked Spanish phrase.' with expected behavior 'Only the unmarked phrase is queued as needs-review; no conformance claim.'.",
+          "target": "fixture:inline-language-change",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: English page containing an unmarked long Spanish phrase plus a correctly marked Spanish phrase. -->",
+              "selector": "fixture:inline-language-change",
+              "source": "parity://wcag-auditor/inline-language-change",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "audio-description-track",
+        "success_criterion": "1.2.5",
+        "owner_module": "media-scanner-ext",
+        "disposition": "port-review",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-audio-description--001",
+          "rule_id": "wcag-1.2.5-audio-description-track",
+          "severity": "moderate",
+          "summary": "Evaluated candidate audio-description-track against setup 'Three videos: description track, linked transcript, and neither.' with expected behavior 'Presence is recorded; missing alternative is needs-review because applicability and adequacy are unknown.'.",
+          "target": "fixture:audio-description-track",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Three videos: description track, linked transcript, and neither. -->",
+              "selector": "fixture:audio-description-track",
+              "source": "parity://wcag-auditor/audio-description-track",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "adaptable-landmarks",
+        "success_criterion": "1.3.1",
+        "owner_module": "page-scanner-ext",
+        "disposition": "port-review",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-adaptable-landmark-001",
+          "rule_id": "wcag-1.3.1-adaptable-landmarks",
+          "severity": "moderate",
+          "summary": "Evaluated candidate adaptable-landmarks against setup 'Primary content without main and a minimal page whose structure does not require the inferred fix.' with expected behavior 'Candidate is needs-review and avoids asserting full 1.3.1 failure.'.",
+          "target": "fixture:adaptable-landmarks",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Primary content without main and a minimal page whose structure does not require the inferred fix. -->",
+              "selector": "fixture:adaptable-landmarks",
+              "source": "parity://wcag-auditor/adaptable-landmarks",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "enough-time-controls",
+        "success_criterion": "2.2.2",
+        "owner_module": "interaction-tester",
+        "disposition": "port-review",
+        "kind": "interaction",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-enough-time-contro-001",
+          "rule_id": "wcag-2.2.2-enough-time-controls",
+          "severity": "moderate",
+          "summary": "Evaluated candidate enough-time-controls against setup 'Autoplay carousel with pause, autoplay carousel without pause, and static carousel markup.' with expected behavior 'Only observed or strongly inferred auto-update without control enters review; static markup is not confirmed.'.",
+          "target": "fixture:enough-time-controls",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Autoplay carousel with pause, autoplay carousel without pause, and static carousel markup. -->",
+              "selector": "fixture:enough-time-controls",
+              "source": "parity://wcag-auditor/enough-time-controls",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "link-purpose",
+        "success_criterion": "2.4.4",
+        "owner_module": "page-scanner-ext",
+        "disposition": "port-review",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-link-purpose-001",
+          "rule_id": "wcag-2.4.4-link-purpose",
+          "severity": "moderate",
+          "summary": "Evaluated candidate link-purpose against setup 'Context-free 'click here', contextually named 'read more' with accessible description, and descriptive link.' with expected behavior 'Language heuristic queues only unresolved ambiguous purpose for review.'.",
+          "target": "fixture:link-purpose",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Context-free 'click here', contextually named 'read more' with accessible description, and descriptive link. -->",
+              "selector": "fixture:link-purpose",
+              "source": "parity://wcag-auditor/link-purpose",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "focus-not-obscured",
+        "success_criterion": "2.4.11",
+        "owner_module": "keyboard-tester",
+        "disposition": "port-review",
+        "kind": "interaction",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-focus-not-obscured-001",
+          "rule_id": "wcag-2.4.11-focus-not-obscured",
+          "severity": "moderate",
+          "summary": "Evaluated candidate focus-not-obscured against setup 'Tab to controls under fixed header, fixed footer, and unobscured content at multiple viewport sizes.' with expected behavior 'Geometry evidence names the obscuring element; result remains needs-review until interaction is reliable.'.",
+          "target": "fixture:focus-not-obscured",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Tab to controls under fixed header, fixed footer, and unobscured content at multiple viewport sizes. -->",
+              "selector": "fixture:focus-not-obscured",
+              "source": "parity://wcag-auditor/focus-not-obscured",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "pointer-gestures",
+        "success_criterion": "2.5.1",
+        "owner_module": "interaction-tester",
+        "disposition": "port-review",
+        "kind": "interaction",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-pointer-gestures-001",
+          "rule_id": "wcag-2.5.1-pointer-gestures",
+          "severity": "moderate",
+          "summary": "Evaluated candidate pointer-gestures against setup 'Multipoint gesture with button alternative and the same gesture without an alternative.' with expected behavior 'Candidate discovery does not report the compliant alternative case; unresolved case is needs-review.'.",
+          "target": "fixture:pointer-gestures",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Multipoint gesture with button alternative and the same gesture without an alternative. -->",
+              "selector": "fixture:pointer-gestures",
+              "source": "parity://wcag-auditor/pointer-gestures",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "pointer-cancellation",
+        "success_criterion": "2.5.2",
+        "owner_module": "interaction-tester",
+        "disposition": "port-review",
+        "kind": "interaction",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-pointer-cancellati-001",
+          "rule_id": "wcag-2.5.2-pointer-cancellation",
+          "severity": "moderate",
+          "summary": "Evaluated candidate pointer-cancellation against setup 'Controls acting on pointerdown, cancellable pointerup, and native click.' with expected behavior 'Observed early activation without cancel/undo is review evidence; handler names alone are not confirmed.'.",
+          "target": "fixture:pointer-cancellation",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Controls acting on pointerdown, cancellable pointerup, and native click. -->",
+              "selector": "fixture:pointer-cancellation",
+              "source": "parity://wcag-auditor/pointer-cancellation",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "dragging-movements",
+        "success_criterion": "2.5.7",
+        "owner_module": "interaction-tester",
+        "disposition": "port-review",
+        "kind": "interaction",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-dragging-movements-001",
+          "rule_id": "wcag-2.5.7-dragging-movements",
+          "severity": "moderate",
+          "summary": "Evaluated candidate dragging-movements against setup 'Draggable item with keyboard/button alternative and one without an alternative.' with expected behavior 'Only unresolved absence of a non-drag alternative is needs-review.'.",
+          "target": "fixture:dragging-movements",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Draggable item with keyboard/button alternative and one without an alternative. -->",
+              "selector": "fixture:dragging-movements",
+              "source": "parity://wcag-auditor/dragging-movements",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "predictable-navigation",
+        "success_criterion": "3.2.2",
+        "owner_module": "interaction-tester",
+        "disposition": "port-review",
+        "kind": "interaction",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-predictable-naviga-001",
+          "rule_id": "wcag-3.2.2-predictable-navigation",
+          "severity": "moderate",
+          "summary": "Evaluated candidate predictable-navigation against setup 'Select that navigates immediately, select plus explicit submit, and non-navigation onchange.' with expected behavior 'Observed unexpected context change is review evidence; onchange presence alone does not report.'.",
+          "target": "fixture:predictable-navigation",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Select that navigates immediately, select plus explicit submit, and non-navigation onchange. -->",
+              "selector": "fixture:predictable-navigation",
+              "source": "parity://wcag-auditor/predictable-navigation",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "input-assistance-error-msg",
+        "success_criterion": "3.3.1",
+        "owner_module": "aria-validator",
+        "disposition": "port-narrow",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-input-assistance-e-001",
+          "rule_id": "wcag-3.3.1-input-assistance-error-msg",
+          "severity": "moderate",
+          "summary": "Evaluated candidate input-assistance-error-msg against setup 'aria-invalid controls with valid aria-errormessage, broken ID, empty target, and no reference.' with expected behavior 'Broken, empty, and missing associations produce unverified 3.3.1 findings; valid association passes.'.",
+          "target": "fixture:input-assistance-error-msg",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: aria-invalid controls with valid aria-errormessage, broken ID, empty target, and no reference. -->",
+              "selector": "fixture:input-assistance-error-msg",
+              "source": "parity://wcag-auditor/input-assistance-error-msg",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "deterministic",
+          "needs_review": false,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": false
+      },
+      {
+        "candidate_id": "labels-or-instructions",
+        "success_criterion": "3.3.2",
+        "owner_module": "page-scanner-ext",
+        "disposition": "port-review",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-labels-or-instruct-001",
+          "rule_id": "wcag-3.3.2-labels-or-instructions",
+          "severity": "moderate",
+          "summary": "Evaluated candidate labels-or-instructions against setup 'Constrained fields with visible helper, fieldset legend, ambiguous placeholder-only hint, and no hint.' with expected behavior 'Ambiguous or missing instruction cases remain needs-review; helper and legend cases pass.'.",
+          "target": "fixture:labels-or-instructions",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Constrained fields with visible helper, fieldset legend, ambiguous placeholder-only hint, and no hint. -->",
+              "selector": "fixture:labels-or-instructions",
+              "source": "parity://wcag-auditor/labels-or-instructions",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "error-suggestion",
+        "success_criterion": "3.3.3",
+        "owner_module": "page-scanner-ext",
+        "disposition": "port-review",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-error-suggestion-001",
+          "rule_id": "wcag-3.3.3-error-suggestion",
+          "severity": "moderate",
+          "summary": "Evaluated candidate error-suggestion against setup 'Correctable format error with concrete suggestion, problem-only message, and unsafe-to-suggest case.' with expected behavior 'Only the problem-only correctable case is queued, and only as needs-review.'.",
+          "target": "fixture:error-suggestion",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Correctable format error with concrete suggestion, problem-only message, and unsafe-to-suggest case. -->",
+              "selector": "fixture:error-suggestion",
+              "source": "parity://wcag-auditor/error-suggestion",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "required-field-indicators",
+        "success_criterion": "3.3.2",
+        "owner_module": "page-scanner-ext",
+        "disposition": "port-review",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-required-field-ind-001",
+          "rule_id": "wcag-3.3.2-required-field-indicators",
+          "severity": "moderate",
+          "summary": "Evaluated candidate required-field-indicators against setup 'Required fields identified in label, group instructions, symbol legend, and not visibly identified.' with expected behavior 'Only unresolved visible identification enters needs-review; language is fixture metadata.'.",
+          "target": "fixture:required-field-indicators",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Required fields identified in label, group instructions, symbol legend, and not visibly identified. -->",
+              "selector": "fixture:required-field-indicators",
+              "source": "parity://wcag-auditor/required-field-indicators",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "redundant-entry",
+        "success_criterion": "3.3.7",
+        "owner_module": "multi-step-tester",
+        "disposition": "port-review",
+        "kind": "multi-step",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-redundant-entry-001",
+          "rule_id": "wcag-3.3.7-redundant-entry",
+          "severity": "moderate",
+          "summary": "Evaluated candidate redundant-entry against setup 'Repeated email with auto-fill, repeated email without auto-fill, and two semantically different email fields.' with expected behavior 'Only observed unnecessary re-entry without an exception is needs-review.'.",
+          "target": "fixture:redundant-entry",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Repeated email with auto-fill, repeated email without auto-fill, and two semantically different email fields. -->",
+              "selector": "fixture:redundant-entry",
+              "source": "parity://wcag-auditor/redundant-entry",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "accessible-authentication",
+        "success_criterion": "3.3.8",
+        "owner_module": "interaction-tester",
+        "disposition": "port-review",
+        "kind": "interaction",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-accessible-authent-001",
+          "rule_id": "wcag-3.3.8-accessible-authentication",
+          "severity": "moderate",
+          "summary": "Evaluated candidate accessible-authentication against setup 'Paste-blocked password, CAPTCHA with alternative, CAPTCHA without alternative, and password-manager-compatible form.' with expected behavior 'Observed cognitive-test or paste behavior is captured; adequacy and exceptions stay needs-review.'.",
+          "target": "fixture:accessible-authentication",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Paste-blocked password, CAPTCHA with alternative, CAPTCHA without alternative, and password-manager-compatible form. -->",
+              "selector": "fixture:accessible-authentication",
+              "source": "parity://wcag-auditor/accessible-authentication",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "identify-input-purpose",
+        "success_criterion": "1.3.5",
+        "owner_module": "page-scanner-ext",
+        "disposition": "port-review",
+        "kind": "single-page",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-identify-input-pur-001",
+          "rule_id": "wcag-1.3.5-identify-input-purpose",
+          "severity": "moderate",
+          "summary": "Evaluated candidate identify-input-purpose against setup 'Personal-data fields with valid autocomplete, inferred field without autocomplete, and non-personal same-name field.' with expected behavior 'Inferred missing purpose is needs-review; valid token passes; non-personal field avoids a false positive.'.",
+          "target": "fixture:identify-input-purpose",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Personal-data fields with valid autocomplete, inferred field without autocomplete, and non-personal same-name field. -->",
+              "selector": "fixture:identify-input-purpose",
+              "source": "parity://wcag-auditor/identify-input-purpose",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "status-messages",
+        "success_criterion": "4.1.3",
+        "owner_module": "aria-validator",
+        "disposition": "port-review",
+        "kind": "interaction",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-status-messages-001",
+          "rule_id": "wcag-4.1.3-status-messages",
+          "severity": "moderate",
+          "summary": "Evaluated candidate status-messages against setup 'Async success/error updates with status/alert, aria-live, focus move, and no programmatic announcement.' with expected behavior 'Observed message without a programmatic mechanism is needs-review pending AT confirmation.'.",
+          "target": "fixture:status-messages",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Async success/error updates with status/alert, aria-live, focus move, and no programmatic announcement. -->",
+              "selector": "fixture:status-messages",
+              "source": "parity://wcag-auditor/status-messages",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "consistent-navigation",
+        "success_criterion": "3.2.3",
+        "owner_module": "site-crawler-ext",
+        "disposition": "port-review",
+        "kind": "site-pair",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-consistent-navigat-001",
+          "rule_id": "wcag-3.2.3-consistent-navigation",
+          "severity": "moderate",
+          "summary": "Evaluated candidate consistent-navigation against setup 'Two templates with intentional local navigation and two with inconsistent repeated primary navigation.' with expected behavior 'Only repeated primary navigation differences are queued; page-local navigation is excluded.'.",
+          "target": "fixture:consistent-navigation",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Two templates with intentional local navigation and two with inconsistent repeated primary navigation. -->",
+              "selector": "fixture:consistent-navigation",
+              "source": "parity://wcag-auditor/consistent-navigation",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      },
+      {
+        "candidate_id": "crawl-auth-and-filters",
+        "success_criterion": "crawl",
+        "owner_module": "site-crawler-ext",
+        "disposition": "port-options",
+        "kind": "site",
+        "finding": {
+          "schema_version": "1.0.0",
+          "finding_id": "find-backlog-crawl-auth-and-fil-001",
+          "rule_id": "wcag-crawl-crawl-auth-and-filters",
+          "severity": "moderate",
+          "summary": "Evaluated candidate crawl-auth-and-filters against setup 'Authenticated routes, excluded logout/destructive links, included account routes, SPA data-route links, robots denial, and depth boundary.' with expected behavior 'Only allowed, in-scope, safe routes are attempted; credentials/storage state never enter output.'.",
+          "target": "fixture:crawl-auth-and-filters",
+          "evidence": [
+            {
+              "dom_snippet": "<!-- Setup: Authenticated routes, excluded logout/destructive links, included account routes, SPA data-route links, robots denial, and depth boundary. -->",
+              "selector": "fixture:crawl-auth-and-filters",
+              "source": "parity://wcag-auditor/crawl-auth-and-filters",
+              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+            }
+          ],
+          "evidence_kind": "manual",
+          "needs_review": true,
+          "status": "open"
+        },
+        "no_unauthorized_conformance_claim": true,
+        "review_label_preserved": true
+      }
+    ],
+    "status": "all_backlog_candidates_evidenced"
+  },
+  "heuristic_findings_sample": [
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "find-wcag-131-tbl-001",
+      "rule_id": "wcag-1.3.1-info-and-relationships-table-header",
+      "severity": "moderate",
+      "summary": "Data table contains data cells (<td>) without any declared <th> header cells.",
+      "target": "table:nth-of-type(1)",
+      "evidence": [
+        {
+          "dom_snippet": "<table>\n                    <tr><td>Cell without th</td></tr>\n                </table>",
+          "selector": "table:nth-of-type(1)",
+          "source": "snippet://wcag-auditor-port",
+          "timestamp": "2026-08-20T15:51:40.483708+00:00"
+        }
+      ],
+      "evidence_kind": "manual",
+      "needs_review": true,
+      "status": "open"
+    },
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "find-wcag-244-vague-001",
+      "rule_id": "wcag-2.4.4-link-purpose",
+      "severity": "moderate",
+      "summary": "Link uses ambiguous text 'click here' requiring context review.",
+      "target": "a",
+      "evidence": [
+        {
+          "dom_snippet": "<a href=\"/doc\">click here</a>",
+          "selector": "a",
+          "source": "snippet://wcag-auditor-port",
+          "timestamp": "2026-08-20T15:51:40.483708+00:00"
+        }
+      ],
+      "evidence_kind": "manual",
+      "needs_review": true,
+      "status": "open"
+    },
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "find-wcag-135-auto-001",
+      "rule_id": "wcag-1.3.5-identify-input-purpose",
+      "severity": "moderate",
+      "summary": "Personal data input field lacks an explicit autocomplete token attribute.",
+      "target": "input",
+      "evidence": [
+        {
+          "dom_snippet": "<input type=\"email\" name=\"email\">",
+          "selector": "input",
+          "source": "snippet://wcag-auditor-port",
+          "timestamp": "2026-08-20T15:51:40.483708+00:00"
+        }
+      ],
+      "evidence_kind": "manual",
+      "needs_review": true,
+      "status": "open"
+    },
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "find-wcag-131-main-001",
+      "rule_id": "wcag-1.3.1-adaptable-landmarks",
+      "severity": "moderate",
+      "summary": "Document contains a <body> but does not declare a <main> or role='main' landmark.",
+      "target": "body",
+      "evidence": [
+        {
+          "dom_snippet": "<body> ... (no <main>) ... </body>",
+          "selector": "body",
+          "source": "snippet://wcag-auditor-port",
+          "timestamp": "2026-08-20T15:51:40.483708+00:00"
+        }
+      ],
+      "evidence_kind": "manual",
+      "needs_review": true,
+      "status": "open"
+    }
+  ],
+  "false_positive_probe_passed": true,
+  "status": "all_backlog_candidates_evidenced"
+}

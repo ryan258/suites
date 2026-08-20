@@ -1,0 +1,36 @@
+{
+  "batch_size": 2,
+  "records": [
+    {
+      "schema_version": "1.0.0",
+      "source_id": "src-daily-log-20260820",
+      "acquired_at": "2026-08-20T15:51:40.486595+00:00",
+      "sha256": "d952540113c6966cfc49b3b3f2ea57117ba4c7176896fc8a7b592a5395bcdf9c",
+      "size_bytes": 72,
+      "media_type": "text/markdown",
+      "origin": "dotfiles://logs/daily.md",
+      "provenance": {
+        "author": "Ryan",
+        "collector": "portfolio_suites.operator_os.live_intake",
+        "intake_method": "source_capture",
+        "raw_preview": "# Daily Operating Log\n- Verified portfolio suites\n- Clean git boundaries"
+      }
+    },
+    {
+      "schema_version": "1.0.0",
+      "source_id": "src-arch-decision-009",
+      "acquired_at": "2026-08-20T15:51:40.486618+00:00",
+      "sha256": "1a7bd7d0a7ab572851c7017c8dadf77aadfd5e43178c885e6a23897fde24c812",
+      "size_bytes": 65,
+      "media_type": "text/markdown",
+      "origin": "notes://arch/sqlite-wal.md",
+      "provenance": {
+        "author": "Ryan",
+        "collector": "portfolio_suites.operator_os.live_intake",
+        "intake_method": "source_capture",
+        "raw_preview": "# Architecture Decision\n- Single-writer WAL architecture selected"
+      }
+    }
+  ],
+  "status": "verified"
+}

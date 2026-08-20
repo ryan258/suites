@@ -1,0 +1,38 @@
+{
+  "snapshot_id": "snap-0601d43188b4",
+  "vault": "test-vault",
+  "created_at": "2026-08-20T15:50:22.035746+00:00",
+  "files_count": 6,
+  "files": [
+    {
+      "path": "operator-os/evidence/O4-PKOS-DAILY-INTAKE-STREAM.json",
+      "size": 1259,
+      "sha256": "12fb1a4e468252829cbfd035edd7e4b56c4922abcaa3175fd315b0c68ebee0b3"
+    },
+    {
+      "path": "operator-os/evidence/O2-RYOS-INVENTORY.json",
+      "size": 335,
+      "sha256": "ec4de3e465591289dca824dfa584ac953af1525f4ca04a0277ab8ed998bd8c68"
+    },
+    {
+      "path": "operator-os/evidence/O3-JARVIS-ACTION-RECEIPT.json",
+      "size": 337,
+      "sha256": "b3e4bfc411d7c2539a06e1f54029a9e1a83f8827c28dae1859134b22b58f3761"
+    },
+    {
+      "path": "operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.md",
+      "size": 788,
+      "sha256": "c2985df2b70842c38da31fac0197a04572ff387c33329ee7a701faca56e57b8e"
+    },
+    {
+      "path": "operator-os/evidence/O5-RYOS-DISPOSITION-REPORT.json",
+      "size": 944,
+      "sha256": "cad3adff1044cfbbc34ceeb924e3b089fa0414d169f08fc55ee172c3d00e9c2c"
+    },
+    {
+      "path": "operator-os/evidence/O6-JARVIS-CHECKPOINT-RECEIPT.json",
+      "size": 970,
+      "sha256": "71f3883c79f8d7e658b08bcdaf98aa6c5e970df7ecf146e62d6c2842e4c7deb1"
+    }
+  ]
+}

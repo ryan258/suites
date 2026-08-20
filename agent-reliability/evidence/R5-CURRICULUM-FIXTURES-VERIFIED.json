@@ -1,0 +1,25 @@
+{
+  "curriculum_version": "1.0.0",
+  "fixtures_count": 2,
+  "fixtures": [
+    {
+      "module_id": "mod-ai-staff-gates",
+      "topic": "Role-specific deterministic tool gating",
+      "deterministic_gates": [
+        "confinement",
+        "budget"
+      ],
+      "verified_at": "2026-08-20T15:51:40.509095+00:00"
+    },
+    {
+      "module_id": "mod-prompt-chain-verify",
+      "topic": "Multi-step plan validation & atomic recovery",
+      "deterministic_gates": [
+        "malformed_catch",
+        "rollback"
+      ],
+      "verified_at": "2026-08-20T15:51:40.509095+00:00"
+    }
+  ],
+  "status": "curriculum_fixtures_verified"
+}
