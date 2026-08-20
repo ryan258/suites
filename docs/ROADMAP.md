@@ -9,27 +9,30 @@ CONTROL PLANE FOUNDATION:
 - 8/8 Suite boundaries defined with clear user promises and canonical anchors
 - 6 Shared contracts implemented (A11yFinding, SourceRecord, BrandPackage, InvestigationRecord, ProductionJob, AgentRun)
 - 70 Top-level projects dispositioned across suites and independent containers
-- 57 unit tests passing across contracts, registry, engines, OpenRouter isolation, CLI, and dashboard APIs
+- Control-plane tests cover contracts, registry, engines, OpenRouter isolation, CLI, and dashboard APIs
 - Zero-dependency CLI and local web dashboard operational
 - 43 Migration wave specifications defined with prototype reference runners
-- Verified authentic parity artifacts: A1 WCAG Auditor Parity Matrix
-- Portfolio progress: 1/43 verified migrations; 42/43 passing reference prototype checks
+- Verified claims: one analysis milestone (A1) and one runtime recovery (A2)
+- Portfolio wave milestones: 2/43 complete; 41/43 reference prototype checks
+- Recovery target: 9/10 for valuable functionality; wave completion is not the recovery score
 - Wave checks execute ephemerally by default; evidence is written only by explicit request
-- Known live-tree drift: allys-tools remains on the recorded commit with three uncommitted items
+- Current monitored source baseline: 0/58 repositories drifted; `allys-tools` is clean at the recorded A2 commit
 ```
 
 ---
 
 ## Truth and Promotion Rules
 
-The control plane uses a deliberately conservative promotion model:
+The control plane uses the promotion model in the [9/10 recovery standard](RECOVERY-STANDARD.md):
 
 1. A wave specification records intended work; it is not evidence that the migration exists.
 2. A passing reference prototype proves only the suite-local contract or fixture behavior exercised by that runner.
-3. A wave becomes `verified` only after its acceptance gates run against the canonical source or migrated runtime with retained provenance.
-4. Donor repositories are not frozen, retired, or redirected until verified parity exists and the owner explicitly authorizes that action.
-5. Historical provider evidence remains attributed to the provider that actually produced it. Future hosted-AI execution routes through OpenRouter, while deterministic checks remain local.
-6. Wave execution is ephemeral by default. Replacing evidence requires `--record` in the CLI or `record=true` through the dashboard API.
+3. Analysis milestones and runtime recoveries are reported separately.
+4. Runtime promotion proceeds through `source_verified`, `parity_verified`, `adopted`, and `converged`.
+5. Adoption requires at least three authentic accepted uses across distinct inputs or days.
+6. Donor repositories are not frozen, retired, or redirected until verified parity exists and the owner explicitly authorizes that action.
+7. Historical provider evidence remains attributed to the provider that actually produced it. Future hosted-AI execution routes through OpenRouter, while deterministic checks remain local.
+8. Wave execution is ephemeral by default. Replacing evidence requires `--record` in the CLI or `record=true` through the dashboard API.
 
 ---
 
@@ -37,7 +40,7 @@ The control plane uses a deliberately conservative promotion model:
 
 | Suite | Verified | Next promotion target | Evidence required for promotion |
 |---|---:|---|---|
-| Accessibility | 1/6 | `A2` | Focused and full `allys-tools` runtime tests for the WCAG 3.3.1 port |
+| Accessibility | 2/6 | `A3` | Browser-level feature, permissions, interaction, accessibility, and output parity across three overlays |
 | Operator OS | 0/6 | `O1` | Real `dotfiles` capture, `PKos` storage, and Observer non-reingestion receipts |
 | Brand + Publishing | 0/6 | `B1` | A real `BrandPackage` compiled from source intake and consumed by the publishing boundary |
 | Production House | 0/5 | `P1` | Groundwire source fingerprints and reproducible audio-processing output |
@@ -54,8 +57,8 @@ Migration proceeds suite by suite, requiring authentic source-backed execution, 
 
 ### Horizon 1 — Ally Accessibility Suite (In Progress)
 - **Target Anchor:** `allys-tools`
-- **Current State:** `A1` parity matrix verified; `A2` runner prototyped.
-- **Next Wave (A2):** Complete genuine end-to-end port of WCAG 3.3.1 into Ally with focused and full runtime gates passing in socket-permitting environments.
+- **Current State:** `A1` is a verified analysis milestone; `A2` is a parity-verified runtime recovery at clean `allys-tools` commit `f2b4c6e`.
+- **Next Wave (A3):** Complete genuine browser-level reconciliation of the three keyboard overlays.
 - **Subsequent Waves:**
   - `A3`: Genuine feature, permission, and runtime reconciliation of three keyboard overlays (`kb-overlay`, `keyboard-nav-overlay`, `keyboard-nav-overlay-94bf7e`).
   - `A4`: Port remaining rule candidates with regression fixtures.

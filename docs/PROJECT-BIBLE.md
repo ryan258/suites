@@ -29,6 +29,19 @@ must happen next without pretending that plans are products.
 - Every retirement waits for output/behavior parity and a recovery decision.
 - Shared code is promoted only after two real consumers prove the shared boundary.
 
+## Recovery Standard
+
+The adopted target is 9/10 recovery of valuable functionality, governed by
+[`RECOVERY-STANDARD.md`](RECOVERY-STANDARD.md) and its machine-readable policy. A completed analysis
+milestone is not a recovered runtime; a prototype is not parity; parity is not adoption; and
+adoption is not convergence. Every important capability must eventually be ported, shown already
+covered, retained independently, rejected, preserved as history, or deferred with an observable
+trigger.
+
+Flagship suites target 9/10, production systems target 8/10, and labs target 7/10 until authentic
+use earns more investment. The portfolio does not pursue 10/10 reproduction of obsolete or
+duplicated behavior.
+
 ## What It Is Not
 
 - It is not a giant monolith that absorbs every repo.
@@ -81,4 +94,3 @@ span multiple waves, but each wave must preserve a runnable state.
    reconstructing the whole context.
 5. When the generic capability is chat-native, keep only the durable state, evidence, UX, corpus,
    or real-world execution that makes the product matter.
-

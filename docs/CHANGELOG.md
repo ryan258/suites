@@ -4,6 +4,27 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-20 — 9/10 Recovery Standard Adopted
+
+Adopted a portfolio-wide standard that targets 9/10 recovery of valuable functionality rather than
+complete reproduction of historical repositories. Added a machine-validated weighted rubric,
+promotion levels from prototype through convergence, tiered suite targets, and explicit resolution
+outcomes for intentionally unported behavior.
+
+Reporting now separates the A1 analysis milestone from the A2 runtime recovery. Prototype checks do
+not count as recovered functionality, and an environment-blocked gate is neither a pass nor a
+product failure. Current claims are one parity-verified runtime recovery, one verified analysis
+milestone, zero adopted workflows, and zero converged capabilities.
+
+The A2 promotion now executes WCAG Auditor's authentic `InputAssistanceRule` in Playwright and
+compares captured donor outcomes with Ally outcomes for the same representative cases. Registry
+validation inspects the retained runtime receipt and fails closed on recovery-policy, tier, rubric,
+owner-approval, evidence-basis, or receipt drift. Deep npm, tsx, and browser permission failures now
+enter the operational-error channel and report `unverifiable_environment` rather than product
+failure.
+
+---
+
 ## 2026-08-20 — Horizon 1 Migration: Wave A2 (WCAG 3.3.1 Error Association into Ally) — Local Candidate Hardened
 
 ### Outcome

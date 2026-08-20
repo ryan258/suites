@@ -1,8 +1,9 @@
 # Migration Program
 
-All 24 Tranche 0–3 waves below are now complete (see each suite's `evidence/`). For what actually
-instituting a suite requires next — real ports, real retirements, real single-runtime status — see
-[the roadmap](ROADMAP.md).
+Tranche 0's control-plane foundation is complete, and Tranches 1–3 have prototype or planning
+artifacts. Those artifacts are not completed migrations. Real ports, adoption, retirement, and
+single-runtime convergence follow the [9/10 recovery standard](RECOVERY-STANDARD.md) and the
+[roadmap](ROADMAP.md).
 
 ## Destination rule
 

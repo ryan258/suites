@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "standard_id": "portfolio-recovery-9",
+  "target_score": 9.0,
+  "principle": "Recover or explicitly resolve every valuable capability; do not reproduce every historical repository.",
+  "dimensions": [
+    {
+      "id": "functional_parity",
+      "weight": 35,
+      "requirement": "Selected behavior executes through authentic source and canonical destination runtimes with output and failure parity."
+    },
+    {
+      "id": "repeated_real_use",
+      "weight": 20,
+      "requirement": "Recovered workflows produce accepted artifacts in at least three authentic uses across distinct inputs or days."
+    },
+    {
+      "id": "runtime_convergence",
+      "weight": 15,
+      "requirement": "Each capability has one canonical state owner and runtime; duplicate writers are frozen or retired only with owner approval."
+    },
+    {
+      "id": "reproducibility",
+      "weight": 10,
+      "requirement": "Critical gates run from a documented clean environment and preserve exact source, dependency, input, and output fingerprints."
+    },
+    {
+      "id": "failure_and_recovery",
+      "weight": 10,
+      "requirement": "Interruptions, retries, rollback, partial state, and resumability are tested without manufacturing success."
+    },
+    {
+      "id": "provenance_and_owner_control",
+      "weight": 5,
+      "requirement": "Sources, versions, authorship, approvals, side effects, and retirement decisions remain traceable and owner-controlled."
+    },
+    {
+      "id": "reporting_accuracy",
+      "weight": 5,
+      "requirement": "CLI, API, dashboard, manifests, evidence, and documentation distinguish plans, prototypes, recoveries, adoption, and convergence."
+    }
+  ],
+  "promotion_levels": [
+    "specified",
+    "prototype",
+    "source_verified",
+    "parity_verified",
+    "adopted",
+    "converged"
+  ],
+  "resolution_outcomes": [
+    "ported",
+    "already_covered",
+    "retained_independent",
+    "rejected",
+    "historical_only",
+    "deferred_with_trigger"
+  ],
+  "claim_kinds": [
+    "analysis",
+    "runtime",
+    "adoption",
+    "convergence",
+    "resolution"
+  ],
+  "enforcement": {
+    "completed_wave_requires_recovery_claim": true,
+    "prototype_never_counts_as_recovered": true,
+    "environment_blocker_is_neither_pass_nor_product_failure": true,
+    "minimum_authentic_uses_for_adoption": 3,
+    "minimum_consumers_for_shared_component": 2,
+    "retirement_requires_owner_approval": true
+  },
+  "portfolio_tiers": [
+    {
+      "id": "flagship",
+      "target_score": 9.0,
+      "suites": ["accessibility", "operator-os", "brand-publishing"]
+    },
+    {
+      "id": "production",
+      "target_score": 8.0,
+      "suites": ["production-house", "discovery-decision"]
+    },
+    {
+      "id": "lab",
+      "target_score": 7.0,
+      "suites": ["model-behavior-lab", "agent-reliability", "game-design"]
+    }
+  ]
+}

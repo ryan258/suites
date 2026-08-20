@@ -19,13 +19,15 @@ migration prove parity before an older runtime can be retired.
 ```text
 PROJECT: Ryan Project Suites
 STATUS: Portfolio control plane and suite prototypes established
-GATE CHECK: 57/57 Unit Tests PASS | 8 Suite Boundaries | 6 Shared Contracts | 70 Projects Dispositioned
+RECOVERY STANDARD: 9.0/10 target for valuable functionality; raw wave completion is not the score
+GATE CHECK: Registry valid | 8 Suite Boundaries | 6 Shared Contracts | 70 Projects Dispositioned
 BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
 OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 6 Contracts, 43 Wave Specifications
-PROGRESS: 2/43 Waves Verified (A1 Parity Matrix, A2 WCAG 3.3.1 Port); 41 Prototype Checks Passing
+VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 1 Analysis Milestone (A1) | 0 Adopted | 0 Converged
+PROTOTYPES: 41 checks passing; prototypes never count as recovered functionality
 ```
 
 ## The eight suites
@@ -66,7 +68,7 @@ PYTHONPATH=src python3 -m portfolio_suites contract A11yFinding sample
 PYTHONPATH=src python3 -m portfolio_suites contract BrandPackage spec
 PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.json>
 
-# Ephemeral wave checks (1 verified migration + 42 prototype checks)
+# Ephemeral wave checks (1 runtime recovery + 1 analysis milestone + 41 prototypes)
 PYTHONPATH=src python3 -m portfolio_suites wave --all
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2
 
@@ -96,7 +98,10 @@ reported without modifying any source repository.
 6. Publication, deployment, staging, commits, destructive cleanup, and collaborator-owned changes
    remain owner-controlled.
 7. “Complete” means the suite completion criteria are evidenced, not that a scaffold exists.
+8. The [9/10 recovery standard](docs/RECOVERY-STANDARD.md) governs promotion, adoption, convergence,
+   and intentional non-port outcomes; wave counts are scheduling metrics, not the recovery score.
 
 See [the project bible](docs/PROJECT-BIBLE.md), [the review](docs/PORTFOLIO-REVIEW-2026-08-19.md),
 [the migration program](docs/MIGRATION-PROGRAM.md), [the institution roadmap](docs/ROADMAP.md),
-and [the OpenRouter configuration guide](docs/OPENROUTER.md).
+the [recovery standard](docs/RECOVERY-STANDARD.md), and the
+[OpenRouter configuration guide](docs/OPENROUTER.md).
