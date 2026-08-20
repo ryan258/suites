@@ -2,8 +2,22 @@
   "wave": "A2",
   "migration_kind": "source_backed_runtime_integration",
   "receipt_kind": "clean_commit_receipt",
-  "status": "verified_candidate",
+  "status": "parity_verified",
   "all_stages_passed": true,
+  "representative_inputs": [
+    {
+      "case_id": "invalid_input_missing_error_ref",
+      "purpose": "defective invalid control with no error association"
+    },
+    {
+      "case_id": "invalid_input_with_valid_errormessage",
+      "purpose": "valid aria-errormessage association"
+    },
+    {
+      "case_id": "invalid_input_with_valid_describedby",
+      "purpose": "valid aria-describedby association"
+    }
+  ],
   "target": {
     "name": "allys-tools",
     "path": "/Users/ryanjohnson/Projects/allys-tools",
@@ -40,7 +54,7 @@
       "dirty_files_count": 0,
       "dirty_files": [],
       "patch_sha256": "",
-      "lockfile_sha256": "",
+      "lockfile_sha256": "16d593cc046277e98aa613135925ce4d2f9785d16c4e1c138058f13b6489bafd",
       "tested_files_fingerprint": {
         "wcag_auditor/rules/understandable_rules.py": "71272a5c0ce946a7f24b7511e24c6fc0268d7de8bd8aae16979f28a1ee51daf7",
         "wcag_auditor/rules/core_rules.py": "51a4af72915a6215020f72ab4dfee4addfe3692cb5a965853297d177abefe8e4",
@@ -53,32 +67,61 @@
     },
     "rule_ported": "input-assistance-error-msg (WCAG 3.3.1)",
     "role": "donor_parity_source",
+    "source_invoked": true,
+    "browser_runtime_invoked": true,
+    "runtime_outcomes": {
+      "invalid_input_missing_error_ref": true,
+      "invalid_input_with_valid_errormessage": false,
+      "invalid_input_with_valid_describedby": false
+    },
+    "runtime_violations": [
+      {
+        "element": "<input id=\"email\" type=\"email\" class=\"is-invalid\" aria-invalid=\"true\">",
+        "message": "Input marked as invalid lacks an associated error message",
+        "suggestion": "Point aria-errormessage or aria-describedby at visible error text.",
+        "remediation_code": "<input aria-invalid=\"true\" aria-errormessage=\"email-error\">\n<p id=\"email-error\">Enter a valid email address.</p>"
+      }
+    ],
     "donor_parity_verified": true,
     "parity_comparisons": [
       {
         "case_id": "invalid_input_missing_error_ref",
         "target_flagged": true,
-        "donor_expected_flagged": true,
+        "donor_flagged": true,
         "matches": true
       },
       {
         "case_id": "invalid_input_with_valid_errormessage",
         "target_flagged": false,
-        "donor_expected_flagged": false,
+        "donor_flagged": false,
         "matches": true
       },
       {
         "case_id": "invalid_input_with_valid_describedby",
         "target_flagged": false,
-        "donor_expected_flagged": false,
+        "donor_flagged": false,
         "matches": true
       }
     ]
   },
   "stages": {
+    "donor_source_invocation": {
+      "command": "/Library/Developer/CommandLineTools/usr/bin/python3 /Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_wcag_331_source_probe.py /Users/ryanjohnson/Projects/wcag-auditor",
+      "duration_ms": 31.21,
+      "rule_id": "input-assistance-error-msg",
+      "wcag_criterion": "3.3.1",
+      "source_path": "/Users/ryanjohnson/Projects/wcag-auditor/wcag_auditor/rules/understandable_rules.py",
+      "passed": true
+    },
+    "donor_browser_evaluation": {
+      "command": "node /Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_wcag_331_browser_probe.mjs",
+      "duration_ms": 1253.27,
+      "case_count": 3,
+      "passed": true
+    },
     "focused_parity_gate": {
       "command": "npx tsx --test a11y-tools/tests/wcag-331-error-association.test.ts",
-      "duration_ms": 1111.33,
+      "duration_ms": 917.97,
       "passed_tests": 6,
       "failed_tests": 0,
       "passed": true
@@ -86,7 +129,7 @@
     "full_suite_and_typecheck_gate": {
       "command": "npm run check",
       "skipped": false,
-      "duration_ms": 43005.66,
+      "duration_ms": 43710.14,
       "total_tests_passed": 127,
       "failed_tests": 0,
       "passed": true
@@ -94,7 +137,7 @@
     "full_audit_integration_gate": {
       "command": "npx tsx --test a11y-tools/tests/full-audit.test.ts",
       "skipped": false,
-      "duration_ms": 43237.19,
+      "duration_ms": 37540.47,
       "passed_tests": 7,
       "failed_tests": 0,
       "manifest_coverage_verified": true,
@@ -115,7 +158,7 @@
           "html": "<input id=\"email\" type=\"email\" class=\"is-invalid\" aria-invalid=\"true\">",
           "source_status": "unverified",
           "verification_state": "unverified_deterministic_finding",
-          "timestamp": "2026-08-20T19:47:29.479460+00:00"
+          "timestamp": "2026-08-20T21:54:41.380739+00:00"
         }
       ],
       "evidence_kind": "deterministic",
@@ -124,10 +167,18 @@
     }
   ],
   "operational_errors": [],
+  "environment_blocked": false,
+  "recovery_behavior": {
+    "runtime_mutation_mode": "read_only",
+    "partial_state_possible": false,
+    "rerun_safe": true,
+    "environment_failures_fail_closed": true,
+    "evidence_write_requires_explicit_record": true
+  },
   "epistemic_boundary": {
     "source_status": "unverified",
     "needs_review_preserved": true,
     "human_confirmation_claimed": false
   },
-  "generated_at": "2026-08-20T19:47:29.479460+00:00"
+  "generated_at": "2026-08-20T21:54:41.380739+00:00"
 }

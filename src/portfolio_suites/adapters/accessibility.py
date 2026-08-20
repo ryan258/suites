@@ -5,8 +5,11 @@ from __future__ import annotations
 import datetime
 import json
 import re
+import shlex
 import subprocess
+import sys
 import time
+from pathlib import Path
 from typing import Any
 
 from ..contracts import SCHEMA_VERSION, validate_contract
@@ -14,6 +17,8 @@ from .common import get_git_fingerprint, get_repo_path
 
 ALLYS_TOOLS_DIR = get_repo_path("allys-tools", "ALLYS_TOOLS_DIR")
 WCAG_AUDITOR_DIR = get_repo_path("wcag-auditor", "WCAG_AUDITOR_DIR")
+DONOR_SOURCE_PROBE = Path(__file__).with_name("donor_wcag_331_source_probe.py")
+DONOR_BROWSER_PROBE = Path(__file__).with_name("donor_wcag_331_browser_probe.mjs")
 
 
 def parse_tap_output(stdout: str) -> tuple[int, int]:
@@ -27,6 +32,51 @@ def parse_tap_output(stdout: str) -> tuple[int, int]:
         elif re.match(r"^not\s+ok\s+\d+", stripped):
             failed += 1
     return passed, failed
+
+
+def _is_environment_blocked(output: str) -> bool:
+    """Recognize execution-environment failures without converting product failures to blockers."""
+    normalized = output.casefold()
+    permission_signal = any(
+        marker in normalized
+        for marker in ("eperm", "operation not permitted", "permission denied")
+    )
+    execution_context = any(
+        marker in normalized
+        for marker in ("listen", "socket", ".pipe", "playwright", "browser", "chromium")
+    )
+    missing_runtime = any(
+        marker in normalized
+        for marker in (
+            "executable doesn't exist",
+            "playwright install",
+            "please run the following command to download new browsers",
+        )
+    )
+    return (permission_signal and execution_context) or missing_runtime
+
+
+def _process_error(stage: str, command: list[str], process: subprocess.CompletedProcess[str]) -> dict[str, Any]:
+    full_stderr = process.stderr or ""
+    return {
+        "stage": stage,
+        "command": shlex.join(command),
+        "error_kind": "non_zero_exit",
+        "exit_code": process.returncode,
+        "stderr": full_stderr[:500],
+        "environment_blocked": _is_environment_blocked(full_stderr),
+    }
+
+
+def _exception_error(stage: str, command: list[str], error: Exception) -> dict[str, Any]:
+    message = str(error)
+    return {
+        "stage": stage,
+        "command": shlex.join(command),
+        "error_kind": type(error).__name__,
+        "message": message,
+        "environment_blocked": _is_environment_blocked(message),
+    }
 
 
 class AccessibilitySourceAdapter:
@@ -45,6 +95,95 @@ class AccessibilitySourceAdapter:
         donor_fp = get_git_fingerprint(WCAG_AUDITOR_DIR)
         operational_errors: list[dict[str, Any]] = []
 
+        # --- Stage 0: Authentic Donor Source and Browser Runtime ---
+        donor_source_cmd = [sys.executable, str(DONOR_SOURCE_PROBE), str(WCAG_AUDITOR_DIR)]
+        donor_runtime_cmd = ["node", str(DONOR_BROWSER_PROBE)]
+        donor_source: dict[str, Any] = {}
+        donor_result: dict[str, Any] = {}
+        donor_source_duration_ms = 0.0
+        donor_runtime_duration_ms = 0.0
+        donor_source_ok = False
+        donor_runtime_ok = False
+
+        t0_donor_source = time.perf_counter()
+        try:
+            donor_source_proc = subprocess.run(
+                donor_source_cmd,
+                cwd=WCAG_AUDITOR_DIR,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            donor_source_duration_ms = (time.perf_counter() - t0_donor_source) * 1000.0
+            if donor_source_proc.returncode == 0 and donor_source_proc.stdout.strip():
+                donor_source = json.loads(donor_source_proc.stdout)
+                donor_source_ok = (
+                    donor_source.get("rule_id") == "input-assistance-error-msg"
+                    and donor_source.get("wcag_criterion") == "3.3.1"
+                    and bool(donor_source.get("evaluate_expression"))
+                )
+                if not donor_source_ok:
+                    operational_errors.append({
+                        "stage": "donor_source_invocation",
+                        "command": shlex.join(donor_source_cmd),
+                        "error_kind": "invalid_output",
+                        "message": "Donor rule metadata or evaluate expression was invalid.",
+                        "environment_blocked": False,
+                    })
+            else:
+                operational_errors.append(
+                    _process_error("donor_source_invocation", donor_source_cmd, donor_source_proc)
+                )
+        except Exception as exc:
+            donor_source_duration_ms = (time.perf_counter() - t0_donor_source) * 1000.0
+            operational_errors.append(
+                _exception_error("donor_source_invocation", donor_source_cmd, exc)
+            )
+
+        if donor_source_ok:
+            t0_donor_runtime = time.perf_counter()
+            try:
+                donor_runtime_proc = subprocess.run(
+                    donor_runtime_cmd,
+                    cwd=ALLYS_TOOLS_DIR,
+                    input=json.dumps(donor_source),
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                donor_runtime_duration_ms = (time.perf_counter() - t0_donor_runtime) * 1000.0
+                if donor_runtime_proc.returncode == 0 and donor_runtime_proc.stdout.strip():
+                    donor_result = json.loads(donor_runtime_proc.stdout)
+                    outcomes = donor_result.get("outcomes")
+                    donor_runtime_ok = (
+                        donor_result.get("rule_id") == "input-assistance-error-msg"
+                        and donor_result.get("wcag_criterion") == "3.3.1"
+                        and isinstance(outcomes, dict)
+                        and set(outcomes) == {
+                            "invalid_input_missing_error_ref",
+                            "invalid_input_with_valid_errormessage",
+                            "invalid_input_with_valid_describedby",
+                        }
+                        and all(isinstance(value, bool) for value in outcomes.values())
+                    )
+                    if not donor_runtime_ok:
+                        operational_errors.append({
+                            "stage": "donor_browser_evaluation",
+                            "command": shlex.join(donor_runtime_cmd),
+                            "error_kind": "invalid_output",
+                            "message": "Donor browser result did not contain the required case outcomes.",
+                            "environment_blocked": False,
+                        })
+                else:
+                    operational_errors.append(
+                        _process_error("donor_browser_evaluation", donor_runtime_cmd, donor_runtime_proc)
+                    )
+            except Exception as exc:
+                donor_runtime_duration_ms = (time.perf_counter() - t0_donor_runtime) * 1000.0
+                operational_errors.append(
+                    _exception_error("donor_browser_evaluation", donor_runtime_cmd, exc)
+                )
+
         # --- Stage 1: Focused Test Gate ---
         t0_foc = time.perf_counter()
         foc_cmd = ["npx", "tsx", "--test", "a11y-tools/tests/wcag-331-error-association.test.ts"]
@@ -59,17 +198,14 @@ class AccessibilitySourceAdapter:
             foc_duration_ms = (time.perf_counter() - t0_foc) * 1000.0
             foc_passed, foc_failed = parse_tap_output(foc_proc.stdout)
             foc_ok = (foc_proc.returncode == 0 and foc_passed >= 6 and foc_failed == 0)
+            if not foc_ok and foc_proc.returncode != 0:
+                operational_errors.append(_process_error("focused_gate", foc_cmd, foc_proc))
         except Exception as exc:
             foc_duration_ms = (time.perf_counter() - t0_foc) * 1000.0
             foc_ok = False
             foc_passed = 0
             foc_failed = 1
-            operational_errors.append({
-                "stage": "focused_gate",
-                "command": " ".join(foc_cmd),
-                "error_kind": type(exc).__name__,
-                "message": str(exc),
-            })
+            operational_errors.append(_exception_error("focused_gate", foc_cmd, exc))
 
         # --- Stage 2: Complete Ally Test Suite & Typecheck Gate (Optional / Deep) ---
         full_cmd = ["npm", "run", "check"]
@@ -90,17 +226,16 @@ class AccessibilitySourceAdapter:
                 full_duration_ms = (time.perf_counter() - t0_full) * 1000.0
                 full_total, full_failed = parse_tap_output(full_proc.stdout)
                 full_ok = (full_proc.returncode == 0 and full_total >= 126 and full_failed == 0)
+                if not full_ok and full_proc.returncode != 0:
+                    operational_errors.append(
+                        _process_error("full_suite_gate", full_cmd, full_proc)
+                    )
             except Exception as exc:
                 full_duration_ms = (time.perf_counter() - t0_full) * 1000.0
                 full_ok = False
                 full_total = 0
                 full_failed = 1
-                operational_errors.append({
-                    "stage": "full_suite_gate",
-                    "command": " ".join(full_cmd),
-                    "error_kind": type(exc).__name__,
-                    "message": str(exc),
-                })
+                operational_errors.append(_exception_error("full_suite_gate", full_cmd, exc))
 
         # --- Stage 3: Full-Audit Integration Pipeline Gate (Optional / Deep) ---
         audit_cmd = ["npx", "tsx", "--test", "a11y-tools/tests/full-audit.test.ts"]
@@ -121,17 +256,18 @@ class AccessibilitySourceAdapter:
                 audit_duration_ms = (time.perf_counter() - t0_audit) * 1000.0
                 audit_passed, audit_failed = parse_tap_output(audit_proc.stdout)
                 audit_ok = (audit_proc.returncode == 0 and audit_passed >= 7 and audit_failed == 0)
+                if not audit_ok and audit_proc.returncode != 0:
+                    operational_errors.append(
+                        _process_error("full_audit_integration_gate", audit_cmd, audit_proc)
+                    )
             except Exception as exc:
                 audit_duration_ms = (time.perf_counter() - t0_audit) * 1000.0
                 audit_ok = False
                 audit_passed = 0
                 audit_failed = 1
-                operational_errors.append({
-                    "stage": "full_audit_integration_gate",
-                    "command": " ".join(audit_cmd),
-                    "error_kind": type(exc).__name__,
-                    "message": str(exc),
-                })
+                operational_errors.append(
+                    _exception_error("full_audit_integration_gate", audit_cmd, exc)
+                )
 
         # --- Stage 4: Direct DOM Snapshot & Contract Translation ---
         node_script = """
@@ -240,44 +376,52 @@ console.log(JSON.stringify(result));
                     }
                     validated = validate_contract("A11yFinding", contract_finding)
                     findings.append(validated)
+            elif eval_proc.returncode != 0:
+                operational_errors.append(
+                    _process_error("dom_snapshot_evaluation", ["npx", "tsx", "-e", "<snapshot-probe>"], eval_proc)
+                )
             else:
                 operational_errors.append({
                     "stage": "dom_snapshot_evaluation",
-                    "error_kind": "non_zero_exit" if eval_proc.returncode != 0 else "empty_output",
+                    "command": "npx tsx -e <snapshot-probe>",
+                    "error_kind": "empty_output",
                     "exit_code": eval_proc.returncode,
                     "stderr": eval_proc.stderr[:500],
+                    "environment_blocked": _is_environment_blocked(eval_proc.stderr),
                 })
         except Exception as exc:
-            operational_errors.append({
-                "stage": "dom_snapshot_evaluation",
-                "error_kind": type(exc).__name__,
-                "message": str(exc),
-            })
+            operational_errors.append(
+                _exception_error(
+                    "dom_snapshot_evaluation",
+                    ["npx", "tsx", "-e", "<snapshot-probe>"],
+                    exc,
+                )
+            )
 
-        # --- Genuine Donor Parity Evaluation ---
-        # Compare actual target rule outcomes against donor wcag-auditor InputAssistanceRule logic across test scenarios
+        # --- Authentic Donor/Destination Parity Evaluation ---
+        target_outcomes = {
+            "invalid_input_missing_error_ref": any(f.get("target") == "#email" for f in findings),
+            "invalid_input_with_valid_errormessage": any(f.get("target") == "#pwd" for f in findings),
+            "invalid_input_with_valid_describedby": any(f.get("target") == "#name" for f in findings),
+        }
+        donor_outcomes = donor_result.get("outcomes", {}) if donor_runtime_ok else {}
         parity_comparisons = [
             {
-                "case_id": "invalid_input_missing_error_ref",
-                "target_flagged": any(f.get("target") == "#email" for f in findings),
-                "donor_expected_flagged": True,
-                "matches": any(f.get("target") == "#email" for f in findings) is True,
-            },
-            {
-                "case_id": "invalid_input_with_valid_errormessage",
-                "target_flagged": any(f.get("target") == "#pwd" for f in findings),
-                "donor_expected_flagged": False,
-                "matches": any(f.get("target") == "#pwd" for f in findings) is False,
-            },
-            {
-                "case_id": "invalid_input_with_valid_describedby",
-                "target_flagged": any(f.get("target") == "#name" for f in findings),
-                "donor_expected_flagged": False,
-                "matches": any(f.get("target") == "#name" for f in findings) is False,
-            },
+                "case_id": case_id,
+                "target_flagged": target_flagged,
+                "donor_flagged": donor_outcomes.get(case_id),
+                "matches": (
+                    case_id in donor_outcomes
+                    and target_flagged == donor_outcomes.get(case_id)
+                ),
+            }
+            for case_id, target_flagged in target_outcomes.items()
         ]
         donor_parity_verified = (
-            len(parity_comparisons) == 3 and all(c["matches"] for c in parity_comparisons)
+            donor_source_ok
+            and donor_runtime_ok
+            and len(parity_comparisons) == 3
+            and all(c["matches"] for c in parity_comparisons)
         )
 
         # full_ok/audit_ok are None when full_suite=False (stage not executed, not a fabricated pass);
@@ -285,6 +429,8 @@ console.log(JSON.stringify(result));
         # the skipped deep stages passed.
         all_stages_passed = (
             foc_ok
+            and donor_source_ok
+            and donor_runtime_ok
             and full_ok is not False
             and audit_ok is not False
             and len(findings) >= 1
@@ -296,8 +442,22 @@ console.log(JSON.stringify(result));
             "wave": "A2",
             "migration_kind": "source_backed_runtime_integration",
             "receipt_kind": "local_working_tree_candidate_receipt" if target_fp.get("is_dirty") else "clean_commit_receipt",
-            "status": "verified_candidate" if all_stages_passed else "failed",
+            "status": "parity_verified" if all_stages_passed else "failed",
             "all_stages_passed": all_stages_passed,
+            "representative_inputs": [
+                {
+                    "case_id": "invalid_input_missing_error_ref",
+                    "purpose": "defective invalid control with no error association",
+                },
+                {
+                    "case_id": "invalid_input_with_valid_errormessage",
+                    "purpose": "valid aria-errormessage association",
+                },
+                {
+                    "case_id": "invalid_input_with_valid_describedby",
+                    "purpose": "valid aria-describedby association",
+                },
+            ],
             "target": {
                 "name": "allys-tools",
                 "path": str(ALLYS_TOOLS_DIR),
@@ -310,19 +470,37 @@ console.log(JSON.stringify(result));
                 "fingerprint": donor_fp,
                 "rule_ported": "input-assistance-error-msg (WCAG 3.3.1)",
                 "role": "donor_parity_source",
+                "source_invoked": donor_source_ok,
+                "browser_runtime_invoked": donor_runtime_ok,
+                "runtime_outcomes": donor_outcomes,
+                "runtime_violations": donor_result.get("violations", []),
                 "donor_parity_verified": donor_parity_verified,
                 "parity_comparisons": parity_comparisons,
             },
             "stages": {
+                "donor_source_invocation": {
+                    "command": shlex.join(donor_source_cmd),
+                    "duration_ms": round(donor_source_duration_ms, 2),
+                    "rule_id": donor_source.get("rule_id"),
+                    "wcag_criterion": donor_source.get("wcag_criterion"),
+                    "source_path": donor_source.get("source_path"),
+                    "passed": donor_source_ok,
+                },
+                "donor_browser_evaluation": {
+                    "command": shlex.join(donor_runtime_cmd),
+                    "duration_ms": round(donor_runtime_duration_ms, 2),
+                    "case_count": len(donor_result.get("outcomes", {})),
+                    "passed": donor_runtime_ok,
+                },
                 "focused_parity_gate": {
-                    "command": " ".join(foc_cmd),
+                    "command": shlex.join(foc_cmd),
                     "duration_ms": round(foc_duration_ms, 2),
                     "passed_tests": foc_passed,
                     "failed_tests": foc_failed,
                     "passed": foc_ok,
                 },
                 "full_suite_and_typecheck_gate": {
-                    "command": " ".join(full_cmd),
+                    "command": shlex.join(full_cmd),
                     "skipped": not full_suite,
                     "duration_ms": round(full_duration_ms, 2),
                     "total_tests_passed": full_total,
@@ -330,7 +508,7 @@ console.log(JSON.stringify(result));
                     "passed": full_ok,
                 },
                 "full_audit_integration_gate": {
-                    "command": " ".join(audit_cmd),
+                    "command": shlex.join(audit_cmd),
                     "skipped": not full_suite,
                     "duration_ms": round(audit_duration_ms, 2),
                     "passed_tests": audit_passed,
@@ -341,6 +519,16 @@ console.log(JSON.stringify(result));
             },
             "findings": findings,
             "operational_errors": operational_errors,
+            "environment_blocked": bool(operational_errors) and all(
+                error.get("environment_blocked", False) for error in operational_errors
+            ),
+            "recovery_behavior": {
+                "runtime_mutation_mode": "read_only",
+                "partial_state_possible": False,
+                "rerun_safe": True,
+                "environment_failures_fail_closed": True,
+                "evidence_write_requires_explicit_record": True,
+            },
             "epistemic_boundary": {
                 "source_status": "unverified",
                 "needs_review_preserved": True,

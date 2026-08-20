@@ -1,36 +1,41 @@
-# A2 — ARIA error-association implementation candidate
+# A2 — ARIA error-association recovery receipt
 
-Status: implementation and fixture added; runtime verification incomplete.
+Status: parity-verified runtime recovery at clean Ally commit `f2b4c6e`.
 
-## Change
+## Recovered behavior
 
-The canonical Ally ARIA validator now checks controls marked `aria-invalid="true"`. A 3.3.1
-`unverified` finding is created when neither `aria-errormessage` nor `aria-describedby` is present,
+The canonical Ally ARIA validator checks controls marked `aria-invalid="true"`. An `unverified`
+WCAG 3.3.1 finding is created when neither `aria-errormessage` nor `aria-describedby` is present,
 or when all named targets are missing or contain no text. The evidence records the reference IDs and
 resolved text. A valid non-empty error target does not report.
 
-Files changed in the source anchor:
+The donor repository remains unchanged and recoverable. A2 does not authorize freezing, retiring,
+moving, or deleting WCAG Auditor.
 
-- `/Users/ryanjohnson/Projects/allys-tools/a11y-tools/aria-validator/index.ts`
-- `/Users/ryanjohnson/Projects/allys-tools/a11y-tools/tests/contracts.test.ts`
+## Authentic parity gate
 
-The pre-existing untracked `.DS_Store` remains untouched. WCAG Auditor remains unchanged.
+The suite-owned adapter now:
 
-## Verification
+1. imports WCAG Auditor's real `InputAssistanceRule` from its recorded source checkout;
+2. invokes that class to capture the exact JavaScript expression it sends to Playwright;
+3. executes the donor expression in the already-installed Playwright Chromium runtime;
+4. executes Ally's canonical validator against the same three representative DOM cases;
+5. compares captured donor and destination outcomes rather than using expected booleans; and
+6. retains source, dependency, command, input, output, failure, and rerun-safety evidence.
 
-- TypeScript compilation (`tsc --noEmit`, invoked by `npm run check`) passed before the runtime test
-  runner attempted to start.
-- `git diff --check` passed.
-- The new regression covers a valid association, broken ID, empty target, and missing association;
-  it also asserts `unverified` status and structured evidence.
-- Runtime focused/full tests are **not passed evidence**. `tsx` could not create its local IPC socket
-  in the sandbox (`listen EPERM`), and the required approved retry was rejected because execution
-  allowance was exhausted until 2026-08-20 01:00 America/Chicago.
+The formal receipt is [`A2-WCAG-331-EVIDENCE.json`](A2-WCAG-331-EVIDENCE.json). It records:
 
-## Completion gate
+- authentic donor source and browser-runtime invocation;
+- three matching donor/destination outcomes;
+- 6 focused tests, 127 full Ally tests, and 7 full-audit integration tests passing;
+- clean source commits and lockfile/tested-file SHA-256 fingerprints for both repositories;
+- zero operational errors; and
+- a read-only, partial-state-free, rerun-safe recovery boundary.
 
-Do not mark A2 complete until the focused contract test and `npm run check` finish successfully in
-an environment that permits the runner's local IPC socket. If they fail, repair the candidate and
-re-run both. A live browser probe is optional for this snapshot-driven function but desirable before
-folding broader dynamic behavior.
+## Environment boundary
 
+If tsx, npm, or Playwright cannot execute because of socket, browser, or permission restrictions,
+the current run is `unverifiable_environment`. It is neither a pass nor a product failure. Nonzero
+exits from focused, full-suite, full-audit, donor-source, donor-browser, and destination-evaluation
+stages all enter the same operational-error channel. Only an explicit `--record` run may replace the
+retained receipt.
