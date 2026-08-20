@@ -39,6 +39,8 @@ class ServerTests(unittest.TestCase):
         data = self._get_json("/api/summary")
         self.assertEqual(data["total_projects"], 70)
         self.assertEqual(len(data["suites"]), 8)
+        self.assertEqual(data["recovery_target_score"], 9.0)
+        self.assertEqual(data["recovered_runtime_behaviors"], 1)
 
     def test_suites_endpoint(self):
         data = self._get_json("/api/suites")
@@ -60,7 +62,8 @@ class ServerTests(unittest.TestCase):
     def test_waves_endpoint(self):
         data = self._get_json("/api/waves")
         self.assertEqual(len(data), 43)
-        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_migration"), 2)
+        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_analysis"), 1)
+        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_runtime_recovery"), 1)
         self.assertEqual(sum(1 for row in data if row["execution_kind"] == "prototype_check"), 41)
         self.assertTrue(all("prototype_passed" in row for row in data))
 

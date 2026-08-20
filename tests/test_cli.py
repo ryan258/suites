@@ -24,6 +24,8 @@ class CLITests(unittest.TestCase):
         output = f.getvalue()
         self.assertIn("Portfolio snapshot", output)
         self.assertIn("Top-level directories reviewed: 70", output)
+        self.assertIn("Recovery standard: 9.0/10 target", output)
+        self.assertIn("1 runtime recovery, 1 analysis, 0 adopted, 0 converged", output)
 
     def test_next_command(self):
         f = io.StringIO()
@@ -86,7 +88,7 @@ class CLITests(unittest.TestCase):
             code = main(["wave", "accessibility", "A1", "--no-record"])
         self.assertEqual(code, 0)
         output = f.getvalue()
-        self.assertIn("[VERIFIED]", output)
+        self.assertIn("[ANALYSIS]", output)
 
     def test_wave_run_no_record(self):
         f = io.StringIO()
@@ -102,9 +104,11 @@ class CLITests(unittest.TestCase):
         f = io.StringIO()
         with redirect_stdout(f):
             code = main(["wave", "accessibility", "A2"])
-        self.assertEqual(code, 0)
+        self.assertIn(code, {0, 1})
         self.assertEqual(evidence.read_bytes(), before)
         self.assertNotIn("Evidence recorded at", f.getvalue())
+        if code == 1:
+            self.assertIn("[UNVERIFIABLE]", f.getvalue())
 
     def test_wave_unknown_fails_closed(self):
         f = io.StringIO()
@@ -117,10 +121,14 @@ class CLITests(unittest.TestCase):
         f = io.StringIO()
         with redirect_stdout(f):
             code = main(["wave", "--all", "--no-record"])
-        self.assertEqual(code, 0)
         output = f.getvalue()
-        self.assertIn("2/43 waves verified", output)
+        self.assertIn(code, {0, 1})
+        self.assertIn("1 verified analyses", output)
         self.assertIn("41 prototype checks passed", output)
+        if code == 0:
+            self.assertIn("1 runtime recoveries", output)
+        else:
+            self.assertIn("1 environment-unverifiable", output)
 
 
 if __name__ == "__main__":

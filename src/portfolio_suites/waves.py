@@ -53,12 +53,21 @@ class WaveRunner:
             return cls._run_generic_wave(suite, wave_id, write_evidence)
 
         manifest_status = wave_spec.get("status", "specified")
-        exec_kind = "verified_migration" if manifest_status == "complete" else "prototype_check"
+        claim_kind = wave_spec.get("recovery_claim", {}).get("kind")
+        if manifest_status == "complete" and claim_kind == "runtime":
+            exec_kind = "verified_runtime_recovery"
+        elif manifest_status == "complete":
+            exec_kind = "verified_analysis"
+        else:
+            exec_kind = "prototype_check"
 
         raw_res = runner_fn(suite, wave_id, write_evidence)
 
-        # Migration acceptance is true only for a completed manifest whose authentic gate passed.
-        is_migration_verified = exec_kind == "verified_migration" and raw_res.passed
+        if not raw_res.passed and raw_res.data and raw_res.data.get("environment_blocked"):
+            exec_kind = "unverifiable_environment"
+
+        # A completed analysis and a recovered runtime are distinct verified claims.
+        is_migration_verified = exec_kind in {"verified_analysis", "verified_runtime_recovery"} and raw_res.passed
         prototype_passed = exec_kind == "prototype_check" and raw_res.passed
 
         return WaveRunResult(
@@ -117,11 +126,21 @@ class WaveRunner:
             if full_stage.get("skipped")
             else f"{focused_tests} focused tests, {full_stage.get('total_tests_passed', 0)} full suite tests passed"
         )
+        if receipt.get("environment_blocked"):
+            message = (
+                "A2 donor/destination runtime gate is unverifiable in this environment; "
+                "no product failure or recovery pass is claimed."
+            )
+        else:
+            message = (
+                "Executed authentic WCAG Auditor donor and Ally destination runtimes "
+                f"({depth_note}); generated {len(findings)} valid A11yFindings."
+            )
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            f"Executed WCAG 3.3.1 error association in allys-tools runtime ({depth_note}); generated {len(findings)} valid A11yFindings.",
+            message,
             str(evidence_file) if write_evidence else None,
             receipt,
         )

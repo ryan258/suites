@@ -35,7 +35,15 @@ def _status() -> int:
     summary = get_portfolio_summary()
     print(f"Portfolio snapshot: {summary['snapshot_at']}")
     print(f"Top-level directories reviewed: {summary['total_projects']}")
-    print(f"Portfolio migration progress: {summary['completed_waves']}/{summary['total_waves']} waves ({summary['portfolio_progress_pct']}%)")
+    print(f"Recovery standard: {summary['recovery_target_score']:.1f}/10 target ({summary['recovery_standard_id']})")
+    print(f"Wave milestone progress: {summary['completed_waves']}/{summary['total_waves']} ({summary['portfolio_progress_pct']}%; not a recovery score)")
+    print(
+        "Verified claims: "
+        f"{summary['recovered_runtime_behaviors']} runtime recovery, "
+        f"{summary['verified_analysis_milestones']} analysis, "
+        f"{summary['adopted_runtime_behaviors']} adopted, "
+        f"{summary['converged_runtime_behaviors']} converged"
+    )
     print("-" * 65)
     for s in summary["suites"]:
         print(f"{s['id']:<22} sources={s['project_count']:<2} next={s['current_wave']:<10} progress={s['waves_complete']}/{s['waves_total']}")
@@ -178,24 +186,30 @@ def _contract_cmd(name: str, action: str, file_path: str | None) -> int:
 def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_evidence: bool) -> int:
     if run_all or (not suite_id and not wave_id):
         results = WaveRunner.run_all(write_evidence=write_evidence)
-        verified_count = sum(1 for r in results if r.execution_kind == "verified_migration" and r.passed)
+        runtime_count = sum(1 for r in results if r.execution_kind == "verified_runtime_recovery" and r.passed)
+        analysis_count = sum(1 for r in results if r.execution_kind == "verified_analysis" and r.passed)
         prototype_count = sum(1 for r in results if r.execution_kind == "prototype_check" and r.prototype_passed)
         failed_count = sum(
             1
             for r in results
-            if r.execution_kind in {"verified_migration", "prototype_check"}
+            if r.execution_kind in {"verified_analysis", "verified_runtime_recovery", "prototype_check"}
             and not (r.passed or r.prototype_passed)
         )
         unintegrated_count = sum(1 for r in results if r.execution_kind == "unintegrated_specification")
         error_count = sum(1 for r in results if r.execution_kind == "error")
+        unverifiable_count = sum(1 for r in results if r.execution_kind == "unverifiable_environment")
 
         for r in results:
             if r.execution_kind == "error":
                 tag = "[ERROR]"
-            elif r.execution_kind == "verified_migration" and r.passed:
-                tag = "[VERIFIED]"
+            elif r.execution_kind == "verified_runtime_recovery" and r.passed:
+                tag = "[RECOVERED]"
+            elif r.execution_kind == "verified_analysis" and r.passed:
+                tag = "[ANALYSIS]"
             elif r.execution_kind == "prototype_check" and r.prototype_passed:
                 tag = "[PROTOTYPE]"
+            elif r.execution_kind == "unverifiable_environment":
+                tag = "[UNVERIFIABLE]"
             elif r.execution_kind == "unintegrated_specification":
                 tag = "[SPECIFIED]"
             else:
@@ -203,11 +217,12 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
             print(f"{tag:<12} {r.suite_id:<20} {r.wave_id:<4} : {r.message}")
         print("-" * 65)
         print(
-            f"Results: {verified_count}/{len(results)} waves verified, "
+            f"Results: {runtime_count} runtime recoveries, {analysis_count} verified analyses, "
             f"{prototype_count} prototype checks passed, {failed_count} checks failed, "
-            f"{unintegrated_count} unintegrated, {error_count} errors."
+            f"{unverifiable_count} environment-unverifiable, {unintegrated_count} unintegrated, "
+            f"{error_count} errors."
         )
-        return 1 if failed_count or unintegrated_count or error_count else 0
+        return 1 if failed_count or unverifiable_count or unintegrated_count or error_count else 0
 
     if not suite_id or not wave_id:
         print("Error: Specify suite and wave (e.g. 'suites wave accessibility A2') or '--all'", file=sys.stderr)
@@ -216,10 +231,14 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
     result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=write_evidence)
     if result.execution_kind == "error":
         tag = "[ERROR]"
-    elif result.execution_kind == "verified_migration" and result.passed:
-        tag = "[VERIFIED]"
+    elif result.execution_kind == "verified_runtime_recovery" and result.passed:
+        tag = "[RECOVERED]"
+    elif result.execution_kind == "verified_analysis" and result.passed:
+        tag = "[ANALYSIS]"
     elif result.execution_kind == "prototype_check" and result.prototype_passed:
         tag = "[PROTOTYPE]"
+    elif result.execution_kind == "unverifiable_environment":
+        tag = "[UNVERIFIABLE]"
     elif result.execution_kind == "unintegrated_specification":
         tag = "[SPECIFIED]"
     else:

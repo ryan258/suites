@@ -162,7 +162,13 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                             is_passed = (w_status == "complete")
                             method_name = f"_run_{s_id.replace('-', '_')}_{w_id.lower()}"
                             has_runner = hasattr(WaveRunner, method_name)
-                            exec_kind = "verified_migration" if is_passed else ("prototype_check" if has_runner else "unintegrated_specification")
+                            claim_kind = w.get("recovery_claim", {}).get("kind")
+                            if is_passed and claim_kind == "runtime":
+                                exec_kind = "verified_runtime_recovery"
+                            elif is_passed:
+                                exec_kind = "verified_analysis"
+                            else:
+                                exec_kind = "prototype_check" if has_runner else "unintegrated_specification"
                             payload.append({
                                 "suite_id": s_id,
                                 "wave_id": w_id,

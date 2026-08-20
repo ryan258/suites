@@ -406,10 +406,14 @@ class SuitesApp {
   async runSingleWave(suiteId, waveId) {
     try {
       const res = await fetch(`/api/waves/${suiteId}/${waveId}/run`, { method: 'POST' }).then(r => r.json());
-      const resultLabel = res.execution_kind === 'verified_migration' && res.passed
-        ? 'VERIFIED MIGRATION'
+      const resultLabel = res.execution_kind === 'verified_runtime_recovery' && res.passed
+        ? 'VERIFIED RUNTIME RECOVERY'
+        : res.execution_kind === 'verified_analysis' && res.passed
+          ? 'VERIFIED ANALYSIS'
         : res.execution_kind === 'prototype_check' && res.prototype_passed
           ? 'PROTOTYPE CHECK PASSED'
+          : res.execution_kind === 'unverifiable_environment'
+            ? 'UNVERIFIABLE IN THIS ENVIRONMENT'
           : res.execution_kind === 'unintegrated_specification'
             ? 'SPECIFIED / NOT INTEGRATED'
             : 'FAILED';
@@ -429,13 +433,16 @@ class SuitesApp {
         (s.waves || []).forEach(w => waves.push({ sId: s.id, wId: w.id }));
       });
 
-      let verifiedCount = 0;
+      let recoveredCount = 0;
+      let analysisCount = 0;
       let prototypeCount = 0;
       let unresolvedCount = 0;
       for (const w of waves) {
         const res = await fetch(`/api/waves/${w.sId}/${w.wId}/run`, { method: 'POST' }).then(r => r.json());
-        if (res.execution_kind === 'verified_migration' && res.passed) {
-          verifiedCount++;
+        if (res.execution_kind === 'verified_runtime_recovery' && res.passed) {
+          recoveredCount++;
+        } else if (res.execution_kind === 'verified_analysis' && res.passed) {
+          analysisCount++;
         } else if (res.execution_kind === 'prototype_check' && res.prototype_passed) {
           prototypeCount++;
         } else {
@@ -445,7 +452,8 @@ class SuitesApp {
 
       alert(
         `Wave checks complete.\n\n` +
-        `${verifiedCount}/${waves.length} verified migrations\n` +
+        `${recoveredCount} verified runtime recoveries\n` +
+        `${analysisCount} verified analyses\n` +
         `${prototypeCount} prototype checks passed\n` +
         `${unresolvedCount} failed or unintegrated`
       );
