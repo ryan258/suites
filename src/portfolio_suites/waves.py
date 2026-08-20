@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .adapters.accessibility import AccessibilitySourceAdapter
 from .contracts import generate_sample, validate_contract
 from .engines.accessibility import AccessibilityEngine
 from .engines.agent_reliability import AgentReliabilityEngine
@@ -95,31 +96,32 @@ class WaveRunner:
 
     @classmethod
     def _run_accessibility_a2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        sample_html = """
-        <form id="checkout">
-            <input id="email" class="is-invalid" type="email">
-            <span class="err">Invalid email</span>
-            <img src="banner.jpg">
-            <button></button>
-        </form>
-        """
-        findings = AccessibilityEngine.audit_html_snippet(sample_html)
-        passed = len(findings) == 3 and all(f.get("schema_version") == "1.0.0" for f in findings)
+        receipt = AccessibilitySourceAdapter.execute_wcag_331_migration_gate(full_suite=write_evidence)
+        passed = receipt.get("all_stages_passed", False)
+        findings = receipt.get("findings", [])
+        full_stage = receipt.get("stages", {}).get("full_suite_and_typecheck_gate", {})
+        focused_tests = receipt.get("stages", {}).get("focused_parity_gate", {}).get("passed_tests", 0)
+
         evidence_dir = SUITES_ROOT / "accessibility" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "A2-WCAG-331-EVIDENCE.json"
 
         if write_evidence:
             with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump({"wave": "A2", "findings": findings, "status": "verified"}, f, indent=2)
+                json.dump(receipt, f, indent=2)
 
+        depth_note = (
+            f"{focused_tests} focused tests (full suite skipped for fast check)"
+            if full_stage.get("skipped")
+            else f"{focused_tests} focused tests, {full_stage.get('total_tests_passed', 0)} full suite tests passed"
+        )
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            f"Executed WCAG deterministic audit rules; generated {len(findings)} valid A11yFindings.",
+            f"Executed WCAG 3.3.1 error association in allys-tools runtime ({depth_note}); generated {len(findings)} valid A11yFindings.",
             str(evidence_file) if write_evidence else None,
-            {"findings_count": len(findings)},
+            receipt,
         )
 
     @classmethod

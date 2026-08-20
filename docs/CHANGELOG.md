@@ -4,6 +4,42 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-20 — Horizon 1 Migration: Wave A2 (WCAG 3.3.1 Error Association into Ally) — Local Candidate Hardened
+
+### Outcome
+
+Successfully implemented and hardened the first source-backed migration candidate with four-stage verification, content-addressed dirty-tree provenance, operational error separation, and preserved epistemic source status. Ported the deterministic **WCAG 3.3.1 Error Association** rule from donor [`wcag-auditor`](file:///Users/ryanjohnson/Projects/wcag-auditor) into canonical destination runtime [`allys-tools`](file:///Users/ryanjohnson/Projects/allys-tools).
+
+```text
+MIGRATION PROGRESS: 1/43 waves verified (A1); Wave A2 verified as local working-tree candidate (42 prototype/candidate checks passing)
+ACCESSIBILITY SUITE: 1/6 waves complete (A1); Wave A2 verified candidate; next: A2 commit / A3
+RUNTIME GATES: 127/127 complete Ally tests passing (including 6/6 focused WCAG 3.3.1 tests and 7/7 full-audit tests); TypeScript check clean
+CONTROL PLANE: 57/57 unit tests passing; 0 registry errors
+EVIDENCE RECEIPT: accessibility/evidence/A2-WCAG-331-EVIDENCE.json (content-addressed candidate receipt with patch & file SHA-256 hashes)
+```
+
+### Deliverables & Verifications
+
+1. **Target Runtime Parity Tests ([allys-tools](file:///Users/ryanjohnson/Projects/allys-tools))**:
+   - Added [`a11y-tools/tests/wcag-331-error-association.test.ts`](file:///Users/ryanjohnson/Projects/allys-tools/a11y-tools/tests/wcag-331-error-association.test.ts) covering defective and compliant scenarios matching [`A1-parity-cases.json`](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-parity-cases.json).
+   - Added full-audit pipeline test to [`a11y-tools/tests/full-audit.test.ts`](file:///Users/ryanjohnson/Projects/allys-tools/a11y-tools/tests/full-audit.test.ts) verifying that `aria-validator` completes, covers the invalid page, emits the 3.3.1 finding into combined findings, and reports 0 operational errors.
+   - Validated complete test suite: 127/127 tests pass and `npm run check` (typecheck + tests) passes cleanly.
+
+2. **Hardened Source Adapter & Evidence Semantics ([suites](file:///Users/ryanjohnson/Projects/suites))**:
+   - Implemented [`AccessibilitySourceAdapter`](file:///Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/accessibility.py) with four distinct verification stages:
+     1. Focused parity gate (6/6 tests).
+     2. Full suite & typecheck gate (127/127 tests).
+     3. Full-audit integration pipeline gate (7/7 tests, manifest coverage verified).
+     4. Direct DOM snapshot evaluation & contract translation with preserved `source_status: "unverified"`, truthful `needs_review: true`, and donor parity comparison.
+   - Captures comprehensive dirty-tree provenance: `HEAD`, branch, clean/dirty state, patch SHA-256, lockfile SHA-256, and SHA-256 hashes for all tested files.
+   - Separates operational failures (`operational_errors: []`) from assertion outcomes.
+
+3. **Truthful Control Plane State**:
+   - Retained Wave `A2` as `"runner_prototyped"` / verified local candidate in [`accessibility/suite.json`](file:///Users/ryanjohnson/Projects/suites/accessibility/suite.json) until Ryan authorizes staging/committing.
+   - `suites status` honestly reports `1/43 waves (2.3%)` while the candidate receipt [`A2-WCAG-331-EVIDENCE.json`](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A2-WCAG-331-EVIDENCE.json) is fully reproducible and content-addressed.
+
+---
+
 ## 2026-08-20 — Truth Model, Evidence Boundary, and Execution Semantics Hardened
 
 ### Outcome

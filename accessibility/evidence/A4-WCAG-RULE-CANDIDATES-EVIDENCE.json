@@ -24,7 +24,7 @@
               "dom_snippet": "<!-- Setup: English page containing an unmarked long Spanish phrase plus a correctly marked Spanish phrase. -->",
               "selector": "fixture:inline-language-change",
               "source": "parity://wcag-auditor/inline-language-change",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -52,7 +52,7 @@
               "dom_snippet": "<!-- Setup: Three videos: description track, linked transcript, and neither. -->",
               "selector": "fixture:audio-description-track",
               "source": "parity://wcag-auditor/audio-description-track",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -80,7 +80,7 @@
               "dom_snippet": "<!-- Setup: Primary content without main and a minimal page whose structure does not require the inferred fix. -->",
               "selector": "fixture:adaptable-landmarks",
               "source": "parity://wcag-auditor/adaptable-landmarks",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -108,7 +108,7 @@
               "dom_snippet": "<!-- Setup: Autoplay carousel with pause, autoplay carousel without pause, and static carousel markup. -->",
               "selector": "fixture:enough-time-controls",
               "source": "parity://wcag-auditor/enough-time-controls",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -136,7 +136,7 @@
               "dom_snippet": "<!-- Setup: Context-free 'click here', contextually named 'read more' with accessible description, and descriptive link. -->",
               "selector": "fixture:link-purpose",
               "source": "parity://wcag-auditor/link-purpose",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -164,7 +164,7 @@
               "dom_snippet": "<!-- Setup: Tab to controls under fixed header, fixed footer, and unobscured content at multiple viewport sizes. -->",
               "selector": "fixture:focus-not-obscured",
               "source": "parity://wcag-auditor/focus-not-obscured",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -192,7 +192,7 @@
               "dom_snippet": "<!-- Setup: Multipoint gesture with button alternative and the same gesture without an alternative. -->",
               "selector": "fixture:pointer-gestures",
               "source": "parity://wcag-auditor/pointer-gestures",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -220,7 +220,7 @@
               "dom_snippet": "<!-- Setup: Controls acting on pointerdown, cancellable pointerup, and native click. -->",
               "selector": "fixture:pointer-cancellation",
               "source": "parity://wcag-auditor/pointer-cancellation",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -248,7 +248,7 @@
               "dom_snippet": "<!-- Setup: Draggable item with keyboard/button alternative and one without an alternative. -->",
               "selector": "fixture:dragging-movements",
               "source": "parity://wcag-auditor/dragging-movements",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -276,7 +276,7 @@
               "dom_snippet": "<!-- Setup: Select that navigates immediately, select plus explicit submit, and non-navigation onchange. -->",
               "selector": "fixture:predictable-navigation",
               "source": "parity://wcag-auditor/predictable-navigation",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -304,7 +304,7 @@
               "dom_snippet": "<!-- Setup: aria-invalid controls with valid aria-errormessage, broken ID, empty target, and no reference. -->",
               "selector": "fixture:input-assistance-error-msg",
               "source": "parity://wcag-auditor/input-assistance-error-msg",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "deterministic",
@@ -332,7 +332,7 @@
               "dom_snippet": "<!-- Setup: Constrained fields with visible helper, fieldset legend, ambiguous placeholder-only hint, and no hint. -->",
               "selector": "fixture:labels-or-instructions",
               "source": "parity://wcag-auditor/labels-or-instructions",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -360,7 +360,7 @@
               "dom_snippet": "<!-- Setup: Correctable format error with concrete suggestion, problem-only message, and unsafe-to-suggest case. -->",
               "selector": "fixture:error-suggestion",
               "source": "parity://wcag-auditor/error-suggestion",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -388,7 +388,7 @@
               "dom_snippet": "<!-- Setup: Required fields identified in label, group instructions, symbol legend, and not visibly identified. -->",
               "selector": "fixture:required-field-indicators",
               "source": "parity://wcag-auditor/required-field-indicators",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -416,7 +416,7 @@
               "dom_snippet": "<!-- Setup: Repeated email with auto-fill, repeated email without auto-fill, and two semantically different email fields. -->",
               "selector": "fixture:redundant-entry",
               "source": "parity://wcag-auditor/redundant-entry",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -444,7 +444,7 @@
               "dom_snippet": "<!-- Setup: Paste-blocked password, CAPTCHA with alternative, CAPTCHA without alternative, and password-manager-compatible form. -->",
               "selector": "fixture:accessible-authentication",
               "source": "parity://wcag-auditor/accessible-authentication",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -472,7 +472,7 @@
               "dom_snippet": "<!-- Setup: Personal-data fields with valid autocomplete, inferred field without autocomplete, and non-personal same-name field. -->",
               "selector": "fixture:identify-input-purpose",
               "source": "parity://wcag-auditor/identify-input-purpose",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -500,7 +500,7 @@
               "dom_snippet": "<!-- Setup: Async success/error updates with status/alert, aria-live, focus move, and no programmatic announcement. -->",
               "selector": "fixture:status-messages",
               "source": "parity://wcag-auditor/status-messages",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -528,7 +528,7 @@
               "dom_snippet": "<!-- Setup: Two templates with intentional local navigation and two with inconsistent repeated primary navigation. -->",
               "selector": "fixture:consistent-navigation",
               "source": "parity://wcag-auditor/consistent-navigation",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -556,7 +556,7 @@
               "dom_snippet": "<!-- Setup: Authenticated routes, excluded logout/destructive links, included account routes, SPA data-route links, robots denial, and depth boundary. -->",
               "selector": "fixture:crawl-auth-and-filters",
               "source": "parity://wcag-auditor/crawl-auth-and-filters",
-              "timestamp": "2026-08-20T15:51:40.483319+00:00"
+              "timestamp": "2026-08-20T19:16:22.685735+00:00"
             }
           ],
           "evidence_kind": "manual",
@@ -582,7 +582,7 @@
           "dom_snippet": "<table>\n                    <tr><td>Cell without th</td></tr>\n                </table>",
           "selector": "table:nth-of-type(1)",
           "source": "snippet://wcag-auditor-port",
-          "timestamp": "2026-08-20T15:51:40.483708+00:00"
+          "timestamp": "2026-08-20T19:16:22.686585+00:00"
         }
       ],
       "evidence_kind": "manual",
@@ -601,7 +601,7 @@
           "dom_snippet": "<a href=\"/doc\">click here</a>",
           "selector": "a",
           "source": "snippet://wcag-auditor-port",
-          "timestamp": "2026-08-20T15:51:40.483708+00:00"
+          "timestamp": "2026-08-20T19:16:22.686585+00:00"
         }
       ],
       "evidence_kind": "manual",
@@ -620,7 +620,7 @@
           "dom_snippet": "<input type=\"email\" name=\"email\">",
           "selector": "input",
           "source": "snippet://wcag-auditor-port",
-          "timestamp": "2026-08-20T15:51:40.483708+00:00"
+          "timestamp": "2026-08-20T19:16:22.686585+00:00"
         }
       ],
       "evidence_kind": "manual",
@@ -639,7 +639,7 @@
           "dom_snippet": "<body> ... (no <main>) ... </body>",
           "selector": "body",
           "source": "snippet://wcag-auditor-port",
-          "timestamp": "2026-08-20T15:51:40.483708+00:00"
+          "timestamp": "2026-08-20T19:16:22.686585+00:00"
         }
       ],
       "evidence_kind": "manual",

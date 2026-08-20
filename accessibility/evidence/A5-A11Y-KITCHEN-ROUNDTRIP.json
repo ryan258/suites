@@ -1,8 +1,14 @@
 {
   "learner_module_id": "kitchen-mod-wcag-3.3.1-error-identification",
-  "lesson_title": "Understanding wcag-3.3.1-error-identification",
+  "station_id": "station-02-the-error-message",
+  "lesson_title": "Teaching & Remediation for wcag-3.3.1-error-identification",
   "severity_badge": "CRITICAL",
   "target_element": "input#email",
+  "modes": {
+    "advocate": "Clear error identification helps all users understand what went wrong and how to fix it without frustration.",
+    "builder": "Ensure input#email associates with its error container via aria-errormessage or aria-describedby with visible text.",
+    "presenter": "Demonstrate form submission failure before and after error message program association."
+  },
   "remediation_hint": "Form control #email lacks aria-describedby linkage.",
   "canonical_finding": {
     "schema_version": "1.0.0",

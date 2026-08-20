@@ -65,7 +65,7 @@ class ServerTests(unittest.TestCase):
         self.assertTrue(all("prototype_passed" in row for row in data))
 
     def test_wave_post_is_ephemeral_and_classified(self):
-        data = self._post_json("/api/waves/accessibility/A2/run")
+        data = self._post_json("/api/waves/accessibility/A3/run")
         self.assertFalse(data["recorded"])
         self.assertFalse(data["passed"])
         self.assertTrue(data["prototype_passed"])

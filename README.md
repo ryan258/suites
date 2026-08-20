@@ -25,7 +25,7 @@ CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
 OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 6 Contracts, 43 Wave Specifications
-PROGRESS: 1/43 Waves Verified (A1 Parity Matrix); 42 Waves Specified with Prototype Runners
+PROGRESS: 1/43 Waves Verified (A1 Parity Matrix); Wave A2 Verified Local Candidate; 42 Prototype Checks Passing
 ```
 
 ## The eight suites

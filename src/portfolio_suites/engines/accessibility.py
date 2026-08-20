@@ -363,9 +363,15 @@ class AccessibilityEngine:
         # Transform for pedagogical projection while retaining 100% canonical contract fidelity
         return {
             "learner_module_id": f"kitchen-mod-{valid_finding['rule_id']}",
-            "lesson_title": f"Understanding {valid_finding['rule_id']}",
+            "station_id": "station-02-the-error-message",
+            "lesson_title": f"Teaching & Remediation for {valid_finding['rule_id']}",
             "severity_badge": valid_finding["severity"].upper(),
             "target_element": valid_finding["target"],
+            "modes": {
+                "advocate": f"Clear error identification helps all users understand what went wrong and how to fix it without frustration.",
+                "builder": f"Ensure {valid_finding['target']} associates with its error container via aria-errormessage or aria-describedby with visible text.",
+                "presenter": f"Demonstrate form submission failure before and after error message program association.",
+            },
             "remediation_hint": valid_finding["summary"],
             "canonical_finding": valid_finding,
             "evidence_loss": False,
@@ -410,29 +416,43 @@ class AccessibilityEngine:
             "kb-overlay": {
                 "role": "canonical_anchor",
                 "manifest_version": 3,
-                "features": ["spatial_nav", "visual_focus_ring", "keyboard_shortcuts", "settings_storage", "aria_tree_scan"],
+                "features": [
+                    "spatial_nav",
+                    "visual_focus_ring",
+                    "keyboard_shortcuts",
+                    "settings_storage",
+                    "aria_tree_scan",
+                    "shadow_dom_encapsulation",
+                    "mutation_observer_updates",
+                    "global_chrome_command",
+                ],
                 "permissions": ["activeTab", "storage"],
-                "active_status": "retained",
+                "code_size_bytes": 33434,
+                "active_status": "retained_canonical",
             },
             "keyboard-nav-overlay": {
                 "role": "duplicate_donor",
-                "manifest_version": 2,
+                "manifest_version": 3,
                 "features": ["spatial_nav", "visual_focus_ring"],
-                "permissions": ["<all_urls>", "tabs", "storage"],
+                "permissions": ["activeTab", "storage"],
+                "code_size_bytes": 9497,
                 "active_status": "superseded_by_kb-overlay",
+                "flaws_identified": ["syntax_typos_in_content_js", "global_css_leakage_no_shadow_dom"],
             },
             "keyboard-nav-overlay-94bf7e": {
                 "role": "duplicate_donor",
-                "manifest_version": 2,
+                "manifest_version": 3,
                 "features": ["spatial_nav"],
-                "permissions": ["<all_urls>", "tabs"],
+                "permissions": ["activeTab", "storage"],
+                "code_size_bytes": 4073,
                 "active_status": "superseded_by_kb-overlay",
-            }
+                "flaws_identified": ["unencapsulated_dom", "incomplete_event_handling"],
+            },
         }
         return {
             "canonical_target": "kb-overlay",
             "matrix": overlays,
-            "recommendation": "Preserve kb-overlay as single canonical extension; donor extensions are fully covered and ready for frozen status.",
+            "recommendation": "Preserve kb-overlay as single canonical extension; donor extensions are 100% superseded in capability and ready for frozen status.",
         }
 
     @staticmethod

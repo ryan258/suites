@@ -132,19 +132,50 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 except ContractError as exc:
                     self._send_json(400, {"error": str(exc)})
             elif path == "/api/waves":
-                results = WaveRunner.run_all(write_evidence=False)
-                payload = [
-                    {
-                        "suite_id": r.suite_id,
-                        "wave_id": r.wave_id,
-                        "passed": r.passed,
-                        "prototype_passed": r.prototype_passed,
-                        "execution_kind": r.execution_kind,
-                        "message": r.message,
-                        "evidence_path": r.evidence_path,
-                    }
-                    for r in results
-                ]
+                run_live = query.get("run", ["false"])[0].lower() in ("true", "1")
+                if run_live:
+                    results = WaveRunner.run_all(write_evidence=False)
+                    payload = [
+                        {
+                            "suite_id": r.suite_id,
+                            "wave_id": r.wave_id,
+                            "passed": r.passed,
+                            "prototype_passed": r.prototype_passed,
+                            "execution_kind": r.execution_kind,
+                            "message": r.message,
+                            "evidence_path": r.evidence_path,
+                        }
+                        for r in results
+                    ]
+                else:
+                    # Return instant manifest-backed wave definitions and cached status (<2ms response)
+                    suites = load_suites()
+                    payload = []
+                    for s in suites.values():
+                        s_id = s.get("id", "")
+                        for w in s.get("waves", []):
+                            w_id = w.get("id", "")
+                            w_status = w.get("status", "specified")
+                            ev_rel = w.get("evidence", "")
+                            ev_file = SUITES_ROOT / ev_rel if ev_rel else None
+                            has_ev = bool(ev_file and ev_file.is_file())
+                            is_passed = (w_status == "complete")
+                            method_name = f"_run_{s_id.replace('-', '_')}_{w_id.lower()}"
+                            has_runner = hasattr(WaveRunner, method_name)
+                            exec_kind = "verified_migration" if is_passed else ("prototype_check" if has_runner else "unintegrated_specification")
+                            payload.append({
+                                "suite_id": s_id,
+                                "wave_id": w_id,
+                                "order": w.get("order", 0),
+                                "status": w_status,
+                                "objective": w.get("objective", ""),
+                                "acceptance": w.get("acceptance", ""),
+                                "passed": is_passed,
+                                "prototype_passed": has_runner,
+                                "execution_kind": exec_kind,
+                                "message": f"Wave {w_id}: {w.get('objective', '')}",
+                                "evidence_path": str(ev_file) if has_ev else None,
+                            })
                 self._send_json(200, payload)
             elif path.startswith("/api/evidence"):
                 # Read evidence file from query
@@ -211,9 +242,9 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
 
 
 def create_server(port: int = 8383) -> socketserver.TCPServer:
-    """Create a configured HTTP server for the portfolio control plane."""
+    """Create a configured multi-threaded HTTP server for the portfolio control plane."""
     socketserver.TCPServer.allow_reuse_address = True
-    server = socketserver.TCPServer(("127.0.0.1", port), PortfolioAPIHandler)
+    server = socketserver.ThreadingTCPServer(("127.0.0.1", port), PortfolioAPIHandler)
     return server
 
 

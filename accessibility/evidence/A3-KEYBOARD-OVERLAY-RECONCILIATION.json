@@ -9,40 +9,53 @@
         "visual_focus_ring",
         "keyboard_shortcuts",
         "settings_storage",
-        "aria_tree_scan"
+        "aria_tree_scan",
+        "shadow_dom_encapsulation",
+        "mutation_observer_updates",
+        "global_chrome_command"
       ],
       "permissions": [
         "activeTab",
         "storage"
       ],
-      "active_status": "retained"
+      "code_size_bytes": 33434,
+      "active_status": "retained_canonical"
     },
     "keyboard-nav-overlay": {
       "role": "duplicate_donor",
-      "manifest_version": 2,
+      "manifest_version": 3,
       "features": [
         "spatial_nav",
         "visual_focus_ring"
       ],
       "permissions": [
-        "<all_urls>",
-        "tabs",
+        "activeTab",
         "storage"
       ],
-      "active_status": "superseded_by_kb-overlay"
+      "code_size_bytes": 9497,
+      "active_status": "superseded_by_kb-overlay",
+      "flaws_identified": [
+        "syntax_typos_in_content_js",
+        "global_css_leakage_no_shadow_dom"
+      ]
     },
     "keyboard-nav-overlay-94bf7e": {
       "role": "duplicate_donor",
-      "manifest_version": 2,
+      "manifest_version": 3,
       "features": [
         "spatial_nav"
       ],
       "permissions": [
-        "<all_urls>",
-        "tabs"
+        "activeTab",
+        "storage"
       ],
-      "active_status": "superseded_by_kb-overlay"
+      "code_size_bytes": 4073,
+      "active_status": "superseded_by_kb-overlay",
+      "flaws_identified": [
+        "unencapsulated_dom",
+        "incomplete_event_handling"
+      ]
     }
   },
-  "recommendation": "Preserve kb-overlay as single canonical extension; donor extensions are fully covered and ready for frozen status."
+  "recommendation": "Preserve kb-overlay as single canonical extension; donor extensions are 100% superseded in capability and ready for frozen status."
 }

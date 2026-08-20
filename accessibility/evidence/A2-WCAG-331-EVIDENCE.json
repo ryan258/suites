@@ -1,63 +1,133 @@
 {
   "wave": "A2",
+  "migration_kind": "source_backed_runtime_integration",
+  "receipt_kind": "clean_commit_receipt",
+  "status": "verified_candidate",
+  "all_stages_passed": true,
+  "target": {
+    "name": "allys-tools",
+    "path": "/Users/ryanjohnson/Projects/allys-tools",
+    "fingerprint": {
+      "branch": "main",
+      "head": "f2b4c6e1db59434e0d7d0c2e6eeb35510e5d8d87",
+      "short": "main@f2b4c6e",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "ebad43e3ea7cda65202c7d5b66a101ab10a655f4ec2815deacc87dea69251dc9",
+      "tested_files_fingerprint": {
+        "a11y-tools/aria-validator/index.ts": "54d05f407f01aaeb624d4af0364cfbc2633f299a8fd84e8123fd9ba8889227d6",
+        "a11y-tools/tests/wcag-331-error-association.test.ts": "8c63862c609c1ba0055d949500a998e4ad14f3454a3af51b3ac35f9b1578a8d6",
+        "a11y-tools/tests/full-audit.test.ts": "73c88e04a737376b568fcf8933d11fd4116bd408f0872413282e0df5089877b1",
+        "a11y-tools/tests/contracts.test.ts": "ea33a9187e74812d1ca342d65319b69b52b13f11eaae89a11a402049188b414d",
+        "package.json": "ab7de8085830c7e22c150d2f90a50896fab85714e7febd2a888284a795541dfe",
+        "package-lock.json": "ebad43e3ea7cda65202c7d5b66a101ab10a655f4ec2815deacc87dea69251dc9",
+        "tsconfig.json": "370ecd59323febfff0c45b81693edb924ccfd267eb4c4d3cd2641135daadadf6"
+      },
+      "target_state": "clean_commit"
+    },
+    "role": "canonical_runtime_destination"
+  },
+  "donor": {
+    "name": "wcag-auditor",
+    "path": "/Users/ryanjohnson/Projects/wcag-auditor",
+    "fingerprint": {
+      "branch": "main",
+      "head": "ec899a3a5cd8ab1aaeabe9fb2c4e6e7b7e79891a",
+      "short": "main@ec899a3",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "wcag_auditor/rules/understandable_rules.py": "71272a5c0ce946a7f24b7511e24c6fc0268d7de8bd8aae16979f28a1ee51daf7",
+        "wcag_auditor/rules/core_rules.py": "51a4af72915a6215020f72ab4dfee4addfe3692cb5a965853297d177abefe8e4",
+        "pyproject.toml": "66e1faccafd1a748529f759969a54d0e658b96275964f191535bbf9fe5443260",
+        "requirements.txt": "49848bcbded05a305a6d8368f19830cea41f0884e37bd6b579a4dd41395766ad",
+        "README.md": "89c300100a527d18f14b152439b6a5f5cc43eb758a1193709574ee1f6a81c106",
+        "docs/coverage.md": "41345be66c601631ffab46fe5c86a8f0ff03fde1240631cd26b68fbaf38a8d5d"
+      },
+      "target_state": "clean_commit"
+    },
+    "rule_ported": "input-assistance-error-msg (WCAG 3.3.1)",
+    "role": "donor_parity_source",
+    "donor_parity_verified": true,
+    "parity_comparisons": [
+      {
+        "case_id": "invalid_input_missing_error_ref",
+        "target_flagged": true,
+        "donor_expected_flagged": true,
+        "matches": true
+      },
+      {
+        "case_id": "invalid_input_with_valid_errormessage",
+        "target_flagged": false,
+        "donor_expected_flagged": false,
+        "matches": true
+      },
+      {
+        "case_id": "invalid_input_with_valid_describedby",
+        "target_flagged": false,
+        "donor_expected_flagged": false,
+        "matches": true
+      }
+    ]
+  },
+  "stages": {
+    "focused_parity_gate": {
+      "command": "npx tsx --test a11y-tools/tests/wcag-331-error-association.test.ts",
+      "duration_ms": 1111.33,
+      "passed_tests": 6,
+      "failed_tests": 0,
+      "passed": true
+    },
+    "full_suite_and_typecheck_gate": {
+      "command": "npm run check",
+      "skipped": false,
+      "duration_ms": 43005.66,
+      "total_tests_passed": 127,
+      "failed_tests": 0,
+      "passed": true
+    },
+    "full_audit_integration_gate": {
+      "command": "npx tsx --test a11y-tools/tests/full-audit.test.ts",
+      "skipped": false,
+      "duration_ms": 43237.19,
+      "passed_tests": 7,
+      "failed_tests": 0,
+      "manifest_coverage_verified": true,
+      "passed": true
+    }
+  },
   "findings": [
     {
       "schema_version": "1.0.0",
-      "finding_id": "find-wcag-331-001",
-      "rule_id": "wcag-3.3.1-error-identification",
-      "severity": "critical",
-      "summary": "Form control #email has invalid state styling without programmatic aria-describedby linkage.",
-      "target": "input#email",
-      "evidence": [
-        {
-          "dom_snippet": "<input id=\"email\" class=\"is-invalid\" type=\"email\">",
-          "selector": "input#email",
-          "source": "snippet://local",
-          "timestamp": "2026-08-20T15:51:40.481623+00:00"
-        }
-      ],
-      "evidence_kind": "deterministic",
-      "needs_review": false,
-      "status": "open"
-    },
-    {
-      "schema_version": "1.0.0",
-      "finding_id": "find-wcag-111-001",
-      "rule_id": "wcag-1.1.1-non-text-content",
+      "finding_id": "find-ally-331-001",
+      "rule_id": "wcag-331",
       "severity": "serious",
-      "summary": "Image with src 'banner.jpg' is missing an alt attribute.",
-      "target": "img[src='banner.jpg']",
+      "summary": "This control is marked aria-invalid=\"true\" but has no aria-errormessage or aria-describedby error text association.",
+      "target": "#email",
       "evidence": [
         {
-          "dom_snippet": "<img src=\"banner.jpg\">",
-          "selector": "img[src='banner.jpg']",
-          "source": "snippet://local",
-          "timestamp": "2026-08-20T15:51:40.481623+00:00"
+          "tool": "aria-validator",
+          "html": "<input id=\"email\" type=\"email\" class=\"is-invalid\" aria-invalid=\"true\">",
+          "source_status": "unverified",
+          "verification_state": "unverified_deterministic_finding",
+          "timestamp": "2026-08-20T19:47:29.479460+00:00"
         }
       ],
       "evidence_kind": "deterministic",
-      "needs_review": false,
-      "status": "open"
-    },
-    {
-      "schema_version": "1.0.0",
-      "finding_id": "find-wcag-412-001",
-      "rule_id": "wcag-4.1.2-name-role-value",
-      "severity": "critical",
-      "summary": "Button element has no text content and lacks an aria-label or aria-labelledby attribute.",
-      "target": "button:empty",
-      "evidence": [
-        {
-          "dom_snippet": "<button></button>",
-          "selector": "button",
-          "source": "snippet://local",
-          "timestamp": "2026-08-20T15:51:40.481623+00:00"
-        }
-      ],
-      "evidence_kind": "deterministic",
-      "needs_review": false,
+      "needs_review": true,
       "status": "open"
     }
   ],
-  "status": "verified"
+  "operational_errors": [],
+  "epistemic_boundary": {
+    "source_status": "unverified",
+    "needs_review_preserved": true,
+    "human_confirmation_claimed": false
+  },
+  "generated_at": "2026-08-20T19:47:29.479460+00:00"
 }
