@@ -119,8 +119,8 @@ class CLITests(unittest.TestCase):
             code = main(["wave", "--all", "--no-record"])
         self.assertEqual(code, 0)
         output = f.getvalue()
-        self.assertIn("1/43 waves verified", output)
-        self.assertIn("42 prototype checks passed", output)
+        self.assertIn("2/43 waves verified", output)
+        self.assertIn("41 prototype checks passed", output)
 
 
 if __name__ == "__main__":

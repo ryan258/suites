@@ -15,24 +15,25 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(len(results), 43)
 
         verified = [r for r in results if r.passed]
-        self.assertEqual(len(verified), 1)
+        self.assertEqual(len(verified), 2)
         self.assertEqual(verified[0].suite_id, "accessibility")
         self.assertEqual(verified[0].wave_id, "A1")
         self.assertEqual(verified[0].execution_kind, "verified_migration")
+        self.assertEqual(verified[1].suite_id, "accessibility")
+        self.assertEqual(verified[1].wave_id, "A2")
+        self.assertEqual(verified[1].execution_kind, "verified_migration")
 
         prototypes = [r for r in results if r.execution_kind == "prototype_check"]
-        self.assertEqual(len(prototypes), 42)
+        self.assertEqual(len(prototypes), 41)
         for r in prototypes:
-            if r.suite_id == "accessibility" and r.wave_id == "A2" and not HAS_A2_ENV:
-                continue
             self.assertTrue(r.prototype_passed, f"Prototype check for {r.suite_id}/{r.wave_id} failed: {r.message}")
 
         self.assertFalse(any(r.execution_kind == "unintegrated_specification" for r in results))
         self.assertFalse(any(r.execution_kind == "error" for r in results))
 
-        # The 42 prototypes must not be reported as passed migration gates.
+        # The 41 prototypes must not be reported as passed migration gates.
         unverified = [r for r in results if not r.passed]
-        self.assertEqual(len(unverified), 42)
+        self.assertEqual(len(unverified), 41)
 
     def test_run_individual_waves(self):
         # A1 is verified migration
@@ -43,12 +44,10 @@ class WaveTests(unittest.TestCase):
 
         # A2 passes full multi-stage runtime gates with genuine donor parity evaluation
         a2 = WaveRunner.run_wave("accessibility", "A2", write_evidence=False)
-        self.assertFalse(a2.passed)
-        self.assertEqual(a2.execution_kind, "prototype_check")
-
         if HAS_A2_ENV:
-            self.assertTrue(a2.prototype_passed)
-            self.assertEqual(a2.data.get("receipt_kind"), "local_working_tree_candidate_receipt")
+            self.assertTrue(a2.passed)
+            self.assertEqual(a2.execution_kind, "verified_migration")
+            self.assertEqual(a2.data.get("receipt_kind"), "clean_commit_receipt")
             self.assertEqual(a2.data.get("status"), "verified_candidate")
             self.assertTrue(a2.data.get("all_stages_passed"))
             self.assertTrue(a2.data.get("donor", {}).get("donor_parity_verified"))
