@@ -1,16 +1,231 @@
 {
-  "ryos": {
-    "features": [
-      "cli_launcher",
-      "status_daemon"
-    ],
-    "disposition": "port_to_dotfiles"
+  "schema_version": "1.0.0",
+  "wave_id": "O2",
+  "executed_at": "2026-08-20T21:04:57.970612+00:00",
+  "fingerprints": {
+    "ryos": {
+      "branch": "main",
+      "head": "fee29a3c20bd9b240121c88579df047fb3b60491",
+      "short": "main@fee29a3",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "README.md": "8531dfc96d5a1136caef517a6283d765c555476ff3647d246af6f1df79af0e1e"
+      },
+      "target_state": "clean_commit"
+    },
+    "master_upgrade_plan": {
+      "branch": "main",
+      "head": "33b5390276f744c7a9cf46c534f6ba25ff598d66",
+      "short": "main@33b5390",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "README.md": "b040dae5b0bcc40c057a4ba74b9aa1e1f666f6a3c3ec374aba509a31cd498528"
+      },
+      "target_state": "clean_commit"
+    },
+    "dotfiles": {
+      "branch": "main",
+      "head": "43f56c88a1dfd39fa5e7f10b21d5d7385babd550",
+      "short": "main@43f56c8",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "README.md": "66891b28700a21beb2671a9baf4c35891018605d2b918a31e495c03349414e42"
+      },
+      "target_state": "clean_commit"
+    },
+    "obsidian_observer": {
+      "branch": "main",
+      "head": "5ea72135f1efb0296b9fa493fc11dd3775255f89",
+      "short": "main@5ea7213",
+      "is_dirty": true,
+      "dirty_files_count": 1,
+      "dirty_files": [
+        "?? .DS_Store"
+      ],
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "README.md": "256df082fce9a6c02726ee81392f44604c0c65eb0dccdb1ae8b06de405d6ad99",
+        ".DS_Store": "05e3c8486797956711a46ce920d514620991521e02538fe29db5c2668788e917"
+      },
+      "target_state": "local_working_tree_candidate"
+    }
   },
-  "master-upgrade-plan": {
-    "features": [
-      "roadmap_spec"
-    ],
-    "disposition": "superseded_by_suites_bible"
+  "ryos_core_files_count": 9,
+  "ryos_core_files": [
+    {
+      "filename": ".gitignore",
+      "relative_path": "core/.gitignore",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "kind": "config"
+    },
+    {
+      "filename": "README.md",
+      "relative_path": "core/README.md",
+      "sha256": "dd2f085ff98eebac726dae4e90ff5292ee46d5c0785d0bcbfef74dc4e54b6ce2",
+      "size_bytes": 2083,
+      "kind": "config"
+    },
+    {
+      "filename": "ROADMAP.md",
+      "relative_path": "core/ROADMAP.md",
+      "sha256": "a46ee149087f4a05f890dbc5830d90c6c0fc84da001e7def67d12b135c601f9e",
+      "size_bytes": 3203,
+      "kind": "config"
+    },
+    {
+      "filename": "config.schema",
+      "relative_path": "core/config.schema",
+      "sha256": "242396106d30f60d2150b8748309c023280d884403a0fdaef38f8bdd14592898",
+      "size_bytes": 2064,
+      "kind": "config"
+    },
+    {
+      "filename": "goodevening.sh",
+      "relative_path": "core/goodevening.sh",
+      "sha256": "e79ba5217cd906614ff5d5eda7eb64ea41cd7145a981f0346f4ee545f0c06487",
+      "size_bytes": 1488,
+      "kind": "script"
+    },
+    {
+      "filename": "hook_weights.conf",
+      "relative_path": "core/hook_weights.conf",
+      "sha256": "01e7350c46e895d351578f6624bc30ae49da244d5af83c4cc350e31b5a2aed85",
+      "size_bytes": 1094,
+      "kind": "config"
+    },
+    {
+      "filename": "modules.sh",
+      "relative_path": "core/modules.sh",
+      "sha256": "df85e84aa4be7f1f65e0c40fce0465f1bc0b36f9eb36e262c5a1b0bf210241c1",
+      "size_bytes": 1322,
+      "kind": "script"
+    },
+    {
+      "filename": "startday.sh",
+      "relative_path": "core/startday.sh",
+      "sha256": "7969620814638640ffbeb0e2ef5a35965f016ae644cabba0d1c7dc7fdb8e61e8",
+      "size_bytes": 1282,
+      "kind": "script"
+    },
+    {
+      "filename": "status.sh",
+      "relative_path": "core/status.sh",
+      "sha256": "af6d8f3b4f6f7216ab1a21601187b3d5ff348278b1a79ed266c22f77d11b21a1",
+      "size_bytes": 855,
+      "kind": "script"
+    }
+  ],
+  "master_plan_files_count": 6,
+  "master_plan_files": [
+    {
+      "filename": "README.md",
+      "sha256": "b040dae5b0bcc40c057a4ba74b9aa1e1f666f6a3c3ec374aba509a31cd498528",
+      "size_bytes": 2466
+    },
+    {
+      "filename": "v0.5.md",
+      "sha256": "830d0ae79d11705b7552c3acde9f5552887af536f347576e399c05d4f9c62cff",
+      "size_bytes": 11269
+    },
+    {
+      "filename": "v0.md",
+      "sha256": "4e051f30f12232a5cef234040eec19fb1a1cbada8c5185de7ed3293d97079a17",
+      "size_bytes": 11067
+    },
+    {
+      "filename": "v1.md",
+      "sha256": "3b855bb5f8922d60ef8b321b2254c1b71fe98a69e7340cd812aa9e70c46b0082",
+      "size_bytes": 20164
+    },
+    {
+      "filename": "v2.md",
+      "sha256": "d06e16e0b7d372ebb1efbb50cfb2a5af78c1df64759837d5561ce7560eda5699",
+      "size_bytes": 17374
+    },
+    {
+      "filename": "v3.md",
+      "sha256": "b12eec2da6c868ffeaf0d64cfbba4d9b9f6acc0df687da39b15c9e2aab07e097",
+      "size_bytes": 17098
+    }
+  ],
+  "inventory_catalog_count": 7,
+  "inventory_catalog": [
+    {
+      "donor_project": "ryos",
+      "source_file": "core/startday.sh",
+      "feature": "Morning brief generator and environment check",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/bin/startday",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "ryos",
+      "source_file": "core/goodevening.sh",
+      "feature": "Evening shutdown and session archiving",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/bin/goodevening",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "ryos",
+      "source_file": "core/status.sh",
+      "feature": "System and daemon status check",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/scripts/status_daemon.sh",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "ryos",
+      "source_file": "core/modules.sh",
+      "feature": "Dynamic bash module loader",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/functions/modules.zsh",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "ryos",
+      "source_file": "core/hook_weights.conf",
+      "feature": "Priority weighting for operator hooks",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/config/hook_weights.conf",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "master-upgrade-plan",
+      "source_file": "v0.md - v3.md",
+      "feature": "Cross-repo multi-horizon roadmap documentation",
+      "disposition": "superseded_by_suites_bible",
+      "target": "suites/docs/ROADMAP.md",
+      "canonical_anchor": "suites"
+    },
+    {
+      "donor_project": "CoOS",
+      "source_file": "README.md",
+      "feature": "Ad-hoc task tracking and unstructured states",
+      "disposition": "rejected",
+      "target": "N/A (Replaced by PKos SourceRecord architecture)",
+      "canonical_anchor": "PKos"
+    }
+  ],
+  "canonical_anchors_confirmed": {
+    "system_runtime": "dotfiles",
+    "knowledge_corpus": "PKos",
+    "projection_view": "Observer",
+    "orchestration_gateway": "JARVIS"
   },
-  "canonical_status": "dotfiles + PKos remain sole canonical operational anchors"
+  "status": "verified"
 }

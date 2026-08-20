@@ -1,13 +1,15 @@
 {
-  "artifact_kind": "reference_prototype",
-  "reconciliation_id": "rec-ryos-dotfiles-2026",
-  "migration_acceptance_verified": false,
+  "schema_version": "1.0.0",
+  "wave_id": "O5",
+  "executed_at": "2026-08-20T21:04:58.310915+00:00",
+  "disposition_id": "disp-ryos-masterplan-20260820",
   "canonical_anchors": {
     "system_runtime": "dotfiles",
     "knowledge_corpus": "PKos",
     "projection_view": "Observer",
     "orchestration_gateway": "JARVIS"
   },
+  "port_candidates_count": 2,
   "proposed_ports": [
     {
       "name": "cli_launcher",
@@ -34,6 +36,65 @@
       "reason": "Redundant with PKos SourceRecord architecture"
     }
   ],
-  "duplicate_row_proposal": "close_on_verification",
-  "donor_freeze_status": "unverified_prototype"
+  "source_inventory_catalog": [
+    {
+      "donor_project": "ryos",
+      "source_file": "core/startday.sh",
+      "feature": "Morning brief generator and environment check",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/bin/startday",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "ryos",
+      "source_file": "core/goodevening.sh",
+      "feature": "Evening shutdown and session archiving",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/bin/goodevening",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "ryos",
+      "source_file": "core/status.sh",
+      "feature": "System and daemon status check",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/scripts/status_daemon.sh",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "ryos",
+      "source_file": "core/modules.sh",
+      "feature": "Dynamic bash module loader",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/functions/modules.zsh",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "ryos",
+      "source_file": "core/hook_weights.conf",
+      "feature": "Priority weighting for operator hooks",
+      "disposition": "port_to_dotfiles",
+      "target": "dotfiles/config/hook_weights.conf",
+      "canonical_anchor": "dotfiles"
+    },
+    {
+      "donor_project": "master-upgrade-plan",
+      "source_file": "v0.md - v3.md",
+      "feature": "Cross-repo multi-horizon roadmap documentation",
+      "disposition": "superseded_by_suites_bible",
+      "target": "suites/docs/ROADMAP.md",
+      "canonical_anchor": "suites"
+    },
+    {
+      "donor_project": "CoOS",
+      "source_file": "README.md",
+      "feature": "Ad-hoc task tracking and unstructured states",
+      "disposition": "rejected",
+      "target": "N/A (Replaced by PKos SourceRecord architecture)",
+      "canonical_anchor": "PKos"
+    }
+  ],
+  "duplicate_decisions_closed": true,
+  "donor_freeze_status": "formalized_donor_freeze_candidate",
+  "status": "disposition_reconciled"
 }

@@ -1,12 +1,45 @@
 {
-  "action_id": "act-jarvis-1787241100",
-  "action_name": "run_portfolio_backup",
-  "parameters": {
-    "target": "local_encrypted_vault"
+  "schema_version": "1.0.0",
+  "wave_id": "O3",
+  "executed_at": "2026-08-20T21:04:58.089232+00:00",
+  "jarvis_runtime": {
+    "branch": "main",
+    "head": "9ea2d889d823b79441a0d6d8805a69805b9124a4",
+    "short": "main@9ea2d88",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "09ea60d1ebc6fd9837e879933f9d575ecc45f4d57e5444fdf88fa7b76b6f47ea",
+    "tested_files_fingerprint": {
+      "package.json": "a2e50eb5d3933f0ed957c4d51c0597f1e4edc277d56a53d52499796369c7fd80",
+      "package-lock.json": "09ea60d1ebc6fd9837e879933f9d575ecc45f4d57e5444fdf88fa7b76b6f47ea",
+      "tsconfig.json": "770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808"
+    },
+    "target_state": "clean_commit",
+    "has_schemas": true,
+    "has_main": true
   },
-  "state": "preview_ready",
-  "preview_at": "2026-08-20T15:51:40.486256+00:00",
+  "action_preview": {
+    "action_id": "act-jarvis-1787259898",
+    "action_name": "run_portfolio_backup",
+    "parameters": {
+      "target_vault": "local_encrypted_vault",
+      "source_paths": [
+        "operator-os/evidence",
+        "accessibility/evidence"
+      ],
+      "compression": "none"
+    },
+    "state": "preview_ready",
+    "preview_at": "2026-08-20T21:04:58.089484+00:00",
+    "requires_human_approval": true,
+    "destructive": false,
+    "recovery_path": "undo_via_backup_or_clean_revert"
+  },
+  "dry_run_only": true,
   "requires_human_approval": true,
   "destructive": false,
-  "recovery_path": "undo_via_backup_or_clean_revert"
+  "recovery_path": "undo_via_backup_or_clean_revert",
+  "status": "preview_verified"
 }

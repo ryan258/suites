@@ -8,6 +8,7 @@ from portfolio_suites.engines.model_behavior import ModelBehaviorEngine
 from portfolio_suites.engines.discovery_decision import DiscoveryDecisionEngine
 from portfolio_suites.engines.agent_reliability import AgentReliabilityEngine
 from portfolio_suites.engines.game_design import GameDesignEngine
+from portfolio_suites.adapters.operator_os import OperatorOSSourceAdapter
 from portfolio_suites.contracts import generate_sample
 
 
@@ -90,17 +91,59 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(ryos_disp["artifact_kind"], "reference_prototype")
         self.assertEqual(ryos_disp["duplicate_row_proposal"], "close_on_verification")
 
-        # Test fail-closed without approval (Finding 2 fix)
+        # Test fail-closed without approval
         chk_blocked = OperatorOSEngine.execute_jarvis_action_checkpoint("audit_secrets", {"path": "/"}, operator_approved=False)
         self.assertEqual(chk_blocked["status"], "blocked_missing_approval")
         self.assertFalse(chk_blocked["operator_approval_verified"])
         self.assertIsNone(chk_blocked["execution_receipt"])
 
-        # Test approved execution
-        chk_success = OperatorOSEngine.execute_jarvis_action_checkpoint("audit_secrets", {"path": "/"}, operator_approved=True)
-        self.assertEqual(chk_success["status"], "success")
-        self.assertTrue(chk_success["operator_approval_verified"])
-        self.assertTrue(chk_success["execution_result"]["clean"])
+        # Test dry-run backup checkpoint generates content-addressed snapshot ID without disk mutation
+        chk_dry_run = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "backup_data", {"vault": "test-vault", "path": "contracts", "dry_run": True}, operator_approved=True
+        )
+        self.assertEqual(chk_dry_run["status"], "success")
+        self.assertTrue(chk_dry_run["operator_approval_verified"])
+        self.assertTrue(chk_dry_run["execution_result"]["dry_run"])
+        self.assertEqual(chk_dry_run["execution_result"]["manifest_file"], "")
+        self.assertTrue(chk_dry_run["execution_result"]["snapshot_id"].startswith("snap-"))
+
+    def test_operator_os_adapter(self):
+        o1 = OperatorOSSourceAdapter.execute_o1_source_record_observer_gate()
+        self.assertEqual(o1["status"], "verified")
+        self.assertTrue(o1["mutation_protection_passed"])
+        self.assertTrue(o1["mutation_cases"]["corrupt_sha_rejected"])
+        self.assertTrue(o1["mutation_cases"]["no_fence_rejected"])
+        self.assertTrue(o1["mutation_cases"]["no_citation_rejected"])
+        self.assertTrue(o1["mutation_cases"]["anti_reingestion_fence_detected"])
+        self.assertTrue(o1["mutation_cases"]["reingestion_intake_blocked"])
+
+        o2 = OperatorOSSourceAdapter.execute_o2_ryos_inventory()
+        self.assertEqual(o2["status"], "verified")
+        self.assertGreaterEqual(o2["ryos_core_files_count"], 3)
+        self.assertGreaterEqual(o2["inventory_catalog_count"], 5)
+
+        o3 = OperatorOSSourceAdapter.execute_o3_jarvis_action_preview()
+        self.assertEqual(o3["status"], "preview_verified")
+        self.assertTrue(o3["requires_human_approval"])
+        self.assertTrue(o3["dry_run_only"])
+
+        o4 = OperatorOSSourceAdapter.execute_o4_pkos_stream_intake()
+        self.assertEqual(o4["status"], "stream_intake_verified")
+        self.assertEqual(o4["batch_size"], 3)
+        self.assertTrue(o4["all_fenced_from_reingestion"])
+        self.assertTrue(o4["all_sources_cited"])
+
+        o5 = OperatorOSSourceAdapter.execute_o5_ryos_disposition_reconciliation()
+        self.assertEqual(o5["status"], "disposition_reconciled")
+        self.assertTrue(o5["duplicate_decisions_closed"])
+        self.assertGreaterEqual(o5["port_candidates_count"], 2)
+
+        o6 = OperatorOSSourceAdapter.execute_o6_jarvis_checkpoint_lifecycle()
+        self.assertEqual(o6["status"], "checkpoint_lifecycle_verified")
+        self.assertTrue(o6["multi_action_lifecycle_passed"])
+        self.assertTrue(o6["fail_closed_test"]["verified"])
+        self.assertTrue(o6["preview_test"]["verified"])
+        self.assertFalse(o6["disk_mutations_performed"])
 
     def test_brand_publishing_engine(self):
         pkg = generate_sample("BrandPackage")

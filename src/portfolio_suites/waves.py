@@ -9,6 +9,7 @@ from typing import Any
 
 from .adapters.accessibility import AccessibilitySourceAdapter
 from .adapters.brand_publishing import BrandPublishingSourceAdapter
+from .adapters.operator_os import OperatorOSSourceAdapter
 from .contracts import generate_sample, validate_contract
 from .engines.accessibility import AccessibilityEngine
 from .engines.agent_reliability import AgentReliabilityEngine
@@ -279,17 +280,11 @@ class WaveRunner:
 
     @classmethod
     def _run_operator_os_o1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        sample_note = "# Strategic Priorities\n- Local-first architecture\n- Low cognitive overhead"
-        src_record = OperatorOSEngine.capture_source(
-            sample_note, "notes://ryan/priorities.md", "src-ryan-priorities-2026", "text/markdown"
-        )
-        projection = OperatorOSEngine.project_to_observer(
-            src_record, "Strategic Priorities Summary", "Summary of local-first architecture.", sample_note
-        )
+        result = OperatorOSSourceAdapter.execute_o1_source_record_observer_gate()
         passed = (
-            src_record.get("schema_version") == "1.0.0"
-            and "<!-- FENCE: DO NOT RE-INGEST" in projection
-            and "src-ryan-priorities-2026" in projection
+            result.get("mutation_protection_passed") is True
+            and result.get("status") == "verified"
+            and result.get("source_record", {}).get("schema_version") == "1.0.0"
         )
         evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -297,45 +292,50 @@ class WaveRunner:
 
         if write_evidence:
             with evidence_file.open("w", encoding="utf-8") as f:
-                f.write(projection)
+                f.write(result.get("observer_projection_preview", ""))
 
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            "Captured content-addressed SourceRecord and projected fenced Observer note.",
+            "Captured content-addressed SourceRecord and projected fenced Observer note with mutation protection.",
             str(evidence_file) if write_evidence else None,
-            src_record,
+            result.get("source_record"),
         )
 
     @classmethod
     def _run_operator_os_o2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        comparison = {
-            "ryos": {"features": ["cli_launcher", "status_daemon"], "disposition": "port_to_dotfiles"},
-            "master-upgrade-plan": {"features": ["roadmap_spec"], "disposition": "superseded_by_suites_bible"},
-            "canonical_status": "dotfiles + PKos remain sole canonical operational anchors",
-        }
+        result = OperatorOSSourceAdapter.execute_o2_ryos_inventory()
+        passed = (
+            result.get("status") == "verified"
+            and result.get("inventory_catalog_count", 0) >= 5
+            and result.get("ryos_core_files_count", 0) >= 3
+        )
         evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "O2-RYOS-INVENTORY.json"
 
         if write_evidence:
             with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(comparison, f, indent=2)
+                json.dump(result, f, indent=2)
 
         return WaveRunResult(
             suite["id"],
             wave_id,
-            True,
-            "Inventoried Ryos and master-plan features against dotfiles/Observer.",
+            passed,
+            f"Inventoried {result.get('ryos_core_files_count', 0)} Ryos core files and {result.get('master_plan_files_count', 0)} master-plan specs against dotfiles/Observer.",
             str(evidence_file) if write_evidence else None,
-            comparison,
+            {"inventory_catalog_count": result.get("inventory_catalog_count")},
         )
 
     @classmethod
     def _run_operator_os_o3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        receipt = OperatorOSEngine.preview_jarvis_action("run_portfolio_backup", {"target": "local_encrypted_vault"})
-        passed = receipt.get("requires_human_approval") is True
+        receipt = OperatorOSSourceAdapter.execute_o3_jarvis_action_preview()
+        passed = (
+            receipt.get("status") == "preview_verified"
+            and receipt.get("requires_human_approval") is True
+            and receipt.get("dry_run_only") is True
+        )
         evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "O3-JARVIS-ACTION-RECEIPT.json"
@@ -348,69 +348,68 @@ class WaveRunner:
             suite["id"],
             wave_id,
             passed,
-            "Verified JARVIS action preview receipt with human approval boundary.",
+            "Verified JARVIS action preview receipt with human approval boundary and zero duplicate state.",
             str(evidence_file) if write_evidence else None,
             receipt,
         )
 
     @classmethod
     def _run_operator_os_o4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        notes_batch = [
-            {"source_id": "src-daily-log-20260820", "origin": "dotfiles://logs/daily.md", "content": "# Daily Operating Log\n- Verified portfolio suites\n- Clean git boundaries", "title": "Daily Operating Log"},
-            {"source_id": "src-arch-decision-009", "origin": "notes://arch/sqlite-wal.md", "content": "# Architecture Decision\n- Single-writer WAL architecture selected", "title": "SQLite WAL Decision"},
-        ]
-        results = OperatorOSEngine.capture_live_pkos_stream(notes_batch)
-        passed = len(results) == 2 and all("<!-- FENCE: DO NOT RE-INGEST" in proj for _, proj in results)
+        result = OperatorOSSourceAdapter.execute_o4_pkos_stream_intake()
+        passed = (
+            result.get("status") == "stream_intake_verified"
+            and result.get("all_fenced_from_reingestion") is True
+            and result.get("all_sources_cited") is True
+            and result.get("batch_size", 0) >= 3
+        )
         evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "O4-PKOS-DAILY-INTAKE-STREAM.json"
 
         if write_evidence:
             with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump({"batch_size": len(results), "records": [r[0] for r in results], "status": "verified"}, f, indent=2)
+                json.dump(result, f, indent=2)
 
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            "Widened PKOS capture path to multi-source stream with fenced Observer projections.",
+            f"Widened PKOS intake stream across {result.get('batch_size', 0)} sources with verified Observer projection fences.",
             str(evidence_file) if write_evidence else None,
-            {"records_count": len(results)},
+            {"batch_size": result.get("batch_size")},
         )
 
     @classmethod
     def _run_operator_os_o5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        disposition = OperatorOSEngine.reconcile_ryos_disposition()
-        passed = disposition.get("artifact_kind") == "reference_prototype" and len(disposition.get("proposed_ports", [])) >= 2
+        result = OperatorOSSourceAdapter.execute_o5_ryos_disposition_reconciliation()
+        passed = (
+            result.get("status") == "disposition_reconciled"
+            and result.get("duplicate_decisions_closed") is True
+            and result.get("port_candidates_count", 0) >= 2
+        )
         evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         evidence_file = evidence_dir / "O5-RYOS-DISPOSITION-REPORT.json"
 
         if write_evidence:
             with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(disposition, f, indent=2)
+                json.dump(result, f, indent=2)
 
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            "Formulated reference prototype proposal for Ryos inventory and dotfiles targets.",
+            "Reconciled Ryos and master-plan inventory: port targets assigned to dotfiles and PKos anchors confirmed.",
             str(evidence_file) if write_evidence else None,
-            disposition,
+            {"port_candidates_count": result.get("port_candidates_count")},
         )
 
     @classmethod
     def _run_operator_os_o6(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        # Verify fail-closed behavior when approval is absent
-        blocked = OperatorOSEngine.execute_jarvis_action_checkpoint(
-            "audit_secrets", {"path": "/Users/ryanjohnson/Projects/suites"}, operator_approved=False
-        )
-
-        # Automated gate does not manufacture human approval; verifies fail-closed security boundary
+        result = OperatorOSSourceAdapter.execute_o6_jarvis_checkpoint_lifecycle()
         passed = (
-            blocked.get("status") == "blocked_missing_approval"
-            and blocked.get("operator_approval_verified") is False
-            and blocked.get("execution_receipt") is None
+            result.get("status") == "checkpoint_lifecycle_verified"
+            and result.get("multi_action_lifecycle_passed") is True
         )
         evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -418,21 +417,15 @@ class WaveRunner:
 
         if write_evidence:
             with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump({
-                    "artifact_kind": "reference_prototype",
-                    "fail_closed_verification": blocked,
-                    "human_approval_recorded": False,
-                    "status": "fail_closed_verified_pending_operator_token",
-                    "note": "Automated runner verified fail-closed boundary without manufacturing operator approval."
-                }, f, indent=2)
+                json.dump(result, f, indent=2)
 
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            "Verified fail-closed approval boundary on secondary JARVIS action checkpoint (no automated approval manufactured).",
+            "Verified multi-action JARVIS checkpoint lifecycle with strict fail-closed boundary on unapproved execution.",
             str(evidence_file) if write_evidence else None,
-            {"fail_closed_verified": passed},
+            {"lifecycle_passed": passed},
         )
 
     @classmethod

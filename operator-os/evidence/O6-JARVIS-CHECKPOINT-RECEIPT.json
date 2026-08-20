@@ -1,21 +1,63 @@
 {
-  "artifact_kind": "reference_prototype",
-  "fail_closed_verification": {
-    "action_id": "act-jarvis-1787243973",
-    "action_name": "audit_secrets",
-    "parameters": {
-      "path": "/Users/ryanjohnson/Projects/suites"
+  "schema_version": "1.0.0",
+  "wave_id": "O6",
+  "executed_at": "2026-08-20T21:04:58.387237+00:00",
+  "jarvis_fingerprint": {
+    "branch": "main",
+    "head": "9ea2d889d823b79441a0d6d8805a69805b9124a4",
+    "short": "main@9ea2d88",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "09ea60d1ebc6fd9837e879933f9d575ecc45f4d57e5444fdf88fa7b76b6f47ea",
+    "tested_files_fingerprint": {
+      "package.json": "a2e50eb5d3933f0ed957c4d51c0597f1e4edc277d56a53d52499796369c7fd80",
+      "package-lock.json": "09ea60d1ebc6fd9837e879933f9d575ecc45f4d57e5444fdf88fa7b76b6f47ea",
+      "tsconfig.json": "770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808"
     },
-    "state": "blocked_missing_approval",
-    "preview_at": "2026-08-20T16:39:33.703362+00:00",
-    "requires_human_approval": true,
-    "destructive": false,
-    "recovery_path": "undo_via_backup_or_clean_revert",
-    "status": "blocked_missing_approval",
-    "operator_approval_verified": false,
-    "execution_receipt": null
+    "target_state": "clean_commit"
   },
-  "human_approval_recorded": false,
-  "status": "fail_closed_verified_pending_operator_token",
-  "note": "Automated runner verified fail-closed boundary without manufacturing operator approval."
+  "fail_closed_test": {
+    "action": "audit_secrets",
+    "operator_approved": false,
+    "result": {
+      "action_id": "act-jarvis-1787259898",
+      "action_name": "audit_secrets",
+      "parameters": {
+        "path": "/Users/ryanjohnson/Projects/suites"
+      },
+      "state": "blocked_missing_approval",
+      "preview_at": "2026-08-20T21:04:58.415488+00:00",
+      "requires_human_approval": true,
+      "destructive": false,
+      "recovery_path": "undo_via_backup_or_clean_revert",
+      "status": "blocked_missing_approval",
+      "operator_approval_verified": false,
+      "execution_receipt": null
+    },
+    "verified": true
+  },
+  "preview_test": {
+    "action": "backup_data",
+    "preview": {
+      "action_id": "act-jarvis-1787259898",
+      "action_name": "backup_data",
+      "parameters": {
+        "vault": "operator-os-vault",
+        "path": "operator-os/evidence",
+        "dry_run": true
+      },
+      "state": "preview_ready",
+      "preview_at": "2026-08-20T21:04:58.415507+00:00",
+      "requires_human_approval": true,
+      "destructive": false,
+      "recovery_path": "undo_via_backup_or_clean_revert"
+    },
+    "verified": true
+  },
+  "multi_action_lifecycle_passed": true,
+  "human_gate_boundary": "fail_closed_without_explicit_operator_token",
+  "disk_mutations_performed": false,
+  "status": "checkpoint_lifecycle_verified"
 }

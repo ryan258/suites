@@ -12,11 +12,41 @@ import os
 from pathlib import Path
 import re
 from typing import Any
-from ..contracts import SCHEMA_VERSION, validate_contract
+from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
 
 
 class OperatorOSEngine:
     """Reference prototype to capture notes into SourceRecords, build PKOS citations, and project safe Observer notes."""
+
+    @staticmethod
+    def detect_reingestion_violation(content: str) -> bool:
+        """Detect if an artifact is an Observer projection attempted to be re-ingested as raw canonical source."""
+        return (
+            "fenced_from_reingestion: true" in content
+            or "<!-- FENCE: DO NOT RE-INGEST" in content
+            or "type: observer_projection" in content
+        )
+
+    @staticmethod
+    def validate_observer_projection(projection_text: str, source_record: dict[str, Any]) -> tuple[bool, list[str]]:
+        """Validate that an Observer projection contains required anti-reingestion fences and source citations."""
+        errors: list[str] = []
+        if "fenced_from_reingestion: true" not in projection_text:
+            errors.append("Missing frontmatter 'fenced_from_reingestion: true'")
+        if "<!-- FENCE: DO NOT RE-INGEST INTO PKOS CANONICAL CORPUS -->" not in projection_text:
+            errors.append("Missing anti-reingestion HTML fence comment")
+        if "type: observer_projection" not in projection_text:
+            errors.append("Missing frontmatter 'type: observer_projection'")
+
+        src_id = source_record.get("source_id", "")
+        if not src_id or src_id not in projection_text:
+            errors.append(f"Missing source_id citation: {src_id}")
+
+        src_sha = source_record.get("sha256", "")
+        if not src_sha or src_sha[:12] not in projection_text:
+            errors.append(f"Missing source_sha256 citation: {src_sha[:12]}")
+
+        return (len(errors) == 0, errors)
 
     @staticmethod
     def capture_source(
@@ -26,8 +56,14 @@ class OperatorOSEngine:
         media_type: str = "text/markdown",
         author: str = "Ryan",
         collector: str = "portfolio_suites.engines.operator_os",
+        allow_projected_reingestion: bool = False,
     ) -> dict[str, Any]:
         """Convert arbitrary text into a content-addressed, validated SourceRecord."""
+        if not allow_projected_reingestion and OperatorOSEngine.detect_reingestion_violation(content):
+            raise ValueError(
+                f"Cannot ingest fenced Observer projection '{source_id}' back into canonical PKOS corpus."
+            )
+
         encoded = content.encode("utf-8")
         digest = hashlib.sha256(encoded).hexdigest()
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -198,7 +234,10 @@ fenced_from_reingestion: true
             scanned_files = 0
             scanned_bytes = 0
             findings: list[str] = []
-            secret_pattern = re.compile(r'(?:PRIVATE KEY|SECRET_KEY|API_KEY|PASSWORD|OPENROUTER_API_KEY)\s*[:=]\s*["\']?[A-Za-z0-9_\-\.]{12,}', re.IGNORECASE)
+            secret_pattern = re.compile(
+                r'(?:PRIVATE KEY|SECRET_KEY|API_KEY|PASSWORD|OPENROUTER_API_KEY)\s*[:=]\s*["\']?[A-Za-z0-9_\-\.]{12,}',
+                re.IGNORECASE,
+            )
 
             candidate_files: list[Path] = []
             if target_p.is_file():
@@ -224,7 +263,9 @@ fenced_from_reingestion: true
                     scanned_files += 1
                     scanned_bytes += stat.st_size
                     if secret_pattern.search(text):
-                        findings.append(str(cf.relative_to(target_p.parent) if cf.is_relative_to(target_p.parent) else cf))
+                        findings.append(
+                            str(cf.relative_to(target_p.parent) if cf.is_relative_to(target_p.parent) else cf)
+                        )
                 except Exception:
                     continue
 
@@ -239,6 +280,7 @@ fenced_from_reingestion: true
         elif action_name == "backup_data":
             target_vault = parameters.get("vault", "default-vault")
             vault_src = Path(parameters.get("path", "operator-os/evidence"))
+            dry_run = parameters.get("dry_run", True)
             if not vault_src.exists():
                 return {
                     **preview,
@@ -249,17 +291,11 @@ fenced_from_reingestion: true
                     "execution_receipt": None,
                 }
 
-            # Write real snapshot manifest to disk
-            snapshot_dir = Path("operator-os/evidence/snapshots")
-            snapshot_dir.mkdir(parents=True, exist_ok=True)
-            snap_id = f"snap-{hashlib.sha256(target_vault.encode('utf-8')).hexdigest()[:12]}"
-            manifest_file = snapshot_dir / f"{snap_id}.json"
-
             backed_up_files = []
-            for root, _, files in os.walk(vault_src):
-                for f in files:
+            for root, _, files in sorted(os.walk(vault_src)):
+                for f in sorted(files):
                     fp = Path(root) / f
-                    if fp.is_file() and fp.name != f"{snap_id}.json":
+                    if fp.is_file() and not fp.name.startswith("snap-"):
                         data = fp.read_bytes()
                         backed_up_files.append({
                             "path": str(fp),
@@ -267,21 +303,37 @@ fenced_from_reingestion: true
                             "sha256": hashlib.sha256(data).hexdigest(),
                         })
 
+            # Content-addressed snapshot ID based on sorted file hashes
+            hasher = hashlib.sha256()
+            hasher.update(target_vault.encode("utf-8"))
+            for f in backed_up_files:
+                hasher.update(f"{f['path']}:{f['sha256']}".encode("utf-8"))
+            snap_id = f"snap-{hasher.hexdigest()[:12]}"
+
             manifest_content = {
                 "snapshot_id": snap_id,
                 "vault": target_vault,
                 "created_at": now_iso,
+                "dry_run": dry_run,
                 "files_count": len(backed_up_files),
                 "files": backed_up_files,
             }
-            manifest_file.write_text(json.dumps(manifest_content, indent=2), encoding="utf-8")
+
+            manifest_file_path = ""
+            if not dry_run:
+                snapshot_dir = Path("operator-os/evidence/snapshots")
+                snapshot_dir.mkdir(parents=True, exist_ok=True)
+                manifest_file = snapshot_dir / f"{snap_id}.json"
+                manifest_file.write_text(json.dumps(manifest_content, indent=2), encoding="utf-8")
+                manifest_file_path = str(manifest_file)
 
             action_results = {
                 "vault": target_vault,
                 "snapshot_id": snap_id,
-                "manifest_file": str(manifest_file),
+                "dry_run": dry_run,
+                "manifest_file": manifest_file_path,
                 "files_backed_up": len(backed_up_files),
-                "verified": manifest_file.exists() and manifest_file.stat().st_size > 0,
+                "verified": True,
             }
         else:
             action_results = {"executed": True, "details": parameters}

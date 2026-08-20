@@ -1,36 +1,89 @@
 {
-  "batch_size": 2,
-  "records": [
+  "schema_version": "1.0.0",
+  "wave_id": "O4",
+  "executed_at": "2026-08-20T21:04:58.169225+00:00",
+  "pkos_fingerprint": {
+    "branch": "main",
+    "head": "6c861b6e032f91f6289c36a859241e363583d5d3",
+    "short": "main@6c861b6",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "ef27bcda45539816e025a98aa07943ea1c151cd7c32702ec93c1cbeb641c543b",
+    "tested_files_fingerprint": {
+      "pyproject.toml": "4299f4a5453d649a9e605e6fd2776fb222f6eb4c662c1b20b9b48bc9a5ea9ffe",
+      "README.md": "f6766ace2460bbaf8b243077ea2a0ff4ae0f35f20673781766f8ee36b64b6482"
+    },
+    "target_state": "clean_commit"
+  },
+  "observer_fingerprint": {
+    "branch": "main",
+    "head": "5ea72135f1efb0296b9fa493fc11dd3775255f89",
+    "short": "main@5ea7213",
+    "is_dirty": true,
+    "dirty_files_count": 1,
+    "dirty_files": [
+      "?? .DS_Store"
+    ],
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lockfile_sha256": "",
+    "tested_files_fingerprint": {
+      "README.md": "256df082fce9a6c02726ee81392f44604c0c65eb0dccdb1ae8b06de405d6ad99",
+      ".DS_Store": "05e3c8486797956711a46ce920d514620991521e02538fe29db5c2668788e917"
+    },
+    "target_state": "local_working_tree_candidate"
+  },
+  "batch_size": 3,
+  "all_fenced_from_reingestion": true,
+  "all_sources_cited": true,
+  "processed_records": [
     {
       "schema_version": "1.0.0",
       "source_id": "src-daily-log-20260820",
-      "acquired_at": "2026-08-20T15:51:40.486595+00:00",
-      "sha256": "d952540113c6966cfc49b3b3f2ea57117ba4c7176896fc8a7b592a5395bcdf9c",
-      "size_bytes": 72,
+      "acquired_at": "2026-08-20T21:04:58.228135+00:00",
+      "sha256": "aa4a06367eaa04b3a0cd19ce7c634ca27feadc5e53d3310b62e3eb00d528cb0a",
+      "size_bytes": 208,
       "media_type": "text/markdown",
-      "origin": "dotfiles://logs/daily.md",
+      "origin": "dotfiles://logs/daily-20260820.md",
       "provenance": {
         "author": "Ryan",
-        "collector": "portfolio_suites.operator_os.live_intake",
+        "collector": "portfolio_suites.adapters.operator_os.o4_stream",
         "intake_method": "source_capture",
-        "raw_preview": "# Daily Operating Log\n- Verified portfolio suites\n- Clean git boundaries"
+        "raw_preview": "# Daily Operating Log - 2026-08-20\n- Verified portfolio suites control plane baseline.\n- Executed clean migration wave g"
       }
     },
     {
       "schema_version": "1.0.0",
       "source_id": "src-arch-decision-009",
-      "acquired_at": "2026-08-20T15:51:40.486618+00:00",
-      "sha256": "1a7bd7d0a7ab572851c7017c8dadf77aadfd5e43178c885e6a23897fde24c812",
-      "size_bytes": 65,
+      "acquired_at": "2026-08-20T21:04:58.228285+00:00",
+      "sha256": "61e98abe3dc2ae5f6956c9f97bfe0dea2b89f60627f3e373449f60e9676161ee",
+      "size_bytes": 197,
       "media_type": "text/markdown",
       "origin": "notes://arch/sqlite-wal.md",
       "provenance": {
         "author": "Ryan",
-        "collector": "portfolio_suites.operator_os.live_intake",
+        "collector": "portfolio_suites.adapters.operator_os.o4_stream",
         "intake_method": "source_capture",
-        "raw_preview": "# Architecture Decision\n- Single-writer WAL architecture selected"
+        "raw_preview": "# Architecture Decision 009: SQLite WAL Concurrency\n- Selected single-writer WAL mode for zero-dependency local ledger."
+      }
+    },
+    {
+      "schema_version": "1.0.0",
+      "source_id": "src-security-boundary-003",
+      "acquired_at": "2026-08-20T21:04:58.228316+00:00",
+      "sha256": "56d5569e797809254d5f01a2fd636c2bd8411b0aa6ca17386be38ff5846530e1",
+      "size_bytes": 146,
+      "media_type": "text/markdown",
+      "origin": "dotfiles://security/operator-boundary.md",
+      "provenance": {
+        "author": "Ryan",
+        "collector": "portfolio_suites.adapters.operator_os.o4_stream",
+        "intake_method": "source_capture",
+        "raw_preview": "# Security Boundary: Operator Gating\n- Never auto-manufacture human approval tokens.\n- Actions fail closed when operator"
       }
     }
   ],
-  "status": "verified"
+  "observer_projections_count": 3,
+  "status": "stream_intake_verified"
 }
