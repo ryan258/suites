@@ -1,0 +1,48 @@
+{
+  "canonical_target": "kb-overlay",
+  "matrix": {
+    "kb-overlay": {
+      "role": "canonical_anchor",
+      "manifest_version": 3,
+      "features": [
+        "spatial_nav",
+        "visual_focus_ring",
+        "keyboard_shortcuts",
+        "settings_storage",
+        "aria_tree_scan"
+      ],
+      "permissions": [
+        "activeTab",
+        "storage"
+      ],
+      "active_status": "retained"
+    },
+    "keyboard-nav-overlay": {
+      "role": "duplicate_donor",
+      "manifest_version": 2,
+      "features": [
+        "spatial_nav",
+        "visual_focus_ring"
+      ],
+      "permissions": [
+        "<all_urls>",
+        "tabs",
+        "storage"
+      ],
+      "active_status": "superseded_by_kb-overlay"
+    },
+    "keyboard-nav-overlay-94bf7e": {
+      "role": "duplicate_donor",
+      "manifest_version": 2,
+      "features": [
+        "spatial_nav"
+      ],
+      "permissions": [
+        "<all_urls>",
+        "tabs"
+      ],
+      "active_status": "superseded_by_kb-overlay"
+    }
+  },
+  "recommendation": "Preserve kb-overlay as single canonical extension; donor extensions are fully covered and ready for frozen status."
+}

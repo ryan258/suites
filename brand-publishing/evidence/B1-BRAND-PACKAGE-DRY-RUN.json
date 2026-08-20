@@ -1,0 +1,66 @@
+{
+  "brand_package": {
+    "schema_version": "1.0.0",
+    "package_id": "pkg-brand-cyborg-v1",
+    "brand_id": "brand-cyborg-systems",
+    "version": "1.0.0",
+    "approved_at": "2026-08-20T14:06:49.170550+00:00",
+    "identity": {
+      "name": "Cyborg Systems",
+      "tagline": "Cognitive amplifier for high-signal operators",
+      "palette": {
+        "primary": "#00f0ff",
+        "surface": "#0a0d14",
+        "accent": "#7928ca"
+      }
+    },
+    "voice": {
+      "tone": "direct, grounded, recoverable",
+      "guidelines": [
+        "No hype",
+        "Lead with outcomes",
+        "Clear recovery steps"
+      ]
+    },
+    "audience": {
+      "primary": "Autonomous technical operators and high-cognitive builders"
+    },
+    "approved_claims": [
+      {
+        "id": "clm-1",
+        "claim": "Zero-dependency local-first portfolio control plane"
+      }
+    ],
+    "assets": [
+      {
+        "asset_id": "logo-svg",
+        "type": "image/svg+xml",
+        "path": "assets/logo.svg"
+      }
+    ],
+    "usage_rules": [
+      "Always pair cyan accent with dark surface",
+      "Never omit provenance links"
+    ],
+    "provenance": [
+      {
+        "source_id": "src-brand-canon-v1",
+        "applied_by": "brand_maker"
+      }
+    ]
+  },
+  "receipt": {
+    "receipt_id": "pub-dry-1787234809",
+    "channel": "blog",
+    "status": "dry_run_verified",
+    "timestamp": "2026-08-20T14:06:49.170614+00:00",
+    "brand_package_id": "pkg-brand-cyborg-v1",
+    "brand_version": "1.0.0",
+    "source_id": "src-2026-08-brand-notes",
+    "source_sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
+    "matched_approved_claims_count": 1,
+    "dry_run_only": true,
+    "live_published": false,
+    "notes": "Draft successfully verified against brand constraints. Awaiting explicit manual release."
+  }
+}

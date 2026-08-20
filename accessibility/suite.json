@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "id": "accessibility",
+  "name": "Ally Accessibility Suite",
+  "state": "active",
+  "promise": "Find, explain, repair, teach, and track accessibility without overstating evidence.",
+  "anchors": ["allys-tools", "a11y kitchen", "kb-overlay"],
+  "contracts": ["A11yFinding", "SourceRecord"],
+  "members": [
+    {"project": "allys-tools", "relationship": "audit-and-evidence-anchor"},
+    {"project": "a11y kitchen", "relationship": "interactive-learning-anchor"},
+    {"project": "a11y-lab", "relationship": "reference-and-curriculum"},
+    {"project": "kb-overlay", "relationship": "browser-assistance-anchor"},
+    {"project": "wcag-auditor", "relationship": "rule-and-crawler-donor"},
+    {"project": "keyboard-nav-overlay", "relationship": "duplicate-donor"},
+    {"project": "keyboard-nav-overlay-94bf7e", "relationship": "duplicate-donor"}
+  ],
+  "completion_criteria": [
+    "A11yFinding round-trips across audit, learning, ticket, and browser surfaces without evidence loss.",
+    "WCAG Auditor unique rules and crawl behavior are ported or explicitly rejected with parity evidence.",
+    "One keyboard overlay remains after file, feature, permission, and runtime parity review.",
+    "Automated, AI-assisted, and manual assistive-technology evidence remain visibly distinct."
+  ],
+  "waves": [
+    {"id": "A1", "order": 10, "status": "complete", "objective": "Create the WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix.", "acceptance": "Every unique behavior has an owner, fixture, and port or reject decision.", "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md"},
+    {"id": "A2", "order": 20, "status": "complete", "objective": "Port one unique deterministic rule end to end through A11yFinding and full-audit evidence.", "acceptance": "Focused and full-suite gates pass and the manifest proves invocation and output.", "evidence": "accessibility/evidence/A2-WCAG-331-EVIDENCE.json"},
+    {"id": "A3", "order": 30, "status": "complete", "objective": "Reconcile three keyboard overlays and select one canonical implementation.", "acceptance": "Feature, file, permissions, browser, and accessibility parity evidence supports the decision.", "evidence": "accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.json"}
+  ]
+}

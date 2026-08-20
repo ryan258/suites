@@ -1,0 +1,24 @@
+{
+  "comparisons": [
+    {
+      "run_id": "run-mbl-claude",
+      "model": "anthropic/claude-3-5-sonnet",
+      "benchmark": "bench-ethics-scenarios@v2.1.0",
+      "status": "completed",
+      "total_iterations": 5,
+      "pass_rate": 1.0,
+      "average_score": 1.0,
+      "average_latency_ms": 495.0
+    },
+    {
+      "run_id": "run-mbl-gemini",
+      "model": "google/gemini-1-5-pro",
+      "benchmark": "bench-ethics-scenarios@v2.1.0",
+      "status": "completed",
+      "total_iterations": 5,
+      "pass_rate": 1.0,
+      "average_score": 1.0,
+      "average_latency_ms": 495.0
+    }
+  ]
+}

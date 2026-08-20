@@ -1,0 +1,81 @@
+[
+  {
+    "phase": 1,
+    "name": "Vision & Core Truth",
+    "state": "intake_vision",
+    "required_inputs": [
+      "one_liner",
+      "enemy"
+    ]
+  },
+  {
+    "phase": 2,
+    "name": "Audience Archetypes",
+    "state": "intake_audience",
+    "required_inputs": [
+      "primary_operator",
+      "pain_points"
+    ]
+  },
+  {
+    "phase": 3,
+    "name": "Brand Voice Pillars",
+    "state": "intake_voice",
+    "required_inputs": [
+      "tone_adjectives",
+      "taboo_words"
+    ]
+  },
+  {
+    "phase": 4,
+    "name": "Visual Foundation",
+    "state": "intake_visual",
+    "required_inputs": [
+      "palette_hex",
+      "typeface_pair"
+    ]
+  },
+  {
+    "phase": 5,
+    "name": "Approved Claims Registry",
+    "state": "intake_claims",
+    "required_inputs": [
+      "verifiable_claims"
+    ]
+  },
+  {
+    "phase": 6,
+    "name": "Asset Inventory",
+    "state": "intake_assets",
+    "required_inputs": [
+      "logo_paths",
+      "icon_set"
+    ]
+  },
+  {
+    "phase": 7,
+    "name": "Usage & Constraint Rules",
+    "state": "intake_rules",
+    "required_inputs": [
+      "do_list",
+      "dont_list"
+    ]
+  },
+  {
+    "phase": 8,
+    "name": "Channel Archetypes",
+    "state": "intake_channels",
+    "required_inputs": [
+      "formats",
+      "cadence"
+    ]
+  },
+  {
+    "phase": 9,
+    "name": "Canonical Package Approval",
+    "state": "approved_package",
+    "required_inputs": [
+      "approver_signoff"
+    ]
+  }
+]

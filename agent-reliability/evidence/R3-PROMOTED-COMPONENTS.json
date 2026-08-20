@@ -1,0 +1,8 @@
+{
+  "shared_components_promoted": [
+    "path_confinement_validator",
+    "atomic_rollback_guard"
+  ],
+  "consumer_count": 3,
+  "status": "promotion_verified"
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0.0",
+  "id": "game-design",
+  "name": "Game Design and Simulation",
+  "state": "active",
+  "promise": "Turn game rules into simulations, balance evidence, and playable artifacts.",
+  "anchors": ["storyweaver"],
+  "contracts": ["ExperimentRun", "ProductionJob", "SourceRecord"],
+  "members": [
+    {"project": "storyweaver", "relationship": "game-engine-anchor"},
+    {"project": "TuckdInTerrors_MonteCarloSim", "relationship": "reference-game-pack-donor"},
+    {"project": "oregon  dnd", "relationship": "authored-creative-reference"}
+  ],
+  "completion_criteria": [
+    "A real game pack preserves complete rules, seeded simulation, metrics, reports, and printable artifacts.",
+    "Tucked in Terrors statistical outputs match or improve on the dedicated simulator with versioned evidence.",
+    "Authored games remain independently owned artifacts unless a proven shared mechanic justifies a pack."
+  ],
+  "waves": [
+    {"id": "G1", "order": 71, "status": "complete", "objective": "Fingerprint Tucked in Terrors rules, seeds, metrics, and report outputs.", "acceptance": "The parity fixture captures game version, configuration, runs, statistics, and expected tolerances.", "evidence": "game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.md"},
+    {"id": "G2", "order": 81, "status": "complete", "objective": "Implement the game as a Storyweaver reference pack.", "acceptance": "Seeded statistical parity and artifact generation pass without parallel engine logic.", "evidence": "game-design/evidence/G2-STORYWEAVER-PACK-PARITY.json"},
+    {"id": "G3", "order": 91, "status": "complete", "objective": "Document the authored-game boundary and optional pack contract.", "acceptance": "Creative assets are preserved without inventing an all-games platform or ownership transfer.", "evidence": "game-design/evidence/G3-AUTHORED-GAME-BOUNDARY.json"}
+  ]
+}

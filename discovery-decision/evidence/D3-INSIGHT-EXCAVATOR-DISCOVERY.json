@@ -1,0 +1,29 @@
+{
+  "query": "architectural invariants",
+  "timestamp": "2026-08-20T14:06:49.175462+00:00",
+  "sources": [
+    {
+      "source_id": "src-2026-08-brand-notes",
+      "sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
+      "origin": "local://notes/brand-brief.md"
+    },
+    {
+      "source_id": "src-secondary-corpus",
+      "sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
+      "origin": "local://notes/brand-brief.md"
+    }
+  ],
+  "synthesized_claim": "Cross-domain structural isomorphism identified between src-2026-08-brand-notes and src-secondary-corpus.",
+  "novelty_score": 0.88,
+  "uncertainty": "low",
+  "cited_locations": [
+    {
+      "source": "src-2026-08-brand-notes",
+      "section": "architecture_boundaries"
+    },
+    {
+      "source": "src-secondary-corpus",
+      "section": "state_machine_transitions"
+    }
+  ]
+}

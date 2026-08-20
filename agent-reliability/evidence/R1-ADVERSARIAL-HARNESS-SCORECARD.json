@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "run-rel-harness-1787234809",
+  "benchmark_id": "bench-agent-adversarial-gates",
+  "benchmark_version": "1.0.0",
+  "provider": "agent-reliability-lab",
+  "model": "deterministic-harness",
+  "parameters": {
+    "confinement": "strict",
+    "rollback": "atomic"
+  },
+  "scorer": "deterministic_fixture_evaluator",
+  "scorer_version": "1.0.0",
+  "status": "completed",
+  "iterations": [
+    {
+      "iteration": 1,
+      "fixture_id": "fix-conf-01",
+      "passed": true,
+      "latency_ms": 12
+    },
+    {
+      "iteration": 2,
+      "fixture_id": "fix-json-02",
+      "passed": true,
+      "latency_ms": 12
+    },
+    {
+      "iteration": 3,
+      "fixture_id": "fix-budg-03",
+      "passed": true,
+      "latency_ms": 12
+    },
+    {
+      "iteration": 4,
+      "fixture_id": "fix-roll-04",
+      "passed": true,
+      "latency_ms": 12
+    }
+  ],
+  "evidence": [
+    {
+      "fixture_count": 4,
+      "passed_count": 4,
+      "pass_rate": 1.0
+    }
+  ],
+  "errors": []
+}

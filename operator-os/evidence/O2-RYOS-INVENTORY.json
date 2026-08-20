@@ -1,0 +1,16 @@
+{
+  "ryos": {
+    "features": [
+      "cli_launcher",
+      "status_daemon"
+    ],
+    "disposition": "port_to_dotfiles"
+  },
+  "master-upgrade-plan": {
+    "features": [
+      "roadmap_spec"
+    ],
+    "disposition": "superseded_by_suites_bible"
+  },
+  "canonical_status": "dotfiles + PKos remain sole canonical operational anchors"
+}

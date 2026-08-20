@@ -1,0 +1,63 @@
+{
+  "wave": "A2",
+  "findings": [
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "find-wcag-331-001",
+      "rule_id": "wcag-3.3.1-error-identification",
+      "severity": "critical",
+      "summary": "Form control #email has invalid state styling without programmatic aria-describedby linkage.",
+      "target": "input#email",
+      "evidence": [
+        {
+          "dom_snippet": "<input id=\"email\" class=\"is-invalid\" type=\"email\">",
+          "selector": "input#email",
+          "source": "snippet://local",
+          "timestamp": "2026-08-20T14:20:47.747683+00:00"
+        }
+      ],
+      "evidence_kind": "deterministic",
+      "needs_review": false,
+      "status": "open"
+    },
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "find-wcag-111-001",
+      "rule_id": "wcag-1.1.1-non-text-content",
+      "severity": "serious",
+      "summary": "Image with src 'banner.jpg' is missing an alt attribute.",
+      "target": "img[src='banner.jpg']",
+      "evidence": [
+        {
+          "dom_snippet": "<img src=\"banner.jpg\">",
+          "selector": "img[src='banner.jpg']",
+          "source": "snippet://local",
+          "timestamp": "2026-08-20T14:20:47.747683+00:00"
+        }
+      ],
+      "evidence_kind": "deterministic",
+      "needs_review": false,
+      "status": "open"
+    },
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "find-wcag-412-001",
+      "rule_id": "wcag-4.1.2-name-role-value",
+      "severity": "critical",
+      "summary": "Button element has no text content and lacks an aria-label or aria-labelledby attribute.",
+      "target": "button:empty",
+      "evidence": [
+        {
+          "dom_snippet": "<button></button>",
+          "selector": "button",
+          "source": "snippet://local",
+          "timestamp": "2026-08-20T14:20:47.747683+00:00"
+        }
+      ],
+      "evidence_kind": "deterministic",
+      "needs_review": false,
+      "status": "open"
+    }
+  ],
+  "status": "verified"
+}

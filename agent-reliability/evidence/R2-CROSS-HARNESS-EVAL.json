@@ -1,0 +1,14 @@
+{
+  "harnesses": [
+    "Looping Box",
+    "SSSF",
+    "Agentic Harness"
+  ],
+  "gates_evaluated": [
+    "confinement",
+    "rollback",
+    "budget_exhaustion",
+    "malformed_output"
+  ],
+  "all_passed": true
+}

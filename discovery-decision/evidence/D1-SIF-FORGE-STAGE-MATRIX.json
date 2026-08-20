@@ -1,0 +1,14 @@
+{
+  "sif_stages": [
+    "divergent_search",
+    "red_team_analysis",
+    "analogy_synthesis"
+  ],
+  "forge_modes": [
+    "preview",
+    "quick",
+    "standard",
+    "deep"
+  ],
+  "status": "parity_mapped"
+}

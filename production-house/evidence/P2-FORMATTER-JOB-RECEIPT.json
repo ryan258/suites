@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "job-gw-ep12-formatter",
+  "domain": "groundwire-audio",
+  "task": "synthesis",
+  "status": "completed",
+  "inputs": [
+    {
+      "name": "script.fountain"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "stems.zip"
+    }
+  ],
+  "events": [
+    {
+      "time": "2026-08-20T14:06:49.172309+00:00",
+      "stage": "initialization",
+      "status": "job_created"
+    },
+    {
+      "time": "2026-08-20T14:06:49.172325+00:00",
+      "stage": "elevenlabs_synthesizer",
+      "status": "completed",
+      "notes": ""
+    }
+  ],
+  "created_at": "2026-08-20T14:06:49.172309+00:00",
+  "updated_at": "2026-08-20T14:06:49.172325+00:00"
+}

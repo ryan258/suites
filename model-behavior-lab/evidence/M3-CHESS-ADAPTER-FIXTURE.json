@@ -1,0 +1,6 @@
+{
+  "adapter": "chess_legal_move_evaluator",
+  "fen_seed": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "deterministic_rules": true,
+  "scorer_version": "1.0.0"
+}

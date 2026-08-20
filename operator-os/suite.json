@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "id": "operator-os",
+  "name": "Low-Bandwidth Knowledge and Operations OS",
+  "state": "active",
+  "promise": "Preserve context and expose the next safe action when bandwidth is low.",
+  "anchors": ["dotfiles", "PKos"],
+  "contracts": ["SourceRecord"],
+  "members": [
+    {"project": "dotfiles", "relationship": "capture-and-control-anchor"},
+    {"project": "PKos", "relationship": "evidence-and-retrieval-anchor"},
+    {"project": "obsidian-observer", "relationship": "derived-projection"},
+    {"project": "jarvis", "relationship": "accessible-interface"},
+    {"project": "vaults", "relationship": "instance-and-corpus-container"},
+    {"project": "master-upgrade-plan", "relationship": "requirements-donor"},
+    {"project": "ryos", "relationship": "parallel-runtime-donor"},
+    {"project": "CoOS", "relationship": "handbook-and-case-study"},
+    {"project": "idea-dev", "relationship": "example-and-backlog"}
+  ],
+  "completion_criteria": [
+    "One SourceRecord path preserves capture, checksum, provenance, retrieval citation, and projection ownership.",
+    "Generated Observer notes cannot be ingested back as new canonical sources.",
+    "JARVIS presents and approves actions without duplicating storage or domain logic.",
+    "Unique Ryos and master-plan behavior is ported or rejected before their runtimes are retired.",
+    "Daily operation retains deterministic fallbacks when providers or credentials are unavailable."
+  ],
+  "waves": [
+    {"id": "O1", "order": 11, "status": "complete", "objective": "Prove capture to PKOS to Observer projection with one SourceRecord fixture.", "acceptance": "The source is content-addressed and cited; the generated note is stable and excluded from re-ingestion.", "evidence": "operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.md"},
+    {"id": "O2", "order": 21, "status": "complete", "objective": "Inventory Ryos and master-plan behaviors against dotfiles and Observer.", "acceptance": "Every unique behavior has a test-backed port, explicit rejection, or preserved historical owner.", "evidence": "operator-os/evidence/O2-RYOS-INVENTORY.json"},
+    {"id": "O3", "order": 31, "status": "complete", "objective": "Connect a JARVIS action preview to canonical services without copied state.", "acceptance": "Preview, approval, execution receipt, failure, and recovery use owned APIs or file contracts.", "evidence": "operator-os/evidence/O3-JARVIS-ACTION-RECEIPT.json"}
+  ]
+}

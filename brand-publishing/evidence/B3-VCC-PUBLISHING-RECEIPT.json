@@ -1,0 +1,14 @@
+{
+  "receipt_id": "pub-dry-1787234809",
+  "channel": "cyborg-vcc",
+  "status": "dry_run_verified",
+  "timestamp": "2026-08-20T14:06:49.171476+00:00",
+  "brand_package_id": "pkg-brand-cyborg-v1",
+  "brand_version": "1.0.0",
+  "source_id": "src-2026-08-brand-notes",
+  "source_sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
+  "matched_approved_claims_count": 0,
+  "dry_run_only": true,
+  "live_published": false,
+  "notes": "Draft successfully verified against brand constraints. Awaiting explicit manual release."
+}
