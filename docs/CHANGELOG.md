@@ -4,6 +4,61 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-21 — Source Binding for the Twenty-One Unintegrated Waves
+
+Every wave that was still `specified` — `M1`–`M5`, `D1`–`D5`, `R1`–`R5`, `G1`–`G5`, and `A6` — now
+reads donor content before it makes any claim, and each declares a `recovery_claim` plus a
+`runtime_followup`. Four source adapters were added (`model_behavior`, `discovery_decision`,
+`agent_reliability`, `game_design`) and `A6` was rewritten to measure rather than assert. Each of
+the twenty-one waves gained an `ANALYSIS_RECEIPT_SPECS` entry, and `validate_registry` now checks
+every declared claim and its retained receipt instead of only completed waves — a prototype receipt
+that later goes malformed or self-contradictory fails the canonical gate.
+
+These gates read donor content; they do not execute donor runtimes. They are therefore `analysis`
+claims at `prototype` level. Where a wave's objective describes an outcome the gate did not
+produce, the receipt status names what was actually done:
+
+- **Model Behavior Lab.** `M1` normalizes a real `ai-ethics-comparator` result (prompt, responses,
+  params, tally, undecided count) into `ExperimentRun` and proves field parity. `M2` is an
+  `extraction_matrix_measured` receipt, not a unification: both corpora are admitted by one
+  contract kernel, and the four subsystems each donor still duplicates are counted, with
+  `canonical_slice_implemented: false` and `duplicate_runtimes_eliminated: 0`. `M3`/`M4` score the
+  recorded `ai-chess` openings — first ply only, because the engine judges legality but cannot
+  apply a move.
+- **Discovery + Decision.** `D1` maps real SIF phase nodes to Forge stages using the donors' own
+  call budgets and retained artifacts; `D2`/`D4` carry the recorded red-team and analogy phases into
+  budgeted `InvestigationRecord`s. `D3` retains byte-anchored excerpts from two real Excavator
+  documents and a measured lexical overlap (one shared term between the two sampled documents); it
+  makes no novelty, uncertainty, or semantic-discovery claim, and the prototype engine's fixed
+  0.88 score and invented citation sections are deliberately unused. `D5` records
+  `retirement_proposed`: the citation carries the source's own sha256 and origin into the
+  investigation, while `retirement_performed`, `standalone_excavator_runtime_removed`, and
+  `forge_ingests_source_directly` all remain false pending owner approval.
+- **Agent Reliability Lab.** Fixtures derive from the action policy declared in `looping-box`
+  source; gate coverage is measured per harness (`budget` appears only in `agentic-harness`;
+  `review_required` is absent from `sssf`); `components/executive_reporting` is measured to have
+  two real consumers — `ai-ethics-comparator` and `writers-room` — so the craft rule retains it and
+  demotes nothing. Donor JSON is parsed through a guarded reader: a malformed `smoke.json` yields a
+  failed prototype result rather than an exception escaping the wave boundary.
+- **Game Design + Simulation.** `G1` fingerprints the 1000 recorded Tucked in Terrors runs into an
+  outcome distribution (926 `LOSS_NIGHTFALL`, 74 `PRIMARY_WIN`) and metric tolerances. `G2` is
+  `pack_shape_projected`: the donor rows are projected into the Storyweaver pack vocabulary, and no
+  parity number is produced at all, because nothing was generated independently to compare against
+  (`pack_materialized_on_disk`, `statistical_parity_measured`, and
+  `independent_resimulation_verified` are all false). `G3`/`G5` confirm neither Oregon D&D nor
+  March Madness references the engine.
+- **Accessibility `A6`.** The gate now reads the whole effective extension surface —
+  `permissions`, `host_permissions`, `optional_host_permissions`, and `content_scripts[*].matches`.
+  `kb-overlay` requests no broad API permission, but it injects on `<all_urls>`, exactly as both
+  donors do. The receipt therefore records `consolidation_proposed` with
+  `minimized_permissions_verified: false`, `canonical_no_broader_than_donors: true`, and
+  `migration_acceptance_verified: false`; narrowing that scope and freezing the donors are both
+  outstanding, and the freeze remains an owner action.
+
+Wave counts are unchanged: 43 waves, 5 complete (1 runtime recovery, 4 analysis milestones), 38
+prototype checks. What changed is that no prototype check now passes without reading its donor,
+and none of them names an outcome it did not produce.
+
 ## 2026-08-21 — Cosmetic-Fingerprint Reclassification
 
 Extended the prototype reclassification to every wave whose gate does not read donor content.

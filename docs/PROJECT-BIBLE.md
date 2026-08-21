@@ -84,6 +84,8 @@ span multiple waves, but each wave must preserve a runnable state.
 - Default behavior under pressure: retain inputs, versions, outputs, failures, and human decisions.
 - Voice example: “The build passed; manual assistive-technology review is still unknown.”
 - Must never flatten deterministic, AI-assisted, and manual evidence into one status.
+- Must never let a receipt's status name an outcome its gate did not perform; where the work falls
+  short of the wave's acceptance boundary, the receipt says which part is still outstanding.
 
 ## Craft Rules
 

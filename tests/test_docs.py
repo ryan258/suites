@@ -39,13 +39,25 @@ class ArtifactTests(unittest.TestCase):
             sorted(CONTRACTS),
             f"roadmap contract list is stale: {contract_line}",
         )
+        prototypes = summary["total_waves"] - summary["completed_waves"]
         for token in (
             f"{len(CONTRACTS)} Shared contracts",
             f"{summary['completed_waves']}/{summary['total_waves']}",
             f"{summary['total_waves']} Migration wave specifications",
             f"{summary['total_projects']} Top-level projects",
+            f"{prototypes}/{summary['total_waves']} source-backed prototype checks",
         ):
             self.assertIn(token, roadmap, f"roadmap does not state current {token!r}")
+
+    def test_readme_states_the_current_prototype_count(self):
+        """The README kickstart block restates the same counts; drift there is a reporting defect."""
+        from portfolio_suites.registry import get_portfolio_summary
+
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        summary = get_portfolio_summary()
+        prototypes = summary["total_waves"] - summary["completed_waves"]
+        self.assertIn(f"PROTOTYPES: {prototypes} source-backed checks passing", readme)
+        self.assertIn(f"{summary['total_projects']} Projects Dispositioned", readme)
 
 
 if __name__ == "__main__":

@@ -47,7 +47,10 @@ OPENROUTER_ROLE_REVIEWER_MAX_TOKENS=4096
 
 Provider-backed evidence must retain the requested role, requested model, resolved concrete model,
 provider, request identifier, token usage, timestamps, inputs or input hashes, scorer version,
-errors, and limitations. Never write the API key, authorization header, or full local `.env` into
+errors, and limitations. Donor subprocesses launched by suite adapters inherit a scrubbed
+environment: `adapters.common.donor_env()` removes any variable whose name matches
+`KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL`, so `OPENROUTER_API_KEY` never reaches a donor
+runtime. Never write the API key, authorization header, or full local `.env` into
 an evidence file, terminal diagnostic, test fixture, or exception.
 
 `portfolio_suites.ai_config.load_openrouter_config()` loads and validates the configuration.

@@ -25,9 +25,10 @@ BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
-OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 6 Contracts, 43 Wave Specifications
+OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 8 Source Adapters, 6 Contracts, 43 Wave Specifications
 VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 4 Analysis Milestones (A1, A3, O2, B2) | 0 Adopted | 0 Converged
-PROTOTYPES: 38 checks passing; prototypes never count as recovered functionality
+PROTOTYPES: 38 source-backed checks passing; every gate reads donor content, and none of them
+           counts as recovered functionality
 ```
 
 `A1` is a reviewed, hand-authored parity decision whose required document structure is checked by
@@ -96,7 +97,10 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
 `validate` checks the entire current top-level directory inventory, nested Git-marker inventory,
-suite membership, source paths, ownership, contracts, and migration waves. Source-tree drift is
+suite membership, source paths, ownership, contracts, and migration waves. It re-reads the retained
+receipt of every wave that declares a recovery claim — prototypes included — against that claim's
+evidence basis and receipt spec, so a receipt cannot drift out of agreement with its claim and still
+report green. Only the promotion rules are reserved for completed waves. Source-tree drift is
 reported without modifying any source repository.
 
 ## Operating rules
@@ -108,10 +112,13 @@ reported without modifying any source repository.
 4. Every cross-suite artifact uses a versioned contract in `contracts/`.
 5. AI-generated judgments remain labeled. Deterministic, manual, and provider-backed evidence do
    not collapse into one confidence claim.
-6. Publication, deployment, staging, commits, destructive cleanup, and collaborator-owned changes
+6. A receipt's status names what its gate performed, not what its wave intends to achieve. Reading a
+   donor's files is reported as reading them, never as discovery, unification, parity,
+   consolidation, or retirement.
+7. Publication, deployment, staging, commits, destructive cleanup, and collaborator-owned changes
    remain owner-controlled.
-7. “Complete” means the suite completion criteria are evidenced, not that a scaffold exists.
-8. The [9/10 recovery standard](docs/RECOVERY-STANDARD.md) governs promotion, adoption, convergence,
+8. “Complete” means the suite completion criteria are evidenced, not that a scaffold exists.
+9. The [9/10 recovery standard](docs/RECOVERY-STANDARD.md) governs promotion, adoption, convergence,
    and intentional non-port outcomes; wave counts are scheduling metrics, not the recovery score.
 
 See [the project bible](docs/PROJECT-BIBLE.md), [the review](docs/PORTFOLIO-REVIEW-2026-08-19.md),

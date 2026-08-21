@@ -39,6 +39,21 @@ Every completed wave must carry a `recovery_claim` naming its claim kind, promot
 it exercised a real runtime, and the evidence basis. Analysis can be a completed milestone without
 being counted as recovered functionality.
 
+Validation is not reserved for completed waves. Registry validation checks every declared claim and
+re-reads its retained receipt against the claim's declared evidence basis and, where one exists, its
+receipt spec. Only the promotion rules — that a completed wave cannot claim a planning or prototype
+level, and that completed evidence must exist — are conditional on completion. A prototype receipt
+that later becomes malformed, hand-edited, or self-contradictory therefore fails the canonical gate
+rather than coexisting with a green report.
+
+A receipt's status names what its gate performed, not what its wave intends to achieve. A gate that
+reads donor files reports reading them; it does not report discovery, unification, parity,
+consolidation, or retirement it did not carry out. Where the performed work falls short of the
+wave's acceptance boundary, the receipt says so in its own fields — for example
+`independent_resimulation_verified`, `canonical_slice_implemented`, `minimized_permissions_verified`,
+or `retirement_performed` set to false — and the wave's `runtime_followup` names the work that would
+close the gap.
+
 ## The 9/10 rubric
 
 | Dimension | Weight | Required evidence |

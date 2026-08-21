@@ -1,7 +1,9 @@
 # Migration Program
 
-Tranche 0's control-plane foundation is complete, and Tranches 1–3 have prototype or planning
-artifacts. Those artifacts are not completed migrations. Real ports, adoption, retirement, and
+Tranche 0's control-plane foundation is complete, and Tranches 1–3 have source-backed prototype
+artifacts: every one of the 43 wave gates now reads donor content before it makes a claim, and no
+wave remains an unintegrated specification. Those artifacts are still not completed migrations.
+Reading a donor's files is not executing its runtime. Real ports, adoption, retirement, and
 single-runtime convergence follow the [9/10 recovery standard](RECOVERY-STANDARD.md) and the
 [roadmap](ROADMAP.md).
 
@@ -70,16 +72,23 @@ A scaffold, README, build, or passing narrow unit test is not completion.
 - **P1/P2:** fingerprint one Groundwire episode, then execute it as a ProductionJob through the
   formatter without parallel canonical state.
 - **M1/M2:** normalize one ethics scenario into ExperimentRun, then extract the ethics app as a pack
-  over the comparator kernel.
+  over the comparator kernel. *Current state:* `M1` normalizes a recorded donor result and proves
+  field parity; `M2` measures the duplication a shared kernel would replace and states that no
+  canonical slice exists yet.
 - **D1/D2:** map SIF stages to Forge and port one bounded stage with consent, budget, failure, resume,
-  canonical Markdown, and rebuild evidence.
+  canonical Markdown, and rebuild evidence. *Current state:* the mapping is drawn from real phase
+  nodes and budgets, and the red-team stage is carried as a retained artifact, not a live run.
 
 ## Tranche 3 — Internal labs and real reference packs
 
 - **R1/R2:** define and run adversarial harness fixtures for confinement, malformed output, retries,
-  budgets, rollback, and reviewer evidence.
+  budgets, rollback, and reviewer evidence. *Current state:* fixtures derive from the donor's own
+  declared action policy, and gate coverage is read from harness source; the fixtures have not been
+  executed inside the three harness runtimes.
 - **G1/G2:** fingerprint Tucked in Terrors and prove seeded statistical/artifact parity as a
-  Storyweaver pack.
+  Storyweaver pack. *Current state:* `G1` fingerprints the recorded run sample; `G2` projects it
+  into the pack vocabulary and deliberately reports no parity number, since nothing was generated
+  independently to compare against.
 
 ## Retirement procedure
 
@@ -95,7 +104,8 @@ For every donor or duplicate:
 8. archive/delete only with explicit current owner authorization.
 
 No suite wave grants staging, commit, push, deployment, publication, credential, or destructive
-cleanup authority.
+cleanup authority. A gate may record that a retirement is *proposed* and what remains outstanding;
+it may never record one as performed.
 
 ## Verification commands
 
