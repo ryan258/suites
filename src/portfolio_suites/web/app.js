@@ -524,3 +524,143 @@ class SuitesApp {
 window.addEventListener('DOMContentLoaded', () => {
   window.app = new SuitesApp();
 });
+
+// --- Toolbench: run suite engine actions and collect typed output ---
+class Toolbench {
+  constructor() {
+    this.catalog = {};
+    this.tray = [];
+    this.el = (id) => document.getElementById(id);
+  }
+
+  async init() {
+    this.catalog = await fetch('/api/engines').then(r => r.json());
+    const suiteSel = this.el('tb-suite');
+    suiteSel.innerHTML = Object.keys(this.catalog)
+      .map(id => `<option value="${escapeHtml(id)}">${escapeHtml(id)}</option>`).join('');
+    suiteSel.addEventListener('change', () => this.renderActions());
+    this.el('tb-action').addEventListener('change', () => this.renderSignature());
+    this.el('tb-run').addEventListener('click', () => this.run());
+    this.el('tb-fill-defaults').addEventListener('click', () => this.fillDefaults());
+    this.el('tb-clear-tray').addEventListener('click', () => { this.tray = []; this.renderTray(); });
+    this.el('tb-compare').addEventListener('click', () => this.compare());
+    // Tray identifiers live in data attributes, matching the app's no-inline-handler rule.
+    this.el('tb-tray').addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+      const trigger = event.target.closest('[data-tb-action="show-result"]');
+      if (trigger) this.show(Number(trigger.dataset.tbIndex));
+    });
+    this.renderActions();
+    this.renderTray();
+  }
+
+  current() {
+    const suite = this.el('tb-suite').value;
+    const action = this.el('tb-action').value;
+    const entry = (this.catalog[suite]?.actions || []).find(a => a.name === action);
+    return { suite, action, entry };
+  }
+
+  renderActions() {
+    const suite = this.el('tb-suite').value;
+    const info = this.catalog[suite];
+    this.el('tb-action').innerHTML = info.actions
+      .map(a => `<option value="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`).join('');
+    this.el('tb-emits').textContent = info.emits || '-';
+    this.renderSignature();
+  }
+
+  renderSignature() {
+    const { entry } = this.current();
+    if (!entry) { this.el('tb-signature').innerHTML = ''; return; }
+    const rows = entry.parameters.map(p => `
+      <div class="spec-field-row">
+        <code>${escapeHtml(p.name)}</code>
+        <span class="${p.required ? 'badge-red' : 'badge-green'} pill-badge">${p.required ? 'required' : 'optional'}</span>
+        <span class="subtext">${escapeHtml(p.type)}${p.required ? '' : ` = ${escapeHtml(JSON.stringify(p.default))}`}</span>
+      </div>`).join('');
+    this.el('tb-signature').innerHTML =
+      `<p class="subtext">${escapeHtml(entry.summary || '')}</p>${rows || '<p class="subtext">No arguments.</p>'}`;
+    this.fillDefaults();
+  }
+
+  fillDefaults() {
+    const { entry } = this.current();
+    if (!entry) return;
+    const args = {};
+    entry.parameters.forEach(p => { if (!p.required) args[p.name] = p.default; });
+    entry.parameters.filter(p => p.required).forEach(p => { args[p.name] = null; });
+    this.el('tb-args').value = JSON.stringify(args, null, 2);
+  }
+
+  async run() {
+    const { suite, action } = this.current();
+    const status = this.el('tb-status');
+    let args;
+    try {
+      args = JSON.parse(this.el('tb-args').value || '{}');
+    } catch (err) {
+      status.innerHTML = `<span class="badge-red pill-badge">INVALID JSON</span> ${escapeHtml(err.message)}`;
+      return;
+    }
+    status.innerHTML = '<span class="pill-badge">RUNNING...</span>';
+    const res = await fetch(`/api/engines/${suite}/${action}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args)
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      status.innerHTML = `<span class="badge-red pill-badge">${escapeHtml(res.status)}</span> ${escapeHtml(body.error)}`;
+      this.el('tb-output').textContent = '';
+      return;
+    }
+    status.innerHTML = `<span class="badge-green pill-badge">OK</span> ${escapeHtml(suite)}.${escapeHtml(action)} &rarr; <strong>${escapeHtml(body.emits)}</strong>`;
+    this.el('tb-output').textContent = JSON.stringify(body.result, null, 2);
+    this.tray.push({ suite, action, emits: body.emits, result: body.result });
+    this.renderTray();
+  }
+
+  renderTray() {
+    const tray = this.el('tb-tray');
+    if (!this.tray.length) { tray.innerHTML = '<p class="subtext">No results yet. Run a tool.</p>'; return; }
+    tray.innerHTML = this.tray.map((item, i) => `
+      <div class="spec-field-row">
+        <span class="pill-badge">${escapeHtml(item.emits)}</span>
+        <code>${escapeHtml(item.suite)}.${escapeHtml(item.action)}</code>
+        <button class="btn btn-sm btn-secondary" data-tb-action="show-result" data-tb-index="${escapeHtml(i)}">view</button>
+      </div>`).join('');
+  }
+
+  show(index) {
+    this.el('tb-output').textContent = JSON.stringify(this.tray[index].result, null, 2);
+  }
+
+  // The cross-suite payoff: three suites emit ExperimentRun, so they compare in one table.
+  async compare() {
+    const runs = this.tray.filter(item => item.emits === 'ExperimentRun').map(item => item.result);
+    const status = this.el('tb-status');
+    if (runs.length < 2) {
+      status.innerHTML = '<span class="badge-red pill-badge">NEED 2+</span> Run at least two ExperimentRun tools (agent-reliability, game-design, model-behavior-lab).';
+      return;
+    }
+    const res = await fetch('/api/engines/model-behavior-lab/compare_runs/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ runs })
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      status.innerHTML = `<span class="badge-red pill-badge">${escapeHtml(res.status)}</span> ${escapeHtml(body.error)}`;
+      return;
+    }
+    status.innerHTML = `<span class="badge-green pill-badge">COMPARED</span> ${runs.length} ExperimentRuns across suites`;
+    this.el('tb-output').textContent = JSON.stringify(body.result, null, 2);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  window.toolbench = new Toolbench();
+  window.toolbench.init().catch(err => console.error('[Toolbench]', err));
+});
+

@@ -58,6 +58,11 @@
     <!-- Sidebar Navigation -->
     <aside class="app-sidebar">
       <nav class="sidebar-nav">
+        <div class="nav-section-title">TOOLS</div>
+        <button class="nav-item" data-tab="toolbench">
+          <span class="nav-icon">▶</span> Toolbench
+        </button>
+
         <div class="nav-section-title">CONTROL PLANE</div>
         <button class="nav-item active" data-tab="overview">
           <span class="nav-icon">◫</span> Overview & Metrics
@@ -100,6 +105,62 @@
     <!-- Main Content Area -->
     <main class="app-main">
       <!-- TAB 1: OVERVIEW & COMMAND CENTER -->
+      <section id="tab-toolbench" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Toolbench</h1>
+            <p class="pane-desc">Run any suite engine action and get typed contract output. Results collect in the tray below, so output from one suite can be handed to another.</p>
+          </div>
+        </div>
+
+        <div class="split-pane">
+          <div class="pane-col col-left">
+            <div class="card">
+              <h3 class="card-title">Select Tool</h3>
+              <div class="form-row">
+                <label class="form-label" for="tb-suite">Suite</label>
+                <select id="tb-suite" class="form-select"></select>
+              </div>
+              <div class="form-row">
+                <label class="form-label" for="tb-action">Action</label>
+                <select id="tb-action" class="form-select"></select>
+              </div>
+              <div class="contract-spec-box" id="tb-signature"></div>
+              <div class="action-row">
+                <button class="btn btn-secondary btn-block" id="tb-fill-defaults">Fill Default Arguments</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header-row">
+                <h3 class="card-title">Result Tray</h3>
+                <button class="btn btn-sm btn-secondary" id="tb-clear-tray">Clear</button>
+              </div>
+              <div id="tb-tray" class="validation-result-box"></div>
+              <div class="action-row">
+                <button class="btn btn-secondary btn-block" id="tb-compare">Compare ExperimentRuns in Tray</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pane-col col-right">
+            <div class="card">
+              <div class="card-header-row">
+                <h3 class="card-title">Arguments <span class="pill-badge" id="tb-emits">-</span></h3>
+                <button class="btn btn-sm btn-primary" id="tb-run">Run Tool</button>
+              </div>
+              <div class="editor-container">
+                <textarea id="tb-args" class="code-editor" spellcheck="false">{}</textarea>
+              </div>
+              <div class="validation-result-box" id="tb-status"></div>
+              <div class="editor-container">
+                <pre id="tb-output" class="code-editor" style="white-space:pre-wrap;overflow:auto;"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="tab-overview" class="tab-pane active">
         <div class="pane-header">
           <div>

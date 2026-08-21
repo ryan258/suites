@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .ai_config import AIConfigError, load_openrouter_config
+from .engine_actions import EngineActionError, list_actions, run_action
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
 from .registry import (
     get_live_drift_report,
@@ -303,6 +304,36 @@ def _export() -> int:
     return 0
 
 
+def _engine_cmd(suite: str | None, action: str | None, raw_args: str | None) -> int:
+    """List invocable engine actions, or run one and print its typed output."""
+    try:
+        if action is None:
+            catalog = list_actions(suite)
+            for suite_id, info in catalog.items():
+                print(f"{suite_id}  ({info['engine']} -> {info['emits']})")
+                for entry in info["actions"]:
+                    params = ", ".join(
+                        param["name"] if param["required"] else f"{param['name']}={param['default']!r}"
+                        for param in entry["parameters"]
+                    )
+                    print(f"    {entry['name']}({params})")
+                    if entry["summary"]:
+                        print(f"        {entry['summary']}")
+            return 0
+
+        try:
+            arguments = json.loads(raw_args) if raw_args else {}
+        except ValueError as exc:
+            print(f"ERROR: --args is not valid JSON: {exc}")
+            return 2
+        result = run_action(suite, action, arguments)
+    except EngineActionError as exc:
+        print(f"ERROR: {exc}")
+        return 2
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="suites", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -331,6 +362,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     contract_p.add_argument("name", help="contract name (e.g. A11yFinding, SourceRecord, BrandPackage, etc.)")
     contract_p.add_argument("action", choices=["sample", "spec", "validate"], help="action to perform")
     contract_p.add_argument("file", nargs="?", default=None, help="path to JSON file for validation")
+
+    engine_p = sub.add_parser("engine", help="list or run the suite engines' invocable actions")
+    engine_p.add_argument("suite", nargs="?", default=None, help="suite id (e.g. accessibility)")
+    engine_p.add_argument("action", nargs="?", default=None, help="action name; omit to list actions")
+    engine_p.add_argument("--args", default=None, help="JSON object of keyword arguments")
 
     wave_p = sub.add_parser("wave", help="run and verify migration wave gates and generate evidence")
     wave_p.add_argument("suite", nargs="?", default=None, help="suite ID (e.g. accessibility)")
@@ -371,6 +407,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _inspect(args.target)
     if args.command == "contract":
         return _contract_cmd(args.name, args.action, args.file)
+    if args.command == "engine":
+        return _engine_cmd(args.suite, args.action, args.args)
     if args.command == "wave":
         return _wave_cmd(args.suite, args.wave_id, args.all, args.record, args.full)
     if args.command == "serve":

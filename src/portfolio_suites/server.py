@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_contract
+from .engine_actions import EngineActionError, list_actions, run_action
 from .registry import (
     SUITES_ROOT,
     get_dependency_graph,
@@ -165,6 +166,14 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
             elif path == "/api/validate":
                 report = validate_registry(check_live=True)
                 self._send_json(200, {"ok": report.ok, "errors": report.errors, "warnings": report.warnings})
+            elif path == "/api/engines":
+                self._send_json(200, list_actions())
+            elif path.startswith("/api/engines/"):
+                suite_id = urllib.parse.unquote(path[len("/api/engines/"):]).strip("/")
+                try:
+                    self._send_json(200, list_actions(suite_id))
+                except EngineActionError as exc:
+                    self._send_json(404, {"error": str(exc)})
             elif path == "/api/contracts":
                 specs = {
                     k: {
@@ -276,6 +285,28 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     self._send_json(200, {"ok": True, "validated": validated})
                 except ContractError as exc:
                     self._send_json(400, {"ok": False, "error": str(exc)})
+            elif path.startswith("/api/engines/") and path.endswith("/run"):
+                parts = [urllib.parse.unquote(part) for part in path[len("/api/engines/"):-len("/run")].split("/") if part]
+                if len(parts) != 2:
+                    self._send_json(404, {"error": "expected /api/engines/<suite>/<action>/run"})
+                    return
+                suite_id, action = parts
+                arguments = self._read_json_body() or {}
+                try:
+                    result = run_action(suite_id, action, arguments)
+                except EngineActionError as exc:
+                    self._send_json(400, {"error": str(exc)})
+                    return
+                except Exception as exc:  # engine raised on its own inputs
+                    self._send_json(422, {"error": f"{type(exc).__name__}: {exc}", "suite": suite_id, "action": action})
+                    return
+                self._send_json(200, {
+                    "suite": suite_id,
+                    "action": action,
+                    "arguments": arguments,
+                    "emits": list_actions(suite_id)[suite_id]["emits"],
+                    "result": result,
+                })
             elif path.startswith("/api/waves/") and path.endswith("/run"):
                 parts = path.split("/")
                 if len(parts) != 6 or not parts[3] or not parts[4]:

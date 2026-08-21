@@ -4,6 +4,27 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## Verified Completed Milestones & Control-Plane Foundations
+
+The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified milestones:
+
+### Control Plane Foundation Established
+- **8/8 Suite Boundaries**: Defined with explicit user promises and canonical anchors ([Accessibility](file:///Users/ryanjohnson/Projects/suites/accessibility), [Operator OS](file:///Users/ryanjohnson/Projects/suites/operator-os), [Brand + Publishing](file:///Users/ryanjohnson/Projects/suites/brand-publishing), [Production House](file:///Users/ryanjohnson/Projects/suites/production-house), [Model Behavior Lab](file:///Users/ryanjohnson/Projects/suites/model-behavior-lab), [Discovery + Decision](file:///Users/ryanjohnson/Projects/suites/discovery-decision), [Agent Reliability Lab](file:///Users/ryanjohnson/Projects/suites/agent-reliability), [Game Design](file:///Users/ryanjohnson/Projects/suites/game-design)).
+- **6 Shared Contracts**: Implemented schemas with bidirectional validation (`A11yFinding`, `SourceRecord`, `BrandPackage`, `InvestigationRecord`, `ProductionJob`, `ExperimentRun`).
+- **70 Top-Level Projects**: Dispositioned across suites and independent containers in [project-ledger.json](file:///Users/ryanjohnson/Projects/suites/portfolio/project-ledger.json).
+- **Zero-Dependency CLI & Web Dashboard**: Operational CLI commands (`status`, `next`, `validate`, `drift`, `wave`, `ai-config`) and local web dashboard on port 8383.
+- **43 Migration Wave Specifications**: Defined across 8 source adapters; every wave runner reads donor content, declares a recovery claim, and specifies runtime follow-up obligations.
+- **9/10 Recovery Standard Adopted**: Weighted rubrics, strict promotion gates (`prototype` → `source_verified` → `parity_verified` → `adopted` → `converged`), and fail-closed validation.
+
+### Verified Wave Milestones Completed (5/43)
+1. **`A1` — Accessibility (Analysis Milestone)**: WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md)).
+2. **`A2` — Accessibility (Runtime Recovery)**: WCAG 3.3.1 Error Association rule port into destination runtime [`allys-tools`](file:///Users/ryanjohnson/Projects/allys-tools) (`f2b4c6e`) with 127/127 tests passing and four-stage adapter verification ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A2-WCAG-331-EVIDENCE.json)).
+3. **`A3` — Accessibility (Analysis Milestone)**: Keyboard overlay reconciliation across `kb-overlay`, `keyboard-nav-overlay`, and `keyboard-nav-overlay-94bf7e` ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A3-KEYBOARD-OVERLAYS.md)).
+4. **`O2` — Operator OS (Analysis Milestone)**: Full feature inventory and spec mapping of `ryos` and `master-upgrade-plan` against `dotfiles` and `obsidian-observer` ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O2-RYOS-DISPOSITION.md)).
+5. **`B2` — Brand + Publishing (Analysis Milestone)**: Live source mapping of Brand Workshop's nine phases onto `brand-maker-spec` workspace state and gates ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B2-WORKSHOP-MAPPING.json)).
+
+---
+
 ## 2026-08-21 — Source Binding for the Twenty-One Unintegrated Waves
 
 Every wave that was still `specified` — `M1`–`M5`, `D1`–`D5`, `R1`–`R5`, `G1`–`G5`, and `A6` — now
