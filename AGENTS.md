@@ -65,18 +65,28 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
 
 ---
 
-## 5. GitNexus Code Graph (Ryan runs indexing locally)
+## 5. GitNexus Code Graph (Ryan runs GitNexus locally)
 
 The repo is indexed by [GitNexus](https://github.com/abhigyanpatwari/GitNexus) (`gitnexus` CLI, installed globally; MCP + skills registered for Claude Code / Codex / Antigravity / OpenCode).
 
-- **Agents: never run `gitnexus analyze`.** Indexing is a Level 4 heavy gate. **Ryan runs it locally when needed.**
-- **Agents: do use the read-only MCP tools** for structural questions instead of grepping the tree: `query`, `context`, `impact` (blast radius), `trace`, `detect_changes`, `check`, `cypher`, plus `gitnexus://repo/suites/context`.
-- If a tool reports a **stale index**, say so and ask Ryan to refresh — do not refresh it yourself.
+- **Canonical token-economy rule:** Agents do **not** run GitNexus CLI commands, MCP tools, resources, or broad GitNexus skill/reference lookups by default. This rule overrides the generated GitNexus block below wherever that block tells an agent to invoke MCP tools directly.
+- When graph evidence is materially needed, give Ryan the **smallest exact local command or tool invocation** required, state what output is needed, and ask him to paste the compact result back. Prefer one focused request at a time over broad graph dumps.
+- Do not duplicate a GitNexus query after Ryan supplies current output. Treat the pasted result as task evidence, summarize only the relevant facts, and continue with ordinary source inspection or tests.
+- Never run `gitnexus analyze`. Indexing is a Level 4 heavy gate. If freshness is unknown, ask Ryan to run `node .gitnexus/run.cjs status`. If it reports stale, ask him to run `node .gitnexus/run.cjs analyze` and then `node .gitnexus/run.cjs status`.
+- Do not request a refresh when current task output already proves the index is up to date at the checked-out commit.
+- If a required query is available only through a GitNexus MCP client rather than the CLI, provide the exact read-only MCP invocation for Ryan to run locally; do not invoke it yourself unless Ryan explicitly delegates GitNexus operation in the current prompt.
+- Where the generated block requires `impact` or `detect_changes`, satisfy that requirement by requesting Ryan's local result; the token-economy rule changes who runs the query, not whether required safety evidence is collected.
+- Continue any safe, useful non-GitNexus work while waiting when the query result is not a hard blocker.
 
-### Prompt for Ryan to run locally (refresh index / blast radius)
+### Prompt for Ryan to run locally (check and refresh only if stale)
 
 ```bash
-cd /Users/ryanjohnson/Projects/suites && gitnexus analyze
+cd /Users/ryanjohnson/Projects/suites
+node .gitnexus/run.cjs status
+
+# Only when status reports stale:
+node .gitnexus/run.cjs analyze
+node .gitnexus/run.cjs status
 ```
 
 - Incremental by default — re-run after a batch of edits or a branch switch.

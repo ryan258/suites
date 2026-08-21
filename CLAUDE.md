@@ -4,6 +4,16 @@ Project instructions live in AGENTS.md — read it in full, it is canonical for 
 
 @AGENTS.md
 
+## GitNexus token economy (canonical override)
+
+- Ryan runs GitNexus locally. Do not invoke GitNexus CLI commands, MCP tools, resources, or broad GitNexus skill/reference lookups by default.
+- This section and `AGENTS.md` override any generated instruction below that tells an agent to call GitNexus MCP tools directly.
+- When graph evidence is materially required, give Ryan the smallest exact local command or read-only MCP invocation, say which compact output is needed, and ask him to paste it back.
+- Use supplied GitNexus output as current evidence without repeating the query. Do not ask for a refresh if Ryan has already shown that the index matches the checked-out commit.
+- For freshness, request `node .gitnexus/run.cjs status`; only after a stale result request `node .gitnexus/run.cjs analyze` followed by `node .gitnexus/run.cjs status`. Never run analysis yourself.
+- When the generated block requires `impact` or `detect_changes`, request Ryan's local result. This changes who runs the query, not the safety gate.
+- Invoke GitNexus directly only when Ryan explicitly delegates that operation in the current prompt.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
