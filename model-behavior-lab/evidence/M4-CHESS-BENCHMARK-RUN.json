@@ -1,190 +1,108 @@
 {
-  "artifact_kind": "reference_prototype_run",
-  "migration_acceptance_verified": false,
   "schema_version": "1.0.0",
-  "run_id": "run-mbl-chess-01",
-  "benchmark_id": "bench-chess-tactics",
-  "benchmark_version": "1.0.0",
-  "provider": "deterministic-oracle",
-  "model": "chess-rules-evaluator-v1",
-  "parameters": {
-    "temperature": 0.0,
-    "max_tokens": 64,
-    "seed": 42
+  "wave": "M4",
+  "status": "benchmark_verified",
+  "canonical_run": {
+    "artifact_kind": "reference_prototype_run",
+    "migration_acceptance_verified": false,
+    "schema_version": "1.0.0",
+    "run_id": "run-m4-recorded-openings",
+    "benchmark_id": "bench-chess-recorded-openings",
+    "benchmark_version": "1.0.0",
+    "provider": "deterministic-oracle",
+    "model": "chess-rules-evaluator-v1",
+    "parameters": {
+      "positions": 4,
+      "source": "ai-chess/matches"
+    },
+    "scorer": "chess_move_validator",
+    "scorer_version": "1.0.0",
+    "status": "completed",
+    "iterations": [
+      {
+        "iteration": 1,
+        "scenario_id": "chess-33d390d53a86",
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "candidate_move": "e2e4",
+        "observed_legal": true,
+        "verdict": "legal_double_pawn_push",
+        "passed": true,
+        "score": 1.0,
+        "outcome_source": "donor_recorded_match"
+      },
+      {
+        "iteration": 2,
+        "scenario_id": "chess-cc93f06b9339",
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "candidate_move": "e2e4",
+        "observed_legal": true,
+        "verdict": "legal_double_pawn_push",
+        "passed": true,
+        "score": 1.0,
+        "outcome_source": "donor_recorded_match"
+      },
+      {
+        "iteration": 3,
+        "scenario_id": "chess-d15ead9cb0fa",
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "candidate_move": "e2e4",
+        "observed_legal": true,
+        "verdict": "legal_double_pawn_push",
+        "passed": true,
+        "score": 1.0,
+        "outcome_source": "donor_recorded_match"
+      },
+      {
+        "iteration": 4,
+        "scenario_id": "chess-d842d62c0cc9",
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "candidate_move": "e2e4",
+        "observed_legal": true,
+        "verdict": "legal_double_pawn_push",
+        "passed": true,
+        "score": 1.0,
+        "outcome_source": "donor_recorded_match"
+      }
+    ],
+    "evidence": [
+      {
+        "evaluator": "chess_move_validator",
+        "summary": "4 recorded opening moves replayed against their own start positions.",
+        "pass_rate": 1.0,
+        "models_observed": [
+          "openai/gpt-5.4-nano",
+          "qwen/qwen3.5-9b",
+          "xiaomi/mimo-v2-pro"
+        ]
+      }
+    ],
+    "errors": []
   },
-  "scorer": "chess_move_validator",
-  "scorer_version": "1.0.0",
-  "status": "completed",
-  "iterations": [
-    {
-      "iteration": 1,
-      "scenario_id": "chess-puzzle-01",
-      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
-      "candidate_move": "f3e5",
-      "expected_move": "f3e5",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.103,
-      "tokens_in": 74,
-      "tokens_out": 4
+  "kernel_generality": {
+    "kernel": "portfolio_suites.engines.model_behavior.ModelBehaviorEngine",
+    "domains_scored": [
+      "ethics_paradoxes",
+      "chess_openings"
+    ],
+    "shared_contract": "ExperimentRun"
+  },
+  "ai_chess_fingerprint": {
+    "branch": "main",
+    "head": "1261b2b8d72aedd0033691545d6144ad7f4e4672",
+    "short": "main@1261b2b",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "fd887fa4a277fcbf28035e48bc03e18379930f56e3baf70856c574513b797e37",
+    "tested_files_fingerprint": {
+      "lib/chess_match.py": "459bbb011c9e489712368ed462216d63ede1dcc8bdb368c303463fbb12a7929c",
+      "lib/match_runner.py": "5fe7fe8980ff8e79227c715438db80e18b22000278deb9ac652a315c74dd588c",
+      "lib/match_store.py": "f401efd3bfc7e4d6e22c72d751a53ecacb06b130385ea5827629f197f3dd3757",
+      "README.md": "c011261a722986dbe4305b1351988df3b8f6a3d20bd4bd76c0a9f0d95356b2f2"
     },
-    {
-      "iteration": 2,
-      "scenario_id": "chess-puzzle-02",
-      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
-      "candidate_move": "g8f6",
-      "expected_move": "g8f6",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.025,
-      "tokens_in": 75,
-      "tokens_out": 4
-    },
-    {
-      "iteration": 3,
-      "scenario_id": "chess-puzzle-03",
-      "fen": "8/8/8/4k3/8/8/4K3/8 w - - 0 1",
-      "candidate_move": "e2e3",
-      "expected_move": "e2e3",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.019,
-      "tokens_in": 39,
-      "tokens_out": 4
-    },
-    {
-      "iteration": 4,
-      "scenario_id": "chess-puzzle-04",
-      "fen": "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2",
-      "candidate_move": "d8h4",
-      "expected_move": "d8h4",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.022,
-      "tokens_in": 71,
-      "tokens_out": 4
-    },
-    {
-      "iteration": 5,
-      "scenario_id": "chess-puzzle-05",
-      "fen": "8/8/8/8/8/4k3/4p3/4K3 w - - 0 1",
-      "candidate_move": "e1f2",
-      "expected_move": "e1f2",
-      "expected_legal": false,
-      "observed_legal": false,
-      "verdict": "illegal_move: king_in_check_or_attacked",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 0.0,
-      "latency_ms": 0.01,
-      "tokens_in": 41,
-      "tokens_out": 4
-    },
-    {
-      "iteration": 6,
-      "scenario_id": "chess-puzzle-06",
-      "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
-      "candidate_move": "e1g1",
-      "expected_move": "e1g1",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.045,
-      "tokens_in": 46,
-      "tokens_out": 4
-    },
-    {
-      "iteration": 7,
-      "scenario_id": "chess-puzzle-07",
-      "fen": "8/7k/8/5K2/8/8/6R1/8 w - - 0 1",
-      "candidate_move": "f5f6",
-      "expected_move": "f5f6",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.019,
-      "tokens_in": 40,
-      "tokens_out": 4
-    },
-    {
-      "iteration": 8,
-      "scenario_id": "chess-puzzle-08",
-      "fen": "r1b1k2r/ppppqppp/2n5/1B2p3/4n3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 6",
-      "candidate_move": "d1e2",
-      "expected_move": "d1e2",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.022,
-      "tokens_in": 74,
-      "tokens_out": 4
-    },
-    {
-      "iteration": 9,
-      "scenario_id": "chess-puzzle-09",
-      "fen": "8/8/8/8/3k4/8/3K4/8 b - - 0 1",
-      "candidate_move": "d4d5",
-      "expected_move": "d4d5",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.018,
-      "tokens_in": 39,
-      "tokens_out": 4
-    },
-    {
-      "iteration": 10,
-      "scenario_id": "chess-puzzle-10",
-      "fen": "6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
-      "candidate_move": "e1e8",
-      "expected_move": "e1e8",
-      "expected_legal": true,
-      "observed_legal": true,
-      "verdict": "solution_verified",
-      "passed": true,
-      "score": 1.0,
-      "legality_score": 1.0,
-      "latency_ms": 0.018,
-      "tokens_in": 47,
-      "tokens_out": 4
-    }
-  ],
-  "evidence": [
-    {
-      "evaluator": "chess_move_validator",
-      "summary": "10 FEN chess positions evaluated with deterministic piece movement, attack boundaries, and check safety.",
-      "aggregate_score": 1.0,
-      "pass_rate": 1.0,
-      "scorer_version": "1.0.0"
-    }
-  ],
-  "errors": []
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

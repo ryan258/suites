@@ -1,7 +1,89 @@
 {
-  "authored_games": [
-    "oregon dnd"
+  "schema_version": "1.0.0",
+  "wave": "G3",
+  "status": "boundary_documented",
+  "authored_inventory": [
+    {
+      "file": "01_events_and_hazards.md",
+      "sha256": "e4ede4a50e676aefa9851bf3dd96db228bf0407491b276d5163d5b3e095c4c51",
+      "bytes": 16240,
+      "title": "1. Events & Hazards"
+    },
+    {
+      "file": "02_character_backgrounds.md",
+      "sha256": "2fc4eb856536f67ec8db33c04845192f7c4b2115572a3d5d5d6ff9e7966be6fc",
+      "bytes": 4431,
+      "title": "2. Character Backgrounds"
+    },
+    {
+      "file": "03_settlements_and_trading.md",
+      "sha256": "02895a343f242a56f9ebf19a4d2f6e44c41b9db0c786f4b097974cc3e4020cd1",
+      "bytes": 4629,
+      "title": "3. Settlements & Trading"
+    },
+    {
+      "file": "04_native_encounters.md",
+      "sha256": "5ef6756b9f118e845f34800e40406101d8ecf4a2a220446d2293fb35640e1546",
+      "bytes": 8102,
+      "title": "4. Native Encounters"
+    },
+    {
+      "file": "05_camp_life.md",
+      "sha256": "9c0c8782b78381ae56715b81282358eb9da87e6f7ec09b923848fb780b74c4b3",
+      "bytes": 5124,
+      "title": "5. Camp Life & Rest Days"
+    },
+    {
+      "file": "06_weather_and_environment.md",
+      "sha256": "5bd055ae0145e82a4b2ed9963481464461c5677013c19cda78bf9f8d467c26a6",
+      "bytes": 6901,
+      "title": "6. Weather & Environment"
+    },
+    {
+      "file": "07_route_variants.md",
+      "sha256": "08fbb6b37fff8ea17167ae37225ab0d529d0888dfa5db6c52d2d9db3ebd49820",
+      "bytes": 5788,
+      "title": "7. Route Variants & Cutoffs"
+    },
+    {
+      "file": "README.md",
+      "sha256": "453329d50a16b69b9d2f81365c822a75a606059a03400ee2b9c68505a112a86b",
+      "bytes": 1034,
+      "title": "Oregon Trail RPG"
+    },
+    {
+      "file": "seed.md",
+      "sha256": "4b09fe16660dda76b0f6ecaf193e8072992c16a6a1f7b2c7170a1e0734ef6c0f",
+      "bytes": 42067,
+      "title": "Oregon Trail RPG \u2014 Game Design Document"
+    }
   ],
-  "ownership": "independent_creative_reference",
-  "platform_invented": false
+  "engine_coupling": {
+    "engine": "storyweaver",
+    "referencing_files": [],
+    "coupled": false
+  },
+  "boundary": {
+    "authored_game": "oregon  dnd",
+    "ownership": "independent_creative_reference",
+    "platform_invented": false,
+    "pack_contract": "optional"
+  },
+  "oregon_dnd_fingerprint": {
+    "branch": "main",
+    "head": "33ab7374e6eee9da7d0bb559350745ae5480b90f",
+    "short": "main@33ab737",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "",
+    "tested_files_fingerprint": {
+      "01_events_and_hazards.md": "e4ede4a50e676aefa9851bf3dd96db228bf0407491b276d5163d5b3e095c4c51",
+      "README.md": "453329d50a16b69b9d2f81365c822a75a606059a03400ee2b9c68505a112a86b"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

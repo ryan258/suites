@@ -1,14 +1,109 @@
 {
-  "harnesses": [
-    "Looping Box",
-    "SSSF",
-    "Agentic Harness"
-  ],
-  "gates_evaluated": [
-    "confinement",
-    "rollback",
-    "budget_exhaustion",
-    "malformed_output"
-  ],
-  "all_passed": true
+  "schema_version": "1.0.0",
+  "wave": "R2",
+  "status": "coverage_measured",
+  "harness_coverage": {
+    "looping-box": {
+      "confinement": true,
+      "review_required": true,
+      "budget": false,
+      "malformed_output": true,
+      "rollback": true,
+      "source_bytes_scanned": 76607
+    },
+    "sssf": {
+      "confinement": true,
+      "review_required": false,
+      "budget": false,
+      "malformed_output": true,
+      "rollback": true,
+      "source_bytes_scanned": 12155
+    },
+    "agentic-harness": {
+      "confinement": true,
+      "review_required": true,
+      "budget": true,
+      "malformed_output": true,
+      "rollback": false,
+      "source_bytes_scanned": 91997
+    }
+  },
+  "gates_covered": {
+    "confinement": [
+      "agentic-harness",
+      "looping-box",
+      "sssf"
+    ],
+    "review_required": [
+      "agentic-harness",
+      "looping-box"
+    ],
+    "budget": [
+      "agentic-harness"
+    ],
+    "malformed_output": [
+      "agentic-harness",
+      "looping-box",
+      "sssf"
+    ],
+    "rollback": [
+      "looping-box",
+      "sssf"
+    ]
+  },
+  "fingerprints": {
+    "looping_box": {
+      "branch": "main",
+      "head": "2839b4d962ffe11a5fb5f3f5bebc5ff67af810f0",
+      "short": "main@2839b4d",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "src/looping_box/action_policy.py": "1df7920b4f08f3d773fed058632c21c6336954909bbdb30715c1deff7c4d02df",
+        "src/looping_box/supervisor.py": "5a553a40065d8fccb6d245e337b55f25a49a976a48ad90c9c4420ee54f37604e",
+        "src/looping_box/worker.py": "9cd14ea14ba00fa0d2f3bf32c2861b1d1e43e49fbc79dcba840f55cbdc49d8e3",
+        "src/looping_box/schema.py": "3431d147f1f57ed7a15c15651dd4b4349c05a15d505498173d99daff7f3894ad",
+        "README.md": "fc4063e20c4af8bb3c2eea8e4c9219ed2e22f974c7ef468ab44c9cefe725ef13"
+      },
+      "target_state": "clean_commit"
+    },
+    "sssf": {
+      "branch": "main",
+      "head": "9e6c2a21f2207132c6cb79230d49ef6276c9f15e",
+      "short": "main@9e6c2a2",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "aop.py": "ed2939627d18aaee645e3dab36e75586cc831dd51608f774757fce45d872a3a8",
+        "spec.md": "0d7ae2299b3368c849814b1e3abecb85f8925152423d60f846f17b0f8afcdc13",
+        "README.md": "6b92f9edc82432b3140e843a020dfd3d14e0c0e73069cc09a0954e518e331356"
+      },
+      "target_state": "clean_commit"
+    },
+    "agentic_harness": {
+      "branch": "roadmapping",
+      "head": "8533b41ec3ae85b99e936515269e467580607f5d",
+      "short": "roadmapping@8533b41",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "agent.py": "ec0aec49997528ca93b9dcd6d1df05521fc41b9b6b27196975b73c4b27833e81",
+        "evals/smoke.json": "86ce4e7e86d6bbc6d1a4ddbdc5f49181751fbf5463e74075e9cb6aeb8d50c376",
+        "README.md": "ecaf6ba9dfa44b3ab050e31552ca2bebcc085d9e038ba91e40051c74e63b0398"
+      },
+      "target_state": "clean_commit"
+    }
+  },
+  "execution_limitation": "gate presence read from harness source; fixtures not executed inside the donor runtimes",
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

@@ -1,7 +1,96 @@
 {
-  "pack_id": "pack-storyweaver-tit",
-  "game_name": "Tucked In Terrors",
-  "version": "1.0.0",
-  "parity_with_dedicated_sim": true,
-  "statistical_delta": "<0.01"
+  "schema_version": "1.0.0",
+  "wave": "G2",
+  "status": "pack_shape_projected",
+  "pack": {
+    "pack_id": "pack-storyweaver-tucked-in-terrors",
+    "game_name": "Tucked In Terrors",
+    "gds_slots": {
+      "cards.json": {
+        "filled_from": "TuckdInTerrors_MonteCarloSim/data/cards.json",
+        "items": 31
+      },
+      "objectives.json": {
+        "filled_from": "TuckdInTerrors_MonteCarloSim/data/objectives.json",
+        "items": 8
+      },
+      "game.json": {
+        "filled_from": "donor recorded run summary",
+        "items": 1000
+      }
+    },
+    "unfilled_gds_slots": [
+      "decks.json",
+      "design_intent.json",
+      "resources.json",
+      "rules.json",
+      "setup.json",
+      "text.json"
+    ],
+    "reference_project": "storyweaver/projects/ext_the_merchant_ship_meridian_open_sea_night_na_0c939c",
+    "reference_slots_written": [
+      "cards.json",
+      "decks.json",
+      "design_intent.json",
+      "game.json",
+      "objectives.json",
+      "resources.json",
+      "rules.json",
+      "setup.json",
+      "text.json"
+    ]
+  },
+  "shape_projection": {
+    "method": "donor rows and rules data projected into the Storyweaver pack vocabulary",
+    "donor_outcome_distribution": {
+      "LOSS_NIGHTFALL": 926,
+      "PRIMARY_WIN": 74
+    },
+    "donor_rows_summarized": 1000,
+    "pack_slots_filled": [
+      "cards.json",
+      "game.json",
+      "objectives.json"
+    ],
+    "pack_slots_within_observed_vocabulary": true,
+    "parallel_engine_written": false,
+    "pack_materialized_on_disk": false,
+    "independent_resimulation_verified": false,
+    "statistical_parity_measured": false
+  },
+  "tucked_in_terrors_fingerprint": {
+    "branch": "main",
+    "head": "21511ab14721ce94d5089294c3e913cbc0269761",
+    "short": "main@21511ab",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "",
+    "tested_files_fingerprint": {
+      "data/cards.json": "43f0f300fa2e2b7d8dac418ec82506f1e55c7e68cf0d620824ec68b6e002fd0a",
+      "data/objectives.json": "059e14a20e41956618aa8d664964fefe1efced95c22d6edf5139f54fc25d04f9",
+      "main.py": "797d7775483770dfb495f91914a13ddd4d8a27face49eb8240cef1076225cf81",
+      "README.md": "bd9a4abcbab172b13f79e71d099c03d74c5ca9dc6176e46f71ac79ca8755c08a"
+    },
+    "target_state": "clean_commit"
+  },
+  "storyweaver_fingerprint": {
+    "branch": "main",
+    "head": "7c9565a3aebb71720806dd2e8124f14868463371",
+    "short": "main@7c9565a",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "102f2575d607a19f2c2ab427c359fe9978875c22329c152e9d5269bb8839a284",
+    "tested_files_fingerprint": {
+      "pyproject.toml": "50e1a5f36dc95cda64f54661839ac2441a0ff055320e79ff8aa1c164dbc5ed42",
+      "README.md": "0a377658ace3bfd032068cfa6549d60853cf8646fdc05f1171096c8bd1619e47",
+      "dev_spec.md": "b9572e82082d168eff84c798aaf6bceead3cfdcdd64f38d0bd4637fdcc7fd92f"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

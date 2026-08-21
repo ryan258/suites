@@ -1,4 +1,8 @@
 {
+  "schema_version": "1.0.0",
+  "wave": "A6",
+  "status": "consolidation_proposed",
+  "all_stages_passed": true,
   "artifact_kind": "reference_prototype",
   "proposed_canonical_anchor": "kb-overlay",
   "manifest_version": 3,
@@ -7,15 +11,227 @@
     "keyboard-nav-overlay-94bf7e"
   ],
   "features_targeted": [
-    "spatial_nav",
-    "visual_focus_ring",
+    "aria_tree_scan",
+    "global_chrome_command",
     "keyboard_shortcuts",
-    "aria_tree_scan"
+    "mutation_observer_updates",
+    "settings_storage",
+    "shadow_dom_encapsulation",
+    "spatial_nav",
+    "visual_focus_ring"
   ],
-  "permissions_minimized": [
-    "activeTab",
-    "storage"
-  ],
+  "canonical_permission_surface": {
+    "api_permissions": [
+      "activeTab",
+      "storage"
+    ],
+    "host_scope": [
+      "<all_urls>"
+    ]
+  },
+  "permission_analysis": {
+    "canonical_api_permissions": [
+      "activeTab",
+      "storage"
+    ],
+    "canonical_host_scope": [
+      "<all_urls>"
+    ],
+    "broad_api_permission_vocabulary": [
+      "debugger",
+      "management",
+      "scripting",
+      "tabs",
+      "webNavigation"
+    ],
+    "broad_host_patterns": [
+      "*://*/*",
+      "<all_urls>",
+      "http://*/*",
+      "https://*/*"
+    ],
+    "canonical_broad_api_permissions": [],
+    "canonical_host_scope_is_broad": true,
+    "donor_api_permissions": {
+      "keyboard-nav-overlay": [
+        "activeTab",
+        "storage"
+      ],
+      "keyboard-nav-overlay-94bf7e": [
+        "activeTab",
+        "scripting"
+      ]
+    },
+    "donor_host_scope": {
+      "keyboard-nav-overlay": [
+        "<all_urls>"
+      ],
+      "keyboard-nav-overlay-94bf7e": [
+        "<all_urls>"
+      ]
+    },
+    "donor_broad_api_permissions": {
+      "keyboard-nav-overlay": [],
+      "keyboard-nav-overlay-94bf7e": [
+        "scripting"
+      ]
+    },
+    "donor_only_api_permissions": {
+      "keyboard-nav-overlay": [],
+      "keyboard-nav-overlay-94bf7e": [
+        "scripting"
+      ]
+    },
+    "canonical_no_broader_than_donors": true,
+    "minimized_permissions_verified": false,
+    "minimization_outstanding": [
+      "content script host scope '<all_urls>' is not narrowed"
+    ]
+  },
+  "donor_retirement": {
+    "keyboard-nav-overlay": {
+      "active_status": "superseded_by_kb-overlay",
+      "source_present": true,
+      "working_tree_dirty": false,
+      "head": "main@fbb14fe",
+      "retirement_performed": false,
+      "owner_action_required": true
+    },
+    "keyboard-nav-overlay-94bf7e": {
+      "active_status": "superseded_by_kb-overlay",
+      "source_present": true,
+      "working_tree_dirty": false,
+      "head": "main@0023057",
+      "retirement_performed": false,
+      "owner_action_required": true
+    }
+  },
   "proposed_disposition": "proposed_anchor",
-  "migration_acceptance_verified": false
+  "migration_acceptance_verified": false,
+  "reconciliation_matrix": {
+    "kb-overlay": {
+      "role": "canonical_anchor",
+      "manifest_version": 3,
+      "features": [
+        "spatial_nav",
+        "visual_focus_ring",
+        "keyboard_shortcuts",
+        "settings_storage",
+        "aria_tree_scan",
+        "shadow_dom_encapsulation",
+        "mutation_observer_updates",
+        "global_chrome_command"
+      ],
+      "feature_inventory_kind": "declared_analysis",
+      "permissions": [
+        "activeTab",
+        "storage"
+      ],
+      "host_scope": [
+        "<all_urls>"
+      ],
+      "code_size_bytes": 37014,
+      "code_files_count": 7,
+      "active_status": "retained_canonical",
+      "git_fingerprint": {
+        "branch": "main",
+        "head": "5ac00b304956e1f61f53cfa46f618160b7abc89a",
+        "short": "main@5ac00b3",
+        "is_dirty": true,
+        "dirty_files_count": 1,
+        "dirty_files": [
+          "?? .DS_Store"
+        ],
+        "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lockfile_sha256": "",
+        "tested_files_fingerprint": {
+          "README.md": "e512f36fe00c30cecfd9efefefad837b723c3d2c737746d909ab6b9f2c44df89",
+          ".DS_Store": "cbe28ac6c48927dc111d65ed77ad601743ea0ea071e1a0a07ab876dd7ad5ceee"
+        },
+        "target_state": "local_working_tree_candidate"
+      },
+      "source_available": true,
+      "manifest_valid": true,
+      "fingerprint_verified": true
+    },
+    "keyboard-nav-overlay": {
+      "role": "duplicate_donor",
+      "manifest_version": 3,
+      "features": [
+        "spatial_nav",
+        "visual_focus_ring"
+      ],
+      "feature_inventory_kind": "declared_analysis",
+      "permissions": [
+        "activeTab",
+        "storage"
+      ],
+      "host_scope": [
+        "<all_urls>"
+      ],
+      "code_size_bytes": 11804,
+      "code_files_count": 6,
+      "active_status": "superseded_by_kb-overlay",
+      "git_fingerprint": {
+        "branch": "main",
+        "head": "fbb14fe6fe329ddd83245b5d14b5cb271e4f56f7",
+        "short": "main@fbb14fe",
+        "is_dirty": false,
+        "dirty_files_count": 0,
+        "dirty_files": [],
+        "patch_sha256": "",
+        "lockfile_sha256": "",
+        "tested_files_fingerprint": {
+          "README.md": "7ffa463bb28efaaab257ada0a3012be36b77944816d01f4fcb324a59e5d54167"
+        },
+        "target_state": "clean_commit"
+      },
+      "source_available": true,
+      "manifest_valid": true,
+      "fingerprint_verified": true,
+      "flaws_identified": [
+        "syntax_typos_in_content_js",
+        "global_css_leakage_no_shadow_dom"
+      ]
+    },
+    "keyboard-nav-overlay-94bf7e": {
+      "role": "duplicate_donor",
+      "manifest_version": 3,
+      "features": [
+        "spatial_nav"
+      ],
+      "feature_inventory_kind": "declared_analysis",
+      "permissions": [
+        "activeTab",
+        "scripting"
+      ],
+      "host_scope": [
+        "<all_urls>"
+      ],
+      "code_size_bytes": 5040,
+      "code_files_count": 6,
+      "active_status": "superseded_by_kb-overlay",
+      "git_fingerprint": {
+        "branch": "main",
+        "head": "0023057715cb5243727da0bca06ee106a3322ea4",
+        "short": "main@0023057",
+        "is_dirty": false,
+        "dirty_files_count": 0,
+        "dirty_files": [],
+        "patch_sha256": "",
+        "lockfile_sha256": "",
+        "tested_files_fingerprint": {
+          "README.md": "0f0530b40424feb95a6119d22c2468812f5aa72aebd3f3b6a5a698dada2da1ea"
+        },
+        "target_state": "clean_commit"
+      },
+      "source_available": true,
+      "manifest_valid": true,
+      "fingerprint_verified": true,
+      "flaws_identified": [
+        "unencapsulated_dom",
+        "incomplete_event_handling"
+      ]
+    }
+  }
 }

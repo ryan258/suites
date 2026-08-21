@@ -1,41 +1,98 @@
 {
   "schema_version": "1.0.0",
-  "investigation_id": "inv-forge-analogy-01",
-  "question": "How does single-writer WAL map to distributed Raft?",
-  "mode": "deep",
-  "status": "completed",
-  "premises": [],
-  "evidence": [
-    {
-      "source": "analogy://distributed_consensus",
-      "mapping": "Single-writer WAL mapped to Raft leader log replication",
-      "confidence": 0.92
-    }
-  ],
-  "stages": [
-    {
-      "stage": "intake",
-      "status": "initialized",
-      "timestamp": "2026-08-20T15:51:40.506084+00:00"
+  "wave": "D4",
+  "status": "stage_ported",
+  "investigation": {
+    "schema_version": "1.0.0",
+    "investigation_id": "inv-forge-analogy-01",
+    "question": "SIF phase3b finding ported into Forge analogy",
+    "mode": "deep",
+    "status": "completed",
+    "premises": [],
+    "evidence": [
+      {
+        "kind": "donor_artifact",
+        "origin": "sif/runs/2026-05-30T02-09-40Z-4ef259/phase3b.md",
+        "sha256": "1888806da9289553f1d6f4ac3c13671c3a5c8a78b8c157584c8f7f72e28d590f",
+        "bytes": 5630,
+        "headline": "Analogous Domain Chosen:"
+      }
+    ],
+    "stages": [
+      {
+        "stage": "intake",
+        "status": "initialized",
+        "timestamp": "2026-08-21T18:34:24.464893+00:00"
+      },
+      {
+        "stage": "analogy",
+        "status": "completed",
+        "timestamp": "2026-08-21T18:34:24.465484+00:00"
+      }
+    ],
+    "decisions": [
+      {
+        "decision": "Adopt phase3b output as the analogy stage of record."
+      }
+    ],
+    "budget": {
+      "max_iterations": 24,
+      "used_iterations": 1,
+      "max_time_sec": 300,
+      "used_time_sec": 5.0
     },
-    {
-      "stage": "analogy_synthesis",
-      "status": "completed",
-      "timestamp": "2026-08-20T15:51:40.506103+00:00"
-    }
-  ],
-  "decisions": [
-    {
-      "decision": "Adopt leader-follower sync pattern inspired by distributed_consensus",
-      "rationale": "Guarantees zero lock contention on local SQLite writes"
-    }
-  ],
-  "budget": {
-    "max_iterations": 15,
-    "used_iterations": 2,
-    "max_time_sec": 600,
-    "used_time_sec": 25.0
+    "created_at": "2026-08-21T18:34:24.464893+00:00",
+    "updated_at": "2026-08-21T18:34:24.465484+00:00"
   },
-  "created_at": "2026-08-20T15:51:40.506084+00:00",
-  "updated_at": "2026-08-20T15:51:40.506103+00:00"
+  "donor_artifact": {
+    "kind": "donor_artifact",
+    "origin": "sif/runs/2026-05-30T02-09-40Z-4ef259/phase3b.md",
+    "sha256": "1888806da9289553f1d6f4ac3c13671c3a5c8a78b8c157584c8f7f72e28d590f",
+    "bytes": 5630,
+    "headline": "Analogous Domain Chosen:"
+  },
+  "budget_source": {
+    "mode": "deep",
+    "forge_max_calls": 24
+  },
+  "sif_fingerprint": {
+    "branch": "insightful",
+    "head": "13c300b2844c2a7feeb8ae0623ddf46942088489",
+    "short": "insightful@13c300b",
+    "is_dirty": true,
+    "dirty_files_count": 1,
+    "dirty_files": [
+      "?? .DS_Store"
+    ],
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lockfile_sha256": "0942d437b270d661eb063f0a53339b4071afc256857f33831f21762e9d7d6cbb",
+    "tested_files_fingerprint": {
+      "src/sif/nodes.py": "48fdf1a81be9a12909ff52dea44a2cbc8eb412c533e43ab62902bcb4b728a97e",
+      "src/sif/graph.py": "61d62837bc383647f64b92135874341d7c1088cd1bb670f1ca4529d06d022b78",
+      "src/sif/schemas.py": "fc9672a546e1d376bbfb706557806b09331be68d897a0dc3f95302b9c224326d",
+      "pyproject.toml": "01b3b346670094453c1a100a68e8ecfc834ea0b8377e3c38929f536ace14ed15",
+      "README.md": "08c823a3c7e9ee39897ec4d4c1ce12ecb7f5d25a47ac5a605bb450249b92553a",
+      ".DS_Store": "dbf6d8e094c08a05d24672b53fe18c5e772863870a6b58d98e9ca8b997dd8b61"
+    },
+    "target_state": "local_working_tree_candidate"
+  },
+  "forge_fingerprint": {
+    "branch": "main",
+    "head": "0daee65775fb953d7388c553f9c6c21741684c8e",
+    "short": "main@0daee65",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "48587c7265e0ed9bfc2a2beaf73b53d4305c7f42b2436dcabac76ce6853c47ea",
+    "tested_files_fingerprint": {
+      "src/forge/config.py": "4977966423cb5c8d9e05470b068b951139dded722bacddd74fdb3a6fa3285a18",
+      "src/forge/cli.py": "3bfe2449522a172dd243ef6980fcb4da095af89268fd9c3a62e2caed8cba8015",
+      "pyproject.toml": "7c094111d7c3fbc0fdba7b6981cfbf8c76803760e208133c19d09cb84c95ead9",
+      "README.md": "8b12cccbf481b868287834e77ca2ff8606988a85e9331f4a0de4d15a837dcdb5"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

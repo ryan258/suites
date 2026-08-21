@@ -1,46 +1,142 @@
 {
-  "investigation": {
-    "schema_version": "1.0.0",
-    "investigation_id": "inv-forge-cite-01",
-    "question": "Cross-system architectural boundaries",
-    "mode": "standard",
-    "status": "completed",
-    "premises": [],
-    "evidence": [
-      {
-        "source_id": "src-2026-08-brand-notes",
-        "sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
-        "origin": "local://notes/brand-brief.md",
-        "extracted_insight": "WAL ensures ACID safety without network overhead.",
-        "cited_at": "2026-08-20T15:51:40.506635+00:00"
-      }
-    ],
-    "stages": [
-      {
-        "stage": "intake",
-        "status": "initialized",
-        "timestamp": "2026-08-20T15:51:40.506600+00:00"
+  "schema_version": "1.0.0",
+  "wave": "D5",
+  "status": "retirement_proposed",
+  "folded_investigation": {
+    "investigation": {
+      "schema_version": "1.0.0",
+      "investigation_id": "inv_0943f9a7ed4c449ab71d590678ca65d7",
+      "question": "Forge investigation inv_0943f9a7ed4c449ab71d590678ca65d7 with Excavator citation",
+      "mode": "quick",
+      "status": "completed",
+      "premises": [],
+      "evidence": [
+        {
+          "source_id": "src-1784433194964",
+          "sha256": "3b3ebd4b9bf7632574233b3ab79ff8ed777c9caccb7b513e1a73d75206186589",
+          "origin": "insight-excavator/sources/1784433194964.txt",
+          "extracted_insight": "Excavator source retained as citation for Forge stage 'connections_generated'.",
+          "cited_at": "2026-08-21T19:09:42.031274+00:00"
+        }
+      ],
+      "stages": [
+        {
+          "stage": "intake",
+          "status": "initialized",
+          "timestamp": "2026-08-21T19:09:42.031235+00:00"
+        },
+        {
+          "stage": "insight_excavation_citation",
+          "status": "completed",
+          "timestamp": "2026-08-21T19:09:42.031279+00:00"
+        }
+      ],
+      "decisions": [
+        {
+          "decision": "Incorporate cited insight from src-1784433194964"
+        }
+      ],
+      "budget": {
+        "max_iterations": 10,
+        "used_iterations": 1,
+        "max_time_sec": 300,
+        "used_time_sec": 8.5
       },
-      {
-        "stage": "insight_excavation_citation",
-        "status": "completed",
-        "timestamp": "2026-08-20T15:51:40.506637+00:00"
-      }
-    ],
-    "decisions": [
-      {
-        "decision": "Incorporate cited insight from src-2026-08-brand-notes"
-      }
-    ],
-    "budget": {
-      "max_iterations": 10,
-      "used_iterations": 1,
-      "max_time_sec": 300,
-      "used_time_sec": 8.5
+      "created_at": "2026-08-21T19:09:42.031235+00:00",
+      "updated_at": "2026-08-21T19:09:42.031279+00:00"
     },
-    "created_at": "2026-08-20T15:51:40.506600+00:00",
-    "updated_at": "2026-08-20T15:51:40.506637+00:00"
+    "insight_excavator_runtime": "retired_into_forge_citations",
+    "provenance_retained": true
   },
-  "insight_excavator_runtime": "retired_into_forge_citations",
-  "provenance_retained": true
+  "retirement": {
+    "retirement_performed": false,
+    "owner_approval_required": true,
+    "standalone_excavator_runtime_removed": false,
+    "forge_ingests_source_directly": false,
+    "engine_disposition_string": "retired_into_forge_citations",
+    "engine_disposition_is_prototype_constant": true
+  },
+  "citation_provenance": {
+    "source_id": "src-1784433194964",
+    "sha256": "3b3ebd4b9bf7632574233b3ab79ff8ed777c9caccb7b513e1a73d75206186589",
+    "origin": "insight-excavator/sources/1784433194964.txt",
+    "extracted_insight": "Excavator source retained as citation for Forge stage 'connections_generated'.",
+    "cited_at": "2026-08-21T19:09:42.031274+00:00"
+  },
+  "forge_investigation": {
+    "path": "breaking-chains/outputs/investigations/inv_0943f9a7ed4c449ab71d590678ca65d7.md",
+    "sha256": "3249024563437af73756cccbe93cf71e244b86529cdd095f9cd39d28fcc926ed",
+    "ID": "inv_0943f9a7ed4c449ab71d590678ca65d7",
+    "Stage": "connections_generated",
+    "Status": "active",
+    "Depth": "quick",
+    "Created": "2026-07-18T04:36:58.108373+00:00",
+    "Updated": "2026-07-18T05:34:08.426464+00:00"
+  },
+  "cited_sources": [
+    {
+      "schema_version": "1.0.0",
+      "source_id": "src-1784433194964",
+      "origin": "insight-excavator/sources/1784433194964.txt",
+      "media_type": "text/plain",
+      "sha256": "3b3ebd4b9bf7632574233b3ab79ff8ed777c9caccb7b513e1a73d75206186589",
+      "size_bytes": 369,
+      "acquired_at": "2026-07-19T03:53:28.813509+00:00",
+      "provenance": {
+        "captured_by": "insight_excavator_import",
+        "donor_repo": "insight-excavator",
+        "retained_locally": true
+      }
+    }
+  ],
+  "primary_source": {
+    "schema_version": "1.0.0",
+    "source_id": "src-1784433194964",
+    "origin": "insight-excavator/sources/1784433194964.txt",
+    "media_type": "text/plain",
+    "sha256": "3b3ebd4b9bf7632574233b3ab79ff8ed777c9caccb7b513e1a73d75206186589",
+    "size_bytes": 369,
+    "acquired_at": "2026-07-19T03:53:28.813509+00:00",
+    "provenance": {
+      "captured_by": "insight_excavator_import",
+      "donor_repo": "insight-excavator",
+      "retained_locally": true
+    }
+  },
+  "insight_excavator_fingerprint": {
+    "branch": "main",
+    "head": "b9bb8cddb2253336cc277670fdae335b0063e05f",
+    "short": "main@b9bb8cd",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "",
+    "tested_files_fingerprint": {
+      "server.py": "40b36339c58e4aa12574a4959aa5c9152f83390c390091cb1d8cfd02c4d619a6",
+      "import.py": "1365d50e8fe6bb62b6ba38833d0e455dddcb5952f81e0572ee7605665c17d449",
+      "config.json": "9c814f5c24d27e43a1ee25ee8279da385222181eeb888fa3fda014d6c215db94",
+      "README.md": "92688756d035f656e245ade4d3351c6ba6957c9db8879dd086430e805258375d"
+    },
+    "target_state": "clean_commit"
+  },
+  "forge_fingerprint": {
+    "branch": "main",
+    "head": "0daee65775fb953d7388c553f9c6c21741684c8e",
+    "short": "main@0daee65",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "48587c7265e0ed9bfc2a2beaf73b53d4305c7f42b2436dcabac76ce6853c47ea",
+    "tested_files_fingerprint": {
+      "src/forge/config.py": "4977966423cb5c8d9e05470b068b951139dded722bacddd74fdb3a6fa3285a18",
+      "src/forge/cli.py": "3bfe2449522a172dd243ef6980fcb4da095af89268fd9c3a62e2caed8cba8015",
+      "pyproject.toml": "7c094111d7c3fbc0fdba7b6981cfbf8c76803760e208133c19d09cb84c95ead9",
+      "README.md": "8b12cccbf481b868287834e77ca2ff8606988a85e9331f4a0de4d15a837dcdb5"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

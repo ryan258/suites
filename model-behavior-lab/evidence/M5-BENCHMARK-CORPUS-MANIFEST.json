@@ -1,34 +1,136 @@
 {
-  "artifact_kind": "reference_prototype_corpus",
-  "corpus_id": "corpus-mbl-v1",
-  "corpus_version": "1.0.0",
-  "created_at": "2026-08-20T16:43:13.734779+00:00",
-  "benchmarks_included": [
-    "bench-chess-tactics",
-    "bench-ethics-scenarios"
-  ],
-  "reproducibility_contract": {
-    "pinned_seeds": true,
-    "deterministic_scorers": true,
-    "re_run_script": "PYTHONPATH=src python3 -m portfolio_suites wave model-behavior-lab M4"
+  "schema_version": "1.0.0",
+  "wave": "M5",
+  "status": "corpus_pinned",
+  "corpus_manifest": {
+    "artifact_kind": "reference_prototype_corpus",
+    "corpus_id": "corpus-mbl-v1",
+    "corpus_version": "1.0.0",
+    "created_at": "2026-08-21T18:31:34.013554+00:00",
+    "benchmarks_included": [
+      "bench-chess-recorded-openings",
+      "bench-ethics-facial_recognition_surveillance"
+    ],
+    "reproducibility_contract": {
+      "pinned_seeds": true,
+      "deterministic_scorers": true,
+      "re_run_script": "PYTHONPATH=src python3 -m portfolio_suites wave model-behavior-lab M4"
+    },
+    "runs": [
+      {
+        "run_id": "inclusionailing-26-1tfree-001",
+        "benchmark_id": "bench-ethics-facial_recognition_surveillance",
+        "benchmark_version": "paradoxes@a56e6363283f",
+        "provider": "inclusionai",
+        "model": "inclusionai/ling-2.6-1t:free",
+        "status": "completed"
+      },
+      {
+        "run_id": "run-m4-recorded-openings",
+        "benchmark_id": "bench-chess-recorded-openings",
+        "benchmark_version": "1.0.0",
+        "provider": "deterministic-oracle",
+        "model": "chess-rules-evaluator-v1",
+        "status": "completed"
+      }
+    ],
+    "migration_status": "prototype_corpus_format_defined",
+    "corpus_sources": [
+      {
+        "corpus": "ethics_paradoxes",
+        "path": "ai-ethics-comparator/paradoxes.json",
+        "sha256": "a56e6363283fb0864916eb4636635c1ea57a377e034c8c7d5960767e5b525790",
+        "item_count": 26
+      },
+      {
+        "corpus": "strength_capabilities",
+        "path": "ai-strength-comparator/capabilities.json",
+        "sha256": "4588de8ef19f7526acee2515ff1f1e33459daf67b1cb1484c46e0f72ea04c00e",
+        "item_count": 32
+      },
+      {
+        "corpus": "chess_recorded_matches",
+        "path": "ai-chess/matches",
+        "sha256": "7a4605352adb7bba3ecb134846203abfb3338c08ac4de655c06db145f5cedea1",
+        "item_count": 4
+      }
+    ]
   },
-  "runs": [
+  "corpus_sources": [
     {
-      "run_id": "run-eth-canon",
-      "benchmark_id": "bench-ethics-scenarios",
-      "benchmark_version": "2.1.0",
-      "provider": "deterministic-oracle",
-      "model": "deterministic-reference-kernel",
-      "status": "completed"
+      "corpus": "ethics_paradoxes",
+      "path": "ai-ethics-comparator/paradoxes.json",
+      "sha256": "a56e6363283fb0864916eb4636635c1ea57a377e034c8c7d5960767e5b525790",
+      "item_count": 26
     },
     {
-      "run_id": "run-chess-canon",
-      "benchmark_id": "bench-chess-tactics",
-      "benchmark_version": "1.0.0",
-      "provider": "deterministic-oracle",
-      "model": "chess-rules-evaluator-v1",
-      "status": "completed"
+      "corpus": "strength_capabilities",
+      "path": "ai-strength-comparator/capabilities.json",
+      "sha256": "4588de8ef19f7526acee2515ff1f1e33459daf67b1cb1484c46e0f72ea04c00e",
+      "item_count": 32
+    },
+    {
+      "corpus": "chess_recorded_matches",
+      "path": "ai-chess/matches",
+      "sha256": "7a4605352adb7bba3ecb134846203abfb3338c08ac4de655c06db145f5cedea1",
+      "item_count": 4
     }
   ],
-  "migration_status": "prototype_corpus_format_defined"
+  "fingerprints": {
+    "ai_ethics_comparator": {
+      "branch": "main",
+      "head": "1b560346f720987d88ee0335338b96fea8fe86e1",
+      "short": "main@1b56034",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "dcc587e59adbd4cf577f052e70906abc39e813b56aaf1b3ff9ec0521164e9642",
+      "tested_files_fingerprint": {
+        "paradoxes.json": "a56e6363283fb0864916eb4636635c1ea57a377e034c8c7d5960767e5b525790",
+        "models.json": "ac6aa272e4125f9741c385247be9c775d54006a1094b912448ed66eb33088fcd",
+        "lib/experiment_runner.py": "dab91ece4c5b4b7e38d6d89f3009195c912194bfa481f961fb48fcf2244d5ced",
+        "lib/storage.py": "612583e6d3eae9b3fb2d6fdc06c7c7f5078aa8a8b870b8c30778f206024014f5",
+        "README.md": "0470b5ae9d11800969f184d3f25bd6f915db4a77e7ccd71e2d706a1cd4a37896"
+      },
+      "target_state": "clean_commit"
+    },
+    "ai_strength_comparator": {
+      "branch": "main",
+      "head": "8145e2675d82142f4aeec5a2905554a817664853",
+      "short": "main@8145e26",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "c59e3d361f8f175c3d661018029aeb9df00761b74d70f79d6d1e3971fcc59082",
+      "tested_files_fingerprint": {
+        "capabilities.json": "4588de8ef19f7526acee2515ff1f1e33459daf67b1cb1484c46e0f72ea04c00e",
+        "models.json": "f5368e993cfeddd6667e0c6b6e4f7828e4a8c01d12a7321515662fbb78ebf90d",
+        "lib/benchmarking.py": "e046fba5a38bd5249f509a9b153ee90fcc3aec38cfc211dc01d9fc7279c19e52",
+        "lib/storage.py": "b9184fe9d3367c8663557cd5faee2cc06a67022c99a7d6c440837325ea4d2ee1",
+        "README.md": "80a9b0c8e127788821dc05f044ed9d9dfc7797ff406f229a50967d61deaf2f16"
+      },
+      "target_state": "clean_commit"
+    },
+    "ai_chess": {
+      "branch": "main",
+      "head": "1261b2b8d72aedd0033691545d6144ad7f4e4672",
+      "short": "main@1261b2b",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "fd887fa4a277fcbf28035e48bc03e18379930f56e3baf70856c574513b797e37",
+      "tested_files_fingerprint": {
+        "lib/chess_match.py": "459bbb011c9e489712368ed462216d63ede1dcc8bdb368c303463fbb12a7929c",
+        "lib/match_runner.py": "5fe7fe8980ff8e79227c715438db80e18b22000278deb9ac652a315c74dd588c",
+        "lib/match_store.py": "f401efd3bfc7e4d6e22c72d751a53ecacb06b130385ea5827629f197f3dd3757",
+        "README.md": "c011261a722986dbe4305b1351988df3b8f6a3d20bd4bd76c0a9f0d95356b2f2"
+      },
+      "target_state": "clean_commit"
+    }
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

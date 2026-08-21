@@ -1,29 +1,104 @@
 {
-  "query": "architectural invariants",
-  "timestamp": "2026-08-20T15:51:40.505611+00:00",
-  "sources": [
+  "schema_version": "1.0.0",
+  "wave": "D3",
+  "status": "sources_cited_with_excerpts",
+  "document_excerpts": [
     {
-      "source_id": "src-2026-08-brand-notes",
-      "sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
-      "origin": "local://notes/brand-brief.md"
+      "origin": "insight-excavator/sources/1784433194964.txt",
+      "tag": "brand-frameworks",
+      "label": "Constraint-driven system design",
+      "excerpt": "Constraint-driven design: the idea that limited bandwidth is not a weakness to overcome but the core design input. Every system I build starts from what I cannot do, not what I wish I could do. The three gates: REVEAL the lie of unlimited capacity, BUILD proof and practice, DELIVER within the bandwidth.",
+      "excerpt_offset": 65,
+      "excerpt_bytes": 304,
+      "excerpt_sha256": "7e1909467a1936eda81d57e9ada792c998a9030ddc9b926e58e0f44ca3809cee",
+      "excerpt_verified": true
     },
     {
-      "source_id": "src-secondary-corpus",
-      "sha256": "571ca3b4ef92a81f8c062f2c2437b9116435d1575589a7b64a5c607d058fde0d",
-      "origin": "local://notes/brand-brief.md"
+      "origin": "insight-excavator/sources/1784433209430.txt",
+      "tag": "creative-projects",
+      "label": "CEO Botsly workplace comedy",
+      "excerpt": "The CEO is a Bot: workplace comedy strip set at ByteWorks, a tech company whose CEO Botsly is a literal AI robot who takes every corporate cliche literally. Weekly 4-panel strips about employees navigating absurd machine-logic management.",
+      "excerpt_offset": 62,
+      "excerpt_bytes": 238,
+      "excerpt_sha256": "10da58a294d300095c1ab7e0606e2eac14f245b74b7a69bfdcbc91e9a21714d9",
+      "excerpt_verified": true
     }
   ],
-  "synthesized_claim": "Cross-domain structural isomorphism identified between src-2026-08-brand-notes and src-secondary-corpus.",
-  "novelty_score": 0.88,
-  "uncertainty": "low",
-  "cited_locations": [
+  "lexical_overlap": {
+    "method": "words of five or more letters occurring in both retained excerpts",
+    "shared_terms": [
+      "every"
+    ],
+    "shared_term_count": 1,
+    "semantic_relation_asserted": false
+  },
+  "cited_sources": [
     {
-      "source": "src-2026-08-brand-notes",
-      "section": "architecture_boundaries"
+      "schema_version": "1.0.0",
+      "source_id": "src-1784433194964",
+      "origin": "insight-excavator/sources/1784433194964.txt",
+      "media_type": "text/plain",
+      "sha256": "3b3ebd4b9bf7632574233b3ab79ff8ed777c9caccb7b513e1a73d75206186589",
+      "size_bytes": 369,
+      "acquired_at": "2026-07-19T03:53:28.813509+00:00",
+      "provenance": {
+        "captured_by": "insight_excavator_import",
+        "donor_repo": "insight-excavator",
+        "retained_locally": true
+      }
     },
     {
-      "source": "src-secondary-corpus",
-      "section": "state_machine_transitions"
+      "schema_version": "1.0.0",
+      "source_id": "src-1784433209430",
+      "origin": "insight-excavator/sources/1784433209430.txt",
+      "media_type": "text/plain",
+      "sha256": "bce591516afb472f3f504e444b8fe0372d57eb5ef3579c98d061136ab7976aa0",
+      "size_bytes": 300,
+      "acquired_at": "2026-07-19T03:53:29.431387+00:00",
+      "provenance": {
+        "captured_by": "insight_excavator_import",
+        "donor_repo": "insight-excavator",
+        "retained_locally": true
+      }
     }
-  ]
+  ],
+  "primary_source": {
+    "schema_version": "1.0.0",
+    "source_id": "src-1784433194964",
+    "origin": "insight-excavator/sources/1784433194964.txt",
+    "media_type": "text/plain",
+    "sha256": "3b3ebd4b9bf7632574233b3ab79ff8ed777c9caccb7b513e1a73d75206186589",
+    "size_bytes": 369,
+    "acquired_at": "2026-07-19T03:53:28.813509+00:00",
+    "provenance": {
+      "captured_by": "insight_excavator_import",
+      "donor_repo": "insight-excavator",
+      "retained_locally": true
+    }
+  },
+  "discovery_limitations": {
+    "semantic_discovery_performed": false,
+    "novelty_score_measured": false,
+    "uncertainty_measured": false,
+    "reason": "no Excavator runtime was executed; only donor text was read and anchored"
+  },
+  "insight_excavator_fingerprint": {
+    "branch": "main",
+    "head": "b9bb8cddb2253336cc277670fdae335b0063e05f",
+    "short": "main@b9bb8cd",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "",
+    "tested_files_fingerprint": {
+      "server.py": "40b36339c58e4aa12574a4959aa5c9152f83390c390091cb1d8cfd02c4d619a6",
+      "import.py": "1365d50e8fe6bb62b6ba38833d0e455dddcb5952f81e0572ee7605665c17d449",
+      "config.json": "9c814f5c24d27e43a1ee25ee8279da385222181eeb888fa3fda014d6c215db94",
+      "README.md": "92688756d035f656e245ade4d3351c6ba6957c9db8879dd086430e805258375d"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

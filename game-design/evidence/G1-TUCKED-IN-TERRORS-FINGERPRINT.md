@@ -1,19 +1,30 @@
-# Tucked in Terrors — Statistical Balance Sheet
+# G1 — Tucked in Terrors parity fixture
 
-**Simulation Run ID:** `run-sim-tit-42-500`
-**Seed:** `42` | **Trials:** `500` | **Modifier:** `1.0`
+- game_version_fingerprint: `main@21511ab` (dirty=False)
+- cards_sha256: `43f0f300fa2e2b7d8dac418ec82506f1e55c7e68cf0d620824ec68b6e002fd0a` (31 cards)
+- objectives_sha256: `059e14a20e41956618aa8d664964fefe1efced95c22d6edf5139f54fc25d04f9` (8 objectives)
+- results_sha256: `b70aec649014a9b3ecbfcc24870d2dbfae875c54e803b4603f5366cc194d9e54` (1000 recorded runs)
+- objectives_exercised: OBJ01_THE_FIRST_NIGHT
 
----
+## outcome_distribution
 
-## Performance Summary
+| win_status | runs | share |
+| --- | ---: | ---: |
+| LOSS_NIGHTFALL | 926 | 0.926 |
+| PRIMARY_WIN | 74 | 0.074 |
 
-| Metric | Measured Value | Target Balance Zone | Status |
-|---|---|---|---|
-| **Win Rate** | `27.4%` | 45.0% – 65.0% | **UNBALANCED** |
-| **Loss Rate** | `72.6%` | 35.0% – 55.0% | Normal |
-| **Avg Turn Count** | `11.87 turns` | 7.0 – 11.0 turns | Normal |
-| **Avg Peak Terror** | `6.9 / 10` | 5.0 – 8.0 | High Tension |
+## metric_tolerances
 
----
+| metric | min | mean | max |
+| --- | ---: | ---: | ---: |
+| distinct_toys_played | 0 | 3.739 | 7 |
+| final_turn | 3 | 4.94 | 5 |
+| mana_from_effects | 0 | 0.0 | 0 |
+| memory_tokens | 0 | 0.0 | 0 |
+| spirit_tokens | 0 | 2.432 | 55 |
+| spirits_created | 0 | 2.432 | 55 |
 
-*Generated deterministically by Storyweaver Game Design & Simulation Engine.*
+## configuration
+
+- seed_policy: donor run_01 corpus is the fixed reference sample; no reseeding is claimed.
+- expected_tolerances: any replacement runtime must reproduce the distribution above per objective.

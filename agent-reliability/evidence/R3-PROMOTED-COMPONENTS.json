@@ -1,8 +1,46 @@
 {
-  "shared_components_promoted": [
-    "path_confinement_validator",
-    "atomic_rollback_guard"
+  "schema_version": "1.0.0",
+  "wave": "R3",
+  "status": "consumers_measured",
+  "promoted_components": [
+    {
+      "component_id": "comp-executive_reporting",
+      "path": "components/executive_reporting",
+      "consumers": [
+        "ai-ethics-comparator",
+        "writers-room"
+      ]
+    }
   ],
-  "consumer_count": 3,
-  "status": "promotion_verified"
+  "measurement": {
+    "method": "content reference scan across sibling repositories",
+    "scanned_root": "/Users/ryanjohnson/Projects",
+    "skipped_directories": [
+      ".git",
+      ".mypy_cache",
+      ".pytest_cache",
+      ".venv",
+      "__pycache__",
+      "build",
+      "dist",
+      "node_modules",
+      "venv"
+    ]
+  },
+  "components_fingerprint": {
+    "branch": "main",
+    "head": "e00f6e2bae88939c46f3660073f55fdc3eca48bf",
+    "short": "main@e00f6e2",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "",
+    "tested_files_fingerprint": {
+      "README.md": "d6d9f2b773996fa0b4b56335d45aea5e79ec0ba1197e6b556f1e36d0155b64dc"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

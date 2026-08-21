@@ -1,25 +1,120 @@
 {
-  "curriculum_version": "1.0.0",
-  "fixtures_count": 2,
-  "fixtures": [
+  "schema_version": "1.0.0",
+  "wave": "R5",
+  "status": "curriculum_mined",
+  "curriculum_fixtures": {
+    "curriculum_version": "1.0.0",
+    "fixtures_count": 3,
+    "fixtures": [
+      {
+        "module_id": "mod-planning_swarm_cases",
+        "topic": "AI Staff planning cases from evals/planning_swarm_cases.yaml",
+        "deterministic_gates": [
+          "plan_validation",
+          "capability_routing"
+        ],
+        "verified_at": "2026-08-21T18:37:14.577163+00:00"
+      },
+      {
+        "module_id": "mod-planning_swarm_real_briefs",
+        "topic": "AI Staff planning cases from evals/planning_swarm_real_briefs.yaml",
+        "deterministic_gates": [
+          "plan_validation",
+          "capability_routing"
+        ],
+        "verified_at": "2026-08-21T18:37:14.577163+00:00"
+      },
+      {
+        "module_id": "mod-agentic-harness-smoke",
+        "topic": "Agentic harness artifact and substring assertions",
+        "deterministic_gates": [
+          "artifact_written",
+          "content_match"
+        ],
+        "verified_at": "2026-08-21T18:37:14.577163+00:00"
+      }
+    ],
+    "status": "curriculum_fixtures_verified"
+  },
+  "mined_modules": [
     {
-      "module_id": "mod-ai-staff-gates",
-      "topic": "Role-specific deterministic tool gating",
-      "deterministic_gates": [
-        "confinement",
-        "budget"
+      "id": "mod-planning_swarm_cases",
+      "topic": "AI Staff planning cases from evals/planning_swarm_cases.yaml",
+      "gates": [
+        "plan_validation",
+        "capability_routing"
       ],
-      "verified_at": "2026-08-20T15:51:40.509095+00:00"
+      "source": "AI-Staff-HQ/evals/planning_swarm_cases.yaml",
+      "source_sha256": "a4f0427d30cb625947e0edaab8f615d6352f1121feb49e5b827f01b6b787a5b7",
+      "case_ids": [
+        "launch-plan",
+        "workflow-system",
+        "evidence-risk-plan",
+        "initiative-orchestration",
+        "malformed-fallback"
+      ]
     },
     {
-      "module_id": "mod-prompt-chain-verify",
-      "topic": "Multi-step plan validation & atomic recovery",
-      "deterministic_gates": [
-        "malformed_catch",
-        "rollback"
+      "id": "mod-planning_swarm_real_briefs",
+      "topic": "AI Staff planning cases from evals/planning_swarm_real_briefs.yaml",
+      "gates": [
+        "plan_validation",
+        "capability_routing"
       ],
-      "verified_at": "2026-08-20T15:51:40.509095+00:00"
+      "source": "AI-Staff-HQ/evals/planning_swarm_real_briefs.yaml",
+      "source_sha256": "ade66a54f0bf101846d09427df3c4672b0974bead507aa127b1d359b37da1788",
+      "case_ids": [
+        "rip-tequila-brand-expansion"
+      ]
+    },
+    {
+      "id": "mod-agentic-harness-smoke",
+      "topic": "Agentic harness artifact and substring assertions",
+      "gates": [
+        "artifact_written",
+        "content_match"
+      ],
+      "source": "agentic-harness/evals/smoke.json",
+      "source_sha256": "86ce4e7e86d6bbc6d1a4ddbdc5f49181751fbf5463e74075e9cb6aeb8d50c376",
+      "case_ids": [
+        "write a small artifact",
+        "read a fixture and answer",
+        "make a precise file edit"
+      ]
     }
   ],
-  "status": "curriculum_fixtures_verified"
+  "ai_staff_fingerprint": {
+    "branch": "main",
+    "head": "25991dd780079fc9b8a322b532d92bbbb245f884",
+    "short": "main@25991dd",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "6091a06247e116dbedb4080e2295b48a4e837c5f7a9a01928653040c88f76687",
+    "tested_files_fingerprint": {
+      "evals/planning_swarm_cases.yaml": "a4f0427d30cb625947e0edaab8f615d6352f1121feb49e5b827f01b6b787a5b7",
+      "evals/planning_swarm_real_briefs.yaml": "ade66a54f0bf101846d09427df3c4672b0974bead507aa127b1d359b37da1788",
+      "README.md": "401bc9b9c8204d110fc674b0d28981590170d6e610e18960758aca16644b48b1"
+    },
+    "target_state": "clean_commit"
+  },
+  "agentic_harness_fingerprint": {
+    "branch": "roadmapping",
+    "head": "8533b41ec3ae85b99e936515269e467580607f5d",
+    "short": "roadmapping@8533b41",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "",
+    "tested_files_fingerprint": {
+      "agent.py": "ec0aec49997528ca93b9dcd6d1df05521fc41b9b6b27196975b73c4b27833e81",
+      "evals/smoke.json": "86ce4e7e86d6bbc6d1a4ddbdc5f49181751fbf5463e74075e9cb6aeb8d50c376",
+      "README.md": "ecaf6ba9dfa44b3ab050e31552ca2bebcc085d9e038ba91e40051c74e63b0398"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

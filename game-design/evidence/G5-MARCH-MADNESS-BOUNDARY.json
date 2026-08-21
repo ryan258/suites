@@ -1,8 +1,65 @@
 {
-  "project": "march-madness",
-  "category": "authored_domain_simulation",
-  "disposition": "independent_creative_product",
-  "boundary_rule": "Specialized sports-data and simulation logic stays external; generic core remains lean.",
-  "suite_dependency_required": false,
-  "status": "boundary_formalized"
+  "schema_version": "1.0.0",
+  "wave": "G5",
+  "status": "boundary_formalized",
+  "boundary": {
+    "project": "march-madness",
+    "category": "authored_domain_simulation",
+    "disposition": "independent_creative_product",
+    "boundary_rule": "Specialized sports-data and simulation logic stays external; generic core remains lean.",
+    "suite_dependency_required": false,
+    "status": "boundary_formalized"
+  },
+  "engine_coupling": {
+    "engine": "storyweaver",
+    "referencing_files": [],
+    "coupled": false
+  },
+  "donor_modules": [
+    "src/__init__.py",
+    "src/app/__init__.py",
+    "src/app/streamlit_app.py",
+    "src/config.py",
+    "src/data/__init__.py",
+    "src/data/barttorvik_client.py",
+    "src/data/espn_client.py",
+    "src/data/public_picks.py",
+    "src/data/sdv_loader.py",
+    "src/data/storage.py",
+    "src/data/team_mapping.py",
+    "src/data/tournament_scraper.py",
+    "src/features/__init__.py",
+    "src/features/advanced_metrics.py",
+    "src/features/builder.py",
+    "src/features/column_utils.py",
+    "src/features/efficiency.py",
+    "src/features/momentum.py",
+    "src/features/strength_of_schedule.py",
+    "src/features/upset_propensity.py",
+    "src/model/__init__.py",
+    "src/model/bracket.py",
+    "src/model/dataset.py",
+    "src/model/evaluate.py",
+    "src/model/predict.py",
+    "src/model/tiebreaker.py",
+    "src/model/train.py"
+  ],
+  "march_madness_fingerprint": {
+    "branch": "main",
+    "head": "91ec2febd8ff08233726b33f16fea4db57fb3a97",
+    "short": "main@91ec2fe",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "",
+    "tested_files_fingerprint": {
+      "config.yaml": "ce4febe5dd1e4fd3e9dd898f052183100fbd1bb8010953b4b0b2f7bab5fa58eb",
+      "requirements.txt": "bcf5189d249aac8aee3c3fa3ee8ad7b63fc3f45e488f364a4b6b6e714c1a605a",
+      "README.md": "bea2647a18f36dd3cd74cf4af28fce0120bf158513ad43410ec5eff45aba1bd5"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

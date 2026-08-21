@@ -1,6 +1,48 @@
 {
-  "adapter": "chess_legal_move_evaluator",
-  "fen_seed": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-  "deterministic_rules": true,
-  "scorer_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "wave": "M3",
+  "status": "fixture_verified",
+  "match_fixture": {
+    "adapter": "chess_legal_move_evaluator",
+    "scorer_version": "1.0.0",
+    "match_id": "33d390d53a86",
+    "source_file": "33d390d53a86.json",
+    "source_sha256": "b93d3afd170e68fb0b06b7d4fdb00f1a7e1640563cf493e0d2c9850c26580b40",
+    "white_model": "qwen/qwen3.5-9b",
+    "black_model": "qwen/qwen3.5-9b",
+    "start_fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "recorded_move": "e2e4",
+    "invalid_move_behavior": "out_of_bounds_square",
+    "repeat_policy": "deterministic_reevaluation",
+    "repeat_verdict_stable": true
+  },
+  "legality_check": {
+    "match_id": "33d390d53a86",
+    "source_file": "33d390d53a86.json",
+    "start_fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "recorded_move": "e2e4",
+    "actor": "white",
+    "legal": true,
+    "verdict": "legal_double_pawn_push",
+    "logged_plies": 1
+  },
+  "ai_chess_fingerprint": {
+    "branch": "main",
+    "head": "1261b2b8d72aedd0033691545d6144ad7f4e4672",
+    "short": "main@1261b2b",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "fd887fa4a277fcbf28035e48bc03e18379930f56e3baf70856c574513b797e37",
+    "tested_files_fingerprint": {
+      "lib/chess_match.py": "459bbb011c9e489712368ed462216d63ede1dcc8bdb368c303463fbb12a7929c",
+      "lib/match_runner.py": "5fe7fe8980ff8e79227c715438db80e18b22000278deb9ac652a315c74dd588c",
+      "lib/match_store.py": "f401efd3bfc7e4d6e22c72d751a53ecacb06b130385ea5827629f197f3dd3757",
+      "README.md": "c011261a722986dbe4305b1351988df3b8f6a3d20bd4bd76c0a9f0d95356b2f2"
+    },
+    "target_state": "clean_commit"
+  },
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }
