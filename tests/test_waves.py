@@ -30,7 +30,7 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(len(results), 43)
 
         verified = [r for r in results if r.passed]
-        self.assertIn(len(verified), {10, 11})
+        self.assertIn(len(verified), {16, 17})
         a1 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A1")
         self.assertEqual(a1.execution_kind, "verified_analysis")
         self.assertTrue(a1.passed)
@@ -59,8 +59,13 @@ class WaveTests(unittest.TestCase):
             self.assertEqual(o_res.execution_kind, "verified_analysis")
             self.assertTrue(o_res.passed)
 
+        for wave_id in ("B1", "B2", "B3", "B4", "B5", "B6"):
+            b_res = next(r for r in results if r.suite_id == "brand-publishing" and r.wave_id == wave_id)
+            self.assertEqual(b_res.execution_kind, "verified_analysis")
+            self.assertTrue(b_res.passed)
+
         prototypes = [r for r in results if r.execution_kind == "prototype_check"]
-        self.assertEqual(len(prototypes), 32)
+        self.assertEqual(len(prototypes), 26)
         for r in prototypes:
             self.assertTrue(r.prototype_passed, f"Prototype check for {r.suite_id}/{r.wave_id} failed: {r.message}")
 
@@ -68,7 +73,7 @@ class WaveTests(unittest.TestCase):
         self.assertFalse(any(r.execution_kind == "error" for r in results))
 
         unverified = [r for r in results if not r.passed]
-        self.assertIn(len(unverified), {32, 33})
+        self.assertIn(len(unverified), {26, 27})
 
     def test_run_individual_waves(self):
         # A1, A3, A4, A5 are verified analysis milestones; A2 is runtime recovery
@@ -115,10 +120,17 @@ class WaveTests(unittest.TestCase):
             self.assertEqual(o_res.execution_kind, "verified_analysis")
             self.assertIsNone(o_res.evidence_path)
 
+        # B1-B6 in brand-publishing are verified analysis milestones
+        for wave_id in ("B1", "B2", "B3", "B4", "B5", "B6"):
+            b_res = WaveRunner.run_wave("brand-publishing", wave_id, write_evidence=False)
+            self.assertTrue(b_res.passed, f"Brand Publishing wave {wave_id} failed: {b_res.message}")
+            self.assertEqual(b_res.execution_kind, "verified_analysis")
+            self.assertIsNone(b_res.evidence_path)
+
         # Remaining suite prototypes pass prototype check but do not report passed migration acceptance
-        b1 = WaveRunner.run_wave("brand-publishing", "B1", write_evidence=False)
-        self.assertFalse(b1.passed)
-        self.assertTrue(b1.prototype_passed)
+        p1 = WaveRunner.run_wave("production-house", "P1", write_evidence=False)
+        self.assertFalse(p1.passed)
+        self.assertTrue(p1.prototype_passed)
 
         m4 = WaveRunner.run_wave("model-behavior-lab", "M4", write_evidence=False)
         self.assertFalse(m4.passed)

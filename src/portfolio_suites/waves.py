@@ -350,13 +350,9 @@ class WaveRunner:
             and receipt.get("live_published") is False
             and pkg.get("schema_version") == "1.0.0"
         )
-        evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "B1-BRAND-PACKAGE-DRY-RUN.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B1-BRAND-PACKAGE-DRY-RUN.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, result, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -371,13 +367,9 @@ class WaveRunner:
     def _run_brand_publishing_b2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         result = BrandPublishingSourceAdapter.execute_b2_phase_mapping()
         passed = result.get("total_phases_mapped") == 9
-        evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "B2-BRAND-WORKSHOP-PHASES.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B2-BRAND-WORKSHOP-PHASES.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, result, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -403,13 +395,9 @@ class WaveRunner:
             and receipt.get("matched_approved_claims_count", 0) >= 1
             and receipt.get("dry_run_only") is True
         )
-        evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "B3-VCC-PUBLISHING-RECEIPT.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(receipt, f, indent=2)
+        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B3-VCC-PUBLISHING-RECEIPT.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, receipt, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -432,13 +420,9 @@ class WaveRunner:
             and v1.get("package_id") == "pkg-cyborg-brand-v1"
             and v2.get("package_id") == "pkg-cyborg-brand-v1"
         )
-        evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "B4-MULTI-CONSUMER-VERIFICATION.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump({"consumer_1": v1, "consumer_2": v2, "status": "verified"}, f, indent=2)
+        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B4-MULTI-CONSUMER-VERIFICATION.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, {"consumer_1": v1, "consumer_2": v2, "status": "verified"}, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -451,7 +435,6 @@ class WaveRunner:
 
     @classmethod
     def _run_brand_publishing_b5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        # Complete 9-phase intake matching required inputs
         complete_phase_inputs = {
             1: {"one_liner": "Local-first portfolio suite", "enemy": "Fragile unversioned schemas", "brand_name": "Cyborg Suites"},
             2: {"primary_operator": "Ryan Johnson", "pain_points": ["drift", "cognitive load"], "target_audience": "Technical Operators"},
@@ -464,8 +447,6 @@ class WaveRunner:
             9: {"approver_signoff": "Ryan Johnson"},
         }
         res_complete = BrandPublishingEngine.execute_brand_maker_intake("cyborg-brand", complete_phase_inputs)
-
-        # Test partial/empty intake to verify incomplete status handling
         res_empty = BrandPublishingEngine.execute_brand_maker_intake("cyborg-brand", {})
 
         passed = (
@@ -474,13 +455,9 @@ class WaveRunner:
             and res_empty.get("phases_completed") == 0
             and res_empty.get("resulting_package") is None
         )
-        evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "B5-BRAND-MAKER-INTAKE-STATE.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(res_complete, f, indent=2)
+        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B5-BRAND-MAKER-INTAKE-STATE.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, res_complete, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -497,15 +474,12 @@ class WaveRunner:
         pkg = b1_result["brand_package"]
         src = b1_result["source_record"]
 
-        # Test approved decision on draft containing approved claim
         approved_receipt = BrandPublishingEngine.simulate_vcc_human_approval(
             pkg, src, "Zero-dependency local-first portfolio control plane verified.", human_decision="approved"
         )
-        # Test rejected decision blocks release
         rejected_receipt = BrandPublishingEngine.simulate_vcc_human_approval(
             pkg, src, "Zero-dependency draft.", human_decision="rejected"
         )
-        # Test unmatched claims blocks release even if approved
         unmatched_receipt = BrandPublishingEngine.simulate_vcc_human_approval(
             pkg, src, "Draft with zero matching approved claims.", human_decision="approved"
         )
@@ -518,17 +492,13 @@ class WaveRunner:
             and approved_receipt.get("brand_package_id") == "pkg-cyborg-brand-v1"
             and approved_receipt.get("source_id") == "src-manifesto-draft-001"
         )
-        evidence_dir = SUITES_ROOT / "brand-publishing" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "B6-VCC-HUMAN-GATE-APPROVAL.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump({
-                    "approved_review": approved_receipt,
-                    "rejected_probe_status": rejected_receipt.get("status"),
-                    "unmatched_probe_status": unmatched_receipt.get("status"),
-                }, f, indent=2)
+        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B6-VCC-HUMAN-GATE-APPROVAL.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, {
+                "approved_review": approved_receipt,
+                "rejected_probe_status": rejected_receipt.get("status"),
+                "unmatched_probe_status": unmatched_receipt.get("status"),
+            }, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -536,7 +506,7 @@ class WaveRunner:
             passed,
             "Simulated VCC editorial review with human approval gate; verified rejection and claim validation branching.",
             str(evidence_file) if write_evidence else None,
-            {"approved": approved_receipt.get("status"), "rejected": rejected_receipt.get("status")},
+            approved_receipt,
         )
 
     @classmethod

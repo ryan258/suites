@@ -25,7 +25,7 @@ class CLITests(unittest.TestCase):
         self.assertIn("Portfolio snapshot", output)
         self.assertIn("Top-level directories reviewed: 70", output)
         self.assertIn("Recovery standard: 9.0/10 target", output)
-        self.assertIn("1 runtime recovery, 10 analysis, 0 adopted, 0 converged", output)
+        self.assertIn("1 runtime recovery, 16 analysis, 0 adopted, 0 converged", output)
 
     def test_next_command(self):
         f = io.StringIO()
@@ -93,7 +93,7 @@ class CLITests(unittest.TestCase):
     def test_wave_run_no_record(self):
         f = io.StringIO()
         with redirect_stdout(f):
-            code = main(["wave", "brand-publishing", "B1", "--no-record"])
+            code = main(["wave", "production-house", "P1", "--no-record"])
         self.assertEqual(code, 0)
         output = f.getvalue()
         self.assertIn("[PROTOTYPE]", output)
@@ -123,8 +123,8 @@ class CLITests(unittest.TestCase):
             code = main(["wave", "--all", "--no-record"])
         output = f.getvalue()
         self.assertIn(code, {0, 1})
-        self.assertIn("10 verified analyses", output)
-        self.assertIn("32 prototype checks passed", output)
+        self.assertIn("16 verified analyses", output)
+        self.assertIn("26 prototype checks passed", output)
         if code == 0:
             self.assertIn("1 runtime recoveries", output)
         else:
