@@ -4,7 +4,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 import portfolio_suites.registry as registry_module
-from portfolio_suites.registry import SUITES_ROOT, evidence_errors, get_suite
+from portfolio_suites.registry import (
+    SUITES_ROOT,
+    evidence_errors,
+    evidence_ineligibility_reason,
+    get_suite,
+)
 from portfolio_suites.waves import WaveRunner, _record_evidence
 
 
@@ -325,12 +330,14 @@ class WaveTests(unittest.TestCase):
         self.assertIsNone(result.evidence_path)
 
     def test_wave_without_recovery_contract_cannot_record_evidence(self):
+        # Every shipped wave now declares a claim, so the refusal is exercised against a
+        # manifest entry stripped of one: bytes nothing can verify are never written.
+        claimless = {key: value for key, value in _wave("model-behavior-lab", "M1").items() if key != "recovery_claim"}
+        self.assertIsNotNone(evidence_ineligibility_reason(claimless))
         with tempfile.TemporaryDirectory() as tmp:
             with patch("portfolio_suites.waves.SUITES_ROOT", Path(tmp)):
-                result = WaveRunner.run_wave("model-behavior-lab", "M1", write_evidence=True)
-        self.assertTrue(result.prototype_passed)
-        self.assertFalse(result.passed)
-        self.assertIsNone(result.evidence_path)
+                written = _record_evidence(claimless, {"wave": "M1"}, write_evidence=True, passed=True)
+        self.assertIsNone(written)
         self.assertEqual(list(Path(tmp).rglob("*")), [])
 
     def test_source_backed_analysis_waves_fail_closed_without_donors(self):

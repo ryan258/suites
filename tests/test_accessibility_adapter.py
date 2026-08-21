@@ -227,7 +227,13 @@ class AccessibilityAdapterTests(unittest.TestCase):
         self.assertTrue(cons["all_stages_passed"])
         self.assertEqual(cons["proposed_canonical_anchor"], "kb-overlay")
         self.assertEqual(len(cons["proposed_frozen_donors"]), 2)
-        self.assertTrue(cons["migration_acceptance_verified"])
+        # The canonical overlay injects on every page, exactly as its donors do: the gate may
+        # call the consolidation justified, never minimized, and never owner-accepted.
+        self.assertEqual(cons["canonical_permission_surface"]["host_scope"], ["<all_urls>"])
+        self.assertFalse(cons["permission_analysis"]["minimized_permissions_verified"])
+        self.assertTrue(cons["permission_analysis"]["canonical_no_broader_than_donors"])
+        self.assertFalse(cons["migration_acceptance_verified"])
+        self.assertTrue(all(not donor["retirement_performed"] for donor in cons["donor_retirement"].values()))
 
 
 if __name__ == "__main__":

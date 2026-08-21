@@ -333,6 +333,238 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["mapping", "mapping.mapped_job"],
         "contracts": {"mapping.mapped_job": "ProductionJob"},
     },
+    "M1": {
+        "equals": {
+            "wave": "M1",
+            "status": "normalized",
+            "all_stages_passed": True,
+            "field_parity.all_fields_match": True,
+        },
+        "objects": ["canonical_run", "field_parity", "donor_result"],
+        "lists": ["canonical_run.iterations"],
+        "strings": ["donor_result.path", "donor_result.sha256"],
+        "fingerprints": ["ethics_comparator_fingerprint"],
+        "contracts": {"canonical_run": "ExperimentRun"},
+    },
+    "M2": {
+        "equals": {
+            "wave": "M2",
+            "status": "extraction_matrix_measured",
+            "all_stages_passed": True,
+            "extraction_matrix.canonical_slice_implemented": False,
+            "extraction_matrix.duplicate_runtimes_eliminated": 0,
+        },
+        "objects": ["extraction_matrix", "extraction_matrix.donor_subsystem_copies"],
+        "lists": ["packs", "extraction_matrix.subsystems_duplicated_across_donors"],
+        "minimums": {
+            "extraction_matrix.packs_normalized_through_kernel": 2,
+            "extraction_matrix.duplicate_runtimes_remaining_in_donors": 1,
+        },
+        "fingerprints": ["ethics_comparator_fingerprint", "strength_comparator_fingerprint"],
+    },
+    "M3": {
+        "equals": {
+            "wave": "M3",
+            "status": "fixture_verified",
+            "all_stages_passed": True,
+            "legality_check.legal": True,
+            "match_fixture.repeat_verdict_stable": True,
+        },
+        "objects": ["match_fixture", "legality_check"],
+        "strings": ["match_fixture.source_sha256", "match_fixture.invalid_move_behavior"],
+        "fingerprints": ["ai_chess_fingerprint"],
+    },
+    "M4": {
+        "equals": {"wave": "M4", "status": "benchmark_verified", "all_stages_passed": True},
+        "objects": ["canonical_run", "kernel_generality"],
+        "lists": ["canonical_run.iterations", "kernel_generality.domains_scored"],
+        "fingerprints": ["ai_chess_fingerprint"],
+        "contracts": {"canonical_run": "ExperimentRun"},
+    },
+    "A6": {
+        "equals": {
+            "wave": "A6",
+            "status": "consolidation_proposed",
+            "all_stages_passed": True,
+            "proposed_canonical_anchor": "kb-overlay",
+            "migration_acceptance_verified": False,
+            "permission_analysis.canonical_no_broader_than_donors": True,
+            "permission_analysis.minimized_permissions_verified": False,
+        },
+        "objects": [
+            "permission_analysis",
+            "donor_retirement",
+            "reconciliation_matrix",
+            "canonical_permission_surface",
+        ],
+        "lists": [
+            "proposed_frozen_donors",
+            "canonical_permission_surface.host_scope",
+            "permission_analysis.minimization_outstanding",
+        ],
+        "fingerprints": [
+            "reconciliation_matrix.kb-overlay.git_fingerprint",
+            "reconciliation_matrix.keyboard-nav-overlay.git_fingerprint",
+            "reconciliation_matrix.keyboard-nav-overlay-94bf7e.git_fingerprint",
+        ],
+    },
+    "D1": {
+        "equals": {"wave": "D1", "status": "parity_mapped", "all_stages_passed": True},
+        "objects": ["forge_budgets", "sif_run_sampled"],
+        "lists": ["matrix", "sif_run_sampled.artifacts"],
+        "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
+    },
+    "D2": {
+        "equals": {"wave": "D2", "status": "stage_ported", "all_stages_passed": True},
+        "objects": ["investigation", "donor_artifact", "budget_source"],
+        "strings": ["donor_artifact.origin", "donor_artifact.sha256"],
+        "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
+        "contracts": {"investigation": "InvestigationRecord"},
+    },
+    "D3": {
+        "equals": {
+            "wave": "D3",
+            "status": "sources_cited_with_excerpts",
+            "all_stages_passed": True,
+            "lexical_overlap.semantic_relation_asserted": False,
+            "discovery_limitations.semantic_discovery_performed": False,
+            "discovery_limitations.novelty_score_measured": False,
+        },
+        "objects": ["lexical_overlap", "discovery_limitations", "primary_source"],
+        "lists": ["cited_sources", "document_excerpts"],
+        "fingerprints": ["insight_excavator_fingerprint"],
+        "contracts": {"primary_source": "SourceRecord"},
+    },
+    "D4": {
+        "equals": {"wave": "D4", "status": "stage_ported", "all_stages_passed": True},
+        "objects": ["investigation", "donor_artifact", "budget_source"],
+        "strings": ["donor_artifact.origin", "donor_artifact.sha256"],
+        "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
+        "contracts": {"investigation": "InvestigationRecord"},
+    },
+    "D5": {
+        "equals": {
+            "wave": "D5",
+            "status": "retirement_proposed",
+            "all_stages_passed": True,
+            "retirement.retirement_performed": False,
+            "retirement.standalone_excavator_runtime_removed": False,
+            "retirement.owner_approval_required": True,
+        },
+        "objects": [
+            "folded_investigation",
+            "forge_investigation",
+            "primary_source",
+            "retirement",
+            "citation_provenance",
+        ],
+        "lists": ["cited_sources"],
+        "strings": ["forge_investigation.sha256", "forge_investigation.ID", "citation_provenance.sha256"],
+        "fingerprints": ["insight_excavator_fingerprint", "forge_fingerprint"],
+        "contracts": {"primary_source": "SourceRecord"},
+    },
+    "R1": {
+        "equals": {"wave": "R1", "status": "fixtures_defined", "all_stages_passed": True},
+        "objects": ["canonical_run", "donor_policy", "engine_scorecard"],
+        "lists": ["canonical_run.iterations"],
+        "fingerprints": ["looping_box_fingerprint"],
+        "contracts": {"canonical_run": "ExperimentRun"},
+    },
+    "R2": {
+        "equals": {"wave": "R2", "status": "coverage_measured", "all_stages_passed": True},
+        "objects": ["harness_coverage", "gates_covered", "fingerprints"],
+        "strings": ["execution_limitation"],
+        "lists": ["gates_covered.confinement", "gates_covered.rollback"],
+        "fingerprints": [
+            "fingerprints.looping_box",
+            "fingerprints.sssf",
+            "fingerprints.agentic_harness",
+        ],
+    },
+    "R3": {
+        "equals": {"wave": "R3", "status": "consumers_measured", "all_stages_passed": True},
+        "objects": ["measurement"],
+        "lists": ["promoted_components"],
+        "fingerprints": ["components_fingerprint"],
+    },
+    "R4": {
+        "equals": {
+            "wave": "R4",
+            "status": "craft_rule_enforced",
+            "all_stages_passed": True,
+            "audit.craft_rule_enforced": True,
+        },
+        "objects": ["audit"],
+        "lists": ["audited_components", "audit.retained"],
+        "fingerprints": ["components_fingerprint"],
+    },
+    "R5": {
+        "equals": {"wave": "R5", "status": "curriculum_mined", "all_stages_passed": True},
+        "objects": ["curriculum_fixtures"],
+        "lists": ["mined_modules"],
+        "fingerprints": ["ai_staff_fingerprint", "agentic_harness_fingerprint"],
+    },
+    "G2": {
+        "equals": {
+            "wave": "G2",
+            "status": "pack_shape_projected",
+            "all_stages_passed": True,
+            "shape_projection.parallel_engine_written": False,
+            "shape_projection.pack_materialized_on_disk": False,
+            "shape_projection.statistical_parity_measured": False,
+            "shape_projection.independent_resimulation_verified": False,
+            "shape_projection.pack_slots_within_observed_vocabulary": True,
+        },
+        "objects": ["pack", "shape_projection", "shape_projection.donor_outcome_distribution"],
+        "lists": ["pack.reference_slots_written", "shape_projection.pack_slots_filled"],
+        "minimums": {"shape_projection.donor_rows_summarized": 1},
+        "fingerprints": ["tucked_in_terrors_fingerprint", "storyweaver_fingerprint"],
+    },
+    "G3": {
+        "equals": {
+            "wave": "G3",
+            "status": "boundary_documented",
+            "all_stages_passed": True,
+            "engine_coupling.coupled": False,
+            "boundary.platform_invented": False,
+        },
+        "objects": ["boundary", "engine_coupling"],
+        "lists": ["authored_inventory"],
+        "fingerprints": ["oregon_dnd_fingerprint"],
+    },
+    "G4": {
+        "equals": {
+            "wave": "G4",
+            "status": "second_class_verified",
+            "all_stages_passed": True,
+            "schema_check.pack_slots_within_vocabulary": True,
+        },
+        "objects": ["pack", "schema_check"],
+        "lists": ["schema_check.observed_gds_vocabulary", "schema_check.reference_slots_written"],
+        "fingerprints": ["storyweaver_fingerprint"],
+    },
+    "G5": {
+        "equals": {
+            "wave": "G5",
+            "status": "boundary_formalized",
+            "all_stages_passed": True,
+            "engine_coupling.coupled": False,
+            "boundary.suite_dependency_required": False,
+        },
+        "objects": ["boundary", "engine_coupling"],
+        "lists": ["donor_modules"],
+        "fingerprints": ["march_madness_fingerprint"],
+    },
+    "M5": {
+        "equals": {"wave": "M5", "status": "corpus_pinned", "all_stages_passed": True},
+        "objects": ["corpus_manifest", "fingerprints"],
+        "lists": ["corpus_sources", "corpus_manifest.benchmarks_included"],
+        "fingerprints": [
+            "fingerprints.ai_ethics_comparator",
+            "fingerprints.ai_strength_comparator",
+            "fingerprints.ai_chess",
+        ],
+    },
 }
 
 
@@ -850,11 +1082,14 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
         if not manifest.get("completion_criteria") or not manifest.get("waves"):
             report.errors.append(f"{suite_id}: completion criteria and waves are required")
         for wave in manifest.get("waves", []):
-            if wave.get("status") != "complete":
-                continue
+            # Every declared claim is checked, at whatever level it claims. Only the
+            # promotion rules below are reserved for waves that claim completion: a
+            # prototype receipt that later goes malformed must still fail this gate.
+            is_complete = wave.get("status") == "complete"
             claim = wave.get("recovery_claim")
             if not isinstance(claim, dict):
-                report.errors.append(f"{suite_id}/{wave.get('id')}: completed wave requires recovery_claim")
+                if is_complete:
+                    report.errors.append(f"{suite_id}/{wave.get('id')}: completed wave requires recovery_claim")
                 continue
             if claim.get("kind") not in claim_kinds:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: unknown recovery claim kind")
@@ -862,7 +1097,7 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
             claim_level = claim.get("level")
             if claim_level not in RECOVERY_PROMOTION_LEVELS:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: unknown recovery promotion level")
-            elif claim_level in {"specified", "prototype"}:
+            elif is_complete and claim_level in {"specified", "prototype"}:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: completed wave cannot claim a planning or prototype level")
             if not isinstance(claim.get("real_runtime"), bool):
                 report.errors.append(f"{suite_id}/{wave.get('id')}: recovery claim must state real_runtime")
@@ -905,7 +1140,12 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
             evidence_path = wave.get("evidence")
             evidence_file = SUITES_ROOT / evidence_path if evidence_path else None
             if not evidence_file or not evidence_file.is_file():
-                report.errors.append(f"{suite_id}/{wave.get('id')}: completed claim evidence is missing")
+                if is_complete:
+                    report.errors.append(f"{suite_id}/{wave.get('id')}: completed claim evidence is missing")
+                else:
+                    report.warnings.append(
+                        f"{suite_id}/{wave.get('id')}: declared claim has no retained receipt at {evidence_path}"
+                    )
             else:
                 for evidence_error in evidence_errors(wave, evidence_file):
                     report.errors.append(f"{suite_id}/{wave.get('id')}: {evidence_error}")

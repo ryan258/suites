@@ -63,42 +63,100 @@
     {
       "id": "R1",
       "order": 70,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Define adversarial reliability fixtures as ExperimentRuns.",
       "acceptance": "Confinement, malformed output, retry, budget, rollback, and reviewer cases have deterministic expected outcomes.",
-      "evidence": "agent-reliability/evidence/R1-ADVERSARIAL-HARNESS-SCORECARD.json"
+      "evidence": "agent-reliability/evidence/R1-ADVERSARIAL-HARNESS-SCORECARD.json",
+      "runtime_followup": "Execute the fixtures against a live agent loop instead of scoring declared policy expectations.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "canonical_run",
+          "donor_policy",
+          "engine_scorecard",
+          "looping_box_fingerprint"
+        ]
+      }
     },
     {
       "id": "R2",
       "order": 80,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Run fixtures across Looping Box, SSSF, and Agentic Harness.",
       "acceptance": "Results retain harness version, configuration, raw evidence, scorer, failures, and limitations.",
-      "evidence": "agent-reliability/evidence/R2-CROSS-HARNESS-EVAL.json"
+      "evidence": "agent-reliability/evidence/R2-CROSS-HARNESS-EVAL.json",
+      "runtime_followup": "Run the fixture battery inside each harness runtime; source markers are not execution.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "harness_coverage",
+          "gates_covered",
+          "fingerprints",
+          "execution_limitation"
+        ]
+      }
     },
     {
       "id": "R3",
       "order": 90,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Extract only proven shared behavior and curriculum.",
       "acceptance": "Every extraction has two consumers or remains local; duplicate generic runtimes are not expanded.",
-      "evidence": "agent-reliability/evidence/R3-PROMOTED-COMPONENTS.json"
+      "evidence": "agent-reliability/evidence/R3-PROMOTED-COMPONENTS.json",
+      "runtime_followup": "Confirm each counted consumer imports the component at runtime, not only by text reference.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "promoted_components",
+          "measurement",
+          "components_fingerprint"
+        ]
+      }
     },
     {
       "id": "R4",
       "order": 100,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Verify 2-real-consumers craft rule for promoted components and demote single-consumer packages.",
       "acceptance": "Shared components boundary strictly verified; single-consumer packages demoted to home repos.",
-      "evidence": "agent-reliability/evidence/R4-PROMOTED-COMPONENTS-AUDIT.json"
+      "evidence": "agent-reliability/evidence/R4-PROMOTED-COMPONENTS-AUDIT.json",
+      "runtime_followup": "Re-audit after any demotion actually moves code back to its home repository.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "audit",
+          "audited_components",
+          "components_fingerprint"
+        ]
+      }
     },
     {
       "id": "R5",
       "order": 110,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Mine AI Staff and prompt-chain fixtures into deterministic test curriculum.",
       "acceptance": "Deterministic tool gating and recovery curriculum verified against agent reliability standards.",
-      "evidence": "agent-reliability/evidence/R5-CURRICULUM-FIXTURES-VERIFIED.json"
+      "evidence": "agent-reliability/evidence/R5-CURRICULUM-FIXTURES-VERIFIED.json",
+      "runtime_followup": "Execute the mined cases and score real agent behavior against them.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "curriculum_fixtures",
+          "mined_modules",
+          "ai_staff_fingerprint",
+          "agentic_harness_fingerprint"
+        ]
+      }
     }
   ]
 }

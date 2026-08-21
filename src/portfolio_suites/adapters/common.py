@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,22 @@ from typing import Any
 from ..contracts import compute_sha256
 from ..paths import SUITES_ROOT
 from ..provenance import is_meaningful_git_fingerprint
+
+
+SENSITIVE_PATH_PATTERN = re.compile(
+    r"(^|/)\.env($|\.)|(^|/)\.netrc$|(^|/)id_(rsa|dsa|ecdsa|ed25519)$|\.(pem|p12|pfx|key)$|credential",
+    re.IGNORECASE,
+)
+SENSITIVE_ENV_PATTERN = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL", re.IGNORECASE)
+
+
+def donor_env() -> dict[str, str]:
+    """Environment for donor subprocesses, with this control plane's own secrets removed."""
+    return {
+        name: value
+        for name, value in os.environ.items()
+        if not SENSITIVE_ENV_PATTERN.search(name)
+    }
 
 
 def get_repo_path(repo_name: str, env_var: str | None = None) -> Path:
@@ -29,10 +46,10 @@ def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) 
     if not (repo_dir / ".git").exists():
         return {"branch": "unknown", "head": "unknown", "status": "no_git_dir"}
     try:
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_dir, timeout=5).decode().strip()
-        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir, timeout=5).decode().strip()
-        status_raw = subprocess.check_output(["git", "status", "--porcelain"], cwd=repo_dir, timeout=5).decode().strip()
-        diff_raw = subprocess.check_output(["git", "diff", "HEAD"], cwd=repo_dir, timeout=5)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_dir, env=donor_env(), timeout=5).decode().strip()
+        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir, env=donor_env(), timeout=5).decode().strip()
+        status_raw = subprocess.check_output(["git", "status", "--porcelain"], cwd=repo_dir, env=donor_env(), timeout=5).decode().strip()
+        diff_raw = subprocess.check_output(["git", "diff", "HEAD"], cwd=repo_dir, env=donor_env(), timeout=5)
 
         dirty_lines = [line for line in status_raw.splitlines() if line.strip()]
         is_dirty = len(dirty_lines) > 0
@@ -76,14 +93,22 @@ def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) 
             if fp.is_file():
                 file_hashes[rel] = compute_sha256(fp.read_bytes())
 
-        # Also fingerprint any modified/untracked files reported by git status
+        # Also fingerprint any modified/untracked files reported by git status. A donor's
+        # secret files are neither read nor named in evidence; the dirty count stays honest.
+        recorded_dirty_lines: list[str] = []
         for line in dirty_lines:
             parts = line.strip().split(None, 1)
-            if len(parts) == 2:
-                dirty_rel = parts[1]
-                dirty_fp = repo_dir / dirty_rel
-                if dirty_fp.is_file() and dirty_rel not in file_hashes:
-                    file_hashes[dirty_rel] = compute_sha256(dirty_fp.read_bytes())
+            if len(parts) != 2:
+                recorded_dirty_lines.append(line)
+                continue
+            status_code, dirty_rel = parts
+            if SENSITIVE_PATH_PATTERN.search(dirty_rel):
+                recorded_dirty_lines.append(f"{status_code} <redacted-sensitive-path>")
+                continue
+            recorded_dirty_lines.append(line)
+            dirty_fp = repo_dir / dirty_rel
+            if dirty_fp.is_file() and dirty_rel not in file_hashes:
+                file_hashes[dirty_rel] = compute_sha256(dirty_fp.read_bytes())
 
         lockfile_path = repo_dir / "package-lock.json"
         if not lockfile_path.exists():
@@ -96,7 +121,7 @@ def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) 
             "short": f"{branch}@{head[:7]}",
             "is_dirty": is_dirty,
             "dirty_files_count": len(dirty_lines),
-            "dirty_files": dirty_lines,
+            "dirty_files": recorded_dirty_lines,
             "patch_sha256": patch_sha256,
             "lockfile_sha256": lockfile_sha,
             "tested_files_fingerprint": file_hashes,

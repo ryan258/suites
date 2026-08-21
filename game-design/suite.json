@@ -35,42 +35,103 @@
     {
       "id": "G1",
       "order": 71,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Fingerprint Tucked in Terrors rules, seeds, metrics, and report outputs.",
       "acceptance": "The parity fixture captures game version, configuration, runs, statistics, and expected tolerances.",
-      "evidence": "game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.md"
+      "evidence": "game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.md",
+      "runtime_followup": "Re-run the donor simulator to regenerate the sample instead of fingerprinting its retained run.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "game_version_fingerprint",
+          "cards_sha256",
+          "objectives_sha256",
+          "results_sha256",
+          "outcome_distribution",
+          "metric_tolerances"
+        ]
+      }
     },
     {
       "id": "G2",
       "order": 81,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Implement the game as a Storyweaver reference pack.",
       "acceptance": "Seeded statistical parity and artifact generation pass without parallel engine logic.",
-      "evidence": "game-design/evidence/G2-STORYWEAVER-PACK-PARITY.json"
+      "evidence": "game-design/evidence/G2-STORYWEAVER-PACK-PARITY.json",
+      "runtime_followup": "Materialize the pack, run it in Storyweaver, and compare independently generated statistics to the donor sample.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "pack",
+          "shape_projection",
+          "tucked_in_terrors_fingerprint",
+          "storyweaver_fingerprint"
+        ]
+      }
     },
     {
       "id": "G3",
       "order": 91,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Document the authored-game boundary and optional pack contract.",
       "acceptance": "Creative assets are preserved without inventing an all-games platform or ownership transfer.",
-      "evidence": "game-design/evidence/G3-AUTHORED-GAME-BOUNDARY.json"
+      "evidence": "game-design/evidence/G3-AUTHORED-GAME-BOUNDARY.json",
+      "runtime_followup": "Re-audit if authored content ever gains a pack export path.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "authored_inventory",
+          "engine_coupling",
+          "boundary",
+          "oregon_dnd_fingerprint"
+        ]
+      }
     },
     {
       "id": "G4",
       "order": 101,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Express a second structurally different game class as a Storyweaver pack.",
       "acceptance": "Branching spatial puzzle adventure pack verified against generic Storyweaver schema.",
-      "evidence": "game-design/evidence/G4-STORYWEAVER-ADVENTURE-PACK.json"
+      "evidence": "game-design/evidence/G4-STORYWEAVER-ADVENTURE-PACK.json",
+      "runtime_followup": "Generate the adventure pack through Storyweaver itself and diff the written gds slots.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "pack",
+          "schema_check",
+          "storyweaver_fingerprint"
+        ]
+      }
     },
     {
       "id": "G5",
       "order": 111,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Formally audit authored-game boundary for March Madness sports simulation.",
       "acceptance": "Specialized simulation confirmed as independent creative domain without mandatory engine coupling.",
-      "evidence": "game-design/evidence/G5-MARCH-MADNESS-BOUNDARY.json"
+      "evidence": "game-design/evidence/G5-MARCH-MADNESS-BOUNDARY.json",
+      "runtime_followup": "Re-audit if the simulation is ever scheduled for a port into the suite.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "boundary",
+          "engine_coupling",
+          "donor_modules",
+          "march_madness_fingerprint"
+        ]
+      }
     }
   ]
 }

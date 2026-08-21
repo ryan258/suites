@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from portfolio_suites.registry import (
+    SUITES_ROOT,
     _analysis_evidence_errors,
     _analysis_receipt_semantic_errors,
     _git_value,
@@ -17,6 +18,7 @@ from portfolio_suites.registry import (
     load_suites,
     validate_registry,
 )
+from portfolio_suites.registry import evidence_errors as registry_evidence_errors
 
 
 class RegistryTests(unittest.TestCase):
@@ -182,6 +184,40 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(summary["recovered_runtime_behaviors"], 1)
         self.assertEqual(summary["adopted_runtime_behaviors"], 0)
         self.assertEqual(summary["converged_runtime_behaviors"], 0)
+
+    def test_validate_rejects_a_corrupted_prototype_receipt(self):
+        """A retained prototype receipt is re-checked by the canonical validator, not only at record time."""
+        suites = deepcopy(load_suites())
+        wave = next(w for w in suites["model-behavior-lab"]["waves"] if w["id"] == "M1")
+        scratch = SUITES_ROOT / "model-behavior-lab" / "evidence" / ".validate-regression.json"
+        retained = json.loads((SUITES_ROOT / wave["evidence"]).read_text(encoding="utf-8"))
+        retained["field_parity"]["all_fields_match"] = False
+        wave["evidence"] = "model-behavior-lab/evidence/.validate-regression.json"
+        try:
+            scratch.write_text(json.dumps(retained), encoding="utf-8")
+            with patch("portfolio_suites.registry.load_suites", return_value=suites):
+                report = validate_registry(check_live=False)
+        finally:
+            scratch.unlink(missing_ok=True)
+        self.assertFalse(report.ok)
+        self.assertTrue(
+            any("M1" in error and "field_parity.all_fields_match" in error for error in report.errors),
+            report.errors,
+        )
+
+    def test_validate_checks_every_declared_claim_not_only_completed_waves(self):
+        inspected: list[str] = []
+        real_errors = registry_evidence_errors
+
+        def spy(wave, path):
+            inspected.append(str(wave.get("id")))
+            return real_errors(wave, path)
+
+        with patch("portfolio_suites.registry.evidence_errors", side_effect=spy):
+            validate_registry(check_live=False)
+        for wave_id in ("M1", "D3", "R5", "G2", "A6"):
+            with self.subTest(wave=wave_id):
+                self.assertIn(wave_id, inspected)
 
 
 if __name__ == "__main__":

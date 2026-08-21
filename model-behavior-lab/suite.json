@@ -43,42 +43,99 @@
     {
       "id": "M1",
       "order": 41,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Map one ethics scenario and result into ExperimentRun.",
       "acceptance": "The original and normalized result match on prompt, response, score, metadata, and failures.",
-      "evidence": "model-behavior-lab/evidence/M1-ETHICS-EXPERIMENT-RUN.json"
+      "evidence": "model-behavior-lab/evidence/M1-ETHICS-EXPERIMENT-RUN.json",
+      "runtime_followup": "Re-run the donor experiment runner live instead of normalizing a stored result file.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "canonical_run",
+          "donor_result",
+          "field_parity",
+          "ethics_comparator_fingerprint"
+        ]
+      }
     },
     {
       "id": "M2",
       "order": 51,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Extract ethics as a benchmark pack over the comparator kernel.",
       "acceptance": "No duplicate provider client, run store, report lifecycle, or identifier system remains in the slice.",
-      "evidence": "model-behavior-lab/evidence/M2-COMPARATOR-KERNEL-MATRIX.json"
+      "evidence": "model-behavior-lab/evidence/M2-COMPARATOR-KERNEL-MATRIX.json",
+      "runtime_followup": "Implement the shared slice and delete the duplicated donor subsystems; this gate only measures them.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "packs",
+          "extraction_matrix",
+          "ethics_comparator_fingerprint",
+          "strength_comparator_fingerprint"
+        ]
+      }
     },
     {
       "id": "M3",
       "order": 61,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Add one legal-move chess adapter fixture.",
       "acceptance": "Rules, scorer version, invalid move behavior, repeat policy, and evidence are deterministic.",
-      "evidence": "model-behavior-lab/evidence/M3-CHESS-ADAPTER-FIXTURE.json"
+      "evidence": "model-behavior-lab/evidence/M3-CHESS-ADAPTER-FIXTURE.json",
+      "runtime_followup": "Replay whole recorded matches once the engine can apply a move, not just the opening ply.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "match_fixture",
+          "legality_check",
+          "ai_chess_fingerprint"
+        ]
+      }
     },
     {
       "id": "M4",
       "order": 71,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Extract second benchmark pack (chess legal moves and tactics) over comparator kernel.",
       "acceptance": "Deterministic chess scoring rules verify kernel generality across disparate benchmark domains.",
-      "evidence": "model-behavior-lab/evidence/M4-CHESS-BENCHMARK-RUN.json"
+      "evidence": "model-behavior-lab/evidence/M4-CHESS-BENCHMARK-RUN.json",
+      "runtime_followup": "Score full match transcripts and tactical puzzles, not the first ply of each match.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "canonical_run",
+          "kernel_generality",
+          "ai_chess_fingerprint"
+        ]
+      }
     },
     {
       "id": "M5",
       "order": 81,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Define versioned benchmark corpus format and back-fill ethics and chess packs.",
       "acceptance": "Corpus manifest provides 100% reproducible re-run path for all historical and live evaluations.",
-      "evidence": "model-behavior-lab/evidence/M5-BENCHMARK-CORPUS-MANIFEST.json"
+      "evidence": "model-behavior-lab/evidence/M5-BENCHMARK-CORPUS-MANIFEST.json",
+      "runtime_followup": "Prove the manifest re-runs a historical evaluation end to end from its pinned hashes.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "corpus_manifest",
+          "corpus_sources",
+          "fingerprints"
+        ]
+      }
     }
   ]
 }

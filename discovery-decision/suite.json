@@ -39,42 +39,110 @@
     {
       "id": "D1",
       "order": 42,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Create a SIF-to-Forge stage and artifact parity matrix.",
       "acceptance": "Each candidate stage has typed inputs, outputs, budget, failure, resume, and accept or reject evidence.",
-      "evidence": "discovery-decision/evidence/D1-SIF-FORGE-STAGE-MATRIX.json"
+      "evidence": "discovery-decision/evidence/D1-SIF-FORGE-STAGE-MATRIX.json",
+      "runtime_followup": "Execute both runtimes on one question and diff their stage outputs, rather than mapping retained artifacts.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "matrix",
+          "forge_budgets",
+          "sif_run_sampled",
+          "sif_fingerprint",
+          "forge_fingerprint"
+        ]
+      }
     },
     {
       "id": "D2",
       "order": 52,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Port one bounded red-team or analogy stage behind a Forge mode.",
       "acceptance": "Canonical Markdown, SQLite rebuild, consent, budget, failure, and resume gates pass.",
-      "evidence": "discovery-decision/evidence/D2-FORGE-REDTEAM-RECORD.json"
+      "evidence": "discovery-decision/evidence/D2-FORGE-REDTEAM-RECORD.json",
+      "runtime_followup": "Run the red-team stage live inside Forge with consent and resume gates, not a carried artifact.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "investigation",
+          "donor_artifact",
+          "budget_source",
+          "sif_fingerprint",
+          "forge_fingerprint"
+        ]
+      }
     },
     {
       "id": "D3",
       "order": 62,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Turn Insight Excavator into a cited two-source discovery operation.",
       "acceptance": "Both inputs are SourceRecords and the report retains claims, citations, novelty score, and uncertainty.",
-      "evidence": "discovery-decision/evidence/D3-INSIGHT-EXCAVATOR-DISCOVERY.json"
+      "evidence": "discovery-decision/evidence/D3-INSIGHT-EXCAVATOR-DISCOVERY.json",
+      "runtime_followup": "Run the Excavator discovery path to produce claims, novelty, and uncertainty; this gate only reads and anchors donor text.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "document_excerpts",
+          "lexical_overlap",
+          "discovery_limitations",
+          "cited_sources",
+          "primary_source",
+          "insight_excavator_fingerprint"
+        ]
+      }
     },
     {
       "id": "D4",
       "order": 72,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Port second SIF stage (analogy synthesis and divergent search) through Forge.",
       "acceptance": "Deep mode investigation verifies consensus and leader-sync analogies with budget tracking.",
-      "evidence": "discovery-decision/evidence/D4-SIF-ANALOGY-FORGE-RECORD.json"
+      "evidence": "discovery-decision/evidence/D4-SIF-ANALOGY-FORGE-RECORD.json",
+      "runtime_followup": "Run analogy synthesis live in deep mode with real call-budget accounting.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "investigation",
+          "donor_artifact",
+          "budget_source",
+          "sif_fingerprint",
+          "forge_fingerprint"
+        ]
+      }
     },
     {
       "id": "D5",
       "order": 82,
-      "status": "specified",
+      "status": "prototype",
       "objective": "Fold Insight Excavator into Forge as cited discovery without standalone runtime.",
       "acceptance": "Insight Excavator retired into Forge citations with full SourceRecord provenance.",
-      "evidence": "discovery-decision/evidence/D5-INSIGHT-EXCAVATOR-CITATION.json"
+      "evidence": "discovery-decision/evidence/D5-INSIGHT-EXCAVATOR-CITATION.json",
+      "runtime_followup": "Forge ingests Excavator sources directly and the owner approves the disposition; only then is the standalone runtime retired.",
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "prototype",
+        "real_runtime": false,
+        "evidence_basis": [
+          "folded_investigation",
+          "retirement",
+          "citation_provenance",
+          "forge_investigation",
+          "cited_sources",
+          "primary_source",
+          "forge_fingerprint"
+        ]
+      }
     }
   ]
 }

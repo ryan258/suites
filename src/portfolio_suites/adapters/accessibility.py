@@ -14,10 +14,17 @@ from typing import Any
 
 from ..contracts import SCHEMA_VERSION, validate_contract
 from ..engines.accessibility import AccessibilityEngine
-from .common import get_git_fingerprint, get_repo_path, is_meaningful_git_fingerprint
+from .common import donor_env, get_git_fingerprint, get_repo_path, is_meaningful_git_fingerprint
 
 ALLYS_TOOLS_DIR = get_repo_path("allys-tools", "ALLYS_TOOLS_DIR")
 WCAG_AUDITOR_DIR = get_repo_path("wcag-auditor", "WCAG_AUDITOR_DIR")
+# Permissions that let an extension reach beyond the tab the user invoked it on.
+BROAD_EXTENSION_PERMISSIONS = frozenset({
+    "scripting", "tabs", "webNavigation", "debugger", "management",
+})
+# Host match patterns that reach every page the user visits.
+BROAD_HOST_PATTERNS = frozenset({"<all_urls>", "*://*/*", "http://*/*", "https://*/*"})
+
 KB_OVERLAY_DIR = get_repo_path("kb-overlay", "KB_OVERLAY_DIR")
 KEYBOARD_NAV_OVERLAY_DIR = get_repo_path("keyboard-nav-overlay", "KEYBOARD_NAV_OVERLAY_DIR")
 KEYBOARD_NAV_OVERLAY_94BF7E_DIR = get_repo_path("keyboard-nav-overlay-94bf7e", "KEYBOARD_NAV_OVERLAY_94BF7E_DIR")
@@ -117,6 +124,7 @@ class AccessibilitySourceAdapter:
                 cwd=WCAG_AUDITOR_DIR,
                 capture_output=True,
                 text=True,
+                env=donor_env(),
                 timeout=15,
             )
             donor_source_duration_ms = (time.perf_counter() - t0_donor_source) * 1000.0
@@ -154,6 +162,7 @@ class AccessibilitySourceAdapter:
                     input=json.dumps(donor_source),
                     capture_output=True,
                     text=True,
+                    env=donor_env(),
                     timeout=30,
                 )
                 donor_runtime_duration_ms = (time.perf_counter() - t0_donor_runtime) * 1000.0
@@ -204,6 +213,7 @@ class AccessibilitySourceAdapter:
                 cwd=ALLYS_TOOLS_DIR,
                 capture_output=True,
                 text=True,
+                env=donor_env(),
                 timeout=30,
             )
             foc_duration_ms = (time.perf_counter() - t0_foc) * 1000.0
@@ -232,6 +242,7 @@ class AccessibilitySourceAdapter:
                     cwd=ALLYS_TOOLS_DIR,
                     capture_output=True,
                     text=True,
+                    env=donor_env(),
                     timeout=120,
                 )
                 full_duration_ms = (time.perf_counter() - t0_full) * 1000.0
@@ -268,6 +279,7 @@ class AccessibilitySourceAdapter:
                     cwd=ALLYS_TOOLS_DIR,
                     capture_output=True,
                     text=True,
+                    env=donor_env(),
                     timeout=120,
                 )
                 audit_duration_ms = (time.perf_counter() - t0_audit) * 1000.0
@@ -365,6 +377,7 @@ console.log(JSON.stringify(result));
                 cwd=ALLYS_TOOLS_DIR,
                 capture_output=True,
                 text=True,
+                env=donor_env(),
                 timeout=30,
             )
             if eval_proc.returncode == 0 and eval_proc.stdout.strip():
@@ -581,6 +594,7 @@ console.log(JSON.stringify(result));
             manifest_valid = False
             manifest_error: str | None = None
             permissions: list[str] = []
+            host_scope: list[str] = []
             manifest_v: int | None = None
             if not source_available:
                 manifest_error = "configured donor directory does not exist"
@@ -599,6 +613,18 @@ console.log(JSON.stringify(result));
                     if not isinstance(manifest_version_value, int):
                         raise ValueError("manifest_version must be an integer")
                     permissions = permissions_value
+                    # Host reach is not confined to `permissions`: an extension also reaches
+                    # every page it injects a content script into, and optional host grants count.
+                    scope: list[str] = []
+                    for key in ("host_permissions", "optional_host_permissions"):
+                        declared = manifest_data.get(key)
+                        if isinstance(declared, list):
+                            scope.extend(str(entry) for entry in declared)
+                    for content_script in manifest_data.get("content_scripts", []) or []:
+                        matches = content_script.get("matches") if isinstance(content_script, dict) else None
+                        if isinstance(matches, list):
+                            scope.extend(str(entry) for entry in matches)
+                    host_scope = sorted(set(scope))
                     manifest_v = manifest_version_value
                     manifest_valid = True
                 except (OSError, ValueError, json.JSONDecodeError) as error:
@@ -655,6 +681,7 @@ console.log(JSON.stringify(result));
                 "features": features,
                 "feature_inventory_kind": "declared_analysis",
                 "permissions": permissions,
+                "host_scope": host_scope,
                 "code_size_bytes": code_size,
                 "code_files_count": code_files_count,
                 "active_status": active_status,
@@ -787,25 +814,103 @@ console.log(JSON.stringify(result));
 
     @classmethod
     def execute_keyboard_overlay_consolidation_gate(cls) -> dict[str, Any]:
-        """A6: Final keyboard overlay consolidation verification and donor freeze proposal."""
+        """A6: Verify kb-overlay as the single canonical overlay and report donor retirement status.
+
+        Freezing a donor repository is an owner action. This gate measures whether the
+        consolidation is justified and what remains outstanding; it never performs it.
+        """
         reconciliation = cls.execute_keyboard_overlay_reconciliation_gate()
         reconciliation_passed = reconciliation.get("all_stages_passed", False)
+        matrix = reconciliation.get("matrix", {})
 
-        consolidation = {
-            "all_stages_passed": reconciliation_passed,
+        canonical = matrix.get("kb-overlay", {})
+        canonical_permissions = sorted(canonical.get("permissions", []))
+        canonical_scope = sorted(canonical.get("host_scope", []))
+        duplicates = {name: entry for name, entry in matrix.items() if name != "kb-overlay"}
+
+        def scope_is_broad(scope: list[str]) -> bool:
+            return any(entry in BROAD_HOST_PATTERNS for entry in scope)
+
+        permission_analysis = {
+            "canonical_api_permissions": canonical_permissions,
+            "canonical_host_scope": canonical_scope,
+            "broad_api_permission_vocabulary": sorted(BROAD_EXTENSION_PERMISSIONS),
+            "broad_host_patterns": sorted(BROAD_HOST_PATTERNS),
+            "canonical_broad_api_permissions": sorted(set(canonical_permissions) & BROAD_EXTENSION_PERMISSIONS),
+            "canonical_host_scope_is_broad": scope_is_broad(canonical_scope),
+            "donor_api_permissions": {
+                name: sorted(entry.get("permissions", [])) for name, entry in sorted(duplicates.items())
+            },
+            "donor_host_scope": {
+                name: sorted(entry.get("host_scope", [])) for name, entry in sorted(duplicates.items())
+            },
+        }
+        permission_analysis["donor_broad_api_permissions"] = {
+            name: sorted(set(perms) & BROAD_EXTENSION_PERMISSIONS)
+            for name, perms in permission_analysis["donor_api_permissions"].items()
+        }
+        permission_analysis["donor_only_api_permissions"] = {
+            name: sorted(set(perms) - set(canonical_permissions))
+            for name, perms in permission_analysis["donor_api_permissions"].items()
+        }
+        # The canonical overlay is compared against what it would replace. It is not called
+        # minimized: it injects on every page, exactly as its donors do.
+        permission_analysis["canonical_no_broader_than_donors"] = all(
+            (set(canonical_permissions) & BROAD_EXTENSION_PERMISSIONS) <= set(perms)
+            and set(canonical_scope) <= set(permission_analysis["donor_host_scope"][name])
+            for name, perms in permission_analysis["donor_api_permissions"].items()
+        )
+        permission_analysis["minimized_permissions_verified"] = (
+            not permission_analysis["canonical_broad_api_permissions"]
+            and not permission_analysis["canonical_host_scope_is_broad"]
+        )
+        permission_analysis["minimization_outstanding"] = sorted(
+            {
+                f"content script host scope {entry!r} is not narrowed"
+                for entry in canonical_scope
+                if entry in BROAD_HOST_PATTERNS
+            }
+        )
+
+        donor_retirement = {
+            name: {
+                "active_status": entry.get("active_status"),
+                "source_present": entry.get("source_available"),
+                "working_tree_dirty": entry.get("git_fingerprint", {}).get("is_dirty"),
+                "head": entry.get("git_fingerprint", {}).get("short"),
+                "retirement_performed": False,
+                "owner_action_required": True,
+            }
+            for name, entry in sorted(duplicates.items())
+        }
+
+        all_stages_passed = (
+            reconciliation_passed
+            and not permission_analysis["canonical_broad_api_permissions"]
+            and permission_analysis["canonical_no_broader_than_donors"]
+            and len(donor_retirement) == 2
+            and all(entry["source_present"] for entry in donor_retirement.values())
+            and all(str(entry["active_status"]).startswith("superseded_by") for entry in donor_retirement.values())
+        )
+
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "wave": "A6",
+            "status": "consolidation_proposed" if all_stages_passed else "consolidation_unverified",
+            "all_stages_passed": all_stages_passed,
             "artifact_kind": "reference_prototype",
             "proposed_canonical_anchor": "kb-overlay",
-            "manifest_version": 3,
-            "proposed_frozen_donors": ["keyboard-nav-overlay", "keyboard-nav-overlay-94bf7e"],
-            "features_targeted": [
-                "spatial_nav",
-                "visual_focus_ring",
-                "keyboard_shortcuts",
-                "aria_tree_scan",
-            ],
-            "permissions_minimized": ["activeTab", "storage"],
+            "manifest_version": canonical.get("manifest_version"),
+            "proposed_frozen_donors": sorted(duplicates),
+            "features_targeted": sorted(canonical.get("features", [])),
+            "canonical_permission_surface": {
+                "api_permissions": canonical_permissions,
+                "host_scope": canonical_scope,
+            },
+            "permission_analysis": permission_analysis,
+            "donor_retirement": donor_retirement,
             "proposed_disposition": "proposed_anchor",
-            "migration_acceptance_verified": reconciliation_passed,
-            "reconciliation_matrix": reconciliation.get("matrix", {}),
+            # Acceptance stays false while the owner freeze and the scope narrowing are outstanding.
+            "migration_acceptance_verified": False,
+            "reconciliation_matrix": matrix,
         }
-        return consolidation

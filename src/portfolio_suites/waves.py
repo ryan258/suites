@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from .adapters.accessibility import AccessibilitySourceAdapter
+from .adapters.agent_reliability import AgentReliabilitySourceAdapter
 from .adapters.brand_publishing import BrandPublishingSourceAdapter
+from .adapters.discovery_decision import DiscoveryDecisionSourceAdapter
+from .adapters.game_design import GameDesignSourceAdapter
+from .adapters.model_behavior import ModelBehaviorSourceAdapter
 from .adapters.operator_os import OperatorOSSourceAdapter
 from .adapters.production_house import ProductionHouseSourceAdapter
 from .contracts import generate_sample
@@ -378,7 +382,7 @@ class WaveRunner:
             write_evidence,
             passed,
             consolidation,
-            "Formulated verified consolidation boundary for kb-overlay and documented duplicate donor retirement.",
+            "Measured the full overlay permission surface; scope narrowing and donor freeze remain outstanding.",
             consolidation,
         )
 
@@ -719,365 +723,264 @@ class WaveRunner:
 
     @classmethod
     def _run_model_behavior_lab_m1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        run = ModelBehaviorEngine.execute_ethics_scenario_run("run-mbl-eth-01", "anthropic", "claude-3-5-sonnet", 10)
-        passed = run.get("status") == "completed" and len(run.get("iterations", [])) == 10
+        res = ModelBehaviorSourceAdapter.execute_m1_ethics_experiment_run()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            run,
-            "Mapped ethics scenario benchmark and deterministic scoring into ExperimentRun.",
-            run,
+            res.get("all_stages_passed", False),
+            res,
+            "Normalized a recorded ai-ethics-comparator result into ExperimentRun with field parity.",
+            res.get("field_parity"),
         )
 
     @classmethod
     def _run_model_behavior_lab_m2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        run1 = ModelBehaviorEngine.execute_ethics_scenario_run("run-mbl-claude", "anthropic", "claude-3-5-sonnet", 5)
-        run2 = ModelBehaviorEngine.execute_ethics_scenario_run("run-mbl-gemini", "google", "gemini-1-5-pro", 5)
-        comp = ModelBehaviorEngine.compare_runs([run1, run2])
-        passed = len(comp.get("comparisons", [])) == 2
+        res = ModelBehaviorSourceAdapter.execute_m2_comparator_kernel_matrix()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            comp,
-            "Extracted ethics benchmark as a pack over the unified comparator kernel.",
-            comp,
+            res.get("all_stages_passed", False),
+            res,
+            "Measured the donor subsystem duplication a shared kernel would replace; extraction not performed.",
+            res.get("extraction_matrix"),
         )
 
     @classmethod
     def _run_model_behavior_lab_m3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        run = ModelBehaviorEngine.execute_chess_benchmark_run(
-            run_id="run-m3-chess-adapter",
-            provider="deterministic-oracle",
-            model="chess-rules-evaluator-v1",
-            puzzle_count=4,
-        )
-        passed = run.get("status") == "completed" and len(run.get("iterations", [])) == 4
-        adapter = {
-            "adapter": "chess_legal_move_evaluator",
-            "fen_seed": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            "deterministic_rules": True,
-            "scorer_version": "1.0.0",
-            "benchmark_run": run,
-        }
+        res = ModelBehaviorSourceAdapter.execute_m3_chess_adapter_fixture()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            adapter,
-            "Verified legal-move chess adapter fixture with deterministic rule execution.",
-            adapter,
+            res.get("all_stages_passed", False),
+            res,
+            "Built the legal-move chess adapter fixture from a recorded ai-chess match.",
+            res.get("match_fixture"),
         )
 
     @classmethod
     def _run_model_behavior_lab_m4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        chess_run = ModelBehaviorEngine.execute_chess_benchmark_run(
-            "run-mbl-chess-01", provider="deterministic-oracle", model="chess-rules-evaluator-v1", puzzle_count=10
-        )
-        iterations = chess_run.get("iterations", [])
-        passed = (
-            chess_run.get("status") == "completed"
-            and len(iterations) == 10
-            and all("fen" in it and "candidate_move" in it and "expected_move" in it and "verdict" in it for it in iterations)
-            and all(it.get("passed") is True for it in iterations)
-            and chess_run.get("evidence", [{}])[0].get("pass_rate") == 1.0
-        )
+        res = ModelBehaviorSourceAdapter.execute_m4_chess_benchmark_run()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            chess_run,
-            "Extracted chess evaluation pack over comparator kernel; verified deterministic scoring.",
-            chess_run,
+            res.get("all_stages_passed", False),
+            res,
+            "Scored recorded chess openings through the kernel that scores the ethics pack.",
+            res.get("canonical_run"),
         )
 
     @classmethod
     def _run_model_behavior_lab_m5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        run1 = ModelBehaviorEngine.execute_ethics_scenario_run("run-eth-canon", "deterministic-oracle", "deterministic-reference-kernel", 5)
-        run2 = ModelBehaviorEngine.execute_chess_benchmark_run("run-chess-canon", "deterministic-oracle", "chess-rules-evaluator-v1", 5)
-        corpus = ModelBehaviorEngine.build_versioned_corpus("corpus-mbl-v1", [run1, run2])
-        passed = len(corpus.get("benchmarks_included", [])) == 2 and corpus.get("artifact_kind") == "reference_prototype_corpus"
+        res = ModelBehaviorSourceAdapter.execute_m5_benchmark_corpus_manifest()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            corpus,
-            "Defined versioned reference benchmark corpus format with deterministic oracle provenance.",
-            corpus,
+            res.get("all_stages_passed", False),
+            res,
+            "Pinned every donor benchmark corpus by content hash for reproducible re-runs.",
+            res.get("corpus_manifest"),
         )
 
     @classmethod
     def _run_discovery_decision_d1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        inv = DiscoveryDecisionEngine.create_investigation("inv-sif-parity-01", "SIF-Forge parity matrix validation")
-        parity_matrix = {
-            "sif_stages": ["divergent_search", "red_team_analysis", "analogy_synthesis"],
-            "forge_modes": ["preview", "quick", "standard", "deep"],
-            "investigation_sample": inv,
-            "status": "parity_mapped",
-        }
-        passed = inv.get("status") == "draft" and len(parity_matrix["sif_stages"]) == 3
+        res = DiscoveryDecisionSourceAdapter.execute_d1_sif_forge_stage_matrix()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            parity_matrix,
-            "Created and verified SIF-to-Forge stage and artifact parity matrix.",
-            parity_matrix,
+            res.get("all_stages_passed", False),
+            res,
+            "Mapped real SIF phase nodes to Forge stages with the donors' own budgets and artifacts.",
+            res.get("matrix"),
         )
 
     @classmethod
     def _run_discovery_decision_d2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        inv = DiscoveryDecisionEngine.create_investigation("inv-forge-redteam-01", "Is local-first SQLite WAL optimal?")
-        inv = DiscoveryDecisionEngine.advance_stage(
-            inv,
-            "red_team_analysis",
-            [{"risk": "Lock contention on concurrent writes", "mitigation": "Single-writer queue"}],
-            [{"decision": "Proceed with single-writer architecture"}],
-            iteration_cost=1,
-            time_cost_sec=12.0,
-            status="completed",
-        )
-        passed = inv.get("status") == "completed" and inv.get("budget", {}).get("used_iterations") == 1
+        res = DiscoveryDecisionSourceAdapter.execute_d2_forge_redteam_record()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            inv,
-            "Ported bounded red-team stage behind Forge mode with budget and recovery tracking.",
-            inv,
+            res.get("all_stages_passed", False),
+            res,
+            "Ported the recorded SIF red-team phase into a budgeted Forge InvestigationRecord.",
+            res.get("investigation"),
         )
 
     @classmethod
     def _run_discovery_decision_d3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        src_a = generate_sample("SourceRecord")
-        src_b = generate_sample("SourceRecord")
-        src_b["source_id"] = "src-secondary-corpus"
-        discovery = DiscoveryDecisionEngine.discover_across_sources(src_a, src_b, "architectural invariants")
-        passed = discovery.get("novelty_score") > 0.8
+        res = DiscoveryDecisionSourceAdapter.execute_d3_insight_excavator_discovery()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            discovery,
-            "Turned Insight Excavator into a cited dual-source discovery operation.",
-            discovery,
+            res.get("all_stages_passed", False),
+            res,
+            "Cited two real Excavator documents by content with re-verifiable byte anchors.",
+            res.get("discovery"),
         )
 
     @classmethod
     def _run_discovery_decision_d4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        inv = DiscoveryDecisionEngine.execute_sif_analogy_stage("inv-forge-analogy-01", "How does single-writer WAL map to distributed Raft?")
-        passed = inv.get("status") == "completed" and len(inv.get("decisions", [])) >= 1
+        res = DiscoveryDecisionSourceAdapter.execute_d4_sif_analogy_forge_record()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            inv,
-            "Ported second SIF stage (analogy synthesis & divergent search) through Forge InvestigationRecord.",
-            inv,
+            res.get("all_stages_passed", False),
+            res,
+            "Ported the recorded SIF analogy phase through the same bounded Forge path.",
+            res.get("investigation"),
         )
 
     @classmethod
     def _run_discovery_decision_d5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        inv = DiscoveryDecisionEngine.create_investigation("inv-forge-cite-01", "Cross-system architectural boundaries")
-        src = generate_sample("SourceRecord")
-        res = DiscoveryDecisionEngine.ingest_insight_excavator_source(inv, src, "WAL ensures ACID safety without network overhead.")
-        passed = res.get("insight_excavator_runtime") == "retired_into_forge_citations" and res.get("provenance_retained") is True
+        res = DiscoveryDecisionSourceAdapter.execute_d5_insight_excavator_citation()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
+            res.get("all_stages_passed", False),
             res,
-            "Folded Insight Excavator into Forge as cited discovery with SourceRecord provenance.",
-            res,
+            "Projected an Excavator citation into a recorded Forge investigation; retirement not performed.",
+            res.get("retirement"),
         )
 
     @classmethod
     def _run_agent_reliability_r1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        scorecard = AgentReliabilityEngine.run_adversarial_harness()
-        passed = scorecard.get("status") == "completed" and len(scorecard.get("iterations", [])) == 4
+        res = AgentReliabilitySourceAdapter.execute_r1_adversarial_harness_scorecard()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            scorecard,
-            "Defined and ran adversarial reliability fixtures as ExperimentRuns.",
-            scorecard,
+            res.get("all_stages_passed", False),
+            res,
+            "Derived adversarial fixtures from the looping-box action policy and probed confinement.",
+            res.get("canonical_run"),
         )
 
     @classmethod
     def _run_agent_reliability_r2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        is_safe, _ = AgentReliabilityEngine.verify_path_confinement("/safe/workspace", "file.txt")
-        is_unsafe, _ = AgentReliabilityEngine.verify_path_confinement("/safe/workspace", "../../etc/passwd")
-        passed = is_safe and not is_unsafe
-        matrix = {
-            "harnesses": ["Looping Box", "SSSF", "Agentic Harness"],
-            "gates_evaluated": ["confinement", "rollback", "budget_exhaustion", "malformed_output"],
-            "confinement_checks": {"safe": is_safe, "unsafe_blocked": not is_unsafe},
-            "all_passed": passed,
-        }
+        res = AgentReliabilitySourceAdapter.execute_r2_cross_harness_eval()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            matrix,
-            "Ran verified fixtures across Looping Box, SSSF, and Agentic Harness with raw evidence.",
-            matrix,
+            res.get("all_stages_passed", False),
+            res,
+            "Measured reliability-gate coverage across Looping Box, SSSF, and Agentic Harness sources.",
+            res.get("gates_covered"),
         )
 
     @classmethod
     def _run_agent_reliability_r3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        test_dir = str(SUITES_ROOT / "agent-reliability" / "evidence")
-        is_safe, _ = AgentReliabilityEngine.verify_path_confinement(test_dir, "safe.json")
-        passed = is_safe
-        curriculum = {
-            "shared_components_promoted": ["path_confinement_validator", "atomic_rollback_guard"],
-            "consumer_count": 3,
-            "status": "promotion_verified",
-            "component_check_passed": passed,
-        }
+        res = AgentReliabilitySourceAdapter.execute_r3_promoted_components()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            curriculum,
-            "Promoted shared reliability components to cross-cutting standard with 3 verified consumers.",
-            curriculum,
+            res.get("all_stages_passed", False),
+            res,
+            "Counted the real sibling-repo consumers of every promoted shared component.",
+            res.get("promoted_components"),
         )
 
     @classmethod
     def _run_agent_reliability_r4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        candidates = [
-            {"component_id": "comp-confinement-validator", "path": "components/confinement", "consumers": ["looping-box", "sssf", "agentic-harness"]},
-            {"component_id": "comp-rollback-guard", "path": "components/rollback", "consumers": ["looping-box", "sssf"]},
-            {"component_id": "comp-ad-hoc-sampler", "path": "components/sampler", "consumers": ["sssf"]},
-        ]
-        audit = AgentReliabilityEngine.audit_promoted_components(candidates)
-        passed = audit.get("promoted_retained_count") == 2 and audit.get("demoted_count") == 1
+        res = AgentReliabilitySourceAdapter.execute_r4_promoted_components_audit()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            audit,
-            "Enforced 2-consumer craft rule: verified 2 shared components; demoted 1 single-consumer component.",
-            audit,
+            res.get("all_stages_passed", False),
+            res,
+            "Applied the two-consumer craft rule to the measured component inventory.",
+            res.get("audit"),
         )
 
     @classmethod
     def _run_agent_reliability_r5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        modules = [
-            {"id": "mod-ai-staff-gates", "topic": "Role-specific deterministic tool gating", "gates": ["confinement", "budget"]},
-            {"id": "mod-prompt-chain-verify", "topic": "Multi-step plan validation & atomic recovery", "gates": ["malformed_catch", "rollback"]},
-        ]
-        fixtures = AgentReliabilityEngine.build_curriculum_fixtures(modules)
-        passed = fixtures.get("fixtures_count") == 2 and fixtures.get("status") == "curriculum_fixtures_verified"
+        res = AgentReliabilitySourceAdapter.execute_r5_curriculum_fixtures()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            fixtures,
-            "Mined AI Staff and prompt-chain fixtures into deterministic curriculum & skill tests.",
-            fixtures,
+            res.get("all_stages_passed", False),
+            res,
+            "Mined real AI Staff and harness eval cases into deterministic curriculum fixtures.",
+            res.get("curriculum_fixtures"),
         )
 
     # --- Game Design & Simulation Suite Runners ---
 
     @classmethod
     def _run_game_design_g1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        sim = GameDesignEngine.simulate_tucked_in_terrors(seed=42, trials=500)
-        sheet = GameDesignEngine.generate_printable_balance_sheet(sim)
-        passed = sim.get("status") == "completed"
+        res = GameDesignSourceAdapter.execute_g1_tucked_in_terrors_fingerprint()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            sheet,
-            "Fingerprinted Tucked in Terrors rules, seeds, metrics, and balance tolerances.",
-            sim,
+            res.get("all_stages_passed", False),
+            res["document"],
+            "Fingerprinted the donor's real rules data and 1000 recorded runs into a parity fixture.",
+            res.get("outcome_distribution"),
         )
 
     @classmethod
     def _run_game_design_g2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        sim = GameDesignEngine.simulate_tucked_in_terrors(seed=42, trials=100)
-        passed = sim.get("status") == "completed" and len(sim.get("evidence", [])) >= 1
-        pack = {
-            "pack_id": "pack-storyweaver-tit",
-            "game_name": "Tucked In Terrors",
-            "version": "1.0.0",
-            "simulation_result": sim,
-            "parity_with_dedicated_sim": passed,
-            "statistical_delta": "<0.01",
-        }
+        res = GameDesignSourceAdapter.execute_g2_storyweaver_pack_parity()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            pack,
-            "Implemented game as a Storyweaver reference pack with verified statistical parity.",
-            pack,
+            res.get("all_stages_passed", False),
+            res,
+            "Projected the donor game into the Storyweaver pack vocabulary; no parity measured.",
+            res.get("shape_projection"),
         )
 
     @classmethod
     def _run_game_design_g3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        boundary = {
-            "authored_games": ["oregon dnd"],
-            "ownership": "independent_creative_reference",
-            "platform_invented": False,
-        }
-        passed = len(boundary["authored_games"]) > 0 and boundary["ownership"] == "independent_creative_reference"
+        res = GameDesignSourceAdapter.execute_g3_authored_game_boundary()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            boundary,
-            "Documented authored-game boundary and preserved creative assets.",
-            boundary,
+            res.get("all_stages_passed", False),
+            res,
+            "Inventoried the authored Oregon D&D corpus and measured zero engine coupling.",
+            res.get("engine_coupling"),
         )
 
     @classmethod
     def _run_game_design_g4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        pack = GameDesignEngine.build_text_adventure_pack("pack-storyweaver-echo-chambers", rooms_count=8)
-        passed = pack.get("nodes_count") == 8 and pack.get("deterministic_graph") is True
+        res = GameDesignSourceAdapter.execute_g4_storyweaver_adventure_pack()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            pack,
-            "Expressed second game class (branching adventure) as a Storyweaver pack; verified schema generality.",
-            pack,
+            res.get("all_stages_passed", False),
+            res,
+            "Checked a second game class against the pack vocabulary Storyweaver really writes.",
+            res.get("schema_check"),
         )
 
     @classmethod
     def _run_game_design_g5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        boundary = GameDesignEngine.audit_authored_game_boundary("march-madness")
-        passed = boundary.get("status") == "boundary_formalized" and boundary.get("suite_dependency_required") is False
+        res = GameDesignSourceAdapter.execute_g5_march_madness_boundary()
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
-            passed,
-            boundary,
-            "Applied authored-game boundary to March Madness: confirmed independent creative domain status.",
-            boundary,
+            res.get("all_stages_passed", False),
+            res,
+            "Audited March Madness for mandatory engine coupling before any port is scheduled.",
+            res.get("engine_coupling"),
         )
 
     @classmethod

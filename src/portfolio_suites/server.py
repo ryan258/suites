@@ -26,6 +26,7 @@ from .waves import WaveRunner
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_JSON_BODY_BYTES = 1_048_576
+LOOPBACK_HOSTNAMES = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
 class RequestBodyError(ValueError):
@@ -92,11 +93,26 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         host = self.headers.get("Host")
         return bool(host and origin.rstrip("/") == f"http://{host}")
 
+    def _request_host_is_loopback(self) -> bool:
+        """Reject DNS-rebinding: a non-loopback Host means the request was aimed here by name."""
+        hostname = urllib.parse.urlsplit(f"//{self.headers.get('Host') or ''}").hostname
+        return hostname in LOOPBACK_HOSTNAMES
+
+    def _reject_non_loopback_host(self) -> bool:
+        if self._request_host_is_loopback():
+            return False
+        self._send_json(403, {"error": "requests must address this server as a loopback host"})
+        return True
+
     def do_OPTIONS(self) -> None:
+        if self._reject_non_loopback_host():
+            return
         self.send_response(204)
         self.end_headers()
 
     def do_GET(self) -> None:
+        if self._reject_non_loopback_host():
+            return
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path.rstrip("/")
         query = urllib.parse.parse_qs(parsed.query)
@@ -242,6 +258,8 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json(500, {"error": "Internal server error"})
 
     def do_POST(self) -> None:
+        if self._reject_non_loopback_host():
+            return
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path.rstrip("/")
 

@@ -217,6 +217,23 @@ class ServerTrustBoundaryTests(unittest.TestCase):
             )
         self.assertEqual(context.exception.code, 404)
 
+    def test_non_loopback_host_header_is_refused(self):
+        # DNS rebinding: the attacker page resolves its own name to 127.0.0.1, so
+        # Sec-Fetch-Site reads same-origin and only the Host header still names the attacker.
+        for method, path in (("GET", "/api/summary"), ("POST", "/api/waves/accessibility/A2/run")):
+            with self.subTest(method=method):
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:8400{path}",
+                    data=b"" if method == "POST" else None,
+                    headers={"Host": "evil.example.com"},
+                    method=method,
+                )
+                with patch("portfolio_suites.server.WaveRunner.run_wave") as run_wave:
+                    with self.assertRaises(urllib.error.HTTPError) as context:
+                        urllib.request.urlopen(request)
+                self.assertEqual(context.exception.code, 403)
+                run_wave.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
