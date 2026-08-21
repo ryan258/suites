@@ -43,13 +43,36 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
 ## 2. Operating Context & Architecture Invariants
 
 - **Architecture:** Local-first, zero-dependency Python stdlib control plane governing 70 repositories across 8 suites.
-- **Contract Enforcement:** All inter-suite data exchange uses versioned JSON contracts (`SourceRecord`, `BrandPackage`, etc.) validated by `portfolio_suites.contracts`.
+- **Contract Enforcement:** All inter-suite data exchange uses versioned JSON contracts (`SourceRecord`, `BrandPackage`, `ProductionJob`, `ExperimentRun`, `InvestigationRecord`, `A11yFinding`) validated by `portfolio_suites.contracts`.
 - **Fail-Closed Boundaries:** Unapproved destructive or mutating actions must fail closed without manufacturing synthetic human approval tokens.
 - **Immutable Provenance:** Retain content-addressed sha256 fingerprints, source origin paths, and author attribution on all extracted artifacts.
 
 ---
 
-## 3. Reporting & Communication Rules
+## 3. Architecture Principles & Evidence Standards (Hard-Won Lessons)
+
+1. **Engine Action Chaining as Universal Control Primitive**:
+   - Prefer composing multi-step wave logic and tool pipelines through `portfolio_suites.chains` using `{"$from": <step_index>}` parameter references instead of writing custom ad-hoc Python glue.
+   - The CLI (`suites chain`), Web Toolbench (`POST /api/chain`), and wave runners must use the exact same declarative action engine.
+
+2. **Pure JSON Structured Evidence Receipts**:
+   - All evidence receipts must be structured `.json` documents validated by `ANALYSIS_RECEIPT_SPECS` and `validate_contract`.
+   - Markdown projections, HTML samples, or diffs must be embedded within structured string fields (e.g., `"projection_markdown"`), ensuring typed invariants, minimums, and git fingerprints are always machine-checked.
+
+3. **2-Tier Adapter Pattern (`probe` vs `execute_runtime`)**:
+   - Every source adapter must cleanly decouple:
+     - **Fast Probe (Level 1/2)**: Validates schemas, mutation protection, content hashes, and donor file presence offline in milliseconds.
+     - **Live Runtime (Level 4)**: Spins up external subprocesses (Node/Playwright/Python) to prove real behavioral parity with `--full` depth.
+
+4. **Single Source of Truth for Wave Specifications**:
+   - Avoid creating disjoint validation logic across separate files. Keep wave metadata, `recovery_claim`, `evidence_basis`, and contract validators strictly aligned with manifest schemas in `suite.json`.
+
+5. **Tamper-Evident Working Tree Tracking**:
+   - Preserve dirty state patches and check drift non-destructively; never modify donor repositories or commit changes without explicit delegation.
+
+---
+
+## 4. Reporting & Communication Rules
 
 1. **Lead with Outcome / Next Action:** Maximize signal and recovery speed.
 2. **Deterministic Gates Run Quietly:** Report failures, anomalies, or concise summary counts (e.g. `58/58 tests passed, 0 errors/warnings`), not raw passing-test transcripts.
@@ -58,14 +81,14 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
 
 ---
 
-## 4. Working Tree & Commit Safety
+## 5. Working Tree & Commit Safety
 
 - **Preserve Independent Repositories:** Never move, delete, or overwrite donor files or sibling repositories without explicit delegation.
 - **Commit Delegation:** Do **NOT** stage, commit, push, publish, or deploy unless Ryan explicitly delegates that exact action in the prompt.
 
 ---
 
-## 5. GitNexus Code Graph (Ryan runs GitNexus locally)
+## 6. GitNexus Code Graph (Ryan runs GitNexus locally)
 
 The repo is indexed by [GitNexus](https://github.com/abhigyanpatwari/GitNexus) (`gitnexus` CLI, installed globally; MCP + skills registered for Claude Code / Codex / Antigravity / OpenCode).
 

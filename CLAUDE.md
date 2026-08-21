@@ -4,6 +4,13 @@ Project instructions live in AGENTS.md — read it in full, it is canonical for 
 
 @AGENTS.md
 
+## Core Architecture & Evidence Invariants
+
+- **Engine Action Chaining**: Compose multi-step wave logic and tool execution through `portfolio_suites.chains` (`{"$from": <step_index>}`) across CLI, server, and web UI.
+- **Pure JSON Evidence Receipts**: All evidence artifacts must be structured `.json` with schema validation and content-addressed fingerprints (embed markdown/HTML in string fields).
+- **2-Tier Adapter Pattern**: Decouple fast offline schema/mutation probes (<500ms) from deep authentic subprocess runtimes (`--full`).
+- **Fail-Closed Operations**: Never manufacture synthetic human approval tokens or alter donor checkouts without explicit delegation.
+
 ## GitNexus token economy (canonical override)
 
 - Ryan runs GitNexus locally. Do not invoke GitNexus CLI commands, MCP tools, resources, or broad GitNexus skill/reference lookups by default.
