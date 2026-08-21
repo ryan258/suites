@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import http.server
 import json
-import mimetypes
 import socketserver
 import urllib.parse
 from pathlib import Path
@@ -43,9 +42,6 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
         self.wfile.write(body)
 
@@ -58,9 +54,6 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
     def do_GET(self) -> None:
@@ -197,15 +190,19 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     target_file = clean_path.resolve()
 
                 root_resolved = SUITES_ROOT.resolve()
-                if not target_file.is_file() or not target_file.is_relative_to(root_resolved):
-                    self._send_json(404, {"error": "Evidence file not found or outside workspace"})
+                if (
+                    not target_file.is_file()
+                    or not target_file.is_relative_to(root_resolved)
+                    or "evidence" not in target_file.relative_to(root_resolved).parts
+                ):
+                    self._send_json(404, {"error": "Evidence file not found or outside evidence scope"})
                     return
                 content = target_file.read_text(encoding="utf-8")
                 self._send_json(200, {"path": str(target_file), "content": content})
             else:
                 self._send_json(404, {"error": f"Unknown endpoint: {path}"})
-        except Exception as exc:
-            self._send_json(500, {"error": str(exc)})
+        except Exception:
+            self._send_json(500, {"error": "Internal server error"})
 
     def do_POST(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
@@ -243,14 +240,17 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 })
             else:
                 self._send_json(404, {"error": f"Unknown POST endpoint: {path}"})
-        except Exception as exc:
-            self._send_json(500, {"error": str(exc)})
+        except Exception:
+            self._send_json(500, {"error": "Internal server error"})
+
+
+class ThreadedPortfolioServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
 
 
 def create_server(port: int = 8383) -> socketserver.TCPServer:
     """Create a configured multi-threaded HTTP server for the portfolio control plane."""
-    socketserver.TCPServer.allow_reuse_address = True
-    server = socketserver.ThreadingTCPServer(("127.0.0.1", port), PortfolioAPIHandler)
+    server = ThreadedPortfolioServer(("127.0.0.1", port), PortfolioAPIHandler)
     return server
 
 

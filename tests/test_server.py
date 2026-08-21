@@ -93,10 +93,22 @@ class ServerTests(unittest.TestCase):
             urllib.request.urlopen(url)
         self.assertEqual(ctx.exception.code, 404)
 
+        # Accessing non-evidence root files like .env must return 404
+        env_url = "http://127.0.0.1:8399/api/evidence?file=.env"
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(env_url)
+        self.assertEqual(ctx.exception.code, 404)
+
         # Valid relative evidence should return 200
         valid_url = "http://127.0.0.1:8399/api/evidence?file=accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md"
         data = self._get_json(valid_url[valid_url.find("/api"):])
         self.assertIn("content", data)
+
+    def test_cors_headers_are_not_present(self):
+        url = "http://127.0.0.1:8399/api/summary"
+        with urllib.request.urlopen(url) as response:
+            self.assertIsNone(response.headers.get("Access-Control-Allow-Origin"))
+            self.assertIsNone(response.headers.get("Access-Control-Allow-Methods"))
 
     def test_validate_post_endpoint(self):
         url = "http://127.0.0.1:8399/api/contracts/SourceRecord/validate"

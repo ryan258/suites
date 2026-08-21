@@ -2,6 +2,16 @@
  * RYAN PROJECT SUITES — CLIENT CONTROLLER
  */
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 class SuitesApp {
   constructor() {
     this.state = {
@@ -251,12 +261,12 @@ class SuitesApp {
       const snap = p.source_snapshot || {};
       return `
         <tr>
-          <td><strong class="mono-cell">${p.name}</strong></td>
-          <td>${p.primary_suite ? `<span class="suite-tag">${p.primary_suite}</span>` : '<span style="color: var(--text-dim);">-</span>'}</td>
-          <td><span class="pill-badge badge-blue">${p.disposition}</span></td>
-          <td><span class="mono-cell">${p.migration || '-'}</span></td>
-          <td class="mono-cell">${snap.git ? `${snap.branch}@${snap.head}` : '<span style="color: var(--text-dim);">no git</span>'}</td>
-          <td><span class="mono-cell">${snap.status_lines !== undefined ? `${snap.status_lines} dirty item(s)` : '-'}</span></td>
+          <td><strong class="mono-cell">${escapeHtml(p.name)}</strong></td>
+          <td>${p.primary_suite ? `<span class="suite-tag">${escapeHtml(p.primary_suite)}</span>` : '<span style="color: var(--text-dim);">-</span>'}</td>
+          <td><span class="pill-badge badge-blue">${escapeHtml(p.disposition)}</span></td>
+          <td><span class="mono-cell">${escapeHtml(p.migration || '-')}</span></td>
+          <td class="mono-cell">${snap.git ? `${escapeHtml(snap.branch)}@${escapeHtml(snap.head)}` : '<span style="color: var(--text-dim);">no git</span>'}</td>
+          <td><span class="mono-cell">${snap.status_lines !== undefined ? `${escapeHtml(snap.status_lines)} dirty item(s)` : '-'}</span></td>
         </tr>
       `;
     }).join('');
@@ -270,18 +280,18 @@ class SuitesApp {
     const driftCount = this.state.drift.filter(d => d.has_drift).length;
     if (summaryBar) {
       summaryBar.innerHTML = `<div style="margin-bottom: 12px; font-size: 13px; color: var(--text-muted);">
-        <strong>${driftCount}</strong> out of <strong>${this.state.drift.length}</strong> monitored repositories have working tree changes or branch/HEAD drift from recorded baseline.
+        <strong>${escapeHtml(driftCount)}</strong> out of <strong>${escapeHtml(this.state.drift.length)}</strong> monitored repositories have working tree changes or branch/HEAD drift from recorded baseline.
       </div>`;
     }
 
     tbody.innerHTML = this.state.drift.map(d => {
       return `
         <tr>
-          <td><strong class="mono-cell">${d.name}</strong></td>
-          <td>${d.primary_suite ? `<span class="suite-tag">${d.primary_suite}</span>` : '-'}</td>
-          <td class="mono-cell">${d.snapshot_branch}@${d.snapshot_head} (${d.snapshot_lines} files)</td>
-          <td class="mono-cell">${d.current_branch}@${d.current_head} (${d.current_lines} files)</td>
-          <td><span class="mono-cell">${d.current_lines} changed line(s)</span></td>
+          <td><strong class="mono-cell">${escapeHtml(d.name)}</strong></td>
+          <td>${d.primary_suite ? `<span class="suite-tag">${escapeHtml(d.primary_suite)}</span>` : '-'}</td>
+          <td class="mono-cell">${escapeHtml(d.snapshot_branch)}@${escapeHtml(d.snapshot_head)} (${escapeHtml(d.snapshot_lines)} files)</td>
+          <td class="mono-cell">${escapeHtml(d.current_branch)}@${escapeHtml(d.current_head)} (${escapeHtml(d.current_lines)} files)</td>
+          <td><span class="mono-cell">${escapeHtml(d.current_lines)} changed line(s)</span></td>
           <td>
             <span class="pill-badge ${d.has_drift ? 'badge-yellow' : 'badge-green'}">
               ${d.has_drift ? 'DRIFT DETECTED' : 'IN SYNC'}
@@ -299,10 +309,10 @@ class SuitesApp {
     tbody.innerHTML = this.state.nested.map(n => {
       return `
         <tr>
-          <td class="mono-cell"><strong>${n.path}</strong></td>
-          <td><span class="mono-cell">${n.path.split('/')[0]}</span></td>
-          <td><span class="pill-badge badge-purple">${n.kind}</span></td>
-          <td class="mono-cell" style="font-size: 11px; color: var(--text-muted);">${n.disposition || 'local'}</td>
+          <td class="mono-cell"><strong>${escapeHtml(n.path)}</strong></td>
+          <td><span class="mono-cell">${escapeHtml(n.path.split('/')[0])}</span></td>
+          <td><span class="pill-badge badge-purple">${escapeHtml(n.kind)}</span></td>
+          <td class="mono-cell" style="font-size: 11px; color: var(--text-muted);">${escapeHtml(n.disposition || 'local')}</td>
         </tr>
       `;
     }).join('');
@@ -320,16 +330,16 @@ class SuitesApp {
     });
 
     container.innerHTML = allWaves.map(({ suite, wave }) => `
-      <div class="wave-card" id="wave-card-${suite.id}-${wave.id}">
+      <div class="wave-card" id="wave-card-${escapeHtml(suite.id)}-${escapeHtml(wave.id)}">
         <div class="wave-card-header">
-          <span class="wave-id-badge">${suite.name} &bull; ${wave.id}</span>
-          <span class="pill-badge ${wave.status === 'complete' ? 'badge-green' : 'badge-yellow'}">${wave.status}</span>
+          <span class="wave-id-badge">${escapeHtml(suite.name)} &bull; ${escapeHtml(wave.id)}</span>
+          <span class="pill-badge ${wave.status === 'complete' ? 'badge-green' : 'badge-yellow'}">${escapeHtml(wave.status)}</span>
         </div>
-        <div class="wave-objective">${wave.objective}</div>
-        <div class="wave-acceptance">${wave.acceptance}</div>
+        <div class="wave-objective">${escapeHtml(wave.objective)}</div>
+        <div class="wave-acceptance">${escapeHtml(wave.acceptance)}</div>
         <div class="wave-actions">
-          <button class="btn btn-sm btn-primary" onclick="app.runSingleWave('${suite.id}', '${wave.id}')">Run Gate Check</button>
-          ${wave.evidence ? `<button class="btn btn-sm btn-secondary" onclick="app.viewEvidence('${wave.evidence}')">Evidence</button>` : ''}
+          <button class="btn btn-sm btn-primary" onclick="app.runSingleWave('${escapeHtml(suite.id)}', '${escapeHtml(wave.id)}')">Run Gate Check</button>
+          ${wave.evidence ? `<button class="btn btn-sm btn-secondary" onclick="app.viewEvidence('${escapeHtml(wave.evidence)}')">Evidence</button>` : ''}
         </div>
       </div>
     `).join('');
