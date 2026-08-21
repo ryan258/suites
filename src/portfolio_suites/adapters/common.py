@@ -15,9 +15,9 @@ SUITES_ROOT = Path(os.environ["SUITES_ROOT"]).resolve() if "SUITES_ROOT" in os.e
 def get_repo_path(repo_name: str, env_var: str | None = None) -> Path:
     """Resolve repository path dynamically from environment, workspace sibling, or standard directory."""
     if env_var and os.environ.get(env_var):
-        p = Path(os.environ[env_var]).resolve()
-        if p.exists():
-            return p
+        # An explicit override is authoritative even when it is wrong. Returning the missing
+        # path lets the caller fail closed instead of silently testing an unrelated fallback.
+        return Path(os.environ[env_var]).resolve()
     sibling = (SUITES_ROOT.parent / repo_name).resolve()
     if sibling.exists():
         return sibling
@@ -104,3 +104,16 @@ def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) 
         }
     except Exception as error:
         return {"branch": "unknown", "head": "unknown", "error": str(error)}
+
+
+def is_meaningful_git_fingerprint(value: Any) -> bool:
+    """Return whether a fingerprint identifies a real source revision and inspected content."""
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("branch"), str)
+        and value.get("branch") not in {"", "unknown"}
+        and isinstance(value.get("head"), str)
+        and value.get("head") not in {"", "unknown"}
+        and isinstance(value.get("tested_files_fingerprint"), dict)
+        and bool(value.get("tested_files_fingerprint"))
+    )

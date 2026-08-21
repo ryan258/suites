@@ -1,8 +1,11 @@
 import json
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+import portfolio_suites.adapters.accessibility as accessibility_module
 from portfolio_suites.adapters.accessibility import AccessibilitySourceAdapter
 
 
@@ -104,6 +107,44 @@ class AccessibilityAdapterTests(unittest.TestCase):
         self.assertIn("keyboard-nav-overlay-94bf7e", rec["matrix"])
         self.assertEqual(rec["matrix"]["kb-overlay"]["active_status"], "retained_canonical")
         self.assertGreaterEqual(len(rec["matrix"]["kb-overlay"]["features"]), 8)
+
+    def test_keyboard_overlay_reconciliation_fails_closed_without_donors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "missing"
+            with (
+                patch.object(accessibility_module, "KB_OVERLAY_DIR", missing / "kb-overlay"),
+                patch.object(
+                    accessibility_module,
+                    "KEYBOARD_NAV_OVERLAY_DIR",
+                    missing / "keyboard-nav-overlay",
+                ),
+                patch.object(
+                    accessibility_module,
+                    "KEYBOARD_NAV_OVERLAY_94BF7E_DIR",
+                    missing / "keyboard-nav-overlay-94bf7e",
+                ),
+            ):
+                rec = AccessibilitySourceAdapter.execute_keyboard_overlay_reconciliation_gate()
+
+        self.assertFalse(rec["all_stages_passed"])
+        self.assertFalse(rec["source_verification"]["passed"])
+        self.assertEqual(rec["source_verification"]["donors_checked"], 3)
+        self.assertGreaterEqual(len(rec["source_verification"]["errors"]), 3)
+        self.assertEqual(rec["matrix"]["kb-overlay"]["code_size_bytes"], 0)
+        self.assertFalse(rec["matrix"]["kb-overlay"]["source_available"])
+        self.assertFalse(rec["matrix"]["kb-overlay"]["fingerprint_verified"])
+
+    def test_a11y_kitchen_roundtrip_fails_closed_without_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(
+                accessibility_module,
+                "A11Y_KITCHEN_DIR",
+                Path(directory) / "missing-a11y-kitchen",
+            ):
+                rec = AccessibilitySourceAdapter.execute_a11y_kitchen_roundtrip_gate()
+
+        self.assertFalse(rec["all_stages_passed"])
+        self.assertFalse(rec["source_verification_passed"])
 
     def test_wcag_rule_candidates_gate(self):
         receipt = AccessibilitySourceAdapter.execute_wcag_rule_candidates_gate()

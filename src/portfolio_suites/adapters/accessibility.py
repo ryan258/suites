@@ -14,7 +14,7 @@ from typing import Any
 
 from ..contracts import SCHEMA_VERSION, validate_contract
 from ..engines.accessibility import AccessibilityEngine
-from .common import get_git_fingerprint, get_repo_path
+from .common import get_git_fingerprint, get_repo_path, is_meaningful_git_fingerprint
 
 ALLYS_TOOLS_DIR = get_repo_path("allys-tools", "ALLYS_TOOLS_DIR")
 WCAG_AUDITOR_DIR = get_repo_path("wcag-auditor", "WCAG_AUDITOR_DIR")
@@ -544,9 +544,15 @@ console.log(JSON.stringify(result));
 
     @classmethod
     def execute_keyboard_overlay_reconciliation_gate(cls) -> dict[str, Any]:
-        """A3: Authentic live reconciliation across the three keyboard navigation overlays."""
+        """A3: Source-backed inventory of the three keyboard navigation overlays.
+
+        Declared feature/disposition analysis is retained as analysis, but it cannot pass unless
+        every configured donor exists, has a readable manifest and source files, and yields a
+        meaningful Git fingerprint. Missing source state is never replaced with historical values.
+        """
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         overlays_info: dict[str, Any] = {}
+        source_errors: list[str] = []
         dirs = [
             ("kb-overlay", KB_OVERLAY_DIR, "canonical_anchor"),
             ("keyboard-nav-overlay", KEYBOARD_NAV_OVERLAY_DIR, "duplicate_donor"),
@@ -554,27 +560,55 @@ console.log(JSON.stringify(result));
         ]
 
         for name, repo_path, default_role in dirs:
+            source_available = repo_path.is_dir()
             manifest_file = repo_path / "manifest.json"
-            if manifest_file.exists():
+            manifest_valid = False
+            manifest_error: str | None = None
+            permissions: list[str] = []
+            manifest_v: int | None = None
+            if not source_available:
+                manifest_error = "configured donor directory does not exist"
+            elif not manifest_file.is_file():
+                manifest_error = "manifest.json is missing"
+            else:
                 try:
                     manifest_data = json.loads(manifest_file.read_text(encoding="utf-8"))
-                    permissions = manifest_data.get("permissions", [])
-                    manifest_v = manifest_data.get("manifest_version", 3)
-                except Exception:
-                    permissions = ["activeTab", "storage"]
-                    manifest_v = 3
-            else:
-                permissions = ["activeTab", "storage"]
-                manifest_v = 3
+                    permissions_value = manifest_data.get("permissions")
+                    manifest_version_value = manifest_data.get("manifest_version")
+                    if not isinstance(permissions_value, list) or any(
+                        not isinstance(permission, str) or not permission
+                        for permission in permissions_value
+                    ):
+                        raise ValueError("permissions must be a list of non-empty strings")
+                    if not isinstance(manifest_version_value, int):
+                        raise ValueError("manifest_version must be an integer")
+                    permissions = permissions_value
+                    manifest_v = manifest_version_value
+                    manifest_valid = True
+                except (OSError, ValueError, json.JSONDecodeError) as error:
+                    manifest_error = f"manifest.json is invalid: {error}"
 
             code_size = 0
-            if repo_path.exists():
-                for f in repo_path.glob("**/*"):
-                    if f.is_file() and not any(part.startswith(".") for part in f.parts):
-                        if f.suffix in {".js", ".ts", ".html", ".css", ".json"}:
-                            code_size += f.stat().st_size
+            code_files_count = 0
+            if source_available:
+                try:
+                    for f in repo_path.glob("**/*"):
+                        if f.is_file() and not any(part.startswith(".") for part in f.parts):
+                            if f.suffix in {".js", ".ts", ".html", ".css", ".json"}:
+                                code_size += f.stat().st_size
+                                code_files_count += 1
+                except OSError as error:
+                    source_errors.append(f"{name}: source inventory could not be read: {error}")
 
             fingerprint = get_git_fingerprint(repo_path)
+            fingerprint_verified = is_meaningful_git_fingerprint(fingerprint)
+
+            if manifest_error:
+                source_errors.append(f"{name}: {manifest_error}")
+            if code_files_count == 0:
+                source_errors.append(f"{name}: no inspectable extension source files found")
+            if not fingerprint_verified:
+                source_errors.append(f"{name}: meaningful Git/source fingerprint unavailable")
 
             if name == "kb-overlay":
                 features = [
@@ -602,25 +636,51 @@ console.log(JSON.stringify(result));
                 "role": default_role,
                 "manifest_version": manifest_v,
                 "features": features,
+                "feature_inventory_kind": "declared_analysis",
                 "permissions": permissions,
-                "code_size_bytes": code_size if code_size > 0 else (33434 if name == "kb-overlay" else (9497 if name == "keyboard-nav-overlay" else 4073)),
+                "code_size_bytes": code_size,
+                "code_files_count": code_files_count,
                 "active_status": active_status,
                 "git_fingerprint": fingerprint,
+                "source_available": source_available,
+                "manifest_valid": manifest_valid,
+                "fingerprint_verified": fingerprint_verified,
             }
+            if manifest_error:
+                overlays_info[name]["source_error"] = manifest_error
             if flaws:
                 overlays_info[name]["flaws_identified"] = flaws
 
         passed = (
-            overlays_info["kb-overlay"]["active_status"] == "retained_canonical"
+            not source_errors
+            and overlays_info["kb-overlay"]["active_status"] == "retained_canonical"
             and len(overlays_info["kb-overlay"]["features"]) >= 8
             and "flaws_identified" not in overlays_info["kb-overlay"]
+            and all(
+                overlay.get("source_available") is True
+                and overlay.get("manifest_valid") is True
+                and overlay.get("fingerprint_verified") is True
+                and overlay.get("code_size_bytes", 0) > 0
+                for overlay in overlays_info.values()
+            )
         )
 
         return {
+            "receipt_version": "accessibility-a3-analysis-v2",
             "all_stages_passed": passed,
             "canonical_target": "kb-overlay",
             "matrix": overlays_info,
-            "recommendation": "Preserve kb-overlay as single canonical extension; donor extensions are 100% superseded in capability and ready for frozen status.",
+            "source_verification": {
+                "passed": not source_errors,
+                "errors": source_errors,
+                "donors_checked": len(dirs),
+            },
+            "recommendation": (
+                "Source inventory supports kb-overlay as the canonical candidate; behavioral and "
+                "owner-controlled convergence gates remain outstanding."
+                if passed
+                else "Canonical selection is not established because one or more donor sources could not be verified."
+            ),
             "generated_at": now_iso,
         }
 
@@ -693,8 +753,10 @@ console.log(JSON.stringify(result));
         target_retained = kitchen_receipt.get("target_element") == finding.get("target")
         finding_equal = (canonical == finding)
 
+        source_verified = A11Y_KITCHEN_DIR.is_dir() and is_meaningful_git_fingerprint(kitchen_fp)
         all_passed = (
-            has_required_fields
+            source_verified
+            and has_required_fields
             and has_all_modes
             and target_retained
             and finding_equal
@@ -702,6 +764,7 @@ console.log(JSON.stringify(result));
             and kitchen_receipt.get("evidence_loss") is False
         )
         kitchen_receipt["all_stages_passed"] = all_passed
+        kitchen_receipt["source_verification_passed"] = source_verified
         kitchen_receipt["kitchen_fingerprint"] = kitchen_fp
         return kitchen_receipt
 

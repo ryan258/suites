@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from portfolio_suites.registry import SUITES_ROOT, evidence_errors, get_suite
-from portfolio_suites.waves import WaveRunner
+from portfolio_suites.waves import WaveRunner, _record_evidence
 
 
 class WaveTests(unittest.TestCase):
@@ -33,7 +33,8 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(len(results), 43)
 
         verified = [r for r in results if r.passed]
-        self.assertIn(len(verified), {21, 22})
+        # Only A1/A3/O2/B2 read donor source; A2 adds the runtime probe when it is available.
+        self.assertIn(len(verified), {4, 5})
         a1 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A1")
         self.assertEqual(a1.execution_kind, "verified_analysis")
         self.assertTrue(a1.passed)
@@ -51,30 +52,35 @@ class WaveTests(unittest.TestCase):
         self.assertTrue(a3.passed)
 
         a4 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A4")
-        self.assertEqual(a4.execution_kind, "verified_analysis")
-        self.assertTrue(a4.passed)
+        self.assertEqual(a4.execution_kind, "prototype_check")
+        self.assertFalse(a4.passed)
+        self.assertTrue(a4.prototype_passed)
 
+        # A5 only fingerprints A11y Kitchen; it never reads it, so it is a prototype.
         a5 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A5")
-        self.assertEqual(a5.execution_kind, "verified_analysis")
-        self.assertTrue(a5.passed)
+        self.assertEqual(a5.execution_kind, "prototype_check")
+        self.assertFalse(a5.passed)
+        self.assertTrue(a5.prototype_passed)
 
-        for wave_id in ("O1", "O2", "O3", "O4", "O5", "O6"):
-            o_res = next(r for r in results if r.suite_id == "operator-os" and r.wave_id == wave_id)
-            self.assertEqual(o_res.execution_kind, "verified_analysis")
-            self.assertTrue(o_res.passed)
+        # O2 and B2 read donor content; the rest only fingerprint or stat it.
+        for suite_id, wave_id in (("operator-os", "O2"), ("brand-publishing", "B2")):
+            res = next(r for r in results if r.suite_id == suite_id and r.wave_id == wave_id)
+            self.assertEqual(res.execution_kind, "verified_analysis")
+            self.assertTrue(res.passed)
 
-        for wave_id in ("B1", "B2", "B3", "B4", "B5", "B6"):
-            b_res = next(r for r in results if r.suite_id == "brand-publishing" and r.wave_id == wave_id)
-            self.assertEqual(b_res.execution_kind, "verified_analysis")
-            self.assertTrue(b_res.passed)
-
-        for wave_id in ("P1", "P2", "P3", "P4", "P5"):
-            p_res = next(r for r in results if r.suite_id == "production-house" and r.wave_id == wave_id)
-            self.assertEqual(p_res.execution_kind, "verified_analysis")
-            self.assertTrue(p_res.passed)
+        for suite_id, wave_ids in (
+            ("operator-os", ("O1", "O3", "O4", "O6")),
+            ("brand-publishing", ("B1", "B3", "B4", "B6")),
+            ("production-house", ("P1", "P2", "P3")),
+        ):
+            for wave_id in wave_ids:
+                res = next(r for r in results if r.suite_id == suite_id and r.wave_id == wave_id)
+                self.assertEqual(res.execution_kind, "prototype_check")
+                self.assertFalse(res.passed)
+                self.assertTrue(res.prototype_passed)
 
         prototypes = [r for r in results if r.execution_kind == "prototype_check"]
-        self.assertEqual(len(prototypes), 21)
+        self.assertEqual(len(prototypes), 38)
         for r in prototypes:
             self.assertTrue(r.prototype_passed, f"Prototype check for {r.suite_id}/{r.wave_id} failed: {r.message}")
 
@@ -82,10 +88,10 @@ class WaveTests(unittest.TestCase):
         self.assertFalse(any(r.execution_kind == "error" for r in results))
 
         unverified = [r for r in results if not r.passed]
-        self.assertIn(len(unverified), {21, 22})
+        self.assertIn(len(unverified), {38, 39})
 
     def test_run_individual_waves(self):
-        # A1, A3, A4, A5 are verified analysis milestones; A2 is runtime recovery
+        # A1 and A3 are verified analysis milestones; A2 is runtime recovery.
         a1 = WaveRunner.run_wave("accessibility", "A1", write_evidence=False)
         self.assertTrue(a1.passed)
         self.assertEqual(a1.execution_kind, "verified_analysis")
@@ -109,12 +115,14 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(a3.execution_kind, "verified_analysis")
 
         a4 = WaveRunner.run_wave("accessibility", "A4", write_evidence=False)
-        self.assertTrue(a4.passed)
-        self.assertEqual(a4.execution_kind, "verified_analysis")
+        self.assertFalse(a4.passed)
+        self.assertTrue(a4.prototype_passed)
+        self.assertEqual(a4.execution_kind, "prototype_check")
 
         a5 = WaveRunner.run_wave("accessibility", "A5", write_evidence=False)
-        self.assertTrue(a5.passed)
-        self.assertEqual(a5.execution_kind, "verified_analysis")
+        self.assertFalse(a5.passed)
+        self.assertTrue(a5.prototype_passed)
+        self.assertEqual(a5.execution_kind, "prototype_check")
 
         # A6 remains a prototype until owner convergence approval is granted
         a6 = WaveRunner.run_wave("accessibility", "A6", write_evidence=False)
@@ -122,28 +130,38 @@ class WaveTests(unittest.TestCase):
         self.assertTrue(a6.prototype_passed)
         self.assertEqual(a6.execution_kind, "prototype_check")
 
-        # O1-O6 in operator-os are verified analysis milestones
-        for wave_id in ("O1", "O2", "O3", "O4", "O5", "O6"):
-            o_res = WaveRunner.run_wave("operator-os", wave_id, write_evidence=False)
-            self.assertTrue(o_res.passed, f"Operator OS wave {wave_id} failed: {o_res.message}")
-            self.assertEqual(o_res.execution_kind, "verified_analysis")
-            self.assertIsNone(o_res.evidence_path)
+        # O2 and B2 are the only donor-reading analysis milestones outside accessibility.
+        for suite_id, wave_id in (("operator-os", "O2"), ("brand-publishing", "B2")):
+            res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
+            self.assertTrue(res.passed, f"{suite_id} wave {wave_id} failed: {res.message}")
+            self.assertEqual(res.execution_kind, "verified_analysis")
+            self.assertIsNone(res.evidence_path)
 
-        # B1-B6 in brand-publishing are verified analysis milestones
-        for wave_id in ("B1", "B2", "B3", "B4", "B5", "B6"):
-            b_res = WaveRunner.run_wave("brand-publishing", wave_id, write_evidence=False)
-            self.assertTrue(b_res.passed, f"Brand Publishing wave {wave_id} failed: {b_res.message}")
-            self.assertEqual(b_res.execution_kind, "verified_analysis")
-            self.assertIsNone(b_res.evidence_path)
+        # These gates only fingerprint or stat their donor, so they cannot claim an analysis.
+        for suite_id, wave_ids in (
+            ("operator-os", ("O1", "O3", "O4", "O6")),
+            ("brand-publishing", ("B1", "B3", "B4", "B6")),
+            ("production-house", ("P1", "P2", "P3")),
+        ):
+            for wave_id in wave_ids:
+                res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
+                self.assertFalse(res.passed)
+                self.assertTrue(res.prototype_passed, f"{suite_id}/{wave_id}: {res.message}")
+                self.assertEqual(res.execution_kind, "prototype_check")
 
-        # P1-P5 in production-house are verified analysis milestones
-        for wave_id in ("P1", "P2", "P3", "P4", "P5"):
-            p_res = WaveRunner.run_wave("production-house", wave_id, write_evidence=False)
-            self.assertTrue(p_res.passed, f"Production House wave {wave_id} failed: {p_res.message}")
-            self.assertEqual(p_res.execution_kind, "verified_analysis")
-            self.assertIsNone(p_res.evidence_path)
+        # Reclassified local-only checks pass as prototypes but not migration acceptance.
+        for suite_id, wave_id in (
+            ("operator-os", "O5"),
+            ("brand-publishing", "B5"),
+            ("production-house", "P4"),
+            ("production-house", "P5"),
+        ):
+            result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
+            self.assertFalse(result.passed)
+            self.assertTrue(result.prototype_passed)
+            self.assertEqual(result.execution_kind, "prototype_check")
 
-        # Remaining suite prototypes pass prototype check but do not report passed migration acceptance
+        # Remaining suite prototypes pass prototype check but do not report passed migration acceptance.
         m4 = WaveRunner.run_wave("model-behavior-lab", "M4", write_evidence=False)
         self.assertFalse(m4.passed)
         self.assertTrue(m4.prototype_passed)
@@ -166,17 +184,12 @@ class WaveTests(unittest.TestCase):
         self.assertFalse(missing.prototype_passed)
 
     def test_completed_waves_record_valid_evidence(self):
-        """Record mode must write a receipt that satisfies the wave's own declared evidence basis.
+        """Recordable analysis waves must write receipts satisfying their evidence basis.
 
-        Redirects SUITES_ROOT so retained evidence is untouched. A recorded artifact that would
-        fail `suites validate` is refused by the recorder, so evidence_path comes back None.
+        A1 is reviewed prose and A2 requires its explicit full runtime gate. Redirects SUITES_ROOT
+        so retained evidence is untouched. A candidate that would fail `suites validate` is refused.
         """
-        cases = (
-            [("accessibility", f"A{i}") for i in range(3, 6)]
-            + [("operator-os", f"O{i}") for i in range(1, 7)]
-            + [("brand-publishing", f"B{i}") for i in range(1, 7)]
-            + [("production-house", f"P{i}") for i in range(1, 6)]
-        )
+        cases = (("accessibility", "A3"), ("operator-os", "O2"), ("brand-publishing", "B2"))
         with tempfile.TemporaryDirectory() as tmp:
             with patch("portfolio_suites.waves.SUITES_ROOT", Path(tmp)):
                 for suite_id, wave_id in cases:
@@ -209,7 +222,7 @@ class WaveTests(unittest.TestCase):
         ):
             with patch("portfolio_suites.waves._record_evidence") as mock_record:
                 mock_record.return_value = None
-                result = WaveRunner.run_wave("accessibility", "A2", write_evidence=True)
+                result = WaveRunner.run_wave("accessibility", "A2", write_evidence=True, full=True)
                 self.assertFalse(result.passed)
                 # When passed is False, _record_evidence is invoked with passed=False and writes nothing
                 mock_record.assert_called_once_with(
@@ -219,6 +232,118 @@ class WaveTests(unittest.TestCase):
                     True,
                     False,
                 )
+
+    def test_a2_record_requires_explicit_full_depth(self):
+        with patch(
+            "portfolio_suites.waves.AccessibilitySourceAdapter.execute_wcag_331_migration_gate"
+        ) as gate:
+            result = WaveRunner.run_wave(
+                "accessibility",
+                "A2",
+                write_evidence=True,
+                full=False,
+            )
+        gate.assert_not_called()
+        self.assertFalse(result.passed)
+        self.assertIsNone(result.evidence_path)
+        self.assertEqual(result.data, {"record_requires_full": True})
+
+    def test_unserializable_candidate_is_rejected_without_raising(self):
+        result = _record_evidence(
+            "production-house",
+            "P2-FORMATTER-JOB-RECEIPT.json",
+            {"job": object()},
+            write_evidence=True,
+            passed=True,
+        )
+        self.assertIsNone(result)
+
+    def test_failed_operator_record_returns_no_evidence_path(self):
+        failed_o1 = {
+            "mutation_protection_passed": False,
+            "all_stages_passed": False,
+            "status": "source_unverified",
+            "source_record": {},
+            "observer_projection_preview": "",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("portfolio_suites.waves.SUITES_ROOT", Path(tmp)):
+                with patch(
+                    "portfolio_suites.waves.OperatorOSSourceAdapter.execute_o1_source_record_observer_gate",
+                    return_value=failed_o1,
+                ):
+                    result = WaveRunner.run_wave("operator-os", "O1", write_evidence=True)
+            self.assertFalse(result.passed)
+            self.assertIsNone(result.evidence_path)
+            self.assertEqual(list(Path(tmp).rglob("*")), [])
+
+    def test_semantically_invalid_candidate_is_not_recorded(self):
+        invalid_p2 = {
+            "job": None,
+            "formatter_fingerprint": "",
+            "wave": "P2",
+            "status": "formatter_executed",
+            "all_stages_passed": True,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("portfolio_suites.waves.SUITES_ROOT", Path(tmp)):
+                result = _record_evidence(
+                    "production-house",
+                    "P2-FORMATTER-JOB-RECEIPT.json",
+                    invalid_p2,
+                    write_evidence=True,
+                    passed=True,
+                )
+            self.assertIsNone(result)
+            self.assertFalse(
+                (Path(tmp) / "production-house/evidence/P2-FORMATTER-JOB-RECEIPT.json").exists()
+            )
+            evidence_dir = Path(tmp) / "production-house/evidence"
+            self.assertEqual(list(evidence_dir.glob(".*")) if evidence_dir.exists() else [], [])
+
+    def test_prototype_writer_uses_authoritative_recorder_return(self):
+        with patch("portfolio_suites.waves._record_evidence", return_value=None) as recorder:
+            result = WaveRunner.run_wave("model-behavior-lab", "M1", write_evidence=True)
+        recorder.assert_called_once()
+        self.assertIsNone(result.evidence_path)
+
+    def test_source_backed_analysis_waves_fail_closed_without_donors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "missing"
+            with (
+                patch("portfolio_suites.adapters.operator_os.RYOS_DIR", missing / "ryos"),
+                patch(
+                    "portfolio_suites.adapters.operator_os.MASTER_UPGRADE_PLAN_DIR",
+                    missing / "master-upgrade-plan",
+                ),
+                patch("portfolio_suites.adapters.operator_os.DOTFILES_DIR", missing / "dotfiles"),
+                patch("portfolio_suites.adapters.operator_os.OBSERVER_DIR", missing / "observer"),
+            ):
+                operator = WaveRunner.run_wave("operator-os", "O2", write_evidence=False)
+            with patch(
+                "portfolio_suites.adapters.brand_publishing.BRAND_MAKER_DIR",
+                missing / "brand-maker-spec",
+            ):
+                brand = WaveRunner.run_wave("brand-publishing", "B1", write_evidence=False)
+            with (
+                patch(
+                    "portfolio_suites.adapters.production_house.PRODUCTION_HOUSE_DIR",
+                    missing / "production-house",
+                ),
+                patch(
+                    "portfolio_suites.adapters.production_house.GROUNDWIRE_DIR",
+                    missing / "groundwire",
+                ),
+                patch(
+                    "portfolio_suites.adapters.production_house.FORMATTER_DIR",
+                    missing / "formatter",
+                ),
+            ):
+                production = WaveRunner.run_wave("production-house", "P1", write_evidence=False)
+
+        self.assertFalse(operator.passed)
+        self.assertFalse(brand.passed)
+        self.assertFalse(production.passed)
 
     def test_invalid_candidate_leaves_retained_receipt_byte_identical(self):
         """A record attempt that violates the evidence contract must not touch the prior receipt."""

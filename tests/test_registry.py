@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from portfolio_suites.registry import (
     _analysis_evidence_errors,
+    _analysis_receipt_semantic_errors,
     _runtime_parity_receipt_errors,
     get_portfolio_summary,
     load_ledger,
@@ -104,10 +105,69 @@ class RegistryTests(unittest.TestCase):
                 ["analysis evidence does not contain its declared basis: ## Missing section"],
             )
 
+    def test_analysis_receipt_rejects_null_and_empty_semantic_values(self):
+        errors = _analysis_receipt_semantic_errors(
+            {"id": "P2"},
+            {
+                "wave": "P2",
+                "status": "formatter_executed",
+                "all_stages_passed": True,
+                "job": None,
+                "formatter_fingerprint": "",
+            },
+        )
+        self.assertTrue(any("job must be a non-empty object" in error for error in errors))
+        self.assertTrue(any("meaningful source fingerprint" in error for error in errors))
+
+    def test_analysis_receipt_accepts_expected_false_boundary_value(self):
+        fingerprint = {
+            "branch": "main",
+            "head": "a" * 40,
+            "tested_files_fingerprint": {"README.md": "b" * 64},
+        }
+        errors = _analysis_receipt_semantic_errors(
+            {"id": "O6"},
+            {
+                "wave_id": "O6",
+                "status": "checkpoint_lifecycle_verified",
+                "multi_action_lifecycle_passed": True,
+                "disk_mutations_performed": False,
+                "fail_closed_test": {"verified": True},
+                "preview_test": {"verified": True},
+                "jarvis_fingerprint": fingerprint,
+            },
+        )
+        self.assertEqual(errors, [])
+
+    def test_a3_v2_receipt_requires_verified_donor_measurements(self):
+        errors = _analysis_receipt_semantic_errors(
+            {"id": "A3"},
+            {
+                "receipt_version": "accessibility-a3-analysis-v2",
+                "canonical_target": "kb-overlay",
+                "recommendation": "candidate only",
+                "source_verification": {
+                    "passed": False,
+                    "errors": ["donor missing"],
+                    "donors_checked": 3,
+                },
+                "matrix": {
+                    name: {"features": ["spatial_nav"], "code_size_bytes": 1}
+                    for name in (
+                        "kb-overlay",
+                        "keyboard-nav-overlay",
+                        "keyboard-nav-overlay-94bf7e",
+                    )
+                },
+            },
+        )
+        self.assertTrue(any("clean three-donor pass" in error for error in errors))
+        self.assertTrue(any("verified source measurements" in error for error in errors))
+
     def test_summary_separates_analysis_from_runtime_recovery(self):
         summary = get_portfolio_summary()
         self.assertEqual(summary["recovery_target_score"], 9.0)
-        self.assertEqual(summary["verified_analysis_milestones"], 21)
+        self.assertEqual(summary["verified_analysis_milestones"], 4)
         self.assertEqual(summary["recovered_runtime_behaviors"], 1)
         self.assertEqual(summary["adopted_runtime_behaviors"], 0)
         self.assertEqual(summary["converged_runtime_behaviors"], 0)

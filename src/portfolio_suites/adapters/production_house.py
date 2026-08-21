@@ -7,7 +7,7 @@ from typing import Any
 
 from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
 from ..engines.production_house import ProductionHouseEngine
-from .common import get_git_fingerprint, get_repo_path
+from .common import get_git_fingerprint, get_repo_path, is_meaningful_git_fingerprint
 
 PRODUCTION_HOUSE_DIR = get_repo_path("production-house", "PRODUCTION_HOUSE_DIR")
 FORMATTER_DIR = get_repo_path("elevenlabs-screenplay-formatter", "FORMATTER_DIR")
@@ -27,16 +27,26 @@ class ProductionHouseSourceAdapter:
 
         script_sha = compute_sha256(b"SCENE 1: EXT. DESOLATE RADIO TOWER - NIGHT\nThe wind howls through the lattice steel.")
         job = ProductionHouseEngine.build_groundwire_pipeline_job("episode-12-ambient-horror", script_sha)
+        sources_verified = all(
+            is_meaningful_git_fingerprint(fingerprint)
+            for fingerprint in (prod_fp, gw_fp, fmt_fp)
+        )
 
+        all_stages_passed = (
+            sources_verified
+            and job.get("status") == "completed"
+            and len(job.get("outputs", [])) == 3
+        )
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "P1",
-            "status": "fingerprinted",
+            "status": "fingerprinted" if all_stages_passed else "source_unverified",
             "job": job,
             "production_house_fingerprint": prod_fp,
             "groundwire_fingerprint": gw_fp,
             "formatter_fingerprint": fmt_fp,
-            "all_stages_passed": job.get("status") == "completed" and len(job.get("outputs", [])) == 3,
+            "source_verification_passed": sources_verified,
+            "all_stages_passed": all_stages_passed,
         }
 
     @classmethod
@@ -56,13 +66,20 @@ class ProductionHouseSourceAdapter:
             status="completed",
             notes="Synthesized 14 dialogue cues through ElevenLabs voice models",
         )
+        source_verified = is_meaningful_git_fingerprint(fmt_fp)
+        all_stages_passed = (
+            source_verified
+            and job.get("status") == "completed"
+            and len(job.get("outputs", [])) >= 1
+        )
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "P2",
-            "status": "formatter_executed",
+            "status": "formatter_executed" if all_stages_passed else "source_unverified",
             "job": job,
             "formatter_fingerprint": fmt_fp,
-            "all_stages_passed": job.get("status") == "completed" and len(job.get("outputs", [])) >= 1,
+            "source_verification_passed": source_verified,
+            "all_stages_passed": all_stages_passed,
         }
 
     @classmethod
@@ -75,13 +92,15 @@ class ProductionHouseSourceAdapter:
             task="validate-story-state",
             inputs=[{"name": "arc-season-2.fountain", "version": "1.2.0", "status": "approved_for_synthesis"}],
         )
-        passed = job.get("status") == "queued" and len(job.get("inputs", [])) == 1
+        source_verified = is_meaningful_git_fingerprint(wr_fp)
+        passed = source_verified and job.get("status") == "queued" and len(job.get("inputs", [])) == 1
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "P3",
-            "status": "handoff_verified",
+            "status": "handoff_verified" if passed else "source_unverified",
             "job": job,
             "writers_room_fingerprint": wr_fp,
+            "source_verification_passed": source_verified,
             "all_stages_passed": passed,
         }
 

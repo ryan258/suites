@@ -8,7 +8,7 @@ from typing import Any
 
 from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
 from ..engines.brand_publishing import BrandPublishingEngine
-from .common import get_git_fingerprint, get_repo_path
+from .common import get_git_fingerprint, get_repo_path, is_meaningful_git_fingerprint
 
 BRAND_MAKER_DIR = get_repo_path("brand-maker-spec", "BRAND_MAKER_DIR")
 BRAND_WORKSHOP_DIR = get_repo_path("brand-workshop", "BRAND_WORKSHOP_DIR")
@@ -171,15 +171,28 @@ class BrandPublishingSourceAdapter:
             "dry_run_only": True,
             "live_published": False,
         }
+        source_verified = (
+            is_meaningful_git_fingerprint(target_fp)
+            and has_dev_exports
+            and has_spec
+        )
+        all_stages_passed = (
+            source_verified
+            and all_mutation_checks_passed
+            and receipt["status"] == "dry_run_verified"
+            and receipt["matched_approved_claims_count"] >= 1
+        )
 
         return {
             "wave": "B1",
-            "status": "verified_candidate",
+            "status": "verified_candidate" if all_stages_passed else "source_unverified",
             "brand_package": validated_pkg,
             "source_record": validated_src,
             "publishing_receipt": receipt,
             "mutation_tests": mutation_tests,
             "mutation_protection_passed": all_mutation_checks_passed,
+            "source_verification_passed": source_verified,
+            "all_stages_passed": all_stages_passed,
             "target": {
                 "name": "brand-maker-spec",
                 "path": str(BRAND_MAKER_DIR),
@@ -217,10 +230,16 @@ class BrandPublishingSourceAdapter:
             {"phase": "07-launch", "name": "Launch", "maker_gate": "launch_brief", "port_action": "port-as-announcement-kit", "status": "mapped"},
             {"phase": "08-living-brand", "name": "Living Brand", "maker_gate": "governance", "port_action": "port-as-monitoring-register", "status": "mapped"},
         ]
+        source_verified = (
+            is_meaningful_git_fingerprint(workshop_fp)
+            and is_meaningful_git_fingerprint(maker_fp)
+            and len(extracted_phase_ids) == 9
+        )
+        all_stages_passed = source_verified and len(phase_mappings) == 9
 
         return {
             "wave": "B2",
-            "status": "all_phases_mapped",
+            "status": "all_phases_mapped" if all_stages_passed else "source_unverified",
             "donor": {
                 "name": "brand-workshop",
                 "path": str(BRAND_WORKSHOP_DIR),
@@ -234,4 +253,6 @@ class BrandPublishingSourceAdapter:
             },
             "total_phases_mapped": len(phase_mappings),
             "phase_mappings": phase_mappings,
+            "source_verification_passed": source_verified,
+            "all_stages_passed": all_stages_passed,
         }

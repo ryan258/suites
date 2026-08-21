@@ -7,7 +7,12 @@ from typing import Any
 
 from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
 from ..engines.operator_os import OperatorOSEngine
-from .common import SUITES_ROOT, get_git_fingerprint, get_repo_path
+from .common import (
+    SUITES_ROOT,
+    get_git_fingerprint,
+    get_repo_path,
+    is_meaningful_git_fingerprint,
+)
 
 DOTFILES_DIR = get_repo_path("dotfiles", "DOTFILES_DIR")
 PKOS_DIR = get_repo_path("PKos", "PKOS_DIR")
@@ -152,6 +157,15 @@ class OperatorOSSourceAdapter:
             and fence_detected
             and reingest_blocked
         )
+        sources_verified = (
+            is_meaningful_git_fingerprint(dotfiles_fp)
+            and is_meaningful_git_fingerprint(pkos_fp)
+            and is_meaningful_git_fingerprint(observer_fp)
+            and has_pkos_normalize
+            and has_pkos_storage
+            and has_observer_script
+        )
+        all_stages_passed = mutation_checks_passed and sources_verified
 
         return {
             "schema_version": SCHEMA_VERSION,
@@ -164,7 +178,8 @@ class OperatorOSSourceAdapter:
                 "pkos": {**pkos_fp, "has_normalize": has_pkos_normalize, "has_storage": has_pkos_storage},
                 "obsidian_observer": {**observer_fp, "has_observer_script": has_observer_script},
             },
-            "all_stages_passed": mutation_checks_passed,
+            "all_stages_passed": all_stages_passed,
+            "source_verification_passed": sources_verified,
             "mutation_protection_passed": mutation_checks_passed,
             "mutation_cases": {
                 "corrupt_sha_rejected": corrupt_sha_rejected,
@@ -173,7 +188,7 @@ class OperatorOSSourceAdapter:
                 "anti_reingestion_fence_detected": fence_detected,
                 "reingestion_intake_blocked": reingest_blocked,
             },
-            "status": "verified",
+            "status": "verified" if all_stages_passed else "source_unverified",
         }
 
     @classmethod
@@ -211,6 +226,17 @@ class OperatorOSSourceAdapter:
                     "size_bytes": len(data),
                 })
 
+        sources_verified = all(
+            is_meaningful_git_fingerprint(fingerprint)
+            for fingerprint in (ryos_fp, master_plan_fp, dotfiles_fp, observer_fp)
+        )
+        all_stages_passed = (
+            sources_verified
+            and len(ryos_items) >= 3
+            and len(master_plan_items) >= 1
+            and len(RYOS_DISPOSITION_CATALOG) >= 5
+        )
+
         return {
             "schema_version": SCHEMA_VERSION,
             "wave_id": "O2",
@@ -233,8 +259,9 @@ class OperatorOSSourceAdapter:
                 "projection_view": "Observer",
                 "orchestration_gateway": "JARVIS",
             },
-            "all_stages_passed": len(ryos_items) >= 3 and len(RYOS_DISPOSITION_CATALOG) >= 5,
-            "status": "verified",
+            "all_stages_passed": all_stages_passed,
+            "source_verification_passed": sources_verified,
+            "status": "verified" if all_stages_passed else "source_unverified",
         }
 
     @classmethod
@@ -255,6 +282,17 @@ class OperatorOSSourceAdapter:
 
         preview = OperatorOSEngine.preview_jarvis_action(action_name, parameters)
 
+        source_verified = (
+            is_meaningful_git_fingerprint(jarvis_fp)
+            and has_backend_schemas
+            and has_backend_main
+        )
+        all_stages_passed = (
+            source_verified
+            and preview.get("state") == "preview_ready"
+            and preview.get("requires_human_approval") is True
+        )
+
         receipt = {
             "schema_version": SCHEMA_VERSION,
             "wave_id": "O3",
@@ -269,8 +307,9 @@ class OperatorOSSourceAdapter:
             "requires_human_approval": preview.get("requires_human_approval", False),
             "destructive": preview.get("destructive", True),
             "recovery_path": preview.get("recovery_path", ""),
-            "all_stages_passed": preview.get("state") == "preview_ready" and preview.get("requires_human_approval") is True,
-            "status": "preview_verified",
+            "all_stages_passed": all_stages_passed,
+            "source_verification_passed": source_verified,
+            "status": "preview_verified" if all_stages_passed else "source_unverified",
         }
         return receipt
 
@@ -331,6 +370,11 @@ class OperatorOSSourceAdapter:
             rec["source_id"] in proj and rec["sha256"][:12] in proj
             for rec, proj in stream_results
         )
+        sources_verified = (
+            is_meaningful_git_fingerprint(pkos_fp)
+            and is_meaningful_git_fingerprint(observer_fp)
+        )
+        all_stages_passed = len(stream_results) >= 3 and all_fenced and all_cited and sources_verified
 
         return {
             "schema_version": SCHEMA_VERSION,
@@ -343,8 +387,9 @@ class OperatorOSSourceAdapter:
             "all_sources_cited": all_cited,
             "processed_records": [rec for rec, _ in stream_results],
             "observer_projections_count": len(stream_results),
-            "all_stages_passed": len(stream_results) >= 3 and all_fenced and all_cited,
-            "status": "stream_intake_verified",
+            "all_stages_passed": all_stages_passed,
+            "source_verification_passed": sources_verified,
+            "status": "stream_intake_verified" if all_stages_passed else "source_unverified",
         }
 
     @classmethod
@@ -398,6 +443,8 @@ class OperatorOSSourceAdapter:
             and preview_res.get("requires_human_approval") is True
             and preview_res.get("destructive") is False
         )
+        source_verified = is_meaningful_git_fingerprint(jarvis_fp)
+        all_stages_passed = fail_closed_ok and preview_ok and source_verified
 
         return {
             "schema_version": SCHEMA_VERSION,
@@ -415,9 +462,10 @@ class OperatorOSSourceAdapter:
                 "preview": preview_res,
                 "verified": preview_ok,
             },
-            "multi_action_lifecycle_passed": fail_closed_ok and preview_ok,
+            "multi_action_lifecycle_passed": all_stages_passed,
+            "source_verification_passed": source_verified,
             "human_gate_boundary": "fail_closed_without_explicit_operator_token",
             "disk_mutations_performed": False,
-            "all_stages_passed": fail_closed_ok and preview_ok,
-            "status": "checkpoint_lifecycle_verified",
+            "all_stages_passed": all_stages_passed,
+            "status": "checkpoint_lifecycle_verified" if all_stages_passed else "source_unverified",
         }

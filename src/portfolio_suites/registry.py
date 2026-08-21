@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .contracts import CONTRACTS, SCHEMA_VERSION
+from .contracts import CONTRACTS, SCHEMA_VERSION, ContractError, validate_contract
 
 SUITES_ROOT = Path(os.environ["SUITES_ROOT"]).resolve() if "SUITES_ROOT" in os.environ else Path(__file__).resolve().parents[2]
 PROJECTS_ROOT = SUITES_ROOT.parent
@@ -145,6 +145,324 @@ def _analysis_evidence_errors(path: Path, evidence_basis: set[str]) -> list[str]
     return []
 
 
+_MISSING = object()
+
+
+def _receipt_value(document: dict[str, Any], dotted_path: str) -> Any:
+    value: Any = document
+    for part in dotted_path.split("."):
+        if not isinstance(value, dict) or part not in value:
+            return _MISSING
+        value = value[part]
+    return value
+
+
+def _fingerprint_is_meaningful(value: Any) -> bool:
+    """A source fingerprint must identify content, not merely occupy a receipt key."""
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("branch"), str)
+        and value.get("branch") not in {"", "unknown"}
+        and isinstance(value.get("head"), str)
+        and value.get("head") not in {"", "unknown"}
+        and isinstance(value.get("tested_files_fingerprint"), dict)
+        and bool(value.get("tested_files_fingerprint"))
+    )
+
+
+ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
+    "A3": {
+        "equals": {"canonical_target": "kb-overlay"},
+        "objects": ["matrix"],
+        "strings": ["recommendation"],
+    },
+    "A4": {
+        "equals": {
+            "wave": "A4",
+            "false_positive_probe_passed": True,
+            "catalog_evaluation.status": "all_backlog_candidates_evidenced",
+        },
+        "objects": ["catalog_evaluation"],
+        "lists": ["catalog_evaluation.evaluations", "heuristic_findings_sample"],
+        "minimums": {"catalog_evaluation.total_candidates_evaluated": 20},
+    },
+    "A5": {
+        "equals": {"evidence_loss": False, "roundtrip_status": "verified"},
+        "objects": ["canonical_finding"],
+        "contracts": {"canonical_finding": "A11yFinding"},
+    },
+    "O2": {
+        "equals": {"wave_id": "O2", "status": "verified"},
+        "objects": ["fingerprints", "canonical_anchors_confirmed"],
+        "lists": ["ryos_core_files", "master_plan_files", "inventory_catalog"],
+        "minimums": {
+            "ryos_core_files_count": 3,
+            "master_plan_files_count": 1,
+            "inventory_catalog_count": 5,
+        },
+        "fingerprints": [
+            "fingerprints.ryos",
+            "fingerprints.master_upgrade_plan",
+            "fingerprints.dotfiles",
+            "fingerprints.obsidian_observer",
+        ],
+    },
+    "O3": {
+        "equals": {
+            "wave_id": "O3",
+            "status": "preview_verified",
+            "dry_run_only": True,
+            "requires_human_approval": True,
+        },
+        "objects": ["jarvis_runtime", "action_preview"],
+        "strings": ["recovery_path"],
+        "fingerprints": ["jarvis_runtime"],
+    },
+    "O4": {
+        "equals": {
+            "wave_id": "O4",
+            "status": "stream_intake_verified",
+            "all_fenced_from_reingestion": True,
+            "all_sources_cited": True,
+        },
+        "lists": ["processed_records"],
+        "minimums": {"batch_size": 3, "observer_projections_count": 1},
+        "fingerprints": ["pkos_fingerprint", "observer_fingerprint"],
+    },
+    "O5": {
+        "equals": {
+            "wave_id": "O5",
+            "status": "disposition_reconciled",
+            "duplicate_decisions_closed": True,
+        },
+        "objects": ["canonical_anchors"],
+        "lists": ["proposed_ports", "source_inventory_catalog"],
+        "minimums": {"port_candidates_count": 2},
+    },
+    "O6": {
+        "equals": {
+            "wave_id": "O6",
+            "status": "checkpoint_lifecycle_verified",
+            "multi_action_lifecycle_passed": True,
+            "disk_mutations_performed": False,
+        },
+        "objects": ["fail_closed_test", "preview_test"],
+        "fingerprints": ["jarvis_fingerprint"],
+    },
+    "B1": {
+        "equals": {
+            "wave": "B1",
+            "status": "verified_candidate",
+            "mutation_protection_passed": True,
+            "publishing_receipt.dry_run_only": True,
+            "publishing_receipt.live_published": False,
+        },
+        "objects": ["brand_package", "source_record", "publishing_receipt", "target"],
+        "lists": ["mutation_tests"],
+        "fingerprints": ["target.fingerprint"],
+        "contracts": {"brand_package": "BrandPackage", "source_record": "SourceRecord"},
+    },
+    "B2": {
+        "equals": {
+            "wave": "B2",
+            "status": "all_phases_mapped",
+            "total_phases_mapped": 9,
+        },
+        "objects": ["donor", "target"],
+        "lists": ["phase_mappings"],
+        "fingerprints": ["donor.fingerprint", "target.fingerprint"],
+    },
+    "B3": {
+        "equals": {"status": "dry_run_verified", "dry_run_only": True, "live_published": False},
+        "strings": ["brand_package_id", "source_id", "source_sha256"],
+        "minimums": {"matched_approved_claims_count": 1},
+    },
+    "B4": {
+        "equals": {
+            "status": "verified",
+            "consumer_1.status": "verified",
+            "consumer_1.version_match": True,
+            "consumer_1.mutation_shield_active": True,
+            "consumer_2.status": "verified",
+            "consumer_2.version_match": True,
+            "consumer_2.mutation_shield_active": True,
+        },
+        "objects": ["consumer_1", "consumer_2"],
+    },
+    "B5": {
+        "equals": {
+            "phases_total": 9,
+            "phases_completed": 9,
+            "reconciliation_status": "brand_workshop_intake_ported_to_brand_maker",
+        },
+        "lists": ["intake_log"],
+        "objects": ["resulting_package"],
+        "contracts": {"resulting_package": "BrandPackage"},
+    },
+    "B6": {
+        "equals": {
+            "approved_review.status": "ready_for_operator_release",
+            "approved_review.human_gate.boundary_check": "stopped_before_live_publish",
+            "approved_review.dry_run_receipt.dry_run_only": True,
+            "approved_review.dry_run_receipt.live_published": False,
+            "rejected_probe_status": "blocked_rejected",
+            "unmatched_probe_status": "blocked_unmatched_claims",
+        },
+        "objects": ["approved_review"],
+    },
+    "P1": {
+        "equals": {"wave": "P1", "status": "fingerprinted", "all_stages_passed": True},
+        "objects": ["job"],
+        "fingerprints": [
+            "production_house_fingerprint",
+            "groundwire_fingerprint",
+            "formatter_fingerprint",
+        ],
+        "contracts": {"job": "ProductionJob"},
+    },
+    "P2": {
+        "equals": {"wave": "P2", "status": "formatter_executed", "all_stages_passed": True},
+        "objects": ["job"],
+        "fingerprints": ["formatter_fingerprint"],
+        "contracts": {"job": "ProductionJob"},
+    },
+    "P3": {
+        "equals": {"wave": "P3", "status": "handoff_verified", "all_stages_passed": True},
+        "objects": ["job"],
+        "fingerprints": ["writers_room_fingerprint"],
+        "contracts": {"job": "ProductionJob"},
+    },
+    "P4": {
+        "equals": {
+            "wave": "P4",
+            "status": "documentary_pipeline_verified",
+            "all_stages_passed": True,
+        },
+        "objects": ["job"],
+        "contracts": {"job": "ProductionJob"},
+    },
+    "P5": {
+        "equals": {"wave": "P5", "status": "event_stream_unified", "all_stages_passed": True},
+        "objects": ["mapping", "mapping.mapped_job"],
+        "contracts": {"mapping.mapped_job": "ProductionJob"},
+    },
+}
+
+
+def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, Any]) -> list[str]:
+    """Validate expected values and shapes for a completed analysis receipt."""
+    wave_id = wave.get("id")
+    spec = ANALYSIS_RECEIPT_SPECS.get(wave_id)
+    if not spec:
+        return []
+
+    errors: list[str] = []
+    for dotted_path, expected in spec.get("equals", {}).items():
+        actual = _receipt_value(document, dotted_path)
+        if actual is _MISSING or actual != expected or type(actual) is not type(expected):
+            errors.append(f"{dotted_path} must equal {expected!r}")
+    for dotted_path in spec.get("objects", []):
+        actual = _receipt_value(document, dotted_path)
+        if not isinstance(actual, dict) or not actual:
+            errors.append(f"{dotted_path} must be a non-empty object")
+    for dotted_path in spec.get("lists", []):
+        actual = _receipt_value(document, dotted_path)
+        if not isinstance(actual, list) or not actual:
+            errors.append(f"{dotted_path} must be a non-empty list")
+    for dotted_path in spec.get("strings", []):
+        actual = _receipt_value(document, dotted_path)
+        if not isinstance(actual, str) or not actual.strip():
+            errors.append(f"{dotted_path} must be a non-empty string")
+    for dotted_path, minimum in spec.get("minimums", {}).items():
+        actual = _receipt_value(document, dotted_path)
+        if isinstance(actual, bool) or not isinstance(actual, (int, float)) or actual < minimum:
+            errors.append(f"{dotted_path} must be at least {minimum}")
+    for dotted_path in spec.get("fingerprints", []):
+        if not _fingerprint_is_meaningful(_receipt_value(document, dotted_path)):
+            errors.append(f"{dotted_path} must be a meaningful source fingerprint")
+    for dotted_path, contract_name in spec.get("contracts", {}).items():
+        value = _receipt_value(document, dotted_path)
+        try:
+            validate_contract(contract_name, value)
+        except (ContractError, TypeError) as error:
+            errors.append(f"{dotted_path} violates {contract_name}: {error}")
+
+    if wave_id == "A3":
+        matrix = document.get("matrix", {})
+        expected_overlays = {"kb-overlay", "keyboard-nav-overlay", "keyboard-nav-overlay-94bf7e"}
+        if not isinstance(matrix, dict) or set(matrix) != expected_overlays:
+            errors.append("matrix must contain exactly the three declared overlay sources")
+        else:
+            for name, overlay in matrix.items():
+                if not (
+                    isinstance(overlay, dict)
+                    and isinstance(overlay.get("features"), list)
+                    and bool(overlay.get("features"))
+                    and isinstance(overlay.get("code_size_bytes"), int)
+                    and overlay.get("code_size_bytes", 0) > 0
+                ):
+                    errors.append(f"matrix.{name} must retain non-empty inventory measurements")
+        if isinstance(matrix, dict) and document.get("receipt_version") == "accessibility-a3-analysis-v2":
+            verification = document.get("source_verification", {})
+            if not (
+                isinstance(verification, dict)
+                and verification.get("passed") is True
+                and verification.get("errors") == []
+                and verification.get("donors_checked") == 3
+            ):
+                errors.append("A3 v2 source verification must retain a clean three-donor pass")
+            for name, overlay in matrix.items():
+                if not (
+                    isinstance(overlay, dict)
+                    and overlay.get("source_available") is True
+                    and overlay.get("manifest_valid") is True
+                    and overlay.get("fingerprint_verified") is True
+                    and isinstance(overlay.get("code_size_bytes"), int)
+                    and overlay.get("code_size_bytes", 0) > 0
+                    and _fingerprint_is_meaningful(overlay.get("git_fingerprint"))
+                ):
+                    errors.append(f"matrix.{name} must retain verified source measurements")
+    elif wave_id == "A4":
+        catalog = document.get("catalog_evaluation", {})
+        evaluations = catalog.get("evaluations", []) if isinstance(catalog, dict) else []
+        if len(evaluations) != catalog.get("total_candidates_evaluated"):
+            errors.append("catalog evaluation count must match the retained evaluations")
+        for index, item in enumerate(evaluations):
+            finding = item.get("finding") if isinstance(item, dict) else None
+            try:
+                validate_contract("A11yFinding", finding)
+            except (ContractError, TypeError) as error:
+                errors.append(f"catalog_evaluation.evaluations.{index}.finding violates A11yFinding: {error}")
+    elif wave_id == "O4":
+        for index, record in enumerate(document.get("processed_records", [])):
+            try:
+                validate_contract("SourceRecord", record)
+            except (ContractError, TypeError) as error:
+                errors.append(f"processed_records.{index} violates SourceRecord: {error}")
+    elif wave_id == "B1":
+        mutation_tests = document.get("mutation_tests", [])
+        if any(not isinstance(test, dict) or test.get("passed") is not True for test in mutation_tests):
+            errors.append("every B1 mutation test must retain an explicit pass")
+    elif wave_id == "B2":
+        if len(document.get("phase_mappings", [])) != 9:
+            errors.append("B2 must retain exactly nine phase mappings")
+    elif wave_id == "B5":
+        if len(document.get("intake_log", [])) != 9:
+            errors.append("B5 must retain exactly nine intake phases")
+    elif wave_id in {"P1", "P2", "P3", "P4"}:
+        job = document.get("job", {})
+        expected_collection = "inputs" if wave_id == "P3" else "outputs"
+        expected_minimum = 1
+        expected_exact = 3 if wave_id in {"P1", "P4"} else None
+        collection = job.get(expected_collection, []) if isinstance(job, dict) else []
+        if not isinstance(collection, list) or len(collection) < expected_minimum:
+            errors.append(f"job.{expected_collection} must retain executed job evidence")
+        elif expected_exact is not None and len(collection) != expected_exact:
+            errors.append(f"job.{expected_collection} must contain exactly {expected_exact} items")
+
+    return errors
+
+
 def _runtime_parity_receipt_errors(path: Path, contract_id: str) -> list[str]:
     """Validate a retained runtime receipt through an explicitly versioned contract."""
     if contract_id not in RECOVERY_RECEIPT_CONTRACTS:
@@ -215,7 +533,14 @@ def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
         return _runtime_parity_receipt_errors(path, claim.get("receipt_contract", ""))
     basis = {b for b in (claim.get("evidence_basis") or []) if isinstance(b, str) and b}
     if kind == "analysis" and basis:
-        return _analysis_evidence_errors(path, basis)
+        errors = _analysis_evidence_errors(path, basis)
+        if errors or path.suffix != ".json":
+            return errors
+        try:
+            document = _load_json(path)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            return [f"analysis evidence cannot be loaded for semantic validation: {error}"]
+        return _analysis_receipt_semantic_errors(wave, document)
     return []
 
 
