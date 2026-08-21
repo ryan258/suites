@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -202,6 +203,22 @@ def _runtime_parity_receipt_errors(path: Path, contract_id: str) -> list[str]:
     return errors
 
 
+def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
+    """Errors in a wave's evidence receipt, dispatched by claim kind.
+
+    Single source of truth shared by registry validation and the wave recorder, so a
+    receipt that records successfully cannot then fail `suites validate`.
+    """
+    claim = wave.get("recovery_claim", {}) or {}
+    kind = claim.get("kind")
+    if kind == "runtime" and claim.get("level") in {"parity_verified", "adopted", "converged"}:
+        return _runtime_parity_receipt_errors(path, claim.get("receipt_contract", ""))
+    basis = {b for b in (claim.get("evidence_basis") or []) if isinstance(b, str) and b}
+    if kind == "analysis" and basis:
+        return _analysis_evidence_errors(path, basis)
+    return []
+
+
 def get_project(name: str) -> dict[str, Any] | None:
     ledger = load_ledger()
     for row in ledger.get("projects", []):
@@ -228,13 +245,17 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
     current_branch = _git_value(source, "branch", "--show-current") or "DETACHED"
     current_status = _git_value(source, "status", "--porcelain")
     current_lines = len(current_status.splitlines()) if current_status else 0
+    # A dirty-item count is blind to two files changing identity or content while the count holds.
+    current_status_sha256 = hashlib.sha256(current_status.encode("utf-8")).hexdigest()
     snap_head = snapshot.get("head")
     snap_branch = snapshot.get("branch")
     snap_lines = snapshot.get("status_lines", 0)
+    snap_status_sha256 = snapshot.get("status_sha256")
 
     head_or_branch_drift = (current_head != snap_head) or (current_branch != snap_branch)
     lines_drift = (current_lines != snap_lines)
-    has_drift = head_or_branch_drift or lines_drift
+    content_drift = bool(snap_status_sha256) and current_status_sha256 != snap_status_sha256
+    has_drift = head_or_branch_drift or lines_drift or content_drift
 
     return {
         "name": name,
@@ -247,6 +268,10 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
         "current_lines": current_lines,
         "head_or_branch_drift": head_or_branch_drift,
         "lines_drift": lines_drift,
+        "snapshot_status_sha256": snap_status_sha256,
+        "current_status_sha256": current_status_sha256,
+        "content_drift": content_drift,
+        "status_unfingerprinted": not snap_status_sha256,
         "has_drift": has_drift,
     }
 
@@ -545,14 +570,8 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
             evidence_file = SUITES_ROOT / evidence_path if evidence_path else None
             if not evidence_file or not evidence_file.is_file():
                 report.errors.append(f"{suite_id}/{wave.get('id')}: completed claim evidence is missing")
-            elif claim_kind == "runtime" and claim_level in {"parity_verified", "adopted", "converged"}:
-                for receipt_error in _runtime_parity_receipt_errors(
-                    evidence_file,
-                    claim.get("receipt_contract", ""),
-                ):
-                    report.errors.append(f"{suite_id}/{wave.get('id')}: {receipt_error}")
-            elif claim_kind == "analysis" and evidence_basis_set:
-                for evidence_error in _analysis_evidence_errors(evidence_file, evidence_basis_set):
+            else:
+                for evidence_error in evidence_errors(wave, evidence_file):
                     report.errors.append(f"{suite_id}/{wave.get('id')}: {evidence_error}")
 
     if check_live:

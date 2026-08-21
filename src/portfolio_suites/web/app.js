@@ -155,6 +155,11 @@ class SuitesApp {
       const totalWaves = (s.waves || []).length;
       const pct = totalWaves ? Math.round((completedWaves / totalWaves) * 100) : 100;
       const currentWave = (s.waves || []).find(w => w.status !== 'complete');
+      // Every wave complete is not a finished suite: analysis-only waves still owe runtime work.
+      const openFollowups = (s.waves || []).filter(w => w.status === 'complete' && w.runtime_followup).length;
+      const doneLabel = openFollowups
+        ? `analysis complete, ${openFollowups} runtime follow-up(s) pending`
+        : 'adoption pending';
 
       return `
         <div class="suite-card">
@@ -170,7 +175,7 @@ class SuitesApp {
             </div>
           </div>
           <div class="suite-card-bottom">
-            <span class="subtext">Next: <strong>${currentWave ? currentWave.id : 'Complete'}</strong> (${completedWaves}/${totalWaves} waves)</span>
+            <span class="subtext">Next: <strong>${currentWave ? currentWave.id : doneLabel}</strong> (${completedWaves}/${totalWaves} waves)</span>
             <button class="btn btn-sm btn-secondary" onclick="app.inspectSuite('${s.id}')">Inspect</button>
           </div>
         </div>

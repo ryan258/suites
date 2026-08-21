@@ -170,7 +170,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                                 "objective": w.get("objective", ""),
                                 "acceptance": w.get("acceptance", ""),
                                 "passed": is_passed,
-                                "prototype_passed": has_runner,
+                                "runner_available": has_runner,
                                 "execution_kind": exec_kind,
                                 "message": f"Wave {w_id}: {w.get('objective', '')}",
                                 "evidence_path": str(ev_file) if has_ev else None,
@@ -224,8 +224,14 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 wave_id = parts[4]
                 query_params = urllib.parse.parse_qs(parsed.query)
                 record_param = query_params.get("record", ["false"])[0].lower() in ("true", "1")
+                # Loopback binding does not stop another site blind-POSTing here; a mutating
+                # request must prove it came from this dashboard, not a cross-origin form.
+                if record_param and self.headers.get("Sec-Fetch-Site") not in (None, "same-origin"):
+                    self._send_json(403, {"error": "cross-origin record requests are refused"})
+                    return
+                full_param = query_params.get("full", ["false"])[0].lower() in ("true", "1")
                 # Ephemeral execution by default; only mutate evidence files on explicit record request
-                res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=record_param)
+                res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=record_param, full=full_param)
                 status_code = 404 if res.execution_kind == "error" else 200
                 self._send_json(status_code, {
                     "suite_id": res.suite_id,
@@ -234,7 +240,8 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     "prototype_passed": res.prototype_passed,
                     "execution_kind": res.execution_kind,
                     "message": res.message,
-                    "recorded": record_param,
+                    "record_requested": record_param,
+                    "recorded": res.evidence_path is not None,
                     "evidence_path": res.evidence_path,
                     "data": res.data,
                 })

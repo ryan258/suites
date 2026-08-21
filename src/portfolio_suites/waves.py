@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -19,7 +21,7 @@ from .engines.discovery_decision import DiscoveryDecisionEngine
 from .engines.game_design import GameDesignEngine
 from .engines.model_behavior import ModelBehaviorEngine
 from .engines.production_house import ProductionHouseEngine
-from .registry import SUITES_ROOT, get_suite, load_suites
+from .registry import SUITES_ROOT, evidence_errors, get_suite, load_suites
 
 
 @dataclass
@@ -35,19 +37,48 @@ class WaveRunResult:
 
 
 
+def _wave_for_evidence(rel_path: str) -> dict[str, Any] | None:
+    """Find the wave that declares this evidence path, so its receipt contract can gate the write."""
+    for manifest in load_suites().values():
+        for wave in manifest.get("waves", []):
+            if wave.get("evidence") == rel_path:
+                return wave
+    return None
+
+
+def _skipped_stages(data: Any) -> list[str]:
+    """Names of receipt stages that were not executed on this run."""
+    stages = data.get("stages", {}) if isinstance(data, dict) else {}
+    return sorted(name for name, stage in stages.items() if isinstance(stage, dict) and stage.get("skipped"))
+
+
 def _record_evidence(suite_dir: str, filename: str, data: Any, write_evidence: bool, passed: bool) -> str | None:
-    """Record evidence artifact ONLY when explicitly requested AND gate has passed."""
+    """Record evidence ONLY when requested, the gate passed, AND the candidate validates.
+
+    Writes a temp sibling, validates it through the same checks `suites validate` runs, and
+    only then atomically replaces the retained receipt. A rejected candidate leaves the prior
+    receipt byte-for-byte unchanged and returns None.
+    """
+    if not (write_evidence and passed):
+        return None
+
     evidence_dir = SUITES_ROOT / suite_dir / "evidence"
     evidence_file = evidence_dir / filename
-    if write_evidence and passed:
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        with evidence_file.open("w", encoding="utf-8") as f:
-            if isinstance(data, str):
-                f.write(data)
-            else:
-                json.dump(data, f, indent=2)
-        return str(evidence_file)
-    return None
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    # Temp name keeps the real suffix: the JSON/prose validators dispatch on it.
+    candidate = evidence_dir / f".{evidence_file.stem}.tmp{evidence_file.suffix}"
+    candidate.write_text(
+        data if isinstance(data, str) else json.dumps(data, indent=2),
+        encoding="utf-8",
+    )
+
+    wave = _wave_for_evidence(f"{suite_dir}/evidence/{filename}")
+    if wave and evidence_errors(wave, candidate):
+        candidate.unlink()
+        return None
+
+    os.replace(candidate, evidence_file)
+    return str(evidence_file)
 
 class WaveRunner:
     """Execute wave verification gates and generate structured evidence files."""
@@ -60,7 +91,7 @@ class WaveRunner:
         )
 
     @classmethod
-    def run_wave(cls, suite_id: str, wave_id: str, write_evidence: bool = False) -> WaveRunResult:
+    def run_wave(cls, suite_id: str, wave_id: str, write_evidence: bool = False, full: bool = False) -> WaveRunResult:
         suite = get_suite(suite_id)
         if not suite:
             return WaveRunResult(suite_id, wave_id, False, f"Unknown suite: {suite_id}", execution_kind="error")
@@ -83,10 +114,17 @@ class WaveRunner:
         else:
             exec_kind = "prototype_check"
 
-        raw_res = runner_fn(suite, wave_id, write_evidence)
+        # ponytail: only depth-aware runners declare `full`; the rest keep their 3-arg signature.
+        depth_kwargs = {"full": full} if "full" in inspect.signature(runner_fn).parameters else {}
+        raw_res = runner_fn(suite, wave_id, write_evidence, **depth_kwargs)
 
         if not raw_res.passed and raw_res.data and raw_res.data.get("environment_blocked"):
             exec_kind = "unverifiable_environment"
+
+        # A probe that skipped required gates reports what it ran, not the manifest's historical
+        # claim. The retained receipt still stands on its own; this run just cannot vouch for it.
+        if exec_kind == "verified_runtime_recovery" and _skipped_stages(raw_res.data):
+            exec_kind = "fast_probe"
 
         # A completed analysis and a recovered runtime are distinct verified claims.
         is_migration_verified = exec_kind in {"verified_analysis", "verified_runtime_recovery"} and raw_res.passed
@@ -95,7 +133,7 @@ class WaveRunner:
         return WaveRunResult(
             suite_id=raw_res.suite_id,
             wave_id=raw_res.wave_id,
-            passed=is_migration_verified,
+            passed=is_migration_verified or (exec_kind == "fast_probe" and raw_res.passed),
             message=raw_res.message,
             execution_kind=exec_kind,
             prototype_passed=prototype_passed,
@@ -104,12 +142,12 @@ class WaveRunner:
         )
 
     @classmethod
-    def run_all(cls, write_evidence: bool = False) -> list[WaveRunResult]:
+    def run_all(cls, write_evidence: bool = False, full: bool = False) -> list[WaveRunResult]:
         results = []
         suites = load_suites()
         for suite_id, manifest in suites.items():
             for wave in manifest.get("waves", []):
-                res = cls.run_wave(suite_id, wave["id"], write_evidence=write_evidence)
+                res = cls.run_wave(suite_id, wave["id"], write_evidence=write_evidence, full=full)
                 results.append(res)
         return results
 
@@ -131,8 +169,9 @@ class WaveRunner:
         )
 
     @classmethod
-    def _run_accessibility_a2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        receipt = AccessibilitySourceAdapter.execute_wcag_331_migration_gate(full_suite=write_evidence)
+    def _run_accessibility_a2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool, full: bool = False) -> WaveRunResult:
+        # Recording is not what selects verification depth; --full is.
+        receipt = AccessibilitySourceAdapter.execute_wcag_331_migration_gate(full_suite=full or write_evidence)
         passed = receipt.get("all_stages_passed", False)
         findings = receipt.get("findings", [])
         full_stage = receipt.get("stages", {}).get("full_suite_and_typecheck_gate", {})
@@ -150,10 +189,16 @@ class WaveRunner:
                 "A2 donor/destination runtime gate is unverifiable in this environment; "
                 "no product failure or recovery pass is claimed."
             )
+        elif full_stage.get("skipped"):
+            message = (
+                "FAST PROBE PASSED; HISTORICAL PARITY RECEIPT RETAINED. Executed WCAG Auditor donor "
+                f"and Ally destination runtimes ({depth_note}); generated {len(findings)} valid "
+                "A11yFindings. Re-run with --full for current runtime parity."
+            )
         else:
             message = (
-                "Executed authentic WCAG Auditor donor and Ally destination runtimes "
-                f"({depth_note}); generated {len(findings)} valid A11yFindings."
+                "CURRENT RUNTIME PARITY VERIFIED. Executed authentic WCAG Auditor donor and Ally "
+                f"destination runtimes ({depth_note}); generated {len(findings)} valid A11yFindings."
             )
         return WaveRunResult(
             suite["id"],

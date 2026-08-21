@@ -132,6 +132,30 @@ class ContractTests(unittest.TestCase):
                 )
         self.assertEqual(found_titles, set(CONTRACTS), "schema files do not cover all CONTRACTS")
 
+    def test_validator_rejects_types_the_published_schema_forbids(self):
+        """The Python validator and the advertised JSON Schema must not disagree on field types."""
+        base = {
+            "schema_version": "1.0.0",
+            "source_id": "src-001",
+            "origin": "https://example.test/a",
+            "acquired_at": "2026-08-20T00:00:00+00:00",
+            "media_type": "text/html",
+            "license": "cc-by-4.0",
+            "provenance": {},
+            "provenance_chain": [],
+            "sha256": "a" * 64,
+            "size_bytes": 1,
+        }
+        validate_contract("SourceRecord", base)
+        for field, bad_value in (("acquired_at", 123), ("media_type", 456), ("origin", ["a"])):
+            with self.assertRaises(ContractError, msg=f"{field} type gap"):
+                validate_contract("SourceRecord", {**base, field: bad_value})
+
+    def test_validator_rejects_a_malformed_timestamp(self):
+        sample = generate_sample("InvestigationRecord")
+        with self.assertRaises(ContractError):
+            validate_contract("InvestigationRecord", {**sample, "created_at": "not-a-timestamp"})
+
 
 if __name__ == "__main__":
     unittest.main()

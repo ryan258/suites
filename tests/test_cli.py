@@ -125,8 +125,9 @@ class CLITests(unittest.TestCase):
         self.assertIn(code, {0, 1})
         self.assertIn("21 verified analyses", output)
         self.assertIn("21 prototype checks passed", output)
+        self.assertIn("0 runtime recoveries", output)
         if code == 0:
-            self.assertIn("1 runtime recoveries", output)
+            self.assertIn("1 fast probes", output)
         else:
             self.assertIn("1 environment-unverifiable", output)
 

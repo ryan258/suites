@@ -643,10 +643,25 @@ console.log(JSON.stringify(result));
             and catalog.get("status") == "all_backlog_candidates_evidenced"
             and all(isinstance(e.get("finding"), dict) for e in catalog.get("evaluations", []))
         )
+        # The "zero false positives on compliant markup" claim is executed, not asserted.
+        compliant_markup = (
+            '<label for="email">Email</label>'
+            '<input id="email" type="email" aria-describedby="email-help">'
+            '<p id="email-help">We never share it.</p>'
+            '<table><tr><th scope="col">Name</th></tr><tr><td>Ada</td></tr></table>'
+            '<img src="logo.png" alt="Company logo">'
+        )
+        false_positives = AccessibilityEngine.audit_html_snippet(
+            compliant_markup, source_url="snippet://a4-false-positive-probe"
+        )
+        sample = [e["finding"] for e in catalog.get("evaluations", []) if isinstance(e.get("finding"), dict)][:3]
+
         return {
-            "all_stages_passed": all_passed,
+            "all_stages_passed": all_passed and not false_positives,
             "wave": "A4",
             "catalog_evaluation": catalog,
+            "heuristic_findings_sample": sample,
+            "false_positive_probe_passed": not false_positives,
         }
 
     @classmethod

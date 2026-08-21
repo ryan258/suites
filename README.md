@@ -68,9 +68,11 @@ PYTHONPATH=src python3 -m portfolio_suites contract A11yFinding sample
 PYTHONPATH=src python3 -m portfolio_suites contract BrandPackage spec
 PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.json>
 
-# Ephemeral wave checks (1 runtime recovery + 1 analysis milestone + 41 prototypes)
+# Ephemeral wave checks (21 analysis milestones + 21 prototypes + 1 runtime wave)
+# Without --full, A2 runs a fast probe and is reported as [FAST-PROBE], not a runtime recovery.
 PYTHONPATH=src python3 -m portfolio_suites wave --all
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2
+PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --full
 
 # Explicitly replace a wave's evidence artifact after reviewing its runner
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record
@@ -78,7 +80,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record
 # Launch the zero-dependency local web dashboard
 PYTHONPATH=src python3 -m portfolio_suites serve --port 8383
 
-# Run complete test suite (73 tests)
+# Run complete test suite
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 

@@ -8,6 +8,8 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = "1.0.0"
@@ -95,6 +97,50 @@ CONTRACTS: dict[str, ContractSpec] = {
 }
 
 
+SCHEMA_DIR = Path(__file__).resolve().parent.parent.parent / "contracts"
+JSON_TYPES: dict[str, tuple[type, ...]] = {
+    "string": (str,),
+    "integer": (int,),
+    "number": (int, float),
+    "boolean": (bool,),
+    "array": (list,),
+    "object": (dict,),
+}
+
+
+@lru_cache(maxsize=1)
+def _published_schemas() -> dict[str, dict[str, Any]]:
+    """Property definitions from the published JSON Schemas, keyed by contract title.
+
+    The schema files are the single source of truth for field types, so an artifact the
+    Python validator accepts is also accepted by an external consumer reading the schema.
+    """
+    schemas: dict[str, dict[str, Any]] = {}
+    for path in sorted(SCHEMA_DIR.glob("*.schema.json")):
+        document = json.loads(path.read_text(encoding="utf-8"))
+        title = document.get("title")
+        if title:
+            schemas[title] = document.get("properties", {})
+    return schemas
+
+
+def _check_published_types(name: str, payload: Mapping[str, Any]) -> None:
+    """Reject any present field whose type contradicts the published schema."""
+    for field, definition in _published_schemas().get(name, {}).items():
+        if field not in payload:
+            continue
+        value = payload[field]
+        expected = definition.get("type")
+        allowed = JSON_TYPES.get(expected) if isinstance(expected, str) else None
+        if allowed and (not isinstance(value, allowed) or (expected == "integer" and isinstance(value, bool))):
+            raise ContractError(f"{name}.{field} must be a JSON {expected}")
+        if definition.get("format") == "date-time":
+            try:
+                datetime.datetime.fromisoformat(str(value))
+            except ValueError:
+                raise ContractError(f"{name}.{field} must be an ISO-8601 timestamp") from None
+
+
 def _require_identifier(field: str, value: Any) -> None:
     if not isinstance(value, str) or not IDENTIFIER.fullmatch(value):
         raise ContractError(f"{field} must be a stable 3-128 character identifier")
@@ -113,6 +159,8 @@ def validate_contract(name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         raise ContractError(f"{name} missing required fields: {', '.join(missing)}")
     if payload.get("schema_version") != SCHEMA_VERSION:
         raise ContractError(f"{name} schema_version must be {SCHEMA_VERSION}")
+
+    _check_published_types(name, payload)
 
     for field in spec.list_fields:
         if not isinstance(payload.get(field), list):

@@ -65,7 +65,8 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_analysis"), 21)
         self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_runtime_recovery"), 1)
         self.assertEqual(sum(1 for row in data if row["execution_kind"] == "prototype_check"), 21)
-        self.assertTrue(all("prototype_passed" in row for row in data))
+        self.assertTrue(all("runner_available" in row for row in data))
+        self.assertFalse(any("prototype_passed" in row for row in data))
 
     def test_wave_post_is_ephemeral_and_classified(self):
         data = self._post_json("/api/waves/model-behavior-lab/M1/run")

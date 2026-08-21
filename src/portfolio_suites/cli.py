@@ -59,7 +59,17 @@ def _next() -> int:
                 candidates.append((wave["order"], manifest["id"], wave))
                 break
     if not candidates:
-        print("All migration waves across all 8 suites are complete and instituted.")
+        outstanding = [
+            (manifest["id"], wave)
+            for manifest in load_suites().values()
+            for wave in manifest["waves"]
+            if wave.get("runtime_followup")
+        ]
+        print("All migration waves across all 8 suites are scheduled complete.")
+        if outstanding:
+            print(f"{len(outstanding)} completed wave(s) still owe runtime follow-up:")
+            for suite_id, wave in outstanding:
+                print(f"  {suite_id} / {wave['id']}: {wave['runtime_followup']}")
         return 0
     for _, suite_id, wave in sorted(candidates):
         print(f"{suite_id} / {wave['id']}: {wave['objective']}")
@@ -127,6 +137,8 @@ def _inspect(target: str) -> int:
         print("Waves:")
         for w in suite.get("waves", []):
             print(f"  - {w['id']:<4} ({w['status']:<11}) {w['objective']}")
+            if w.get("runtime_followup"):
+                print(f"         runtime follow-up outstanding: {w['runtime_followup']}")
         return 0
 
     project = get_project(target)
@@ -183,9 +195,9 @@ def _contract_cmd(name: str, action: str, file_path: str | None) -> int:
     return 1
 
 
-def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_evidence: bool) -> int:
+def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_evidence: bool, full: bool) -> int:
     if run_all or (not suite_id and not wave_id):
-        results = WaveRunner.run_all(write_evidence=write_evidence)
+        results = WaveRunner.run_all(write_evidence=write_evidence, full=full)
         runtime_count = sum(1 for r in results if r.execution_kind == "verified_runtime_recovery" and r.passed)
         analysis_count = sum(1 for r in results if r.execution_kind == "verified_analysis" and r.passed)
         prototype_count = sum(1 for r in results if r.execution_kind == "prototype_check" and r.prototype_passed)
@@ -198,6 +210,7 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         unintegrated_count = sum(1 for r in results if r.execution_kind == "unintegrated_specification")
         error_count = sum(1 for r in results if r.execution_kind == "error")
         unverifiable_count = sum(1 for r in results if r.execution_kind == "unverifiable_environment")
+        fast_probe_count = sum(1 for r in results if r.execution_kind == "fast_probe" and r.passed)
 
         for r in results:
             if r.execution_kind == "error":
@@ -206,6 +219,8 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
                 tag = "[RECOVERED]"
             elif r.execution_kind == "verified_analysis" and r.passed:
                 tag = "[ANALYSIS]"
+            elif r.execution_kind == "fast_probe" and r.passed:
+                tag = "[FAST-PROBE]"
             elif r.execution_kind == "prototype_check" and r.prototype_passed:
                 tag = "[PROTOTYPE]"
             elif r.execution_kind == "unverifiable_environment":
@@ -218,7 +233,8 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         print("-" * 65)
         print(
             f"Results: {runtime_count} runtime recoveries, {analysis_count} verified analyses, "
-            f"{prototype_count} prototype checks passed, {failed_count} checks failed, "
+            f"{prototype_count} prototype checks passed, {fast_probe_count} fast probes, "
+            f"{failed_count} checks failed, "
             f"{unverifiable_count} environment-unverifiable, {unintegrated_count} unintegrated, "
             f"{error_count} errors."
         )
@@ -228,13 +244,15 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         print("Error: Specify suite and wave (e.g. 'suites wave accessibility A2') or '--all'", file=sys.stderr)
         return 1
 
-    result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=write_evidence)
+    result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=write_evidence, full=full)
     if result.execution_kind == "error":
         tag = "[ERROR]"
     elif result.execution_kind == "verified_runtime_recovery" and result.passed:
         tag = "[RECOVERED]"
     elif result.execution_kind == "verified_analysis" and result.passed:
         tag = "[ANALYSIS]"
+    elif result.execution_kind == "fast_probe" and result.passed:
+        tag = "[FAST-PROBE]"
     elif result.execution_kind == "prototype_check" and result.prototype_passed:
         tag = "[PROTOTYPE]"
     elif result.execution_kind == "unverifiable_environment":
@@ -246,6 +264,8 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
     print(f"{tag} {result.suite_id} / {result.wave_id} ({result.execution_kind}): {result.message}")
     if result.evidence_path:
         print(f"Evidence recorded at: {result.evidence_path}")
+    elif write_evidence:
+        print("Evidence NOT written (gate failed or candidate receipt invalid); prior receipt retained.")
     return 0 if result.passed or result.prototype_passed else 1
 
 
@@ -259,6 +279,12 @@ def _drift() -> int:
             print(f"DRIFT {d['name']:<30} snap={d['snapshot_branch']}@{d['snapshot_head']} live={d['current_branch']}@{d['current_head']} (dirty={d['current_lines']})")
     if not drifted:
         print("All monitored repositories match baseline snapshot.")
+    unfingerprinted = [d["name"] for d in drift_items if d["status_unfingerprinted"]]
+    if unfingerprinted:
+        print(
+            f"Note: {len(unfingerprinted)} baseline(s) carry no status_sha256; working-tree "
+            "content drift is UNCHECKED for those repos (branch, HEAD and dirty count only)."
+        )
     return 0
 
 
@@ -316,6 +342,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=False,
         help="write evidence files to suite directories (ephemeral by default)",
     )
+    wave_p.add_argument(
+        "--full",
+        action="store_true",
+        help="run every required verification gate instead of the fast probe",
+    )
 
     serve_p = sub.add_parser("serve", help="launch local portfolio web dashboard server")
     serve_p.add_argument("--port", type=int, default=8383, help="port number (default: 8383)")
@@ -341,7 +372,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "contract":
         return _contract_cmd(args.name, args.action, args.file)
     if args.command == "wave":
-        return _wave_cmd(args.suite, args.wave_id, args.all, args.record)
+        return _wave_cmd(args.suite, args.wave_id, args.all, args.record, args.full)
     if args.command == "serve":
         serve(args.port)
         return 0

@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from portfolio_suites.registry import SUITES_ROOT, evidence_errors, get_suite
 from portfolio_suites.waves import WaveRunner
 
 
@@ -38,8 +39,9 @@ class WaveTests(unittest.TestCase):
         self.assertTrue(a1.passed)
 
         a2 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A2")
-        self.assertIn(a2.execution_kind, {"verified_runtime_recovery", "unverifiable_environment"})
-        if a2.execution_kind == "verified_runtime_recovery":
+        # A fast probe cannot claim the manifest's runtime recovery; only a --full run can.
+        self.assertIn(a2.execution_kind, {"fast_probe", "unverifiable_environment"})
+        if a2.execution_kind == "fast_probe":
             self.assertTrue(a2.passed)
         else:
             self.assertFalse(a2.passed)
@@ -90,7 +92,7 @@ class WaveTests(unittest.TestCase):
         self.assertIsNotNone(a1.evidence_path)
 
         a2 = WaveRunner.run_wave("accessibility", "A2", write_evidence=False)
-        if a2.execution_kind == "verified_runtime_recovery":
+        if a2.execution_kind == "fast_probe":
             self.assertTrue(a2.passed)
             self.assertEqual(a2.data.get("receipt_kind"), "clean_commit_receipt")
             self.assertEqual(a2.data.get("status"), "parity_verified")
@@ -163,10 +165,15 @@ class WaveTests(unittest.TestCase):
         self.assertFalse(missing.passed)
         self.assertFalse(missing.prototype_passed)
 
-    def test_obp_waves_record_evidence(self):
-        """O/B/P record mode writes evidence and must not raise. Redirects SUITES_ROOT so retained evidence is untouched."""
+    def test_completed_waves_record_valid_evidence(self):
+        """Record mode must write a receipt that satisfies the wave's own declared evidence basis.
+
+        Redirects SUITES_ROOT so retained evidence is untouched. A recorded artifact that would
+        fail `suites validate` is refused by the recorder, so evidence_path comes back None.
+        """
         cases = (
-            [("operator-os", f"O{i}") for i in range(1, 7)]
+            [("accessibility", f"A{i}") for i in range(3, 6)]
+            + [("operator-os", f"O{i}") for i in range(1, 7)]
             + [("brand-publishing", f"B{i}") for i in range(1, 7)]
             + [("production-house", f"P{i}") for i in range(1, 6)]
         )
@@ -175,10 +182,19 @@ class WaveTests(unittest.TestCase):
                 for suite_id, wave_id in cases:
                     res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=True)
                     self.assertTrue(res.passed, f"{suite_id} {wave_id}: {res.message}")
+                    self.assertIsNotNone(
+                        res.evidence_path,
+                        f"{suite_id} {wave_id}: recorded receipt was rejected by its evidence contract",
+                    )
                     self.assertTrue(
                         Path(res.evidence_path).is_file(),
                         f"{suite_id} {wave_id} recorded no evidence file",
                     )
+                    errors = evidence_errors(
+                        next(w for w in get_suite(suite_id)["waves"] if w["id"] == wave_id),
+                        Path(res.evidence_path),
+                    )
+                    self.assertEqual(errors, [], f"{suite_id} {wave_id} recorded invalid evidence")
 
     def test_failed_record_does_not_overwrite_evidence(self):
         failing_receipt = {
@@ -203,6 +219,39 @@ class WaveTests(unittest.TestCase):
                     True,
                     False,
                 )
+
+    def test_invalid_candidate_leaves_retained_receipt_byte_identical(self):
+        """A record attempt that violates the evidence contract must not touch the prior receipt."""
+        retained = SUITES_ROOT / "accessibility" / "evidence" / "A4-WCAG-RULE-CANDIDATES-EVIDENCE.json"
+        before = retained.read_bytes()
+        short_receipt = {"all_stages_passed": True, "wave": "A4", "catalog_evaluation": {}}
+        with patch(
+            "portfolio_suites.waves.AccessibilitySourceAdapter.execute_wcag_rule_candidates_gate",
+            return_value=short_receipt,
+        ):
+            res = WaveRunner.run_wave("accessibility", "A4", write_evidence=True)
+        self.assertIsNone(res.evidence_path)
+        self.assertEqual(retained.read_bytes(), before)
+        self.assertEqual(list(retained.parent.glob(".*tmp*")), [])
+
+    def test_fast_probe_cannot_claim_runtime_recovery(self):
+        """Skipped deep gates downgrade the manifest's runtime claim to a fast probe."""
+        skipped_receipt = {
+            "all_stages_passed": True,
+            "stages": {
+                "focused_parity_gate": {"passed": True, "passed_tests": 6},
+                "full_suite_and_typecheck_gate": {"skipped": True, "passed": None},
+                "full_audit_integration_gate": {"skipped": True, "passed": None},
+            },
+            "findings": [{"finding_id": "f1"}],
+        }
+        with patch(
+            "portfolio_suites.waves.AccessibilitySourceAdapter.execute_wcag_331_migration_gate",
+            return_value=skipped_receipt,
+        ):
+            res = WaveRunner.run_wave("accessibility", "A2", write_evidence=False)
+        self.assertEqual(res.execution_kind, "fast_probe")
+        self.assertIn("HISTORICAL PARITY RECEIPT RETAINED", res.message)
 
 
 if __name__ == "__main__":
