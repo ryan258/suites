@@ -70,3 +70,72 @@ class TestEngineActionBoundary(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestChains(unittest.TestCase):
+    """Chained engine actions: one action's output as another's argument."""
+
+    def test_output_feeds_next_step(self):
+        from portfolio_suites.chains import run_chain
+        outcome = run_chain([
+            {"suite": "game-design", "action": "simulate_tucked_in_terrors", "arguments": {"trials": 20}},
+            {"suite": "game-design", "action": "generate_printable_balance_sheet",
+             "arguments": {"sim_result": {"$from": 0}}},
+        ])
+        self.assertEqual(outcome["steps_run"], 2)
+        self.assertEqual(outcome["steps"][1]["references"], [0])
+        self.assertIn("Balance Sheet", outcome["final"])
+
+    def test_path_selects_from_a_list_output(self):
+        from portfolio_suites.chains import run_chain
+        outcome = run_chain([
+            {"suite": "accessibility", "action": "audit_html_snippet",
+             "arguments": {"html_content": "<img src=x>"}},
+            {"suite": "accessibility", "action": "roundtrip_kitchen_learning_finding",
+             "arguments": {"finding": {"$from": 0, "path": "0"}}},
+        ])
+        self.assertEqual(outcome["final"]["roundtrip_status"], "verified")
+        self.assertFalse(outcome["final"]["evidence_loss"])
+
+    def test_provenance_survives_a_cross_suite_chain(self):
+        from portfolio_suites.chains import run_chain
+        outcome = run_chain([
+            {"suite": "operator-os", "action": "capture_source",
+             "arguments": {"content": "chained note", "origin": "test", "source_id": "src-test-chain"}},
+            {"suite": "operator-os", "action": "project_to_observer",
+             "arguments": {"source_record": {"$from": 0}, "title": "T", "summary": "S", "body": "B"}},
+        ])
+        captured_hash = outcome["steps"][0]["result"]["sha256"]
+        self.assertIn(captured_hash, outcome["final"])
+
+    def test_forward_reference_rejected(self):
+        from portfolio_suites.chains import ChainError, run_chain
+        with self.assertRaises(ChainError) as ctx:
+            run_chain([{"suite": "game-design", "action": "generate_printable_balance_sheet",
+                        "arguments": {"sim_result": {"$from": 0}}}])
+        self.assertEqual(ctx.exception.step_index, 0)
+
+    def test_bad_path_names_the_failure(self):
+        from portfolio_suites.chains import ChainError, run_chain
+        with self.assertRaises(ChainError):
+            run_chain([
+                {"suite": "accessibility", "action": "audit_html_snippet",
+                 "arguments": {"html_content": "<img src=x>"}},
+                {"suite": "accessibility", "action": "roundtrip_kitchen_learning_finding",
+                 "arguments": {"finding": {"$from": 0, "path": "not_an_index"}}},
+            ])
+
+    def test_failing_step_is_identified(self):
+        from portfolio_suites.chains import ChainError, run_chain
+        with self.assertRaises(ChainError) as ctx:
+            run_chain([
+                {"suite": "accessibility", "action": "audit_html_snippet",
+                 "arguments": {"html_content": "<img src=x>"}},
+                {"suite": "accessibility", "action": "audit_html_snippet", "arguments": {}},
+            ])
+        self.assertEqual(ctx.exception.step_index, 1)
+
+    def test_empty_chain_rejected(self):
+        from portfolio_suites.chains import ChainError, run_chain
+        with self.assertRaises(ChainError):
+            run_chain([])

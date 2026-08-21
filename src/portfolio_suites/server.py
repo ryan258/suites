@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_contract
+from .chains import ChainError, run_chain
 from .engine_actions import EngineActionError, list_actions, run_action
 from .registry import (
     SUITES_ROOT,
@@ -285,6 +286,13 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     self._send_json(200, {"ok": True, "validated": validated})
                 except ContractError as exc:
                     self._send_json(400, {"ok": False, "error": str(exc)})
+            elif path == "/api/chains/run":
+                body = self._read_json_body()
+                steps = body.get("steps") if isinstance(body, dict) else body
+                try:
+                    self._send_json(200, run_chain(steps))
+                except ChainError as exc:
+                    self._send_json(400, {"error": str(exc), "step": exc.step_index})
             elif path.startswith("/api/engines/") and path.endswith("/run"):
                 parts = [urllib.parse.unquote(part) for part in path[len("/api/engines/"):-len("/run")].split("/") if part]
                 if len(parts) != 2:

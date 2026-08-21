@@ -544,11 +544,15 @@ class Toolbench {
     this.el('tb-fill-defaults').addEventListener('click', () => this.fillDefaults());
     this.el('tb-clear-tray').addEventListener('click', () => { this.tray = []; this.renderTray(); });
     this.el('tb-compare').addEventListener('click', () => this.compare());
+    this.el('tb-copy-chain').addEventListener('click', () => this.copyChain());
     // Tray identifiers live in data attributes, matching the app's no-inline-handler rule.
     this.el('tb-tray').addEventListener('click', (event) => {
       if (!(event.target instanceof Element)) return;
-      const trigger = event.target.closest('[data-tb-action="show-result"]');
-      if (trigger) this.show(Number(trigger.dataset.tbIndex));
+      const trigger = event.target.closest('[data-tb-action]');
+      if (!trigger) return;
+      const index = Number(trigger.dataset.tbIndex);
+      if (trigger.dataset.tbAction === 'show-result') this.show(index);
+      if (trigger.dataset.tbAction === 'use-result') this.useAsArgument(index);
     });
     this.renderActions();
     this.renderTray();
@@ -603,21 +607,36 @@ class Toolbench {
       status.innerHTML = `<span class="badge-red pill-badge">INVALID JSON</span> ${escapeHtml(err.message)}`;
       return;
     }
-    status.innerHTML = '<span class="pill-badge">RUNNING...</span>';
-    const res = await fetch(`/api/engines/${suite}/${action}/run`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(args)
-    });
+    const chained = this.referencedSteps(args).size > 0;
+    status.innerHTML = `<span class="pill-badge">${chained ? 'RUNNING CHAIN...' : 'RUNNING...'}</span>`;
+
+    const res = chained
+      ? await fetch('/api/chains/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ steps: this.buildChain(args) })
+        })
+      : await fetch(`/api/engines/${suite}/${action}/run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(args)
+        });
     const body = await res.json();
     if (!res.ok) {
-      status.innerHTML = `<span class="badge-red pill-badge">${escapeHtml(res.status)}</span> ${escapeHtml(body.error)}`;
+      const where = body.step === undefined || body.step === null ? '' : ` at step ${body.step}`;
+      status.innerHTML = `<span class="badge-red pill-badge">${escapeHtml(res.status)}${escapeHtml(where)}</span> ${escapeHtml(body.error)}`;
       this.el('tb-output').textContent = '';
       return;
     }
-    status.innerHTML = `<span class="badge-green pill-badge">OK</span> ${escapeHtml(suite)}.${escapeHtml(action)} &rarr; <strong>${escapeHtml(body.emits)}</strong>`;
-    this.el('tb-output').textContent = JSON.stringify(body.result, null, 2);
-    this.tray.push({ suite, action, emits: body.emits, result: body.result });
+
+    const emits = chained ? body.steps[body.steps.length - 1].emits : body.emits;
+    const result = chained ? body.final : body.result;
+    const trace = chained
+      ? ` <span class="subtext">(replayed ${escapeHtml(body.steps_run)} step chain)</span>`
+      : '';
+    status.innerHTML = `<span class="badge-green pill-badge">OK</span> ${escapeHtml(suite)}.${escapeHtml(action)} &rarr; <strong>${escapeHtml(emits)}</strong>${trace}`;
+    this.el('tb-output').textContent = JSON.stringify(result, null, 2);
+    this.tray.push({ suite, action, args, emits, result });
     this.renderTray();
   }
 
@@ -629,11 +648,65 @@ class Toolbench {
         <span class="pill-badge">${escapeHtml(item.emits)}</span>
         <code>${escapeHtml(item.suite)}.${escapeHtml(item.action)}</code>
         <button class="btn btn-sm btn-secondary" data-tb-action="show-result" data-tb-index="${escapeHtml(i)}">view</button>
+        <button class="btn btn-sm btn-secondary" data-tb-action="use-result" data-tb-index="${escapeHtml(i)}">use</button>
       </div>`).join('');
   }
 
   show(index) {
     this.el('tb-output').textContent = JSON.stringify(this.tray[index].result, null, 2);
+  }
+
+  // Insert a {"$from": n} reference for the first argument that has no value yet.
+  useAsArgument(index) {
+    const { entry } = this.current();
+    const editor = this.el('tb-args');
+    let args;
+    try {
+      args = JSON.parse(editor.value || '{}');
+    } catch {
+      args = {};
+    }
+    const params = (entry?.parameters || []).map(p => p.name);
+    const target = params.find(name => args[name] === null || args[name] === undefined) || params[0];
+    if (!target) {
+      this.el('tb-status').innerHTML = '<span class="badge-red pill-badge">NO ARGUMENTS</span> This action takes none.';
+      return;
+    }
+    args[target] = { $from: index };
+    editor.value = JSON.stringify(args, null, 2);
+    this.el('tb-status').innerHTML =
+      `<span class="pill-badge">CHAINED</span> <code>${escapeHtml(target)}</code> &larr; step ${escapeHtml(index)} (${escapeHtml(this.tray[index].emits)}). Add <code>"path"</code> to select part of it.`;
+  }
+
+  // Steps referenced by the pending arguments, plus everything they transitively need.
+  referencedSteps(value, found = new Set()) {
+    if (value && typeof value === 'object') {
+      if (!Array.isArray(value) && '$from' in value) {
+        found.add(value.$from);
+        return found;
+      }
+      Object.values(value).forEach(item => this.referencedSteps(item, found));
+    }
+    return found;
+  }
+
+  buildChain(args) {
+    // Tray order is chain order, so a reference to step n resolves to tray index n.
+    const steps = this.tray.map(item => ({ suite: item.suite, action: item.action, arguments: item.args }));
+    const { suite, action } = this.current();
+    steps.push({ suite, action, arguments: args });
+    return steps;
+  }
+
+  copyChain() {
+    const steps = this.tray.map(item => ({ suite: item.suite, action: item.action, arguments: item.args }));
+    if (!steps.length) {
+      this.el('tb-status').innerHTML = '<span class="badge-red pill-badge">EMPTY</span> Run a tool first.';
+      return;
+    }
+    this.el('tb-output').textContent = JSON.stringify(steps, null, 2);
+    this.el('tb-status').innerHTML =
+      `<span class="badge-green pill-badge">CHAIN JSON</span> ${escapeHtml(steps.length)} step(s) shown below &mdash; save it and replay with <code>suites chain &lt;file&gt;</code>.`;
   }
 
   // The cross-suite payoff: three suites emit ExperimentRun, so they compare in one table.

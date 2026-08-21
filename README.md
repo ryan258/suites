@@ -95,7 +95,12 @@ PYTHONPATH=src python3 -m portfolio_suites engine accessibility          # list 
 PYTHONPATH=src python3 -m portfolio_suites engine accessibility audit_html_snippet \
   --args '{"html_content": "<img src=hero.png>"}'
 
-# Launch the zero-dependency local web dashboard (Toolbench tab runs any engine action)
+# Chain engine actions: one action's output becomes a later action's argument
+# Steps reference earlier output as {"$from": <step>} with optional "path" to select part of it.
+PYTHONPATH=src python3 -m portfolio_suites chain my-chain.json
+PYTHONPATH=src python3 -m portfolio_suites chain my-chain.json --quiet
+
+# Launch the zero-dependency local web dashboard (Toolbench tab runs and chains engine actions)
 PYTHONPATH=src python3 -m portfolio_suites serve --port 8383
 
 # Run complete test suite

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .ai_config import AIConfigError, load_openrouter_config
+from .chains import ChainError, run_chain
 from .engine_actions import EngineActionError, list_actions, run_action
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
 from .registry import (
@@ -334,6 +335,34 @@ def _engine_cmd(suite: str | None, action: str | None, raw_args: str | None) -> 
     return 0
 
 
+def _chain_cmd(spec_path: str, quiet: bool) -> int:
+    """Run a declared chain of engine actions, feeding each output forward."""
+    try:
+        steps = json.loads(Path(spec_path).read_text(encoding="utf-8"))
+    except OSError as exc:
+        print(f"ERROR: cannot read chain spec: {exc}")
+        return 2
+    except ValueError as exc:
+        print(f"ERROR: chain spec is not valid JSON: {exc}")
+        return 2
+    if isinstance(steps, dict):
+        steps = steps.get("steps")
+
+    try:
+        outcome = run_chain(steps)
+    except ChainError as exc:
+        location = "" if exc.step_index is None else f" [step {exc.step_index}]"
+        print(f"CHAIN FAILED{location}: {exc}")
+        return 1
+
+    for record in outcome["steps"]:
+        refs = f" <- step {', '.join(str(r) for r in record['references'])}" if record["references"] else ""
+        print(f"[{record['step']}] {record['suite']}.{record['action']} -> {record['emits']}{refs}")
+    if not quiet:
+        print(json.dumps(outcome["final"], indent=2, default=str))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="suites", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -367,6 +396,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     engine_p.add_argument("suite", nargs="?", default=None, help="suite id (e.g. accessibility)")
     engine_p.add_argument("action", nargs="?", default=None, help="action name; omit to list actions")
     engine_p.add_argument("--args", default=None, help="JSON object of keyword arguments")
+
+    chain_p = sub.add_parser("chain", help="run a chain of engine actions, feeding each output forward")
+    chain_p.add_argument("spec", help="path to a JSON chain spec (list of steps, or {\"steps\": [...]})")
+    chain_p.add_argument("--quiet", action="store_true", help="print the step trace without the final payload")
 
     wave_p = sub.add_parser("wave", help="run and verify migration wave gates and generate evidence")
     wave_p.add_argument("suite", nargs="?", default=None, help="suite ID (e.g. accessibility)")
@@ -409,6 +442,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _contract_cmd(args.name, args.action, args.file)
     if args.command == "engine":
         return _engine_cmd(args.suite, args.action, args.args)
+    if args.command == "chain":
+        return _chain_cmd(args.spec, args.quiet)
     if args.command == "wave":
         return _wave_cmd(args.suite, args.wave_id, args.all, args.record, args.full)
     if args.command == "serve":
