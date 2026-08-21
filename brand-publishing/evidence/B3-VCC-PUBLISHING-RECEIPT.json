@@ -1,8 +1,8 @@
 {
-  "receipt_id": "pub-dry-1787256485",
+  "receipt_id": "pub-dry-f72eb133e0d64b5eaafff3a041b75144",
   "channel": "cyborg-vcc",
   "status": "dry_run_verified",
-  "timestamp": "2026-08-20T20:08:05.255192+00:00",
+  "timestamp": "2026-08-21T20:31:24.448584+00:00",
   "brand_package_id": "pkg-cyborg-brand-v1",
   "brand_version": "1.0.0",
   "source_id": "src-manifesto-draft-001",

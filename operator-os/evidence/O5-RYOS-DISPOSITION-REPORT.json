@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave_id": "O5",
-  "executed_at": "2026-08-20T21:04:58.310915+00:00",
+  "executed_at": "2026-08-21T20:44:39.734224+00:00",
   "disposition_id": "disp-ryos-masterplan-20260820",
   "canonical_anchors": {
     "system_runtime": "dotfiles",
@@ -96,5 +96,6 @@
   ],
   "duplicate_decisions_closed": true,
   "donor_freeze_status": "formalized_donor_freeze_candidate",
+  "all_stages_passed": true,
   "status": "disposition_reconciled"
 }

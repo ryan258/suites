@@ -1,13 +1,13 @@
 {
   "approved_review": {
-    "review_id": "vcc-rev-1787256485",
+    "review_id": "vcc-rev-e3bba0111d9a406eb98e98cfe7eb76af",
     "brand_package_id": "pkg-cyborg-brand-v1",
     "source_id": "src-manifesto-draft-001",
     "dry_run_receipt": {
-      "receipt_id": "pub-dry-1787256485",
+      "receipt_id": "pub-dry-bc0802bf65ec487a8e56ad4f70da9758",
       "channel": "vcc-focus-group",
       "status": "dry_run_verified",
-      "timestamp": "2026-08-20T20:08:05.602089+00:00",
+      "timestamp": "2026-08-21T20:31:24.874278+00:00",
       "brand_package_id": "pkg-cyborg-brand-v1",
       "brand_version": "1.0.0",
       "source_id": "src-manifesto-draft-001",
@@ -20,7 +20,7 @@
     "human_gate": {
       "reviewer": "Ryan",
       "decision": "approved",
-      "timestamp": "2026-08-20T20:08:05.602103+00:00",
+      "timestamp": "2026-08-21T20:31:24.874329+00:00",
       "boundary_check": "stopped_before_live_publish",
       "notes": "Verified against BrandPackage truth; human signoff recorded; live publish authority preserved for operator."
     },
