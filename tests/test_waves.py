@@ -109,6 +109,30 @@ class WaveTests(unittest.TestCase):
         self.assertFalse(missing.passed)
         self.assertFalse(missing.prototype_passed)
 
+    def test_failed_record_does_not_overwrite_evidence(self):
+        failing_receipt = {
+            "all_stages_passed": False,
+            "environment_blocked": True,
+            "findings": [],
+            "operational_errors": [{"environment_blocked": True}],
+        }
+        with patch(
+            "portfolio_suites.waves.AccessibilitySourceAdapter.execute_wcag_331_migration_gate",
+            return_value=failing_receipt,
+        ):
+            with patch("portfolio_suites.waves._record_evidence") as mock_record:
+                mock_record.return_value = None
+                result = WaveRunner.run_wave("accessibility", "A2", write_evidence=True)
+                self.assertFalse(result.passed)
+                # When passed is False, _record_evidence is invoked with passed=False and writes nothing
+                mock_record.assert_called_once_with(
+                    "accessibility",
+                    "A2-WCAG-331-EVIDENCE.json",
+                    failing_receipt,
+                    True,
+                    False,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
