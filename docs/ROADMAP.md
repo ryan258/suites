@@ -6,7 +6,20 @@ The `/Users/ryanjohnson/Projects/suites` control plane governs portfolio migrati
 
 - **Completed Foundation & Milestones**: 5/43 waves verified (1 runtime recovery `A2`, 4 analysis milestones `A1`, `A3`, `O2`, `B2`). Detailed logs and completed foundations are recorded in [CHANGELOG.md](CHANGELOG.md).
 - **Remaining Work**: 38 migration waves across 8 suites requiring authentic donor-backed implementation, runtime execution, and parity verification.
-- **Current Promotion Target**: 0/58 monitored source repositories drifted; `allys-tools` clean at `f2b4c6e`.
+- **Current Promotion Target**: 0/58 monitored source repositories drifted on branch, HEAD, and dirty
+  count; `allys-tools` clean at `f2b4c6e`. All 58 baselines lack `status_sha256`, so working-tree
+  *content* drift is unchecked for every one of them — the zero is a narrower claim than it reads.
+
+### Machine-Checked State
+
+These figures are restated from the registry and are verified against it by
+`tests/test_docs.py`; they are scheduling and inventory metrics, not the recovery score.
+
+- **70 Top-level projects** dispositioned across 8 suite boundaries and independent/archive containers.
+- **43 Migration wave specifications** defined; wave milestone progress is 5/43.
+- **38/43 source-backed prototype checks** passing. A prototype check proves only the concept its
+  runner exercised; none of them counts as recovered functionality.
+- **6 Shared contracts implemented**: `A11yFinding`, `BrandPackage`, `ExperimentRun`, `InvestigationRecord`, `ProductionJob`, `SourceRecord`.
 
 ---
 
