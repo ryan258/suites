@@ -90,7 +90,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --full
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record --full
 
 # Run the suite engines directly (Toolbench surface)
-PYTHONPATH=src python3 -m portfolio_suites engine                       # list all 46 actions
+PYTHONPATH=src python3 -m portfolio_suites engine                       # list all 45 actions
 PYTHONPATH=src python3 -m portfolio_suites engine accessibility          # list one suite's actions
 PYTHONPATH=src python3 -m portfolio_suites engine accessibility audit_html_snippet \
   --args '{"html_content": "<img src=hero.png>"}'

@@ -25,6 +25,18 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 
 ---
 
+## 2026-08-21 — Engine Action Chaining across CLI, Server, and Web Dashboard
+
+Added the engine action chaining framework (`portfolio_suites.chains`), enabling sequential execution where earlier action outputs feed into subsequent action arguments via `{"$from": <step_index>}` references with optional dotted or indexed `path` resolution:
+
+- **Chains Engine (`chains.py`)**: Resolves step references, handles topological validation, checks forward-reference bounds, and extracts nested path properties across heterogeneous engine outputs.
+- **CLI Support**: Added `suites chain <chain.json>` (and `--quiet` mode) to load, validate, and execute chain workflows from file or stdin.
+- **Server API**: Added `POST /api/chain` endpoint to execute multi-step chains and return step-by-step traces with latency and result payloads.
+- **Toolbench UI Integration**: Added interactive chain construction to the web dashboard (`app.js`, `index.html`) — clicking **use** on any tray item injects a `$from` reference into pending tool arguments, replaying the complete reproducible chain server-side. Added **Copy Chain JSON** button for exporting tray workflows to standalone replayable files.
+- **Test Coverage**: Added unit tests in `tests/test_engine_actions.py` covering multi-step data flow, list path extraction, cross-suite provenance survival, forward-reference rejection, and malformed path error handling.
+
+---
+
 ## 2026-08-21 — Source Binding for the Twenty-One Unintegrated Waves
 
 Every wave that was still `specified` — `M1`–`M5`, `D1`–`D5`, `R1`–`R5`, `G1`–`G5`, and `A6` — now
