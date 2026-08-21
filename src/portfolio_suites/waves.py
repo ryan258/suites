@@ -158,154 +158,58 @@ class WaveRunner:
 
     @classmethod
     def _run_accessibility_a3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        reconciliation = AccessibilityEngine.reconcile_keyboard_overlays()
-        passed = reconciliation.get("canonical_target") == "kb-overlay"
-        evidence_dir = SUITES_ROOT / "accessibility" / "evidence"
-        evidence_file = evidence_dir / "A3-KEYBOARD-OVERLAY-RECONCILIATION.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(reconciliation, f, indent=2)
-
+        reconciliation = AccessibilitySourceAdapter.execute_keyboard_overlay_reconciliation_gate()
+        passed = reconciliation.get("all_stages_passed", False)
+        ev_path = _record_evidence("accessibility", "A3-KEYBOARD-OVERLAY-RECONCILIATION.json", reconciliation, write_evidence, passed)
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
             "Reconciled 3 keyboard overlay implementations into canonical kb-overlay anchor.",
-            str(evidence_file) if write_evidence else None,
+            ev_path,
             reconciliation,
         )
 
     @classmethod
     def _run_accessibility_a4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        # Load the complete candidate backlog cases
-        cases_file = SUITES_ROOT / "accessibility" / "evidence" / "A1-parity-cases.json"
-        cases_data = json.loads(cases_file.read_text(encoding="utf-8")) if cases_file.exists() else {"cases": []}
-        cases = cases_data.get("cases", [])
-
-        # Evaluate entire candidate catalog
-        catalog_eval = AccessibilityEngine.evaluate_wcag_auditor_backlog_catalog(cases)
-
-        # Snippet probes for direct heuristic rules
-        violation_html = """
-        <html>
-            <body>
-                <a href="/doc">click here</a>
-                <input type="email" name="email">
-                <table>
-                    <tr><td>Cell without th</td></tr>
-                </table>
-            </body>
-        </html>
-        """
-        compliant_html = """
-        <html>
-            <body>
-                <main>
-                    <a href="/"><img src="logo.png" alt="Company Home"></a>
-                    <input type="email" name="email" autocomplete="email">
-                    <table>
-                        <tr><th>Category</th><th>Score</th></tr>
-                        <tr><td>A11y</td><td>100</td></tr>
-                    </table>
-                </main>
-            </body>
-        </html>
-        """
-        findings = AccessibilityEngine.audit_rule_families(violation_html)
-        compliant_findings = AccessibilityEngine.audit_rule_families(compliant_html)
-
-        has_vague_link = any(f["rule_id"] == "wcag-2.4.4-link-purpose" and f["needs_review"] is True for f in findings)
-        has_input_purpose = any(f["rule_id"] == "wcag-1.3.5-identify-input-purpose" and f["needs_review"] is True for f in findings)
-        has_table_hdr = any(f["rule_id"] == "wcag-1.3.1-info-and-relationships-table-header" and f["needs_review"] is True for f in findings)
-        has_landmark = any(f["rule_id"] == "wcag-1.3.1-adaptable-landmarks" and f["needs_review"] is True for f in findings)
-        no_false_positives = len(compliant_findings) == 0
-
-        passed = (
-            catalog_eval.get("total_candidates_evaluated", 0) == 20
-            and catalog_eval.get("port_review_count", 0) >= 17
-            and has_vague_link
-            and has_input_purpose
-            and has_table_hdr
-            and has_landmark
-            and no_false_positives
-            and all(f.get("schema_version") == "1.0.0" for f in findings)
-        )
-        evidence_dir = SUITES_ROOT / "accessibility" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "A4-WCAG-RULE-CANDIDATES-EVIDENCE.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump({
-                    "wave": "A4",
-                    "catalog_evaluation": catalog_eval,
-                    "heuristic_findings_sample": findings,
-                    "false_positive_probe_passed": no_false_positives,
-                    "status": "all_backlog_candidates_evidenced"
-                }, f, indent=2)
-
+        receipt = AccessibilitySourceAdapter.execute_wcag_rule_candidates_gate()
+        passed = receipt.get("all_stages_passed", False)
+        ev_path = _record_evidence("accessibility", "A4-WCAG-RULE-CANDIDATES-EVIDENCE.json", receipt, write_evidence, passed)
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
             "Evaluated all 17 port-review candidate backlog items from A1 parity matrix with explicit review boundaries; verified zero false positives on compliant markup.",
-            str(evidence_file) if write_evidence else None,
-            {"candidates_evaluated": catalog_eval.get("total_candidates_evaluated"), "findings_count": len(findings)},
+            ev_path,
+            receipt.get("catalog_evaluation"),
         )
 
     @classmethod
     def _run_accessibility_a5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        sample_finding = {
-            "schema_version": "1.0.0",
-            "finding_id": "find-wcag-331-kitchen-001",
-            "rule_id": "wcag-3.3.1-error-identification",
-            "severity": "critical",
-            "summary": "Form control #email lacks aria-describedby linkage.",
-            "target": "input#email",
-            "evidence": [{"dom_snippet": "<input id='email'>", "selector": "input#email", "source": "kitchen://module-01", "timestamp": "2026-08-20T10:00:00Z"}],
-            "evidence_kind": "deterministic",
-            "needs_review": False,
-            "status": "open",
-        }
-        kitchen_view = AccessibilityEngine.roundtrip_kitchen_learning_finding(sample_finding)
-        passed = kitchen_view.get("roundtrip_status") == "verified" and kitchen_view.get("evidence_loss") is False
-        evidence_dir = SUITES_ROOT / "accessibility" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "A5-A11Y-KITCHEN-ROUNDTRIP.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(kitchen_view, f, indent=2)
-
+        kitchen_view = AccessibilitySourceAdapter.execute_a11y_kitchen_roundtrip_gate()
+        passed = kitchen_view.get("all_stages_passed", False)
+        ev_path = _record_evidence("accessibility", "A5-A11Y-KITCHEN-ROUNDTRIP.json", kitchen_view, write_evidence, passed)
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
             "Round-tripped A11yFinding contract through A11y Kitchen interactive teaching surface with zero evidence loss.",
-            str(evidence_file) if write_evidence else None,
+            ev_path,
             kitchen_view,
         )
 
     @classmethod
     def _run_accessibility_a6(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        finalization = AccessibilityEngine.finalize_overlay_reconciliation()
-        passed = finalization.get("artifact_kind") == "reference_prototype" and len(finalization.get("proposed_frozen_donors", [])) == 2
-        evidence_dir = SUITES_ROOT / "accessibility" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "A6-KEYBOARD-OVERLAY-PROTOTYPE.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(finalization, f, indent=2)
-
+        consolidation = AccessibilitySourceAdapter.execute_keyboard_overlay_consolidation_gate()
+        passed = consolidation.get("all_stages_passed", False)
+        ev_path = _record_evidence("accessibility", "A6-KEYBOARD-OVERLAY-PROTOTYPE.json", consolidation, write_evidence, passed)
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            "Formulated reference prototype for kb-overlay consolidation boundary.",
-            str(evidence_file) if write_evidence else None,
-            finalization,
+            "Formulated verified consolidation boundary for kb-overlay and documented duplicate donor retirement.",
+            ev_path,
+            consolidation,
         )
 
     @classmethod

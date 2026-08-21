@@ -30,10 +30,11 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(len(results), 43)
 
         verified = [r for r in results if r.passed]
-        self.assertIn(len(verified), {1, 2})
-        self.assertEqual(verified[0].suite_id, "accessibility")
-        self.assertEqual(verified[0].wave_id, "A1")
-        self.assertEqual(verified[0].execution_kind, "verified_analysis")
+        self.assertIn(len(verified), {4, 5})
+        a1 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A1")
+        self.assertEqual(a1.execution_kind, "verified_analysis")
+        self.assertTrue(a1.passed)
+
         a2 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A2")
         self.assertIn(a2.execution_kind, {"verified_runtime_recovery", "unverifiable_environment"})
         if a2.execution_kind == "verified_runtime_recovery":
@@ -41,26 +42,36 @@ class WaveTests(unittest.TestCase):
         else:
             self.assertFalse(a2.passed)
 
+        a3 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A3")
+        self.assertEqual(a3.execution_kind, "verified_analysis")
+        self.assertTrue(a3.passed)
+
+        a4 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A4")
+        self.assertEqual(a4.execution_kind, "verified_analysis")
+        self.assertTrue(a4.passed)
+
+        a5 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A5")
+        self.assertEqual(a5.execution_kind, "verified_analysis")
+        self.assertTrue(a5.passed)
+
         prototypes = [r for r in results if r.execution_kind == "prototype_check"]
-        self.assertEqual(len(prototypes), 41)
+        self.assertEqual(len(prototypes), 38)
         for r in prototypes:
             self.assertTrue(r.prototype_passed, f"Prototype check for {r.suite_id}/{r.wave_id} failed: {r.message}")
 
         self.assertFalse(any(r.execution_kind == "unintegrated_specification" for r in results))
         self.assertFalse(any(r.execution_kind == "error" for r in results))
 
-        # The 41 prototypes must not be reported as passed migration gates.
         unverified = [r for r in results if not r.passed]
-        self.assertIn(len(unverified), {41, 42})
+        self.assertIn(len(unverified), {38, 39})
 
     def test_run_individual_waves(self):
-        # A1 is verified migration
+        # A1, A3, A4, A5 are verified analysis milestones; A2 is runtime recovery
         a1 = WaveRunner.run_wave("accessibility", "A1", write_evidence=False)
         self.assertTrue(a1.passed)
         self.assertEqual(a1.execution_kind, "verified_analysis")
         self.assertIsNotNone(a1.evidence_path)
 
-        # A2 passes full multi-stage runtime gates with genuine donor parity evaluation
         a2 = WaveRunner.run_wave("accessibility", "A2", write_evidence=False)
         if a2.execution_kind == "verified_runtime_recovery":
             self.assertTrue(a2.passed)
@@ -74,12 +85,25 @@ class WaveTests(unittest.TestCase):
             self.assertFalse(a2.passed)
             self.assertTrue(a2.data.get("environment_blocked"))
 
-        # Prototypes pass prototype check but do not report passed migration acceptance
         a3 = WaveRunner.run_wave("accessibility", "A3", write_evidence=False)
-        self.assertFalse(a3.passed)
-        self.assertTrue(a3.prototype_passed)
-        self.assertEqual(a3.execution_kind, "prototype_check")
+        self.assertTrue(a3.passed)
+        self.assertEqual(a3.execution_kind, "verified_analysis")
 
+        a4 = WaveRunner.run_wave("accessibility", "A4", write_evidence=False)
+        self.assertTrue(a4.passed)
+        self.assertEqual(a4.execution_kind, "verified_analysis")
+
+        a5 = WaveRunner.run_wave("accessibility", "A5", write_evidence=False)
+        self.assertTrue(a5.passed)
+        self.assertEqual(a5.execution_kind, "verified_analysis")
+
+        # A6 remains a prototype until owner convergence approval is granted
+        a6 = WaveRunner.run_wave("accessibility", "A6", write_evidence=False)
+        self.assertFalse(a6.passed)
+        self.assertTrue(a6.prototype_passed)
+        self.assertEqual(a6.execution_kind, "prototype_check")
+
+        # Remaining suite prototypes pass prototype check but do not report passed migration acceptance
         o1 = WaveRunner.run_wave("operator-os", "O1", write_evidence=False)
         self.assertFalse(o1.passed)
         self.assertTrue(o1.prototype_passed)

@@ -95,6 +95,39 @@ class AccessibilityAdapterTests(unittest.TestCase):
         self.assertFalse(mismatch["donor_flagged"])
         self.assertFalse(mismatch["matches"])
 
+    def test_keyboard_overlay_reconciliation_gate(self):
+        rec = AccessibilitySourceAdapter.execute_keyboard_overlay_reconciliation_gate()
+        self.assertTrue(rec["all_stages_passed"])
+        self.assertEqual(rec["canonical_target"], "kb-overlay")
+        self.assertIn("kb-overlay", rec["matrix"])
+        self.assertIn("keyboard-nav-overlay", rec["matrix"])
+        self.assertIn("keyboard-nav-overlay-94bf7e", rec["matrix"])
+        self.assertEqual(rec["matrix"]["kb-overlay"]["active_status"], "retained_canonical")
+        self.assertGreaterEqual(len(rec["matrix"]["kb-overlay"]["features"]), 8)
+
+    def test_wcag_rule_candidates_gate(self):
+        receipt = AccessibilitySourceAdapter.execute_wcag_rule_candidates_gate()
+        self.assertTrue(receipt["all_stages_passed"])
+        self.assertEqual(receipt["wave"], "A4")
+        self.assertEqual(receipt["catalog_evaluation"]["total_candidates_evaluated"], 20)
+        self.assertEqual(receipt["catalog_evaluation"]["status"], "all_backlog_candidates_evidenced")
+
+    def test_a11y_kitchen_roundtrip_gate(self):
+        kitchen = AccessibilitySourceAdapter.execute_a11y_kitchen_roundtrip_gate()
+        self.assertTrue(kitchen["all_stages_passed"])
+        self.assertEqual(kitchen["roundtrip_status"], "verified")
+        self.assertFalse(kitchen["evidence_loss"])
+        self.assertIn("advocate", kitchen["modes"])
+        self.assertIn("builder", kitchen["modes"])
+        self.assertIn("presenter", kitchen["modes"])
+
+    def test_keyboard_overlay_consolidation_gate(self):
+        cons = AccessibilitySourceAdapter.execute_keyboard_overlay_consolidation_gate()
+        self.assertTrue(cons["all_stages_passed"])
+        self.assertEqual(cons["proposed_canonical_anchor"], "kb-overlay")
+        self.assertEqual(len(cons["proposed_frozen_donors"]), 2)
+        self.assertTrue(cons["migration_acceptance_verified"])
+
 
 if __name__ == "__main__":
     unittest.main()
