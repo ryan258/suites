@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime
-from pathlib import Path
 from typing import Any
 
 from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract

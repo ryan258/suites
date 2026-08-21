@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from urllib.parse import urlparse
 
 
-SUITES_ROOT = Path(__file__).resolve().parents[2]
+SUITES_ROOT = Path(os.environ["SUITES_ROOT"]).resolve() if "SUITES_ROOT" in os.environ else Path(__file__).resolve().parents[2]
 DEFAULT_ENV_PATH = SUITES_ROOT / ".env"
 DEFAULT_MODEL = "openrouter/auto"
 

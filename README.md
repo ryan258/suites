@@ -78,7 +78,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record
 # Launch the zero-dependency local web dashboard
 PYTHONPATH=src python3 -m portfolio_suites serve --port 8383
 
-# Run complete test suite (57 tests)
+# Run complete test suite (69 tests)
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 

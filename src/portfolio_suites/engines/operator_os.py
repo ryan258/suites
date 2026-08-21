@@ -12,7 +12,8 @@ import os
 from pathlib import Path
 import re
 from typing import Any
-from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
+from ..contracts import SCHEMA_VERSION, validate_contract
+from ..registry import SUITES_ROOT
 
 
 class OperatorOSEngine:
@@ -235,7 +236,7 @@ fenced_from_reingestion: true
             scanned_bytes = 0
             findings: list[str] = []
             secret_pattern = re.compile(
-                r'(?:PRIVATE KEY|SECRET_KEY|API_KEY|PASSWORD|OPENROUTER_API_KEY)\s*[:=]\s*["\']?[A-Za-z0-9_\-\.]{12,}',
+                r'(?:PRIVATE KEY|SECRET_KEY|API_KEY|PASSWORD|OPENROUTER_API_KEY)[ \t]*[:=][ \t]*["\']?[A-Za-z0-9_\-\.]{12,}',
                 re.IGNORECASE,
             )
 
@@ -244,15 +245,11 @@ fenced_from_reingestion: true
                 candidate_files.append(target_p)
             else:
                 for root, dirs, files in os.walk(target_p):
-                    # Skip .git and binary dirs
-                    dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "node_modules", ".venv")]
+                    # Skip .git, binary, and virtualenv dirs
+                    dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "node_modules", ".venv", "dist", "build")]
                     for f in files:
                         if f.endswith((".py", ".json", ".md", ".env.example", ".txt", ".yml", ".yaml")):
                             candidate_files.append(Path(root) / f)
-                            if len(candidate_files) >= 50:
-                                break
-                    if len(candidate_files) >= 50:
-                        break
 
             for cf in candidate_files:
                 try:
@@ -279,7 +276,8 @@ fenced_from_reingestion: true
             }
         elif action_name == "backup_data":
             target_vault = parameters.get("vault", "default-vault")
-            vault_src = Path(parameters.get("path", "operator-os/evidence"))
+            raw_path = Path(parameters.get("path", "operator-os/evidence"))
+            vault_src = raw_path if raw_path.is_absolute() else (SUITES_ROOT / raw_path).resolve()
             dry_run = parameters.get("dry_run", True)
             if not vault_src.exists():
                 return {
@@ -321,7 +319,7 @@ fenced_from_reingestion: true
 
             manifest_file_path = ""
             if not dry_run:
-                snapshot_dir = Path("operator-os/evidence/snapshots")
+                snapshot_dir = SUITES_ROOT / "operator-os" / "evidence" / "snapshots"
                 snapshot_dir.mkdir(parents=True, exist_ok=True)
                 manifest_file = snapshot_dir / f"{snap_id}.json"
                 manifest_file.write_text(json.dumps(manifest_content, indent=2), encoding="utf-8")

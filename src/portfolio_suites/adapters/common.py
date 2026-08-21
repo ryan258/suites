@@ -9,7 +9,7 @@ from typing import Any
 
 from ..contracts import compute_sha256
 
-SUITES_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+SUITES_ROOT = Path(os.environ["SUITES_ROOT"]).resolve() if "SUITES_ROOT" in os.environ else Path(__file__).resolve().parent.parent.parent.parent
 
 
 def get_repo_path(repo_name: str, env_var: str | None = None) -> Path:
@@ -29,10 +29,10 @@ def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) 
     if not (repo_dir / ".git").exists():
         return {"branch": "unknown", "head": "unknown", "status": "no_git_dir"}
     try:
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_dir).decode().strip()
-        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir).decode().strip()
-        status_raw = subprocess.check_output(["git", "status", "--porcelain"], cwd=repo_dir).decode().strip()
-        diff_raw = subprocess.check_output(["git", "diff", "HEAD"], cwd=repo_dir)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_dir, timeout=5).decode().strip()
+        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir, timeout=5).decode().strip()
+        status_raw = subprocess.check_output(["git", "status", "--porcelain"], cwd=repo_dir, timeout=5).decode().strip()
+        diff_raw = subprocess.check_output(["git", "diff", "HEAD"], cwd=repo_dir, timeout=5)
 
         dirty_lines = [line for line in status_raw.splitlines() if line.strip()]
         is_dirty = len(dirty_lines) > 0

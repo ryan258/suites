@@ -107,6 +107,23 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(chk_dry_run["execution_result"]["manifest_file"], "")
         self.assertTrue(chk_dry_run["execution_result"]["snapshot_id"].startswith("snap-"))
 
+        # Test audit_secrets scans all eligible files without silent 50-file truncation
+        chk_secrets_root = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "audit_secrets", {"path": "."}, operator_approved=True
+        )
+        self.assertEqual(chk_secrets_root["status"], "success")
+        self.assertGreater(chk_secrets_root["execution_result"]["scanned_files_count"], 50)
+        # Root contains .env which has an API key, so findings must be detected
+        self.assertGreaterEqual(chk_secrets_root["execution_result"]["findings_count"], 1)
+        self.assertFalse(chk_secrets_root["execution_result"]["clean"])
+
+        # Scanning clean subtree should report clean
+        chk_secrets_clean = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "audit_secrets", {"path": "src"}, operator_approved=True
+        )
+        self.assertEqual(chk_secrets_clean["status"], "success")
+        self.assertTrue(chk_secrets_clean["execution_result"]["clean"])
+
     def test_operator_os_adapter(self):
         o1 = OperatorOSSourceAdapter.execute_o1_source_record_observer_gate()
         self.assertEqual(o1["status"], "verified")

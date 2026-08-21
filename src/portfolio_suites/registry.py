@@ -11,7 +11,7 @@ from typing import Any
 
 from .contracts import CONTRACTS, SCHEMA_VERSION
 
-SUITES_ROOT = Path(__file__).resolve().parents[2]
+SUITES_ROOT = Path(os.environ["SUITES_ROOT"]).resolve() if "SUITES_ROOT" in os.environ else Path(__file__).resolve().parents[2]
 PROJECTS_ROOT = SUITES_ROOT.parent
 RECOVERY_STANDARD_PATH = SUITES_ROOT / "portfolio" / "recovery-standard.json"
 SUITE_DIRS = (
@@ -553,16 +553,26 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
             expected_markers = {row["path"] for row in nested_rows}
             actual_markers: set[str] = set()
             for dirpath, dirnames, filenames in os.walk(PROJECTS_ROOT):
-                if ".git" not in dirnames and ".git" not in filenames:
-                    continue
-                # ponytail: don't descend into the .git dir we just found, it's the walk's dominant cost
-                dirnames[:] = [d for d in dirnames if d != ".git"]
                 marker_parent = Path(dirpath)
-                if marker_parent == SUITES_ROOT:
-                    continue
-                parts = marker_parent.relative_to(PROJECTS_ROOT).parts
-                if 1 < len(parts) <= 5:
-                    actual_markers.add(str(marker_parent.relative_to(PROJECTS_ROOT)))
+                try:
+                    rel_parts = marker_parent.relative_to(PROJECTS_ROOT).parts
+                except ValueError:
+                    rel_parts = ()
+
+                has_git = (".git" in dirnames) or (".git" in filenames)
+
+                # Prune descendant traversal: bounded depth and excluded folders
+                if len(rel_parts) >= 5:
+                    dirnames[:] = []
+                else:
+                    dirnames[:] = [
+                        d for d in dirnames
+                        if d not in (".git", "node_modules", ".venv", "__pycache__", ".next", "dist", "build")
+                    ]
+
+                if has_git and marker_parent != SUITES_ROOT:
+                    if 1 < len(rel_parts) <= 5:
+                        actual_markers.add(str(marker_parent.relative_to(PROJECTS_ROOT)))
             for path in sorted(actual_markers - expected_markers):
                 report.errors.append(f"unreviewed nested Git marker: {path}")
             for path in sorted(expected_markers - actual_markers):
