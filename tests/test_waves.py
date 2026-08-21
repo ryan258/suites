@@ -8,6 +8,11 @@ from portfolio_suites.registry import SUITES_ROOT, evidence_errors, get_suite
 from portfolio_suites.waves import WaveRunner, _record_evidence
 
 
+def _wave(suite_id: str, wave_id: str) -> dict:
+    """The manifest wave a recorder call is addressed to."""
+    return next(w for w in get_suite(suite_id)["waves"] if w["id"] == wave_id)
+
+
 class WaveTests(unittest.TestCase):
     def test_environment_blocker_is_neither_pass_nor_product_failure(self):
         receipt = {
@@ -236,13 +241,16 @@ class WaveTests(unittest.TestCase):
                 result = WaveRunner.run_wave("accessibility", "A2", write_evidence=True, full=True)
                 self.assertFalse(result.passed)
                 # When passed is False, _record_evidence is invoked with passed=False and writes nothing
-                mock_record.assert_called_once_with(
-                    "accessibility",
-                    "A2-WCAG-331-EVIDENCE.json",
-                    failing_receipt,
-                    True,
-                    False,
+                mock_record.assert_called_once()
+                recorded_wave, recorded_receipt, requested, gate_passed = mock_record.call_args.args
+                # The recorder is addressed by the wave itself; the path is the manifest's.
+                self.assertEqual(recorded_wave["id"], "A2")
+                self.assertEqual(
+                    recorded_wave["evidence"], "accessibility/evidence/A2-WCAG-331-EVIDENCE.json"
                 )
+                self.assertEqual(recorded_receipt, failing_receipt)
+                self.assertTrue(requested)
+                self.assertFalse(gate_passed)
 
     def test_a2_record_requires_explicit_full_depth(self):
         with patch(
@@ -261,8 +269,7 @@ class WaveTests(unittest.TestCase):
 
     def test_unserializable_candidate_is_rejected_without_raising(self):
         result = _record_evidence(
-            "production-house",
-            "P2-FORMATTER-JOB-RECEIPT.json",
+            _wave("production-house", "P2"),
             {"job": object()},
             write_evidence=True,
             passed=True,
@@ -299,8 +306,7 @@ class WaveTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with patch("portfolio_suites.waves.SUITES_ROOT", Path(tmp)):
                 result = _record_evidence(
-                    "production-house",
-                    "P2-FORMATTER-JOB-RECEIPT.json",
+                    _wave("production-house", "P2"),
                     invalid_p2,
                     write_evidence=True,
                     passed=True,

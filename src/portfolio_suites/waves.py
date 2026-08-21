@@ -21,7 +21,13 @@ from .engines.brand_publishing import BrandPublishingEngine
 from .engines.discovery_decision import DiscoveryDecisionEngine
 from .engines.game_design import GameDesignEngine
 from .engines.model_behavior import ModelBehaviorEngine
-from .registry import SUITES_ROOT, evidence_errors, get_suite, load_suites
+from .registry import (
+    SUITES_ROOT,
+    evidence_errors,
+    evidence_ineligibility_reason,
+    get_suite,
+    load_suites,
+)
 
 
 @dataclass
@@ -34,6 +40,9 @@ class WaveRunResult:
     data: dict[str, Any] | None = None
     execution_kind: str = "unintegrated_specification"
     prototype_passed: bool = False
+    # Why nothing was written when --record was asked for. None when not asked, or when the
+    # write succeeded. "Not written" has several distinct causes and they must not be conflated.
+    record_note: str | None = None
 
 
 
@@ -63,24 +72,38 @@ def _skipped_stages(data: Any) -> list[str]:
     return sorted(name for name, stage in stages.items() if isinstance(stage, dict) and stage.get("skipped"))
 
 
-def _record_evidence(suite_dir: str, filename: str, data: Any, write_evidence: bool, passed: bool) -> str | None:
+def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, passed: bool) -> str | None:
     """Record evidence ONLY when requested, the gate passed, AND the candidate validates.
 
-    Writes a temp sibling, validates it through the same checks `suites validate` runs, and
-    only then atomically replaces the retained receipt. A rejected candidate leaves the prior
-    receipt byte-for-byte unchanged and returns None.
+    The receipt path comes from the wave manifest's own `evidence` field, so a runner cannot
+    write to a path the registry does not already know about.
+
+    Writes a temp sibling, runs `evidence_errors` against it, and only then atomically
+    replaces the retained receipt. A rejected candidate leaves the prior receipt
+    byte-for-byte unchanged and returns None.
+
+    This is stricter than `suites validate`, which only inspects completed waves: a wave
+    with no declared recovery claim is refused outright, because there would be no contract
+    to check the bytes against. Callers wanting to report *why* nothing was written should
+    consult `evidence_ineligibility_reason` rather than inferring it from the None.
     """
     if not (write_evidence and passed):
         return None
 
-    rel_path = f"{suite_dir}/evidence/{filename}"
+    rel_path = wave.get("evidence")
+    if not rel_path or "/evidence/" not in rel_path:
+        return None
     try:
-        wave = _wave_for_evidence(rel_path)
+        # Exactly one wave may own a receipt path, and it must be this one.
+        owner = _wave_for_evidence(rel_path)
     except (OSError, ValueError, KeyError):
         return None
-    if wave is None:
+    if owner is None or owner.get("id") != wave.get("id"):
         return None
 
+    suite_dir, _, filename = rel_path.partition("/evidence/")
+    if "/" in filename or not filename:
+        return None
     evidence_dir = SUITES_ROOT / suite_dir / "evidence"
     evidence_file = evidence_dir / filename
     try:
@@ -120,20 +143,29 @@ class WaveRunner:
     """Execute wave verification gates and generate structured evidence files."""
 
     @classmethod
-    def _record_evidence(
+    def _settle(
         cls,
-        evidence_file: Path,
-        data: Any,
+        suite: dict[str, Any],
+        wave_id: str,
         write_evidence: bool,
         passed: bool,
-    ) -> str | None:
-        """Path-taking recorder used by every runner; its actual return is authoritative."""
-        return _record_evidence(
-            evidence_file.parent.parent.name,
-            evidence_file.name,
-            data,
-            write_evidence,
+        receipt: Any,
+        message: str,
+        data: Any = None,
+    ) -> WaveRunResult:
+        """Record `receipt` against the wave's declared evidence path and build its result.
+
+        Every runner ends this way: offer the receipt, keep whatever the recorder actually
+        returned, and report `data` (often a narrower slice of the receipt) to the caller.
+        """
+        wave = next((w for w in suite.get("waves", []) if w.get("id") == wave_id), None) or {}
+        return WaveRunResult(
+            suite["id"],
+            wave_id,
             passed,
+            message,
+            _record_evidence(wave, receipt, write_evidence, passed),
+            data,
         )
 
     @classmethod
@@ -187,6 +219,15 @@ class WaveRunner:
         # A completed analysis and a recovered runtime are distinct verified claims.
         is_migration_verified = exec_kind in {"verified_analysis", "verified_runtime_recovery"} and raw_res.passed
         prototype_passed = exec_kind == "prototype_check" and raw_res.passed
+        gate_passed = raw_res.passed or prototype_passed
+
+        record_note: str | None = None
+        if write_evidence and raw_res.evidence_path is None:
+            record_note = (
+                evidence_ineligibility_reason(wave_spec)
+                or ("gate did not pass, so no receipt was offered" if not gate_passed
+                    else "candidate receipt failed validation; prior receipt retained")
+            )
 
         return WaveRunResult(
             suite_id=raw_res.suite_id,
@@ -197,6 +238,7 @@ class WaveRunner:
             prototype_passed=prototype_passed,
             evidence_path=raw_res.evidence_path,
             data=raw_res.data,
+            record_note=record_note,
         )
 
     @classmethod
@@ -218,8 +260,10 @@ class WaveRunner:
 
     @classmethod
     def _run_accessibility_a1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        evidence_file = SUITES_ROOT / "accessibility" / "evidence" / "A1-WCAG-AUDITOR-PARITY.md"
+        # A1 reads hand-authored prose rather than recording, but it still reads the path the
+        # manifest declares, so the runner cannot drift from the registry.
         wave = next(w for w in suite.get("waves", []) if w.get("id") == wave_id)
+        evidence_file = SUITES_ROOT / wave["evidence"]
         valid = False
         if evidence_file.is_file():
             try:
@@ -251,8 +295,6 @@ class WaveRunner:
         full_stage = receipt.get("stages", {}).get("full_suite_and_typecheck_gate", {})
         focused_tests = receipt.get("stages", {}).get("focused_parity_gate", {}).get("passed_tests", 0)
 
-        ev_path = _record_evidence("accessibility", "A2-WCAG-331-EVIDENCE.json", receipt, write_evidence, passed)
-
         depth_note = (
             f"{focused_tests} focused tests (full suite skipped for fast check)"
             if full_stage.get("skipped")
@@ -274,12 +316,13 @@ class WaveRunner:
                 "CURRENT RUNTIME PARITY VERIFIED. Executed authentic WCAG Auditor donor and Ally "
                 f"destination runtimes ({depth_note}); generated {len(findings)} valid A11yFindings."
             )
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            receipt,
             message,
-            ev_path,
             receipt,
         )
 
@@ -287,13 +330,13 @@ class WaveRunner:
     def _run_accessibility_a3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         reconciliation = AccessibilitySourceAdapter.execute_keyboard_overlay_reconciliation_gate()
         passed = reconciliation.get("all_stages_passed", False)
-        ev_path = _record_evidence("accessibility", "A3-KEYBOARD-OVERLAY-RECONCILIATION.json", reconciliation, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            reconciliation,
             "Reconciled 3 keyboard overlay implementations into canonical kb-overlay anchor.",
-            ev_path,
             reconciliation,
         )
 
@@ -301,13 +344,13 @@ class WaveRunner:
     def _run_accessibility_a4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         receipt = AccessibilitySourceAdapter.execute_wcag_rule_candidates_gate()
         passed = receipt.get("all_stages_passed", False)
-        ev_path = _record_evidence("accessibility", "A4-WCAG-RULE-CANDIDATES-EVIDENCE.json", receipt, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            receipt,
             "Classified 20 committed backlog cases (18 port-review, 1 port-narrow, 1 port-options) and ran one suite-local compliant-markup smoke probe.",
-            ev_path,
             receipt.get("catalog_evaluation"),
         )
 
@@ -315,13 +358,13 @@ class WaveRunner:
     def _run_accessibility_a5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         kitchen_view = AccessibilitySourceAdapter.execute_a11y_kitchen_roundtrip_gate()
         passed = kitchen_view.get("all_stages_passed", False)
-        ev_path = _record_evidence("accessibility", "A5-A11Y-KITCHEN-ROUNDTRIP.json", kitchen_view, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            kitchen_view,
             "Round-tripped A11yFinding contract through A11y Kitchen interactive teaching surface with zero evidence loss.",
-            ev_path,
             kitchen_view,
         )
 
@@ -329,13 +372,13 @@ class WaveRunner:
     def _run_accessibility_a6(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         consolidation = AccessibilitySourceAdapter.execute_keyboard_overlay_consolidation_gate()
         passed = consolidation.get("all_stages_passed", False)
-        ev_path = _record_evidence("accessibility", "A6-KEYBOARD-OVERLAY-PROTOTYPE.json", consolidation, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            consolidation,
             "Formulated verified consolidation boundary for kb-overlay and documented duplicate donor retirement.",
-            ev_path,
             consolidation,
         )
 
@@ -347,20 +390,13 @@ class WaveRunner:
             and result.get("status") == "verified"
             and result.get("source_record", {}).get("schema_version") == "1.0.0"
         )
-        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O1-SOURCE-RECORD-OBSERVER-PROJECTION.md"
-        ev_path = cls._record_evidence(
-            evidence_file,
-            result.get("observer_projection_preview", ""),
+        return cls._settle(
+            suite,
+            wave_id,
             write_evidence,
             passed,
-        )
-
-        return WaveRunResult(
-            suite["id"],
-            wave_id,
-            passed,
+            result.get("observer_projection_preview", ""),
             "Captured content-addressed SourceRecord and projected fenced Observer note with mutation protection.",
-            ev_path,
             result.get("source_record"),
         )
 
@@ -372,15 +408,13 @@ class WaveRunner:
             and result.get("inventory_catalog_count", 0) >= 5
             and result.get("ryos_core_files_count", 0) >= 3
         )
-        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O2-RYOS-INVENTORY.json"
-        ev_path = cls._record_evidence(evidence_file, result, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            result,
             f"Inventoried {result.get('ryos_core_files_count', 0)} Ryos core files and {result.get('master_plan_files_count', 0)} master-plan specs against dotfiles/Observer.",
-            ev_path,
             {"inventory_catalog_count": result.get("inventory_catalog_count")},
         )
 
@@ -392,15 +426,13 @@ class WaveRunner:
             and receipt.get("requires_human_approval") is True
             and receipt.get("dry_run_only") is True
         )
-        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O3-JARVIS-ACTION-RECEIPT.json"
-        ev_path = cls._record_evidence(evidence_file, receipt, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            receipt,
             "Verified JARVIS action preview receipt with human approval boundary and zero duplicate state.",
-            ev_path,
             receipt,
         )
 
@@ -413,15 +445,13 @@ class WaveRunner:
             and result.get("all_sources_cited") is True
             and result.get("batch_size", 0) >= 3
         )
-        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O4-PKOS-DAILY-INTAKE-STREAM.json"
-        ev_path = cls._record_evidence(evidence_file, result, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            result,
             f"Widened PKOS intake stream across {result.get('batch_size', 0)} sources with verified Observer projection fences.",
-            ev_path,
             {"batch_size": result.get("batch_size")},
         )
 
@@ -433,15 +463,13 @@ class WaveRunner:
             and result.get("duplicate_decisions_closed") is True
             and result.get("port_candidates_count", 0) >= 2
         )
-        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O5-RYOS-DISPOSITION-REPORT.json"
-        ev_path = cls._record_evidence(evidence_file, result, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            result,
             "Reconciled Ryos and master-plan inventory: port targets assigned to dotfiles and PKos anchors confirmed.",
-            ev_path,
             {"port_candidates_count": result.get("port_candidates_count")},
         )
 
@@ -452,15 +480,13 @@ class WaveRunner:
             result.get("status") == "checkpoint_lifecycle_verified"
             and result.get("multi_action_lifecycle_passed") is True
         )
-        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O6-JARVIS-CHECKPOINT-RECEIPT.json"
-        ev_path = cls._record_evidence(evidence_file, result, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            result,
             "Verified multi-action JARVIS checkpoint lifecycle with strict fail-closed boundary on unapproved execution.",
-            ev_path,
             {"lifecycle_passed": passed},
         )
 
@@ -477,15 +503,13 @@ class WaveRunner:
             and receipt.get("live_published") is False
             and pkg.get("schema_version") == "1.0.0"
         )
-        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B1-BRAND-PACKAGE-DRY-RUN.json"
-        ev_path = cls._record_evidence(evidence_file, result, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            result,
             "Exported and validated canonical BrandPackage with dry-run mutation protection and zero live publishing side-effects.",
-            ev_path,
             result.get("publishing_receipt"),
         )
 
@@ -493,15 +517,13 @@ class WaveRunner:
     def _run_brand_publishing_b2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         result = BrandPublishingSourceAdapter.execute_b2_phase_mapping()
         passed = result.get("all_stages_passed") is True and result.get("total_phases_mapped") == 9
-        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B2-BRAND-WORKSHOP-PHASES.json"
-        ev_path = cls._record_evidence(evidence_file, result, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            result,
             "Mapped all 9 Brand Workshop low-typing intake phases (00-spark to 08-living-brand) onto Brand Maker workspace gates.",
-            ev_path,
             {"phases_count": result.get("total_phases_mapped")},
         )
 
@@ -521,15 +543,13 @@ class WaveRunner:
             and receipt.get("matched_approved_claims_count", 0) >= 1
             and receipt.get("dry_run_only") is True
         )
-        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B3-VCC-PUBLISHING-RECEIPT.json"
-        ev_path = cls._record_evidence(evidence_file, receipt, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            receipt,
             "Proved SourceRecord -> BrandPackage -> VCC review -> dry-run publishing receipt.",
-            ev_path,
             receipt,
         )
 
@@ -546,20 +566,13 @@ class WaveRunner:
             and v1.get("package_id") == "pkg-cyborg-brand-v1"
             and v2.get("package_id") == "pkg-cyborg-brand-v1"
         )
-        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B4-MULTI-CONSUMER-VERIFICATION.json"
-        ev_path = cls._record_evidence(
-            evidence_file,
-            {"consumer_1": v1, "consumer_2": v2, "status": "verified"},
+        return cls._settle(
+            suite,
+            wave_id,
             write_evidence,
             passed,
-        )
-
-        return WaveRunResult(
-            suite["id"],
-            wave_id,
-            passed,
+            {"consumer_1": v1, "consumer_2": v2, "status": "verified"},
             "Wired second BrandPackage consumer; verified version-pinning and mutation-protection boundary.",
-            ev_path,
             {"consumers_verified": 2},
         )
 
@@ -585,15 +598,13 @@ class WaveRunner:
             and res_empty.get("phases_completed") == 0
             and res_empty.get("resulting_package") is None
         )
-        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B5-BRAND-MAKER-INTAKE-STATE.json"
-        ev_path = cls._record_evidence(evidence_file, res_complete, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            res_complete,
             "Implemented 9 Brand Workshop phases into Brand Maker intake state; validated input completeness.",
-            ev_path,
             res_complete,
         )
 
@@ -622,24 +633,17 @@ class WaveRunner:
             and approved_receipt.get("brand_package_id") == "pkg-cyborg-brand-v1"
             and approved_receipt.get("source_id") == "src-manifesto-draft-001"
         )
-        evidence_file = SUITES_ROOT / "brand-publishing" / "evidence" / "B6-VCC-HUMAN-GATE-APPROVAL.json"
-        ev_path = cls._record_evidence(
-            evidence_file,
+        return cls._settle(
+            suite,
+            wave_id,
+            write_evidence,
+            passed,
             {
                 "approved_review": approved_receipt,
                 "rejected_probe_status": rejected_receipt.get("status"),
                 "unmatched_probe_status": unmatched_receipt.get("status"),
             },
-            write_evidence,
-            passed,
-        )
-
-        return WaveRunResult(
-            suite["id"],
-            wave_id,
-            passed,
             "Simulated VCC editorial review with human approval gate; verified rejection and claim validation branching.",
-            ev_path,
             approved_receipt,
         )
 
@@ -647,15 +651,13 @@ class WaveRunner:
     def _run_production_house_p1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         res = ProductionHouseSourceAdapter.execute_p1_groundwire_fingerprint()
         passed = res.get("all_stages_passed", False)
-        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P1-GROUNDWIRE-FINGERPRINT.json"
-        ev_path = cls._record_evidence(evidence_file, res, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            res,
             "Fingerprinted Groundwire episode workflow and QC outputs into ProductionJob.",
-            ev_path,
             res.get("job"),
         )
 
@@ -663,15 +665,13 @@ class WaveRunner:
     def _run_production_house_p2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         res = ProductionHouseSourceAdapter.execute_p2_formatter_job()
         passed = res.get("all_stages_passed", False)
-        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P2-FORMATTER-JOB-RECEIPT.json"
-        ev_path = cls._record_evidence(evidence_file, res, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            res,
             "Executed episode slice via formatter adapter with resumable ProductionJob state.",
-            ev_path,
             res.get("job"),
         )
 
@@ -679,15 +679,13 @@ class WaveRunner:
     def _run_production_house_p3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         res = ProductionHouseSourceAdapter.execute_p3_writers_room_handoff()
         passed = res.get("all_stages_passed", False)
-        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P3-WRITERS-ROOM-HANDOFF.json"
-        ev_path = cls._record_evidence(evidence_file, res, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            res,
             "Proved Writers Room story-state handoff via validated ProductionJob lifecycle.",
-            ev_path,
             res.get("job"),
         )
 
@@ -695,15 +693,13 @@ class WaveRunner:
     def _run_production_house_p4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         res = ProductionHouseSourceAdapter.execute_p4_documentary_pipeline()
         passed = res.get("all_stages_passed", False)
-        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P4-DOCUMENTARY-PIPELINE-JOB.json"
-        ev_path = cls._record_evidence(evidence_file, res, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            res,
             "Executed structural episode variant (investigative documentary) through unchanged ProductionJob engine.",
-            ev_path,
             res.get("job"),
         )
 
@@ -711,15 +707,13 @@ class WaveRunner:
     def _run_production_house_p5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         res = ProductionHouseSourceAdapter.execute_p5_writers_room_event_stream()
         passed = res.get("all_stages_passed", False)
-        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P5-WRITERS-ROOM-EVENT-STREAM.json"
-        ev_path = cls._record_evidence(evidence_file, res, write_evidence, passed)
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            res,
             "Mapped Writers Room story revisions into ProductionJob events; unified runtime state.",
-            ev_path,
             res.get("mapping"),
         )
 
@@ -727,16 +721,13 @@ class WaveRunner:
     def _run_model_behavior_lab_m1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         run = ModelBehaviorEngine.execute_ethics_scenario_run("run-mbl-eth-01", "anthropic", "claude-3-5-sonnet", 10)
         passed = run.get("status") == "completed" and len(run.get("iterations", [])) == 10
-        ev_path = _record_evidence(
-            "model-behavior-lab", "M1-ETHICS-EXPERIMENT-RUN.json", run, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            run,
             "Mapped ethics scenario benchmark and deterministic scoring into ExperimentRun.",
-            ev_path,
             run,
         )
 
@@ -746,16 +737,13 @@ class WaveRunner:
         run2 = ModelBehaviorEngine.execute_ethics_scenario_run("run-mbl-gemini", "google", "gemini-1-5-pro", 5)
         comp = ModelBehaviorEngine.compare_runs([run1, run2])
         passed = len(comp.get("comparisons", [])) == 2
-        ev_path = _record_evidence(
-            "model-behavior-lab", "M2-COMPARATOR-KERNEL-MATRIX.json", comp, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            comp,
             "Extracted ethics benchmark as a pack over the unified comparator kernel.",
-            ev_path,
             comp,
         )
 
@@ -775,13 +763,13 @@ class WaveRunner:
             "scorer_version": "1.0.0",
             "benchmark_run": run,
         }
-        ev_path = _record_evidence("model-behavior-lab", "M3-CHESS-ADAPTER-FIXTURE.json", adapter, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            adapter,
             "Verified legal-move chess adapter fixture with deterministic rule execution.",
-            ev_path,
             adapter,
         )
 
@@ -798,16 +786,13 @@ class WaveRunner:
             and all(it.get("passed") is True for it in iterations)
             and chess_run.get("evidence", [{}])[0].get("pass_rate") == 1.0
         )
-        ev_path = _record_evidence(
-            "model-behavior-lab", "M4-CHESS-BENCHMARK-RUN.json", chess_run, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            chess_run,
             "Extracted chess evaluation pack over comparator kernel; verified deterministic scoring.",
-            ev_path,
             chess_run,
         )
 
@@ -817,16 +802,13 @@ class WaveRunner:
         run2 = ModelBehaviorEngine.execute_chess_benchmark_run("run-chess-canon", "deterministic-oracle", "chess-rules-evaluator-v1", 5)
         corpus = ModelBehaviorEngine.build_versioned_corpus("corpus-mbl-v1", [run1, run2])
         passed = len(corpus.get("benchmarks_included", [])) == 2 and corpus.get("artifact_kind") == "reference_prototype_corpus"
-        ev_path = _record_evidence(
-            "model-behavior-lab", "M5-BENCHMARK-CORPUS-MANIFEST.json", corpus, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            corpus,
             "Defined versioned reference benchmark corpus format with deterministic oracle provenance.",
-            ev_path,
             corpus,
         )
 
@@ -840,13 +822,13 @@ class WaveRunner:
             "status": "parity_mapped",
         }
         passed = inv.get("status") == "draft" and len(parity_matrix["sif_stages"]) == 3
-        ev_path = _record_evidence("discovery-decision", "D1-SIF-FORGE-STAGE-MATRIX.json", parity_matrix, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            parity_matrix,
             "Created and verified SIF-to-Forge stage and artifact parity matrix.",
-            ev_path,
             parity_matrix,
         )
 
@@ -863,16 +845,13 @@ class WaveRunner:
             status="completed",
         )
         passed = inv.get("status") == "completed" and inv.get("budget", {}).get("used_iterations") == 1
-        ev_path = _record_evidence(
-            "discovery-decision", "D2-FORGE-REDTEAM-RECORD.json", inv, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            inv,
             "Ported bounded red-team stage behind Forge mode with budget and recovery tracking.",
-            ev_path,
             inv,
         )
 
@@ -883,16 +862,13 @@ class WaveRunner:
         src_b["source_id"] = "src-secondary-corpus"
         discovery = DiscoveryDecisionEngine.discover_across_sources(src_a, src_b, "architectural invariants")
         passed = discovery.get("novelty_score") > 0.8
-        ev_path = _record_evidence(
-            "discovery-decision", "D3-INSIGHT-EXCAVATOR-DISCOVERY.json", discovery, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            discovery,
             "Turned Insight Excavator into a cited dual-source discovery operation.",
-            ev_path,
             discovery,
         )
 
@@ -900,16 +876,13 @@ class WaveRunner:
     def _run_discovery_decision_d4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         inv = DiscoveryDecisionEngine.execute_sif_analogy_stage("inv-forge-analogy-01", "How does single-writer WAL map to distributed Raft?")
         passed = inv.get("status") == "completed" and len(inv.get("decisions", [])) >= 1
-        ev_path = _record_evidence(
-            "discovery-decision", "D4-SIF-ANALOGY-FORGE-RECORD.json", inv, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            inv,
             "Ported second SIF stage (analogy synthesis & divergent search) through Forge InvestigationRecord.",
-            ev_path,
             inv,
         )
 
@@ -919,16 +892,13 @@ class WaveRunner:
         src = generate_sample("SourceRecord")
         res = DiscoveryDecisionEngine.ingest_insight_excavator_source(inv, src, "WAL ensures ACID safety without network overhead.")
         passed = res.get("insight_excavator_runtime") == "retired_into_forge_citations" and res.get("provenance_retained") is True
-        ev_path = _record_evidence(
-            "discovery-decision", "D5-INSIGHT-EXCAVATOR-CITATION.json", res, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            res,
             "Folded Insight Excavator into Forge as cited discovery with SourceRecord provenance.",
-            ev_path,
             res,
         )
 
@@ -936,16 +906,13 @@ class WaveRunner:
     def _run_agent_reliability_r1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         scorecard = AgentReliabilityEngine.run_adversarial_harness()
         passed = scorecard.get("status") == "completed" and len(scorecard.get("iterations", [])) == 4
-        ev_path = _record_evidence(
-            "agent-reliability", "R1-ADVERSARIAL-HARNESS-SCORECARD.json", scorecard, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            scorecard,
             "Defined and ran adversarial reliability fixtures as ExperimentRuns.",
-            ev_path,
             scorecard,
         )
 
@@ -960,13 +927,13 @@ class WaveRunner:
             "confinement_checks": {"safe": is_safe, "unsafe_blocked": not is_unsafe},
             "all_passed": passed,
         }
-        ev_path = _record_evidence("agent-reliability", "R2-CROSS-HARNESS-EVAL.json", matrix, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            matrix,
             "Ran verified fixtures across Looping Box, SSSF, and Agentic Harness with raw evidence.",
-            ev_path,
             matrix,
         )
 
@@ -981,13 +948,13 @@ class WaveRunner:
             "status": "promotion_verified",
             "component_check_passed": passed,
         }
-        ev_path = _record_evidence("agent-reliability", "R3-PROMOTED-COMPONENTS.json", curriculum, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            curriculum,
             "Promoted shared reliability components to cross-cutting standard with 3 verified consumers.",
-            ev_path,
             curriculum,
         )
 
@@ -1000,13 +967,13 @@ class WaveRunner:
         ]
         audit = AgentReliabilityEngine.audit_promoted_components(candidates)
         passed = audit.get("promoted_retained_count") == 2 and audit.get("demoted_count") == 1
-        ev_path = _record_evidence("agent-reliability", "R4-PROMOTED-COMPONENTS-AUDIT.json", audit, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            audit,
             "Enforced 2-consumer craft rule: verified 2 shared components; demoted 1 single-consumer component.",
-            ev_path,
             audit,
         )
 
@@ -1018,13 +985,13 @@ class WaveRunner:
         ]
         fixtures = AgentReliabilityEngine.build_curriculum_fixtures(modules)
         passed = fixtures.get("fixtures_count") == 2 and fixtures.get("status") == "curriculum_fixtures_verified"
-        ev_path = _record_evidence("agent-reliability", "R5-CURRICULUM-FIXTURES-VERIFIED.json", fixtures, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            fixtures,
             "Mined AI Staff and prompt-chain fixtures into deterministic curriculum & skill tests.",
-            ev_path,
             fixtures,
         )
 
@@ -1035,13 +1002,13 @@ class WaveRunner:
         sim = GameDesignEngine.simulate_tucked_in_terrors(seed=42, trials=500)
         sheet = GameDesignEngine.generate_printable_balance_sheet(sim)
         passed = sim.get("status") == "completed"
-        ev_path = _record_evidence("game-design", "G1-TUCKED-IN-TERRORS-FINGERPRINT.md", sheet, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            sheet,
             "Fingerprinted Tucked in Terrors rules, seeds, metrics, and balance tolerances.",
-            ev_path,
             sim,
         )
 
@@ -1057,13 +1024,13 @@ class WaveRunner:
             "parity_with_dedicated_sim": passed,
             "statistical_delta": "<0.01",
         }
-        ev_path = _record_evidence("game-design", "G2-STORYWEAVER-PACK-PARITY.json", pack, write_evidence, passed)
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            pack,
             "Implemented game as a Storyweaver reference pack with verified statistical parity.",
-            ev_path,
             pack,
         )
 
@@ -1075,16 +1042,13 @@ class WaveRunner:
             "platform_invented": False,
         }
         passed = len(boundary["authored_games"]) > 0 and boundary["ownership"] == "independent_creative_reference"
-        ev_path = _record_evidence(
-            "game-design", "G3-AUTHORED-GAME-BOUNDARY.json", boundary, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            boundary,
             "Documented authored-game boundary and preserved creative assets.",
-            ev_path,
             boundary,
         )
 
@@ -1092,16 +1056,13 @@ class WaveRunner:
     def _run_game_design_g4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         pack = GameDesignEngine.build_text_adventure_pack("pack-storyweaver-echo-chambers", rooms_count=8)
         passed = pack.get("nodes_count") == 8 and pack.get("deterministic_graph") is True
-        ev_path = _record_evidence(
-            "game-design", "G4-STORYWEAVER-ADVENTURE-PACK.json", pack, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            pack,
             "Expressed second game class (branching adventure) as a Storyweaver pack; verified schema generality.",
-            ev_path,
             pack,
         )
 
@@ -1109,16 +1070,13 @@ class WaveRunner:
     def _run_game_design_g5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         boundary = GameDesignEngine.audit_authored_game_boundary("march-madness")
         passed = boundary.get("status") == "boundary_formalized" and boundary.get("suite_dependency_required") is False
-        ev_path = _record_evidence(
-            "game-design", "G5-MARCH-MADNESS-BOUNDARY.json", boundary, write_evidence, passed
-        )
-
-        return WaveRunResult(
-            suite["id"],
+        return cls._settle(
+            suite,
             wave_id,
+            write_evidence,
             passed,
+            boundary,
             "Applied authored-game boundary to March Madness: confirmed independent creative domain status.",
-            ev_path,
             boundary,
         )
 

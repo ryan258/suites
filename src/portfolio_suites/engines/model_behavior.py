@@ -493,9 +493,9 @@ class ModelBehaviorEngine:
                 "passed": case_passed,
                 "score": 1.0 if case_passed else 0.0,
                 "legality_score": score,
-                "latency_ms": round(elapsed_ms, 3),
-                "tokens_in": len(fix["fen"]) + 10,
-                "tokens_out": len(fix["candidate"]),
+                # Measured wall time of the local evaluator. No model is called, so there is no
+                # token count to report: a character count wearing a token name is not evidence.
+                "evaluator_latency_ms": round(elapsed_ms, 3),
             })
 
         passed_count = sum(1 for it in iterations if it["passed"])

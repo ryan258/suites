@@ -508,16 +508,31 @@ def _runtime_parity_receipt_errors(path: Path, contract_id: str) -> list[str]:
     return errors
 
 
+def evidence_ineligibility_reason(wave: dict[str, Any]) -> str | None:
+    """Why this wave may not write a receipt at all, or None when it may.
+
+    A wave with no declared recovery claim has no contract to check a candidate against, so
+    the recorder refuses rather than writing bytes nothing can later verify. That is a
+    different outcome from "the gate failed" and from "the candidate was rejected", and
+    callers must be able to tell the three apart.
+    """
+    if not (wave.get("recovery_claim") or {}).get("kind"):
+        return "wave declares no recovery evidence contract, so --record cannot write a verifiable receipt"
+    return None
+
+
 def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
     """Errors in a wave's evidence receipt, dispatched by claim kind.
 
-    Single source of truth shared by registry validation and the wave recorder, so a
-    receipt that records successfully cannot then fail `suites validate`.
+    Shared by registry validation and the wave recorder, so a receipt that records
+    successfully cannot then fail `suites validate`. The recorder is the stricter of the
+    two: `validate` only inspects completed waves, while a wave with no declared claim
+    can never record at all (see `evidence_ineligibility_reason`).
     """
     claim = wave.get("recovery_claim", {}) or {}
     kind = claim.get("kind")
     if not kind:
-        return ["wave has no declared recovery evidence contract"]
+        return [evidence_ineligibility_reason(wave) or "wave has no declared recovery evidence contract"]
     if kind == "runtime" and claim.get("level") in {"parity_verified", "adopted", "converged"}:
         return _runtime_parity_receipt_errors(path, claim.get("receipt_contract", ""))
     basis = {b for b in (claim.get("evidence_basis") or []) if isinstance(b, str) and b}

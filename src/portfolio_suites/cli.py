@@ -265,7 +265,7 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
     if result.evidence_path:
         print(f"Evidence recorded at: {result.evidence_path}")
     elif write_evidence:
-        print("Evidence NOT written (gate failed or candidate receipt invalid); prior receipt retained.")
+        print(f"Evidence NOT written: {result.record_note}. Prior receipt retained.")
     return 0 if result.passed or result.prototype_passed else 1
 
 

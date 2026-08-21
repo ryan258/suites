@@ -392,7 +392,7 @@ class SuitesApp {
       }
       const resBox = document.getElementById('contract-validation-result');
       if (resBox) {
-        resBox.innerHTML = `<span class="result-success">✓ Loaded standard valid sample for ${cName}.</span>`;
+        resBox.innerHTML = `<span class="result-success">✓ Loaded standard valid sample for ${escapeHtml(cName)}.</span>`;
       }
     } catch (err) {
       console.error(err);
@@ -409,7 +409,7 @@ class SuitesApp {
     try {
       payload = JSON.parse(editor.value);
     } catch (err) {
-      resBox.innerHTML = `<span class="result-error">JSON Syntax Error: ${err.message}</span>`;
+      resBox.innerHTML = `<span class="result-error">JSON Syntax Error: ${escapeHtml(err.message)}</span>`;
       return;
     }
 
@@ -421,12 +421,12 @@ class SuitesApp {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        resBox.innerHTML = `<span class="result-success">✓ VALID ${cName} payload (Schema version 1.0.0 passed).</span>`;
+        resBox.innerHTML = `<span class="result-success">✓ VALID ${escapeHtml(cName)} payload (Schema version 1.0.0 passed).</span>`;
       } else {
-        resBox.innerHTML = `<span class="result-error">✗ Contract Error: ${data.error}</span>`;
+        resBox.innerHTML = `<span class="result-error">✗ Contract Error: ${escapeHtml(data.error)}</span>`;
       }
     } catch (err) {
-      resBox.innerHTML = `<span class="result-error">Server Error: ${err.message}</span>`;
+      resBox.innerHTML = `<span class="result-error">Server Error: ${escapeHtml(err.message)}</span>`;
     }
   }
 

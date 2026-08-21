@@ -117,8 +117,10 @@ class AgentReliabilityEngine:
             "scorer": "deterministic_fixture_evaluator",
             "scorer_version": "1.0.0",
             "status": "completed",
+            # These fixtures run in-process against deterministic evaluators. No timing is
+            # measured and no model is called, so no latency or token field is reported.
             "iterations": [
-                {"iteration": idx, "fixture_id": f["fixture_id"], "passed": f["passed"], "latency_ms": 12}
+                {"iteration": idx, "fixture_id": f["fixture_id"], "passed": f["passed"]}
                 for idx, f in enumerate(fixtures, start=1)
             ],
             "evidence": [
