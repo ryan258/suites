@@ -164,6 +164,7 @@ class OperatorOSSourceAdapter:
                 "pkos": {**pkos_fp, "has_normalize": has_pkos_normalize, "has_storage": has_pkos_storage},
                 "obsidian_observer": {**observer_fp, "has_observer_script": has_observer_script},
             },
+            "all_stages_passed": mutation_checks_passed,
             "mutation_protection_passed": mutation_checks_passed,
             "mutation_cases": {
                 "corrupt_sha_rejected": corrupt_sha_rejected,
@@ -232,6 +233,7 @@ class OperatorOSSourceAdapter:
                 "projection_view": "Observer",
                 "orchestration_gateway": "JARVIS",
             },
+            "all_stages_passed": len(ryos_items) >= 3 and len(RYOS_DISPOSITION_CATALOG) >= 5,
             "status": "verified",
         }
 
@@ -267,6 +269,7 @@ class OperatorOSSourceAdapter:
             "requires_human_approval": preview.get("requires_human_approval", False),
             "destructive": preview.get("destructive", True),
             "recovery_path": preview.get("recovery_path", ""),
+            "all_stages_passed": preview.get("state") == "preview_ready" and preview.get("requires_human_approval") is True,
             "status": "preview_verified",
         }
         return receipt
@@ -340,6 +343,7 @@ class OperatorOSSourceAdapter:
             "all_sources_cited": all_cited,
             "processed_records": [rec for rec, _ in stream_results],
             "observer_projections_count": len(stream_results),
+            "all_stages_passed": len(stream_results) >= 3 and all_fenced and all_cited,
             "status": "stream_intake_verified",
         }
 
@@ -361,6 +365,7 @@ class OperatorOSSourceAdapter:
             "source_inventory_catalog": RYOS_DISPOSITION_CATALOG,
             "duplicate_decisions_closed": True,
             "donor_freeze_status": "formalized_donor_freeze_candidate",
+            "all_stages_passed": len(disposition.get("proposed_ports", [])) >= 2 and disposition.get("duplicate_row_proposal") == "close_on_verification",
             "status": "disposition_reconciled",
         }
 
@@ -413,5 +418,6 @@ class OperatorOSSourceAdapter:
             "multi_action_lifecycle_passed": fail_closed_ok and preview_ok,
             "human_gate_boundary": "fail_closed_without_explicit_operator_token",
             "disk_mutations_performed": False,
+            "all_stages_passed": fail_closed_ok and preview_ok,
             "status": "checkpoint_lifecycle_verified",
         }

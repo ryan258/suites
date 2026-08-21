@@ -26,8 +26,8 @@ CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
 OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 6 Contracts, 43 Wave Specifications
-VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 4 Analysis Milestones (A1, A3, A4, A5) | 0 Adopted | 0 Converged
-PROTOTYPES: 38 checks passing; prototypes never count as recovered functionality
+VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 10 Analysis Milestones (A1, A3-A5, O1-O6) | 0 Adopted | 0 Converged
+PROTOTYPES: 32 checks passing; prototypes never count as recovered functionality
 ```
 
 ## The eight suites

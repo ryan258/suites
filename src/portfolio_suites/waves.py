@@ -220,13 +220,9 @@ class WaveRunner:
             and result.get("status") == "verified"
             and result.get("source_record", {}).get("schema_version") == "1.0.0"
         )
-        evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "O1-SOURCE-RECORD-OBSERVER-PROJECTION.md"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                f.write(result.get("observer_projection_preview", ""))
+        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O1-SOURCE-RECORD-OBSERVER-PROJECTION.md"
+        if write_evidence:
+            cls._record_evidence(evidence_file, result.get("observer_projection_preview", ""), passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -245,13 +241,9 @@ class WaveRunner:
             and result.get("inventory_catalog_count", 0) >= 5
             and result.get("ryos_core_files_count", 0) >= 3
         )
-        evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "O2-RYOS-INVENTORY.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O2-RYOS-INVENTORY.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, result, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -270,13 +262,9 @@ class WaveRunner:
             and receipt.get("requires_human_approval") is True
             and receipt.get("dry_run_only") is True
         )
-        evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "O3-JARVIS-ACTION-RECEIPT.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(receipt, f, indent=2)
+        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O3-JARVIS-ACTION-RECEIPT.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, receipt, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -296,13 +284,9 @@ class WaveRunner:
             and result.get("all_sources_cited") is True
             and result.get("batch_size", 0) >= 3
         )
-        evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "O4-PKOS-DAILY-INTAKE-STREAM.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O4-PKOS-DAILY-INTAKE-STREAM.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, result, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -321,13 +305,9 @@ class WaveRunner:
             and result.get("duplicate_decisions_closed") is True
             and result.get("port_candidates_count", 0) >= 2
         )
-        evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "O5-RYOS-DISPOSITION-REPORT.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O5-RYOS-DISPOSITION-REPORT.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, result, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -345,13 +325,9 @@ class WaveRunner:
             result.get("status") == "checkpoint_lifecycle_verified"
             and result.get("multi_action_lifecycle_passed") is True
         )
-        evidence_dir = SUITES_ROOT / "operator-os" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "O6-JARVIS-CHECKPOINT-RECEIPT.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+        evidence_file = SUITES_ROOT / "operator-os" / "evidence" / "O6-JARVIS-CHECKPOINT-RECEIPT.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, result, passed=passed)
 
         return WaveRunResult(
             suite["id"],

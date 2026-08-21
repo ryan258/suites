@@ -12,8 +12,8 @@ CONTROL PLANE FOUNDATION:
 - Control-plane tests cover contracts, registry, engines, OpenRouter isolation, CLI, and dashboard APIs
 - Zero-dependency CLI and local web dashboard operational
 - 43 Migration wave specifications defined with prototype reference runners
-- Verified claims: four analysis milestones (A1, A3, A4, A5) and one runtime recovery (A2)
-- Portfolio wave milestones: 5/43 complete; 38/43 reference prototype checks
+- Verified claims: ten analysis milestones (A1, A3-A5, O1-O6) and one runtime recovery (A2)
+- Portfolio wave milestones: 11/43 complete; 32/43 reference prototype checks
 - Recovery target: 9/10 for valuable functionality; wave completion is not the recovery score
 - Wave checks execute ephemerally by default; evidence is written only by explicit request
 - Current monitored source baseline: 0/58 repositories drifted; `allys-tools` is clean at the recorded A2 commit
@@ -41,7 +41,7 @@ The control plane uses the promotion model in the [9/10 recovery standard](RECOV
 | Suite | Verified | Next promotion target | Evidence required for promotion |
 |---|---:|---|---|
 | Accessibility | 5/6 | `A6` | Owner-controlled consolidation review and 3 verified authentic uses for convergence |
-| Operator OS | 0/6 | `O1` | Real `dotfiles` capture, `PKos` storage, and Observer non-reingestion receipts |
+| Operator OS | 6/6 | Complete | All 6 analysis waves verified across dotfiles, PKos, Observer, JARVIS, and Ryos |
 | Brand + Publishing | 0/6 | `B1` | A real `BrandPackage` compiled from source intake and consumed by the publishing boundary |
 | Production House | 0/5 | `P1` | Groundwire source fingerprints and reproducible audio-processing output |
 | Model Behavior Lab | 0/5 | `M1` | Authentic normalized run records from OpenRouter or an identified local model |
