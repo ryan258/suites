@@ -10,6 +10,7 @@ from typing import Any
 from .adapters.accessibility import AccessibilitySourceAdapter
 from .adapters.brand_publishing import BrandPublishingSourceAdapter
 from .adapters.operator_os import OperatorOSSourceAdapter
+from .adapters.production_house import ProductionHouseSourceAdapter
 from .contracts import generate_sample, validate_contract
 from .engines.accessibility import AccessibilityEngine
 from .engines.agent_reliability import AgentReliabilityEngine
@@ -511,16 +512,11 @@ class WaveRunner:
 
     @classmethod
     def _run_production_house_p1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        dummy_sha = "a" * 64
-        job = ProductionHouseEngine.build_groundwire_pipeline_job("episode-12-ambient-horror", dummy_sha)
-        passed = job.get("status") == "completed" and len(job.get("outputs", [])) == 3
-        evidence_dir = SUITES_ROOT / "production-house" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "P1-GROUNDWIRE-FINGERPRINT.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(job, f, indent=2)
+        res = ProductionHouseSourceAdapter.execute_p1_groundwire_fingerprint()
+        passed = res.get("all_stages_passed", False)
+        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P1-GROUNDWIRE-FINGERPRINT.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, res.get("job"), passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -528,21 +524,16 @@ class WaveRunner:
             passed,
             "Fingerprinted Groundwire episode workflow and QC outputs into ProductionJob.",
             str(evidence_file) if write_evidence else None,
-            job,
+            res.get("job"),
         )
 
     @classmethod
     def _run_production_house_p2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        job = ProductionHouseEngine.create_job("job-gw-ep12-formatter", "groundwire-audio", "synthesis", [{"name": "script.fountain"}])
-        job = ProductionHouseEngine.advance_job_stage(job, "elevenlabs_synthesizer", [{"name": "stems.zip"}], status="completed")
-        passed = job.get("status") == "completed"
-        evidence_dir = SUITES_ROOT / "production-house" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "P2-FORMATTER-JOB-RECEIPT.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(job, f, indent=2)
+        res = ProductionHouseSourceAdapter.execute_p2_formatter_job()
+        passed = res.get("all_stages_passed", False)
+        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P2-FORMATTER-JOB-RECEIPT.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, res.get("job"), passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -550,47 +541,33 @@ class WaveRunner:
             passed,
             "Executed episode slice via formatter adapter with resumable ProductionJob state.",
             str(evidence_file) if write_evidence else None,
-            job,
+            res.get("job"),
         )
 
     @classmethod
     def _run_production_house_p3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        job = ProductionHouseEngine.create_job(
-            job_id="job-gw-ep12-formatter",
-            domain="writers-room-handoff",
-            task="validate-story-state",
-            inputs=[{"name": "arc-season-2.fountain", "version": "1.2.0", "status": "approved_for_synthesis"}],
-        )
-        passed = job.get("status") == "queued" and len(job.get("inputs", [])) == 1
-        evidence_dir = SUITES_ROOT / "production-house" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "P3-WRITERS-ROOM-HANDOFF.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(job, f, indent=2)
+        res = ProductionHouseSourceAdapter.execute_p3_writers_room_handoff()
+        passed = res.get("all_stages_passed", False)
+        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P3-WRITERS-ROOM-HANDOFF.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, res.get("job"), passed=passed)
 
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
             "Proved Writers Room story-state handoff via validated ProductionJob lifecycle.",
-            str(evidence_file) if (write_evidence and passed) else None,
-            job,
+            str(evidence_file) if write_evidence else None,
+            res.get("job"),
         )
 
     @classmethod
     def _run_production_house_p4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        dummy_sha = "b" * 64
-        job = ProductionHouseEngine.build_investigative_documentary_job("episode-14-shadow-grid", dummy_sha)
-        passed = job.get("status") == "completed" and len(job.get("outputs", [])) == 3
-        evidence_dir = SUITES_ROOT / "production-house" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "P4-DOCUMENTARY-PIPELINE-JOB.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(job, f, indent=2)
+        res = ProductionHouseSourceAdapter.execute_p4_documentary_pipeline()
+        passed = res.get("all_stages_passed", False)
+        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P4-DOCUMENTARY-PIPELINE-JOB.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, res.get("job"), passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -598,24 +575,16 @@ class WaveRunner:
             passed,
             "Executed structural episode variant (investigative documentary) through unchanged ProductionJob engine.",
             str(evidence_file) if write_evidence else None,
-            job,
+            res.get("job"),
         )
 
     @classmethod
     def _run_production_house_p5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        scene_revs = [
-            {"scene_number": 1, "revision_id": "rev-1", "author": "Ryan", "change_summary": "Initial intro dialogue"},
-            {"scene_number": 2, "revision_id": "rev-2", "author": "Ryan", "change_summary": "Added ambient sound cue"},
-        ]
-        mapping = ProductionHouseEngine.map_writers_room_events("arc-season-3", scene_revs)
-        passed = mapping.get("mapped_job", {}).get("status") == "completed"
-        evidence_dir = SUITES_ROOT / "production-house" / "evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_file = evidence_dir / "P5-WRITERS-ROOM-EVENT-STREAM.json"
-
-        if write_evidence and passed:
-            with evidence_file.open("w", encoding="utf-8") as f:
-                json.dump(mapping, f, indent=2)
+        res = ProductionHouseSourceAdapter.execute_p5_writers_room_event_stream()
+        passed = res.get("all_stages_passed", False)
+        evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P5-WRITERS-ROOM-EVENT-STREAM.json"
+        if write_evidence:
+            cls._record_evidence(evidence_file, res.get("mapping"), passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -623,7 +592,7 @@ class WaveRunner:
             passed,
             "Mapped Writers Room story revisions into ProductionJob events; unified runtime state.",
             str(evidence_file) if write_evidence else None,
-            mapping,
+            res.get("mapping"),
         )
 
     @classmethod

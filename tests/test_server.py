@@ -62,13 +62,13 @@ class ServerTests(unittest.TestCase):
     def test_waves_endpoint(self):
         data = self._get_json("/api/waves")
         self.assertEqual(len(data), 43)
-        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_analysis"), 16)
+        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_analysis"), 21)
         self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_runtime_recovery"), 1)
-        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "prototype_check"), 26)
+        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "prototype_check"), 21)
         self.assertTrue(all("prototype_passed" in row for row in data))
 
     def test_wave_post_is_ephemeral_and_classified(self):
-        data = self._post_json("/api/waves/production-house/P1/run")
+        data = self._post_json("/api/waves/model-behavior-lab/M1/run")
         self.assertFalse(data["recorded"])
         self.assertFalse(data["passed"])
         self.assertTrue(data["prototype_passed"])

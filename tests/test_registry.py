@@ -88,7 +88,7 @@ class RegistryTests(unittest.TestCase):
     def test_summary_separates_analysis_from_runtime_recovery(self):
         summary = get_portfolio_summary()
         self.assertEqual(summary["recovery_target_score"], 9.0)
-        self.assertEqual(summary["verified_analysis_milestones"], 16)
+        self.assertEqual(summary["verified_analysis_milestones"], 21)
         self.assertEqual(summary["recovered_runtime_behaviors"], 1)
         self.assertEqual(summary["adopted_runtime_behaviors"], 0)
         self.assertEqual(summary["converged_runtime_behaviors"], 0)
