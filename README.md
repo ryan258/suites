@@ -26,9 +26,12 @@ CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
 OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 6 Contracts, 43 Wave Specifications
-VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 21 Analysis Milestones (A1, A3-A5, O1-O6, B1-B6, P1-P5) | 0 Adopted | 0 Converged
-PROTOTYPES: 21 checks passing; prototypes never count as recovered functionality
+VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 4 Analysis Milestones (A1, A3, O2, B2) | 0 Adopted | 0 Converged
+PROTOTYPES: 38 checks passing; prototypes never count as recovered functionality
 ```
+
+`A1` is a reviewed, hand-authored parity decision whose required document structure is checked by
+the runner. It is an analysis milestone, not an executed donor or runtime gate.
 
 ## The eight suites
 
@@ -68,14 +71,15 @@ PYTHONPATH=src python3 -m portfolio_suites contract A11yFinding sample
 PYTHONPATH=src python3 -m portfolio_suites contract BrandPackage spec
 PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.json>
 
-# Ephemeral wave checks (21 analysis milestones + 21 prototypes + 1 runtime wave)
+# Ephemeral wave checks (4 analysis milestones + 38 prototypes + 1 runtime wave)
 # Without --full, A2 runs a fast probe and is reported as [FAST-PROBE], not a runtime recovery.
 PYTHONPATH=src python3 -m portfolio_suites wave --all
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --full
 
 # Explicitly replace a wave's evidence artifact after reviewing its runner
-PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record
+# Runtime evidence requires an explicit full-depth request; --record never selects depth.
+PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record --full
 
 # Launch the zero-dependency local web dashboard
 PYTHONPATH=src python3 -m portfolio_suites serve --port 8383

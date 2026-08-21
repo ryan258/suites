@@ -11,7 +11,10 @@ The suite is complete only when the shared `A11yFinding` round-trips across audi
 browser surfaces; all fifteen Ally tools remain honestly represented in the proof manifest; the
 overlay duplicates are reconciled; and automated evidence remains distinct from manual AT review.
 
-Wave A1 is complete in [the parity decision](evidence/A1-WCAG-AUDITOR-PARITY.md). It found 34
-registered donor rules: 15 covered, 18 heuristic/narrow port candidates, and one rejected as a
-standalone WCAG failure. The next move is A2: port the narrow `aria-invalid` error-association check
-into Ally's ARIA validator with regression and full-suite evidence.
+Wave A1 is a reviewed, hand-authored analysis document: [the parity
+decision](evidence/A1-WCAG-AUDITOR-PARITY.md). Its required structure is checked, but the runner does
+not execute a donor or runtime gate. The document records 34 registered donor rules: 15 covered, 18
+heuristic/narrow port candidates, and one rejected as a standalone WCAG failure. A2 subsequently
+ported the narrow `aria-invalid` error-association check into Ally's ARIA validator with regression
+and full-suite evidence. A4 remains a suite-local prototype until its candidate rules run against
+real donor inputs.

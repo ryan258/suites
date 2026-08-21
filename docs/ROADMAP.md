@@ -12,8 +12,8 @@ CONTROL PLANE FOUNDATION:
 - Control-plane tests cover contracts, registry, engines, OpenRouter isolation, CLI, and dashboard APIs
 - Zero-dependency CLI and local web dashboard operational
 - 43 Migration wave specifications defined with prototype reference runners
-- Verified claims: twenty-one analysis milestones (A1, A3-A5, O1-O6, B1-B6, P1-P5) and one runtime recovery (A2)
-- Portfolio wave milestones: 22/43 complete; 21/43 reference prototype checks
+- Verified claims: four analysis milestones (A1, A3, O2, B2) and one runtime recovery (A2)
+- Portfolio wave milestones: 5/43 complete; 38/43 reference prototype checks
 - Recovery target: 9/10 for valuable functionality; wave completion is not the recovery score
 - Wave checks execute ephemerally by default; evidence is written only by explicit request
 - Current monitored source baseline: 0/58 repositories drifted; `allys-tools` is clean at the recorded A2 commit
@@ -40,10 +40,10 @@ The control plane uses the promotion model in the [9/10 recovery standard](RECOV
 
 | Suite | Verified | Next promotion target | Evidence required for promotion |
 |---|---:|---|---|
-| Accessibility | 5/6 | `A6` | Owner-controlled consolidation review and 3 verified authentic uses for convergence |
-| Operator OS | 6/6 | Complete | All 6 analysis waves verified across dotfiles, PKos, Observer, JARVIS, and Ryos |
-| Brand + Publishing | 6/6 | Complete | All 6 analysis waves verified across brand-maker-spec, brand-workshop, and cyborg |
-| Production House | 5/5 | Complete | All 5 analysis waves verified across production-house, Groundwire, formatter, and writers-room |
+| Accessibility | 3/6 | `A4` | Run candidate rules against real donor inputs, then retain per-rule donor/destination parity evidence |
+| Operator OS | 1/6 | `O1` | Connect real dotfiles capture through PKos and retain an authentic Observer projection receipt |
+| Brand + Publishing | 1/6 | `B1` | Compile a BrandPackage from real Brand Maker source and exercise the actual consumer boundary |
+| Production House | 0/5 | `P1` | Read a real Groundwire workflow and retain authentic job and QC outputs |
 | Model Behavior Lab | 0/5 | `M1` | Authentic normalized run records from OpenRouter or an identified local model |
 | Discovery + Decision | 0/5 | `D1` | Source-backed SIF investigation records and Forge challenge results |
 | Agent Reliability | 0/5 | `R1` | Real harness executions with retained inputs, outputs, failures, and environment metadata |
@@ -57,11 +57,11 @@ Migration proceeds suite by suite, requiring authentic source-backed execution, 
 
 ### Horizon 1 — Ally Accessibility Suite (In Progress)
 - **Target Anchor:** `allys-tools`
-- **Current State:** `A1` and `A3`-`A5` are verified analysis milestones; `A2` is a parity-verified runtime recovery at clean `allys-tools` commit `f2b4c6e`.
-- **Next Wave (A6):** Freeze duplicate donor repositories upon verified parity. `A6` remains a prototype check until owner convergence approval is granted.
-- **Completed Waves:**
+- **Current State:** `A1` and `A3` are verified analysis milestones; `A1` is a reviewed hand-authored document, not an executed gate. `A2` is a parity-verified runtime recovery at clean `allys-tools` commit `f2b4c6e`. `A4`, `A5`, and `A6` are prototype checks.
+- **Next Wave (A4):** Read real WCAG Auditor rule inputs and retain per-rule donor/destination parity evidence. `A6` remains behind that migration and owner convergence approval.
+- **Accessibility Wave Notes:**
   - `A3`: Feature, permission, and runtime reconciliation of three keyboard overlays (`kb-overlay`, `keyboard-nav-overlay`, `keyboard-nav-overlay-94bf7e`).
-  - `A4`: Remaining rule candidates evaluated against regression fixtures.
+  - `A4`: Committed rule-candidate fixtures classified, with one suite-local compliant-markup smoke probe.
   - `A5`: Round-trip contract through `a11y kitchen`.
 
 ### Horizon 2 — Operator OS Migration
@@ -99,7 +99,7 @@ PYTHONPATH=src python3 -m portfolio_suites next
 PYTHONPATH=src python3 -m portfolio_suites validate
 PYTHONPATH=src python3 -m portfolio_suites drift
 PYTHONPATH=src python3 -m portfolio_suites wave --all
-PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record
+PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record --full
 PYTHONPATH=src python3 -m portfolio_suites ai-config
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```

@@ -4,6 +4,51 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-21 — Cosmetic-Fingerprint Reclassification
+
+Extended the prototype reclassification to every wave whose gate does not read donor content.
+An audit of all eighteen adapter gates found that only `A2`, `A3`, `O2`, and `B2` open, execute,
+or parse a donor repository. A further nine gates called `get_git_fingerprint()` (or `.is_dir()` /
+`.exists()`) on a donor and then evaluated suite-local engines exclusively: `A5`, `O1`, `O3`, `O4`,
+`O6`, `B1`, `P1`, `P2`, `P3`, with `B3`, `B4`, and `B6` deriving from `B1`. A fingerprint over a
+repository the gate never reads cannot fail when that repository's behavior changes, so it does not
+support a parity claim.
+
+`A5` is the illustrative case: its only contact with A11y Kitchen is a fingerprint and a directory
+check, while the finding it round-trips is created and evaluated entirely by `AccessibilityEngine`.
+It failed the missing-donor probe and therefore looked correctly guarded — failing closed on a
+repository that is never read is indistinguishable, from outside, from failing closed on one that
+is.
+
+Reclassified to prototype: `A5`, `O1`, `O3`, `O4`, `O6`, `B1`, `B3`, `B4`, `B6`, `P1`, `P2`, `P3`.
+Verified analysis milestones are now four (`A1`, `A3`, `O2`, `B2`), prototype checks are
+thirty-eight, and complete wave milestones are 5/43. All reclassified waves also had their
+`recovery_claim.level` corrected from `parity_verified` to `prototype`; the previous batch retained
+a `parity_verified` claim that the raw manifests served over `/api/suites` while the status-derived
+views reported a prototype.
+
+The donor-backed migrations these waves describe remain future work. Nothing was retired, and no
+source repository was modified.
+
+---
+
+## 2026-08-21 — Suite-Local Prototype Reclassification
+
+Reclassified `A4`, `O5`, `B5`, `P4`, and `P5` from complete analysis milestones to prototype
+checks. Their runners exercise suite-local engines, constants, or committed fixtures without
+reading a donor repository, so donor fingerprint requirements would be cosmetic rather than
+evidence of migration. The verified analysis count is now sixteen, the prototype count is
+twenty-six, and complete wave milestones are 17/43. The corresponding donor-backed migrations
+remain future work.
+
+`A1` remains an analysis milestone because its intended artifact is a reviewed, hand-authored
+parity decision. Its runner checks the document's required structure; it does not execute a donor
+or runtime gate. `A4` output now describes the actual 20-case classification and single
+suite-local compliant-markup smoke probe instead of claiming 17 candidates and broad false-positive
+verification.
+
+---
+
 ## 2026-08-20 — Control-Plane Integrity Repair
 
 Fixed a defect that made the documented `wave ... --record` path raise `AttributeError` for all
