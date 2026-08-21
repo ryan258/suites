@@ -61,9 +61,10 @@ class ModelBehaviorEngine:
                 "scenario_id": f"scen-eth-{i:03d}",
                 "passed": passed,
                 "score": score,
-                "latency_ms": 450 + (i * 15),
-                "tokens_in": 320,
-                "tokens_out": 110,
+                "outcome_source": "deterministic_fixture",
+                "simulated_latency_ms": 450 + (i * 15),
+                "simulated_tokens_in": 320,
+                "simulated_tokens_out": 110,
             })
 
         evidence = [
@@ -103,7 +104,16 @@ class ModelBehaviorEngine:
             total = len(iters)
             passed = sum(1 for it in iters if it.get("passed", False))
             avg_score = (sum(it.get("score", 0.0) for it in iters) / total) if total else 0.0
-            avg_latency = (sum(it.get("latency_ms", 0) for it in iters) / total) if total else 0.0
+            simulated_latencies = [
+                it["simulated_latency_ms"]
+                for it in iters
+                if isinstance(it.get("simulated_latency_ms"), (int, float))
+            ]
+            simulated_avg_latency = (
+                sum(simulated_latencies) / len(simulated_latencies)
+                if simulated_latencies
+                else None
+            )
 
             comparisons.append({
                 "run_id": run.get("run_id"),
@@ -113,7 +123,11 @@ class ModelBehaviorEngine:
                 "total_iterations": total,
                 "pass_rate": round(passed / total, 3) if total else 0.0,
                 "average_score": round(avg_score, 3),
-                "average_latency_ms": round(avg_latency, 1),
+                "simulated_average_latency_ms": (
+                    round(simulated_avg_latency, 1)
+                    if simulated_avg_latency is not None
+                    else None
+                ),
             })
         return {"comparisons": comparisons}
 

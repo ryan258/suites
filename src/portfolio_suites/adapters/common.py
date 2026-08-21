@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from ..contracts import compute_sha256
-
-SUITES_ROOT = Path(os.environ["SUITES_ROOT"]).resolve() if "SUITES_ROOT" in os.environ else Path(__file__).resolve().parent.parent.parent.parent
+from ..paths import SUITES_ROOT
+from ..provenance import is_meaningful_git_fingerprint
 
 
 def get_repo_path(repo_name: str, env_var: str | None = None) -> Path:
@@ -104,16 +104,3 @@ def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) 
         }
     except Exception as error:
         return {"branch": "unknown", "head": "unknown", "error": str(error)}
-
-
-def is_meaningful_git_fingerprint(value: Any) -> bool:
-    """Return whether a fingerprint identifies a real source revision and inspected content."""
-    return (
-        isinstance(value, dict)
-        and isinstance(value.get("branch"), str)
-        and value.get("branch") not in {"", "unknown"}
-        and isinstance(value.get("head"), str)
-        and value.get("head") not in {"", "unknown"}
-        and isinstance(value.get("tested_files_fingerprint"), dict)
-        and bool(value.get("tested_files_fingerprint"))
-    )

@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
+from ..identifiers import new_prefixed_id
 from ..registry import SUITES_ROOT
 
 
@@ -176,7 +177,7 @@ fenced_from_reingestion: true
         """Generate a dry-run preview receipt for a user-approved JARVIS command."""
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         return {
-            "action_id": f"act-jarvis-{int(datetime.datetime.now().timestamp())}",
+            "action_id": new_prefixed_id("act-jarvis"),
             "action_name": action_name,
             "parameters": parameters,
             "state": "preview_ready",

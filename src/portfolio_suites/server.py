@@ -25,6 +25,15 @@ from .registry import (
 from .waves import WaveRunner
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
+MAX_JSON_BODY_BYTES = 1_048_576
+
+
+class RequestBodyError(ValueError):
+    """Client request-body failure with an intentional HTTP response status."""
+
+    def __init__(self, status: int, message: str) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
@@ -45,12 +54,43 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _read_json_body(self) -> dict[str, Any]:
-        length = int(self.headers.get("Content-Length", 0))
-        if length <= 0:
+    def _read_json_body(self) -> Any:
+        raw_length = self.headers.get("Content-Length")
+        if raw_length is None:
             return {}
-        raw = self.rfile.read(length).decode("utf-8")
-        return json.loads(raw)
+        try:
+            length = int(raw_length)
+        except (TypeError, ValueError):
+            raise RequestBodyError(400, "Content-Length must be a non-negative integer") from None
+        if length < 0:
+            raise RequestBodyError(400, "Content-Length must be a non-negative integer")
+        if length > MAX_JSON_BODY_BYTES:
+            raise RequestBodyError(
+                413,
+                f"JSON request body exceeds the {MAX_JSON_BODY_BYTES}-byte limit",
+            )
+        if length == 0:
+            return {}
+        raw = self.rfile.read(length)
+        if len(raw) != length:
+            raise RequestBodyError(400, "Request body ended before Content-Length bytes were received")
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except UnicodeDecodeError:
+            raise RequestBodyError(400, "Request body must be UTF-8 JSON") from None
+        except json.JSONDecodeError as error:
+            raise RequestBodyError(400, f"Invalid JSON syntax: {error.msg}") from None
+
+    def _execution_request_is_trusted(self) -> bool:
+        """Reject browser cross-origin execution while retaining headerless API clients."""
+        fetch_site = self.headers.get("Sec-Fetch-Site")
+        if fetch_site not in (None, "same-origin"):
+            return False
+        origin = self.headers.get("Origin")
+        if origin is None:
+            return True
+        host = self.headers.get("Host")
+        return bool(host and origin.rstrip("/") == f"http://{host}")
 
     def do_OPTIONS(self) -> None:
         self.send_response(204)
@@ -77,7 +117,10 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
             elif path == "/api/suites":
                 self._send_json(200, list(load_suites().values()))
             elif path.startswith("/api/suites/"):
-                suite_id = path.replace("/api/suites/", "")
+                suite_id = path.removeprefix("/api/suites/")
+                if not suite_id or "/" in suite_id:
+                    self._send_json(404, {"error": f"Unknown endpoint: {path}"})
+                    return
                 suite = get_suite(suite_id)
                 if suite:
                     self._send_json(200, suite)
@@ -87,7 +130,10 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 ledger = load_ledger()
                 self._send_json(200, ledger.get("projects", []))
             elif path.startswith("/api/projects/"):
-                proj_name = path.replace("/api/projects/", "")
+                proj_name = path.removeprefix("/api/projects/")
+                if not proj_name or "/" in proj_name:
+                    self._send_json(404, {"error": f"Unknown endpoint: {path}"})
+                    return
                 proj = get_project(proj_name)
                 if proj:
                     self._send_json(200, proj)
@@ -118,6 +164,9 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json(200, specs)
             elif path.startswith("/api/contracts/") and path.endswith("/sample"):
                 parts = path.split("/")
+                if len(parts) != 5 or not parts[3]:
+                    self._send_json(404, {"error": f"Unknown endpoint: {path}"})
+                    return
                 contract_name = parts[3]
                 try:
                     sample = generate_sample(contract_name)
@@ -127,54 +176,42 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
             elif path == "/api/waves":
                 run_live = query.get("run", ["false"])[0].lower() in ("true", "1")
                 if run_live:
-                    results = WaveRunner.run_all(write_evidence=False)
-                    payload = [
-                        {
-                            "suite_id": r.suite_id,
-                            "wave_id": r.wave_id,
-                            "passed": r.passed,
-                            "prototype_passed": r.prototype_passed,
-                            "execution_kind": r.execution_kind,
-                            "message": r.message,
-                            "evidence_path": r.evidence_path,
-                        }
-                        for r in results
-                    ]
-                else:
-                    # Return instant manifest-backed wave definitions and cached status (<2ms response)
-                    suites = load_suites()
-                    payload = []
-                    for s in suites.values():
-                        s_id = s.get("id", "")
-                        for w in s.get("waves", []):
-                            w_id = w.get("id", "")
-                            w_status = w.get("status", "specified")
-                            ev_rel = w.get("evidence", "")
-                            ev_file = SUITES_ROOT / ev_rel if ev_rel else None
-                            has_ev = bool(ev_file and ev_file.is_file())
-                            is_passed = (w_status == "complete")
-                            method_name = f"_run_{s_id.replace('-', '_')}_{w_id.lower()}"
-                            has_runner = hasattr(WaveRunner, method_name)
-                            claim_kind = w.get("recovery_claim", {}).get("kind")
-                            if is_passed and claim_kind == "runtime":
-                                exec_kind = "verified_runtime_recovery"
-                            elif is_passed:
-                                exec_kind = "verified_analysis"
-                            else:
-                                exec_kind = "prototype_check" if has_runner else "unintegrated_specification"
-                            payload.append({
-                                "suite_id": s_id,
-                                "wave_id": w_id,
-                                "order": w.get("order", 0),
-                                "status": w_status,
-                                "objective": w.get("objective", ""),
-                                "acceptance": w.get("acceptance", ""),
-                                "passed": is_passed,
-                                "runner_available": has_runner,
-                                "execution_kind": exec_kind,
-                                "message": f"Wave {w_id}: {w.get('objective', '')}",
-                                "evidence_path": str(ev_file) if has_ev else None,
-                            })
+                    self._send_json(405, {"error": "Live wave execution requires the POST run endpoint"})
+                    return
+                # Return instant manifest-backed wave definitions and cached status (<2ms response)
+                suites = load_suites()
+                payload = []
+                for s in suites.values():
+                    s_id = s.get("id", "")
+                    for w in s.get("waves", []):
+                        w_id = w.get("id", "")
+                        w_status = w.get("status", "specified")
+                        ev_rel = w.get("evidence", "")
+                        ev_file = SUITES_ROOT / ev_rel if ev_rel else None
+                        has_ev = bool(ev_file and ev_file.is_file())
+                        is_passed = (w_status == "complete")
+                        method_name = f"_run_{s_id.replace('-', '_')}_{w_id.lower()}"
+                        has_runner = hasattr(WaveRunner, method_name)
+                        claim_kind = w.get("recovery_claim", {}).get("kind")
+                        if is_passed and claim_kind == "runtime":
+                            exec_kind = "verified_runtime_recovery"
+                        elif is_passed:
+                            exec_kind = "verified_analysis"
+                        else:
+                            exec_kind = "prototype_check" if has_runner else "unintegrated_specification"
+                        payload.append({
+                            "suite_id": s_id,
+                            "wave_id": w_id,
+                            "order": w.get("order", 0),
+                            "status": w_status,
+                            "objective": w.get("objective", ""),
+                            "acceptance": w.get("acceptance", ""),
+                            "passed": is_passed,
+                            "runner_available": has_runner,
+                            "execution_kind": exec_kind,
+                            "message": f"Wave {w_id}: {w.get('objective', '')}",
+                            "evidence_path": str(ev_file) if has_ev else None,
+                        })
                 self._send_json(200, payload)
             elif path.startswith("/api/evidence"):
                 # Read evidence file from query
@@ -211,6 +248,9 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         try:
             if path.startswith("/api/contracts/") and path.endswith("/validate"):
                 parts = path.split("/")
+                if len(parts) != 5 or not parts[3]:
+                    self._send_json(404, {"error": f"Unknown POST endpoint: {path}"})
+                    return
                 contract_name = parts[3]
                 body = self._read_json_body()
                 try:
@@ -220,14 +260,17 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     self._send_json(400, {"ok": False, "error": str(exc)})
             elif path.startswith("/api/waves/") and path.endswith("/run"):
                 parts = path.split("/")
+                if len(parts) != 6 or not parts[3] or not parts[4]:
+                    self._send_json(404, {"error": f"Unknown POST endpoint: {path}"})
+                    return
                 suite_id = parts[3]
                 wave_id = parts[4]
                 query_params = urllib.parse.parse_qs(parsed.query)
                 record_param = query_params.get("record", ["false"])[0].lower() in ("true", "1")
-                # Loopback binding does not stop another site blind-POSTing here; a mutating
-                # request must prove it came from this dashboard, not a cross-origin form.
-                if record_param and self.headers.get("Sec-Fetch-Site") not in (None, "same-origin"):
-                    self._send_json(403, {"error": "cross-origin record requests are refused"})
+                # Loopback binding does not stop another site blind-POSTing here. Execution
+                # itself launches local subprocesses, even when evidence recording is disabled.
+                if not self._execution_request_is_trusted():
+                    self._send_json(403, {"error": "cross-origin wave execution is refused"})
                     return
                 full_param = query_params.get("full", ["false"])[0].lower() in ("true", "1")
                 # Ephemeral execution by default; only mutate evidence files on explicit record request
@@ -247,6 +290,8 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 })
             else:
                 self._send_json(404, {"error": f"Unknown POST endpoint: {path}"})
+        except RequestBodyError as error:
+            self._send_json(error.status, {"error": str(error)})
         except Exception:
             self._send_json(500, {"error": "Internal server error"})
 

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import datetime
 from typing import Any
 
-from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
+from ..contracts import SCHEMA_VERSION, compute_sha256
 from ..engines.production_house import ProductionHouseEngine
 from .common import get_git_fingerprint, get_repo_path, is_meaningful_git_fingerprint
 

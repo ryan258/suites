@@ -52,7 +52,14 @@ or collaborator ownership.
 
 ## Use it
 
-No third-party Python package or npm install is required (100% Python standard library + vanilla web technologies).
+The checkout-local control plane uses only the Python standard library and vanilla web
+technologies. Source-runtime gates retain their donors' own prerequisites: Accessibility A2
+requires Node.js plus the already-installed, lockfile-pinned dependencies in `allys-tools` and
+the Playwright runtime used by the WCAG Auditor browser probe. Verification commands use
+`npx --no-install`, so a gate fails closed instead of downloading a missing package.
+The repository root manifests, published contract schemas, evidence, and dashboard assets are
+part of the runtime. This project is therefore supported from its checkout, not as a standalone
+installed command.
 
 ```bash
 cd /Users/ryanjohnson/Projects/suites

@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import portfolio_suites.registry as registry_module
 from portfolio_suites.registry import SUITES_ROOT, evidence_errors, get_suite
 from portfolio_suites.waves import WaveRunner, _record_evidence
 
@@ -29,7 +30,17 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(result.execution_kind, "unverifiable_environment")
 
     def test_run_all_waves(self):
-        results = WaveRunner.run_all(write_evidence=False)
+        with patch(
+            "portfolio_suites.registry._load_json",
+            wraps=registry_module._load_json,
+        ) as load_json:
+            results = WaveRunner.run_all(write_evidence=False)
+        manifest_reads = [
+            call
+            for call in load_json.call_args_list
+            if call.args and call.args[0].name == "suite.json"
+        ]
+        self.assertEqual(len(manifest_reads), 8)
         self.assertEqual(len(results), 43)
 
         verified = [r for r in results if r.passed]
@@ -306,6 +317,15 @@ class WaveTests(unittest.TestCase):
             result = WaveRunner.run_wave("model-behavior-lab", "M1", write_evidence=True)
         recorder.assert_called_once()
         self.assertIsNone(result.evidence_path)
+
+    def test_wave_without_recovery_contract_cannot_record_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("portfolio_suites.waves.SUITES_ROOT", Path(tmp)):
+                result = WaveRunner.run_wave("model-behavior-lab", "M1", write_evidence=True)
+        self.assertTrue(result.prototype_passed)
+        self.assertFalse(result.passed)
+        self.assertIsNone(result.evidence_path)
+        self.assertEqual(list(Path(tmp).rglob("*")), [])
 
     def test_source_backed_analysis_waves_fail_closed_without_donors(self):
         with tempfile.TemporaryDirectory() as tmp:

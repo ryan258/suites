@@ -7,6 +7,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
+from ..identifiers import new_prefixed_id
 
 
 class BrandPublishingEngine:
@@ -75,7 +76,7 @@ class BrandPublishingEngine:
 
         # Generate publication receipt
         receipt = {
-            "receipt_id": f"pub-dry-{int(datetime.datetime.now().timestamp())}",
+            "receipt_id": new_prefixed_id("pub-dry"),
             "channel": channel,
             "status": "dry_run_verified",
             "timestamp": now_iso,
@@ -251,7 +252,7 @@ class BrandPublishingEngine:
         valid_decisions = {"approved", "rejected", "needs_revision"}
         if human_decision not in valid_decisions:
             return {
-                "review_id": f"vcc-rev-{int(datetime.datetime.now().timestamp())}",
+                "review_id": new_prefixed_id("vcc-rev"),
                 "error": f"Invalid human_decision '{human_decision}'. Must be one of {valid_decisions}",
                 "status": "blocked_invalid_decision",
             }
@@ -270,7 +271,7 @@ class BrandPublishingEngine:
             status = "ready_for_operator_release"
 
         return {
-            "review_id": f"vcc-rev-{int(datetime.datetime.now().timestamp())}",
+            "review_id": new_prefixed_id("vcc-rev"),
             "brand_package_id": brand_pkg.get("package_id"),
             "source_id": source_record.get("source_id"),
             "dry_run_receipt": dry_receipt,

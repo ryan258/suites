@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
+from ..identifiers import new_prefixed_id
 
 
 class AgentReliabilityEngine:
@@ -107,7 +108,7 @@ class AgentReliabilityEngine:
 
         scorecard = {
             "schema_version": SCHEMA_VERSION,
-            "run_id": f"run-rel-harness-{int(datetime.datetime.now().timestamp())}",
+            "run_id": new_prefixed_id("run-rel-harness"),
             "benchmark_id": "bench-agent-adversarial-gates",
             "benchmark_version": "1.0.0",
             "provider": "agent-reliability-lab",

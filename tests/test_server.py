@@ -1,8 +1,10 @@
 import json
+import http.client
 import threading
 import unittest
 import urllib.error
 import urllib.request
+from unittest.mock import patch
 
 from portfolio_suites.server import create_server
 
@@ -124,6 +126,96 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             res = json.loads(response.read().decode("utf-8"))
             self.assertTrue(res["ok"])
+
+
+class ServerTrustBoundaryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.server = create_server(port=8400)
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def test_malformed_content_length_is_a_client_error(self):
+        connection = http.client.HTTPConnection("127.0.0.1", 8400, timeout=2)
+        try:
+            connection.putrequest("POST", "/api/contracts/SourceRecord/validate")
+            connection.putheader("Content-Type", "application/json")
+            connection.putheader("Content-Length", "not-a-number")
+            connection.endheaders()
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+        finally:
+            connection.close()
+        self.assertEqual(response.status, 400)
+        self.assertIn("Content-Length", payload["error"])
+
+    def test_oversized_json_body_is_rejected_before_reading(self):
+        connection = http.client.HTTPConnection("127.0.0.1", 8400, timeout=2)
+        try:
+            connection.putrequest("POST", "/api/contracts/SourceRecord/validate")
+            connection.putheader("Content-Type", "application/json")
+            connection.putheader("Content-Length", str(1_048_577))
+            connection.endheaders()
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+        finally:
+            connection.close()
+        self.assertEqual(response.status, 413)
+        self.assertIn("exceeds", payload["error"])
+
+    def test_unhashable_enum_payload_is_a_contract_error(self):
+        with urllib.request.urlopen(
+            "http://127.0.0.1:8400/api/contracts/ProductionJob/sample"
+        ) as response:
+            sample = json.loads(response.read().decode("utf-8"))
+        sample["status"] = []
+        request = urllib.request.Request(
+            "http://127.0.0.1:8400/api/contracts/ProductionJob/validate",
+            data=json.dumps(sample).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with self.assertRaises(urllib.error.HTTPError) as context:
+            urllib.request.urlopen(request)
+        self.assertEqual(context.exception.code, 400)
+        payload = json.loads(context.exception.read().decode("utf-8"))
+        self.assertFalse(payload["ok"])
+        self.assertIn("must be one of", payload["error"])
+
+    def test_cross_origin_wave_execution_is_rejected_before_dispatch(self):
+        request = urllib.request.Request(
+            "http://127.0.0.1:8400/api/waves/model-behavior-lab/M1/run",
+            data=b"",
+            headers={
+                "Origin": "https://attacker.example",
+                "Sec-Fetch-Site": "cross-site",
+            },
+            method="POST",
+        )
+        with patch("portfolio_suites.server.WaveRunner.run_wave") as run_wave:
+            with self.assertRaises(urllib.error.HTTPError) as context:
+                urllib.request.urlopen(request)
+        self.assertEqual(context.exception.code, 403)
+        run_wave.assert_not_called()
+
+    def test_get_cannot_trigger_live_wave_execution(self):
+        with patch("portfolio_suites.server.WaveRunner.run_all") as run_all:
+            with self.assertRaises(urllib.error.HTTPError) as context:
+                urllib.request.urlopen("http://127.0.0.1:8400/api/waves?run=true")
+        self.assertEqual(context.exception.code, 405)
+        run_all.assert_not_called()
+
+    def test_repeated_route_prefix_is_not_normalized(self):
+        with self.assertRaises(urllib.error.HTTPError) as context:
+            urllib.request.urlopen(
+                "http://127.0.0.1:8400/api/suites//api/suites/accessibility"
+            )
+        self.assertEqual(context.exception.code, 404)
 
 
 if __name__ == "__main__":

@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import CONTRACTS, SCHEMA_VERSION, ContractError, validate_contract
+from .paths import PROJECTS_ROOT, SUITES_ROOT
+from .provenance import is_meaningful_git_fingerprint
 
-SUITES_ROOT = Path(os.environ["SUITES_ROOT"]).resolve() if "SUITES_ROOT" in os.environ else Path(__file__).resolve().parents[2]
-PROJECTS_ROOT = SUITES_ROOT.parent
 RECOVERY_STANDARD_PATH = SUITES_ROOT / "portfolio" / "recovery-standard.json"
 SUITE_DIRS = (
     "accessibility", "operator-os", "brand-publishing", "production-house",
@@ -155,19 +155,6 @@ def _receipt_value(document: dict[str, Any], dotted_path: str) -> Any:
             return _MISSING
         value = value[part]
     return value
-
-
-def _fingerprint_is_meaningful(value: Any) -> bool:
-    """A source fingerprint must identify content, not merely occupy a receipt key."""
-    return (
-        isinstance(value, dict)
-        and isinstance(value.get("branch"), str)
-        and value.get("branch") not in {"", "unknown"}
-        and isinstance(value.get("head"), str)
-        and value.get("head") not in {"", "unknown"}
-        and isinstance(value.get("tested_files_fingerprint"), dict)
-        and bool(value.get("tested_files_fingerprint"))
-    )
 
 
 ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
@@ -378,7 +365,7 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
         if isinstance(actual, bool) or not isinstance(actual, (int, float)) or actual < minimum:
             errors.append(f"{dotted_path} must be at least {minimum}")
     for dotted_path in spec.get("fingerprints", []):
-        if not _fingerprint_is_meaningful(_receipt_value(document, dotted_path)):
+        if not is_meaningful_git_fingerprint(_receipt_value(document, dotted_path)):
             errors.append(f"{dotted_path} must be a meaningful source fingerprint")
     for dotted_path, contract_name in spec.get("contracts", {}).items():
         value = _receipt_value(document, dotted_path)
@@ -419,7 +406,7 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
                     and overlay.get("fingerprint_verified") is True
                     and isinstance(overlay.get("code_size_bytes"), int)
                     and overlay.get("code_size_bytes", 0) > 0
-                    and _fingerprint_is_meaningful(overlay.get("git_fingerprint"))
+                    and is_meaningful_git_fingerprint(overlay.get("git_fingerprint"))
                 ):
                     errors.append(f"matrix.{name} must retain verified source measurements")
     elif wave_id == "A4":
@@ -529,6 +516,8 @@ def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
     """
     claim = wave.get("recovery_claim", {}) or {}
     kind = claim.get("kind")
+    if not kind:
+        return ["wave has no declared recovery evidence contract"]
     if kind == "runtime" and claim.get("level") in {"parity_verified", "adopted", "converged"}:
         return _runtime_parity_receipt_errors(path, claim.get("receipt_contract", ""))
     basis = {b for b in (claim.get("evidence_basis") or []) if isinstance(b, str) and b}
@@ -553,10 +542,17 @@ def get_project(name: str) -> dict[str, Any] | None:
 
 
 def _git_value(path: Path, *args: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(path), *args], capture_output=True, text=True, check=False
-    )
-    return result.stdout.strip()
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(path), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return "unavailable"
+    return result.stdout.strip() if result.returncode == 0 else "unavailable"
 
 
 def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | None:

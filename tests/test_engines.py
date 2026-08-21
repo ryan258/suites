@@ -13,6 +13,33 @@ from portfolio_suites.contracts import generate_sample
 
 
 class EngineTests(unittest.TestCase):
+    def test_audit_identifiers_do_not_collide_within_one_second(self):
+        package = generate_sample("BrandPackage")
+        source = generate_sample("SourceRecord")
+        publication_ids = {
+            BrandPublishingEngine.dry_run_publish(package, source, "draft")["receipt_id"]
+            for _ in range(3)
+        }
+        review_ids = {
+            BrandPublishingEngine.simulate_vcc_human_approval(
+                package,
+                source,
+                "draft",
+                human_decision="rejected",
+            )["review_id"]
+            for _ in range(3)
+        }
+        action_ids = {
+            OperatorOSEngine.preview_jarvis_action("backup_data", {})["action_id"]
+            for _ in range(3)
+        }
+        harness_ids = {
+            AgentReliabilityEngine.run_adversarial_harness()["run_id"]
+            for _ in range(3)
+        }
+        for identifiers in (publication_ids, review_ids, action_ids, harness_ids):
+            self.assertEqual(len(identifiers), 3)
+
     def test_accessibility_engine_audit(self):
         html = '<input id="test-zip" class="is-invalid"><img src="pic.jpg"><button></button>'
         findings = AccessibilityEngine.audit_html_snippet(html)
@@ -236,9 +263,14 @@ class EngineTests(unittest.TestCase):
         run = ModelBehaviorEngine.execute_ethics_scenario_run("run-test-01", "anthropic", "claude-3-5-sonnet", 5)
         self.assertEqual(run["status"], "completed")
         self.assertEqual(len(run["iterations"]), 5)
+        self.assertTrue(all(it["outcome_source"] == "deterministic_fixture" for it in run["iterations"]))
+        self.assertTrue(all("simulated_latency_ms" in it for it in run["iterations"]))
+        self.assertTrue(all("latency_ms" not in it and "tokens_in" not in it for it in run["iterations"]))
 
         comp = ModelBehaviorEngine.compare_runs([run])
         self.assertEqual(len(comp["comparisons"]), 1)
+        self.assertEqual(comp["comparisons"][0]["simulated_average_latency_ms"], 495.0)
+        self.assertNotIn("average_latency_ms", comp["comparisons"][0])
 
         # Test real deterministic chess evaluation (Finding 1 fix)
         chess = ModelBehaviorEngine.execute_chess_benchmark_run("run-chess-01", "deterministic-oracle", "chess-rules-evaluator-v1", 10)

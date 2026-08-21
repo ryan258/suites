@@ -35,6 +35,18 @@ class SuitesApp {
   }
 
   bindEvents() {
+    // Manifest-derived identifiers live in data attributes, never executable inline handlers.
+    document.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+      const trigger = event.target.closest('[data-app-action]');
+      if (!trigger) return;
+      const action = trigger.dataset.appAction;
+      if (action === 'inspect-suite') this.inspectSuite(trigger.dataset.suiteId);
+      if (action === 'run-wave') this.runSingleWave(trigger.dataset.suiteId, trigger.dataset.waveId);
+      if (action === 'view-evidence') this.viewEvidence(trigger.dataset.evidence);
+      if (action === 'switch-tab') this.switchTab(trigger.dataset.tab);
+    });
+
     // Navigation tabs
     document.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -165,18 +177,18 @@ class SuitesApp {
         <div class="suite-card">
           <div class="suite-card-top">
             <div class="suite-card-header">
-              <span class="suite-name">${s.name}</span>
-              <span class="pill-badge badge-blue">${s.state}</span>
+              <span class="suite-name">${escapeHtml(s.name)}</span>
+              <span class="pill-badge badge-blue">${escapeHtml(s.state)}</span>
             </div>
-            <div class="suite-promise">${s.promise}</div>
+            <div class="suite-promise">${escapeHtml(s.promise)}</div>
             <div class="suite-tags">
-              ${(s.contracts || []).map(c => `<span class="suite-tag">⚖ ${c}</span>`).join('')}
-              ${(s.anchors || []).map(a => `<span class="suite-tag">⚓ ${a}</span>`).join('')}
+              ${(s.contracts || []).map(c => `<span class="suite-tag">⚖ ${escapeHtml(c)}</span>`).join('')}
+              ${(s.anchors || []).map(a => `<span class="suite-tag">⚓ ${escapeHtml(a)}</span>`).join('')}
             </div>
           </div>
           <div class="suite-card-bottom">
-            <span class="subtext">Next: <strong>${currentWave ? currentWave.id : doneLabel}</strong> (${completedWaves}/${totalWaves} waves)</span>
-            <button class="btn btn-sm btn-secondary" onclick="app.inspectSuite('${s.id}')">Inspect</button>
+            <span class="subtext">Next: <strong>${escapeHtml(currentWave ? currentWave.id : doneLabel)}</strong> (${escapeHtml(completedWaves)}/${escapeHtml(totalWaves)} waves)</span>
+            <button class="btn btn-sm btn-secondary" data-app-action="inspect-suite" data-suite-id="${escapeHtml(s.id)}">Inspect</button>
           </div>
         </div>
       `;
@@ -189,22 +201,22 @@ class SuitesApp {
 
     container.innerHTML = this.state.suites.map(s => {
       return `
-        <div class="card" style="margin-bottom: 24px;" id="suite-card-${s.id}">
+        <div class="card" style="margin-bottom: 24px;" id="suite-card-${escapeHtml(s.id)}">
           <div class="card-header-row">
             <div>
-              <h2 style="font-size: 18px; font-weight: 700;">${s.name} <span style="font-size: 12px; color: var(--text-dim); font-family: var(--font-mono);">(${s.id})</span></h2>
-              <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">${s.promise}</p>
+              <h2 style="font-size: 18px; font-weight: 700;">${escapeHtml(s.name)} <span style="font-size: 12px; color: var(--text-dim); font-family: var(--font-mono);">(${escapeHtml(s.id)})</span></h2>
+              <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">${escapeHtml(s.promise)}</p>
             </div>
-            <span class="pill-badge badge-purple">${s.state}</span>
+            <span class="pill-badge badge-purple">${escapeHtml(s.state)}</span>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
             <div>
               <h4 style="font-size: 12px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Anchors & Members</h4>
               <div style="font-size: 13px;">
-                <strong>Anchors:</strong> ${(s.anchors || []).map(a => `<span class="suite-tag">⚓ ${a}</span>`).join(' ')}<br>
+                <strong>Anchors:</strong> ${(s.anchors || []).map(a => `<span class="suite-tag">⚓ ${escapeHtml(a)}</span>`).join(' ')}<br>
                 <div style="margin-top: 8px;">
-                  ${(s.members || []).map(m => `<div>&bull; <span class="mono-cell">${m.project}</span> <span style="color: var(--text-dim);">(${m.relationship})</span></div>`).join('')}
+                  ${(s.members || []).map(m => `<div>&bull; <span class="mono-cell">${escapeHtml(m.project)}</span> <span style="color: var(--text-dim);">(${escapeHtml(m.relationship)})</span></div>`).join('')}
                 </div>
               </div>
             </div>
@@ -212,7 +224,7 @@ class SuitesApp {
             <div>
               <h4 style="font-size: 12px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Completion Criteria</h4>
               <ul style="font-size: 12px; color: var(--text-muted); padding-left: 16px;">
-                ${(s.completion_criteria || []).map(c => `<li>${c}</li>`).join('')}
+                ${(s.completion_criteria || []).map(c => `<li>${escapeHtml(c)}</li>`).join('')}
               </ul>
             </div>
           </div>
@@ -222,14 +234,14 @@ class SuitesApp {
             ${(s.waves || []).map(w => `
               <div class="wave-card">
                 <div class="wave-card-header">
-                  <span class="wave-id-badge">${s.id} / ${w.id}</span>
-                  <span class="pill-badge ${w.status === 'complete' ? 'badge-green' : 'badge-yellow'}">${w.status}</span>
+                  <span class="wave-id-badge">${escapeHtml(s.id)} / ${escapeHtml(w.id)}</span>
+                  <span class="pill-badge ${w.status === 'complete' ? 'badge-green' : 'badge-yellow'}">${escapeHtml(w.status)}</span>
                 </div>
-                <div class="wave-objective">${w.objective}</div>
-                <div class="wave-acceptance">${w.acceptance}</div>
+                <div class="wave-objective">${escapeHtml(w.objective)}</div>
+                <div class="wave-acceptance">${escapeHtml(w.acceptance)}</div>
                 <div class="wave-actions">
-                  <button class="btn btn-sm btn-primary" onclick="app.runSingleWave('${s.id}', '${w.id}')">Run Wave Gate</button>
-                  ${w.evidence ? `<button class="btn btn-sm btn-secondary" onclick="app.viewEvidence('${w.evidence}')">View Evidence</button>` : ''}
+                  <button class="btn btn-sm btn-primary" data-app-action="run-wave" data-suite-id="${escapeHtml(s.id)}" data-wave-id="${escapeHtml(w.id)}">Run Wave Gate</button>
+                  ${w.evidence ? `<button class="btn btn-sm btn-secondary" data-app-action="view-evidence" data-evidence="${escapeHtml(w.evidence)}">View Evidence</button>` : ''}
                 </div>
               </div>
             `).join('')}
@@ -343,8 +355,8 @@ class SuitesApp {
         <div class="wave-objective">${escapeHtml(wave.objective)}</div>
         <div class="wave-acceptance">${escapeHtml(wave.acceptance)}</div>
         <div class="wave-actions">
-          <button class="btn btn-sm btn-primary" onclick="app.runSingleWave('${escapeHtml(suite.id)}', '${escapeHtml(wave.id)}')">Run Gate Check</button>
-          ${wave.evidence ? `<button class="btn btn-sm btn-secondary" onclick="app.viewEvidence('${escapeHtml(wave.evidence)}')">Evidence</button>` : ''}
+          <button class="btn btn-sm btn-primary" data-app-action="run-wave" data-suite-id="${escapeHtml(suite.id)}" data-wave-id="${escapeHtml(wave.id)}">Run Gate Check</button>
+          ${wave.evidence ? `<button class="btn btn-sm btn-secondary" data-app-action="view-evidence" data-evidence="${escapeHtml(wave.evidence)}">Evidence</button>` : ''}
         </div>
       </div>
     `).join('');
@@ -360,10 +372,10 @@ class SuitesApp {
     const specBox = document.getElementById('contract-spec-display');
     if (specBox && spec) {
       specBox.innerHTML = `
-        <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">${spec.name}</div>
-        <div style="color: var(--text-muted); margin-bottom: 8px;">${spec.description}</div>
-        <div style="margin-bottom: 4px;"><strong>Required fields:</strong> <code>${spec.required.join(', ')}</code></div>
-        ${Object.keys(spec.enums || {}).length ? `<div><strong>Enums:</strong> ${Object.entries(spec.enums).map(([k, v]) => `<code>${k}: [${v.join(', ')}]</code>`).join(' ')}</div>` : ''}
+        <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">${escapeHtml(spec.name)}</div>
+        <div style="color: var(--text-muted); margin-bottom: 8px;">${escapeHtml(spec.description)}</div>
+        <div style="margin-bottom: 4px;"><strong>Required fields:</strong> <code>${escapeHtml(spec.required.join(', '))}</code></div>
+        ${Object.keys(spec.enums || {}).length ? `<div><strong>Enums:</strong> ${Object.entries(spec.enums).map(([k, v]) => `<code>${escapeHtml(k)}: [${escapeHtml(v.join(', '))}]</code>`).join(' ')}</div>` : ''}
       `;
     }
 

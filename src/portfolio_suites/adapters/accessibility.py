@@ -191,7 +191,13 @@ class AccessibilitySourceAdapter:
 
         # --- Stage 1: Focused Test Gate ---
         t0_foc = time.perf_counter()
-        foc_cmd = ["npx", "tsx", "--test", "a11y-tools/tests/wcag-331-error-association.test.ts"]
+        foc_cmd = [
+            "npx",
+            "--no-install",
+            "tsx",
+            "--test",
+            "a11y-tools/tests/wcag-331-error-association.test.ts",
+        ]
         try:
             foc_proc = subprocess.run(
                 foc_cmd,
@@ -243,7 +249,13 @@ class AccessibilitySourceAdapter:
                 operational_errors.append(_exception_error("full_suite_gate", full_cmd, exc))
 
         # --- Stage 3: Full-Audit Integration Pipeline Gate (Optional / Deep) ---
-        audit_cmd = ["npx", "tsx", "--test", "a11y-tools/tests/full-audit.test.ts"]
+        audit_cmd = [
+            "npx",
+            "--no-install",
+            "tsx",
+            "--test",
+            "a11y-tools/tests/full-audit.test.ts",
+        ]
         audit_duration_ms = 0.0
         audit_passed = 0
         audit_failed = 0
@@ -349,7 +361,7 @@ console.log(JSON.stringify(result));
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         try:
             eval_proc = subprocess.run(
-                ["npx", "tsx", "-e", node_script],
+                ["npx", "--no-install", "tsx", "-e", node_script],
                 cwd=ALLYS_TOOLS_DIR,
                 capture_output=True,
                 text=True,
@@ -383,12 +395,16 @@ console.log(JSON.stringify(result));
                     findings.append(validated)
             elif eval_proc.returncode != 0:
                 operational_errors.append(
-                    _process_error("dom_snapshot_evaluation", ["npx", "tsx", "-e", "<snapshot-probe>"], eval_proc)
+                    _process_error(
+                        "dom_snapshot_evaluation",
+                        ["npx", "--no-install", "tsx", "-e", "<snapshot-probe>"],
+                        eval_proc,
+                    )
                 )
             else:
                 operational_errors.append({
                     "stage": "dom_snapshot_evaluation",
-                    "command": "npx tsx -e <snapshot-probe>",
+                    "command": "npx --no-install tsx -e <snapshot-probe>",
                     "error_kind": "empty_output",
                     "exit_code": eval_proc.returncode,
                     "stderr": eval_proc.stderr[:500],
@@ -398,7 +414,7 @@ console.log(JSON.stringify(result));
             operational_errors.append(
                 _exception_error(
                     "dom_snapshot_evaluation",
-                    ["npx", "tsx", "-e", "<snapshot-probe>"],
+                    ["npx", "--no-install", "tsx", "-e", "<snapshot-probe>"],
                     exc,
                 )
             )
@@ -593,7 +609,8 @@ console.log(JSON.stringify(result));
             if source_available:
                 try:
                     for f in repo_path.glob("**/*"):
-                        if f.is_file() and not any(part.startswith(".") for part in f.parts):
+                        relative_parts = f.relative_to(repo_path).parts
+                        if f.is_file() and not any(part.startswith(".") for part in relative_parts):
                             if f.suffix in {".js", ".ts", ".html", ".css", ".json"}:
                                 code_size += f.stat().st_size
                                 code_files_count += 1

@@ -1,7 +1,10 @@
 import json
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import portfolio_suites.contracts as contracts_module
 from portfolio_suites.contracts import (
     CONTRACTS,
     ContractError,
@@ -101,6 +104,22 @@ class ContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "must be one of"):
             validate_contract("InvestigationRecord", inv)
 
+    def test_unhashable_enum_values_raise_contract_errors(self):
+        for contract_name, spec in CONTRACTS.items():
+            for field in spec.enums or {}:
+                sample = generate_sample(contract_name)
+                for invalid_value in ([], {}):
+                    with self.subTest(
+                        contract=contract_name,
+                        field=field,
+                        invalid_type=type(invalid_value).__name__,
+                    ):
+                        with self.assertRaisesRegex(ContractError, "must be one of"):
+                            validate_contract(
+                                contract_name,
+                                {**sample, field: invalid_value},
+                            )
+
     def test_compute_sha256(self):
         digest = compute_sha256("test-content")
         self.assertEqual(len(digest), 64)
@@ -155,6 +174,15 @@ class ContractTests(unittest.TestCase):
         sample = generate_sample("InvestigationRecord")
         with self.assertRaises(ContractError):
             validate_contract("InvestigationRecord", {**sample, "created_at": "not-a-timestamp"})
+
+    def test_validator_fails_closed_when_published_schemas_are_missing(self):
+        sample = generate_sample("SourceRecord")
+        with tempfile.TemporaryDirectory() as tmp:
+            contracts_module._published_schemas.cache_clear()
+            with patch.object(contracts_module, "SCHEMA_DIR", Path(tmp)):
+                with self.assertRaisesRegex(ContractError, "published contract schemas are missing"):
+                    validate_contract("SourceRecord", sample)
+        contracts_module._published_schemas.cache_clear()
 
 
 if __name__ == "__main__":

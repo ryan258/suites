@@ -15,14 +15,12 @@ from .adapters.accessibility import AccessibilitySourceAdapter
 from .adapters.brand_publishing import BrandPublishingSourceAdapter
 from .adapters.operator_os import OperatorOSSourceAdapter
 from .adapters.production_house import ProductionHouseSourceAdapter
-from .contracts import generate_sample, validate_contract
-from .engines.accessibility import AccessibilityEngine
+from .contracts import generate_sample
 from .engines.agent_reliability import AgentReliabilityEngine
 from .engines.brand_publishing import BrandPublishingEngine
 from .engines.discovery_decision import DiscoveryDecisionEngine
 from .engines.game_design import GameDesignEngine
 from .engines.model_behavior import ModelBehaviorEngine
-from .engines.production_house import ProductionHouseEngine
 from .registry import SUITES_ROOT, evidence_errors, get_suite, load_suites
 
 
@@ -143,6 +141,18 @@ class WaveRunner:
         suite = get_suite(suite_id)
         if not suite:
             return WaveRunResult(suite_id, wave_id, False, f"Unknown suite: {suite_id}", execution_kind="error")
+        return cls._run_loaded_wave(suite, wave_id, write_evidence=write_evidence, full=full)
+
+    @classmethod
+    def _run_loaded_wave(
+        cls,
+        suite: dict[str, Any],
+        wave_id: str,
+        write_evidence: bool = False,
+        full: bool = False,
+    ) -> WaveRunResult:
+        """Run one wave from an already-loaded suite manifest."""
+        suite_id = suite.get("id", "unknown-suite")
 
         wave_spec = next((w for w in suite.get("waves", []) if w.get("id") == wave_id), None)
         if not wave_spec:
@@ -193,9 +203,14 @@ class WaveRunner:
     def run_all(cls, write_evidence: bool = False, full: bool = False) -> list[WaveRunResult]:
         results = []
         suites = load_suites()
-        for suite_id, manifest in suites.items():
+        for manifest in suites.values():
             for wave in manifest.get("waves", []):
-                res = cls.run_wave(suite_id, wave["id"], write_evidence=write_evidence, full=full)
+                res = cls._run_loaded_wave(
+                    manifest,
+                    wave["id"],
+                    write_evidence=write_evidence,
+                    full=full,
+                )
                 results.append(res)
         return results
 

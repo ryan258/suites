@@ -98,6 +98,26 @@ class AccessibilityAdapterTests(unittest.TestCase):
         self.assertFalse(mismatch["donor_flagged"])
         self.assertFalse(mismatch["matches"])
 
+    def test_node_gates_never_install_packages_during_verification(self):
+        receipt = self._run_with(
+            {
+                "invalid_input_missing_error_ref": True,
+                "invalid_input_with_valid_errormessage": False,
+                "invalid_input_with_valid_describedby": False,
+            },
+            _completed(0, _tap(127)),
+        )
+        self.assertTrue(
+            receipt["stages"]["focused_parity_gate"]["command"].startswith(
+                "npx --no-install tsx"
+            )
+        )
+        self.assertTrue(
+            receipt["stages"]["full_audit_integration_gate"]["command"].startswith(
+                "npx --no-install tsx"
+            )
+        )
+
     def test_keyboard_overlay_reconciliation_gate(self):
         rec = AccessibilitySourceAdapter.execute_keyboard_overlay_reconciliation_gate()
         self.assertTrue(rec["all_stages_passed"])
@@ -133,6 +153,46 @@ class AccessibilityAdapterTests(unittest.TestCase):
         self.assertEqual(rec["matrix"]["kb-overlay"]["code_size_bytes"], 0)
         self.assertFalse(rec["matrix"]["kb-overlay"]["source_available"])
         self.assertFalse(rec["matrix"]["kb-overlay"]["fingerprint_verified"])
+
+    def test_keyboard_overlay_inventory_ignores_hidden_ancestors_not_the_repo(self):
+        fingerprint = {
+            "branch": "main",
+            "head": "a" * 40,
+            "tested_files_fingerprint": {"manifest.json": "b" * 64},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / ".hidden-parent"
+            repositories = {
+                "KB_OVERLAY_DIR": root / "kb-overlay",
+                "KEYBOARD_NAV_OVERLAY_DIR": root / "keyboard-nav-overlay",
+                "KEYBOARD_NAV_OVERLAY_94BF7E_DIR": root / "keyboard-nav-overlay-94bf7e",
+            }
+            for repository in repositories.values():
+                repository.mkdir(parents=True)
+                (repository / "manifest.json").write_text(
+                    json.dumps({"manifest_version": 3, "permissions": []}),
+                    encoding="utf-8",
+                )
+                (repository / "content.js").write_text("export const ready = true;", encoding="utf-8")
+
+            with (
+                patch.object(accessibility_module, "KB_OVERLAY_DIR", repositories["KB_OVERLAY_DIR"]),
+                patch.object(
+                    accessibility_module,
+                    "KEYBOARD_NAV_OVERLAY_DIR",
+                    repositories["KEYBOARD_NAV_OVERLAY_DIR"],
+                ),
+                patch.object(
+                    accessibility_module,
+                    "KEYBOARD_NAV_OVERLAY_94BF7E_DIR",
+                    repositories["KEYBOARD_NAV_OVERLAY_94BF7E_DIR"],
+                ),
+                patch.object(accessibility_module, "get_git_fingerprint", return_value=fingerprint),
+            ):
+                rec = AccessibilitySourceAdapter.execute_keyboard_overlay_reconciliation_gate()
+
+        self.assertTrue(rec["all_stages_passed"])
+        self.assertTrue(all(item["code_files_count"] == 2 for item in rec["matrix"].values()))
 
     def test_a11y_kitchen_roundtrip_fails_closed_without_source(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -12,6 +12,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from .paths import SUITES_ROOT
+
 SCHEMA_VERSION = "1.0.0"
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -97,7 +99,7 @@ CONTRACTS: dict[str, ContractSpec] = {
 }
 
 
-SCHEMA_DIR = Path(__file__).resolve().parent.parent.parent / "contracts"
+SCHEMA_DIR = SUITES_ROOT / "contracts"
 JSON_TYPES: dict[str, tuple[type, ...]] = {
     "string": (str,),
     "integer": (int,),
@@ -115,12 +117,35 @@ def _published_schemas() -> dict[str, dict[str, Any]]:
     The schema files are the single source of truth for field types, so an artifact the
     Python validator accepts is also accepted by an external consumer reading the schema.
     """
+    paths = sorted(SCHEMA_DIR.glob("*.schema.json"))
+    if not paths:
+        raise ContractError(f"published contract schemas are missing from {SCHEMA_DIR}")
+
     schemas: dict[str, dict[str, Any]] = {}
-    for path in sorted(SCHEMA_DIR.glob("*.schema.json")):
-        document = json.loads(path.read_text(encoding="utf-8"))
+    for path in paths:
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise ContractError(f"published contract schema cannot be loaded: {path}: {error}") from error
+        if not isinstance(document, dict):
+            raise ContractError(f"published contract schema must be an object: {path}")
         title = document.get("title")
-        if title:
-            schemas[title] = document.get("properties", {})
+        properties = document.get("properties")
+        if not isinstance(title, str) or not isinstance(properties, dict):
+            raise ContractError(f"published contract schema needs string title and object properties: {path}")
+        if title in schemas:
+            raise ContractError(f"duplicate published contract schema title: {title}")
+        schemas[title] = properties
+
+    missing = sorted(set(CONTRACTS) - set(schemas))
+    unknown = sorted(set(schemas) - set(CONTRACTS))
+    if missing or unknown:
+        details = []
+        if missing:
+            details.append(f"missing: {', '.join(missing)}")
+        if unknown:
+            details.append(f"unknown: {', '.join(unknown)}")
+        raise ContractError(f"published contract schema coverage is incomplete ({'; '.join(details)})")
     return schemas
 
 
@@ -169,7 +194,8 @@ def validate_contract(name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(payload.get(field), Mapping):
             raise ContractError(f"{name}.{field} must be an object")
     for field, values in (spec.enums or {}).items():
-        if payload.get(field) not in values:
+        value = payload.get(field)
+        if not isinstance(value, str) or value not in values:
             raise ContractError(f"{name}.{field} must be one of {', '.join(sorted(values))}")
 
     id_field = {

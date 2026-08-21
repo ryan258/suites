@@ -1,5 +1,6 @@
 import unittest
 import json
+import subprocess
 from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -8,6 +9,7 @@ from unittest.mock import patch
 from portfolio_suites.registry import (
     _analysis_evidence_errors,
     _analysis_receipt_semantic_errors,
+    _git_value,
     _runtime_parity_receipt_errors,
     get_portfolio_summary,
     load_ledger,
@@ -18,6 +20,15 @@ from portfolio_suites.registry import (
 
 
 class RegistryTests(unittest.TestCase):
+    def test_git_probe_is_bounded_and_reports_timeout_as_unavailable(self):
+        with patch(
+            "portfolio_suites.registry.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(["git", "status"], timeout=5),
+        ) as run:
+            value = _git_value(Path("/tmp/example"), "status", "--porcelain")
+        self.assertEqual(value, "unavailable")
+        self.assertEqual(run.call_args.kwargs["timeout"], 5)
+
     def test_eight_suite_boundaries_exist(self):
         self.assertEqual(len(load_suites()), 8)
 
