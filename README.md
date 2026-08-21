@@ -26,8 +26,8 @@ CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
 OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 6 Contracts, 43 Wave Specifications
-VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 1 Analysis Milestone (A1) | 0 Adopted | 0 Converged
-PROTOTYPES: 41 checks passing; prototypes never count as recovered functionality
+VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 4 Analysis Milestones (A1, A3, A4, A5) | 0 Adopted | 0 Converged
+PROTOTYPES: 38 checks passing; prototypes never count as recovered functionality
 ```
 
 ## The eight suites
@@ -78,7 +78,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record
 # Launch the zero-dependency local web dashboard
 PYTHONPATH=src python3 -m portfolio_suites serve --port 8383
 
-# Run complete test suite (69 tests)
+# Run complete test suite (73 tests)
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
