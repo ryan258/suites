@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from portfolio_suites.registry import (
+    _analysis_evidence_errors,
     _runtime_parity_receipt_errors,
     get_portfolio_summary,
     load_ledger,
@@ -84,6 +85,24 @@ class RegistryTests(unittest.TestCase):
             "runtime parity receipt must prove authentic donor execution and parity",
             errors,
         )
+
+    def test_analysis_evidence_must_contain_its_declared_basis(self):
+        with TemporaryDirectory() as directory:
+            receipt = Path(directory) / "receipt.json"
+            receipt.write_text(json.dumps({"job": {}, "formatter_fingerprint": "abc"}), encoding="utf-8")
+            self.assertEqual(_analysis_evidence_errors(receipt, {"job", "formatter_fingerprint"}), [])
+            self.assertEqual(
+                _analysis_evidence_errors(receipt, {"job", "output_parity"}),
+                ["analysis evidence does not contain its declared basis: output_parity"],
+            )
+
+            prose = Path(directory) / "receipt.md"
+            prose.write_text("# A1\n\n## Retirement gate\n", encoding="utf-8")
+            self.assertEqual(_analysis_evidence_errors(prose, {"## Retirement gate"}), [])
+            self.assertEqual(
+                _analysis_evidence_errors(prose, {"## Missing section"}),
+                ["analysis evidence does not contain its declared basis: ## Missing section"],
+            )
 
     def test_summary_separates_analysis_from_runtime_recovery(self):
         summary = get_portfolio_summary()

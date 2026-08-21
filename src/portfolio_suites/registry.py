@@ -115,6 +115,35 @@ def load_recovery_standard() -> dict[str, Any]:
     return _load_json(RECOVERY_STANDARD_PATH)
 
 
+def _analysis_evidence_errors(path: Path, evidence_basis: set[str]) -> list[str]:
+    """Check a retained analysis receipt actually contains the basis it claims.
+
+    Runtime claims draw their basis from the closed RUNTIME_PARITY_EVIDENCE vocabulary.
+    An analysis claim instead names fields of its own evidence: top-level keys for a JSON
+    receipt, literal markers for a prose one. Either way the names must really be there.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        return [f"analysis evidence cannot be read: {error}"]
+
+    if path.suffix == ".json":
+        try:
+            document = json.loads(text)
+        except json.JSONDecodeError as error:
+            return [f"analysis evidence is not valid JSON: {error}"]
+        if not isinstance(document, dict):
+            return ["analysis evidence must be a JSON object"]
+        present = set(document)
+    else:
+        present = {marker for marker in evidence_basis if marker in text}
+
+    missing = sorted(evidence_basis - present)
+    if missing:
+        return [f"analysis evidence does not contain its declared basis: {', '.join(missing)}"]
+    return []
+
+
 def _runtime_parity_receipt_errors(path: Path, contract_id: str) -> list[str]:
     """Validate a retained runtime receipt through an explicitly versioned contract."""
     if contract_id not in RECOVERY_RECEIPT_CONTRACTS:
@@ -522,6 +551,9 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                     claim.get("receipt_contract", ""),
                 ):
                     report.errors.append(f"{suite_id}/{wave.get('id')}: {receipt_error}")
+            elif claim_kind == "analysis" and evidence_basis_set:
+                for evidence_error in _analysis_evidence_errors(evidence_file, evidence_basis_set):
+                    report.errors.append(f"{suite_id}/{wave.get('id')}: {evidence_error}")
 
     if check_live:
         expected = set(projects)

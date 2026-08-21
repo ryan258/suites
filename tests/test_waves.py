@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from portfolio_suites.waves import WaveRunner
@@ -160,6 +162,23 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(missing.execution_kind, "error")
         self.assertFalse(missing.passed)
         self.assertFalse(missing.prototype_passed)
+
+    def test_obp_waves_record_evidence(self):
+        """O/B/P record mode writes evidence and must not raise. Redirects SUITES_ROOT so retained evidence is untouched."""
+        cases = (
+            [("operator-os", f"O{i}") for i in range(1, 7)]
+            + [("brand-publishing", f"B{i}") for i in range(1, 7)]
+            + [("production-house", f"P{i}") for i in range(1, 6)]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("portfolio_suites.waves.SUITES_ROOT", Path(tmp)):
+                for suite_id, wave_id in cases:
+                    res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=True)
+                    self.assertTrue(res.passed, f"{suite_id} {wave_id}: {res.message}")
+                    self.assertTrue(
+                        Path(res.evidence_path).is_file(),
+                        f"{suite_id} {wave_id} recorded no evidence file",
+                    )
 
     def test_failed_record_does_not_overwrite_evidence(self):
         failing_receipt = {

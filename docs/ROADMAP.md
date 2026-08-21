@@ -7,7 +7,7 @@ The `/Users/ryanjohnson/Projects/suites` control plane is established as the por
 ```text
 CONTROL PLANE FOUNDATION:
 - 8/8 Suite boundaries defined with clear user promises and canonical anchors
-- 6 Shared contracts implemented (A11yFinding, SourceRecord, BrandPackage, InvestigationRecord, ProductionJob, AgentRun)
+- 6 Shared contracts implemented (A11yFinding, SourceRecord, BrandPackage, InvestigationRecord, ProductionJob, ExperimentRun)
 - 70 Top-level projects dispositioned across suites and independent containers
 - Control-plane tests cover contracts, registry, engines, OpenRouter isolation, CLI, and dashboard APIs
 - Zero-dependency CLI and local web dashboard operational
@@ -57,13 +57,12 @@ Migration proceeds suite by suite, requiring authentic source-backed execution, 
 
 ### Horizon 1 — Ally Accessibility Suite (In Progress)
 - **Target Anchor:** `allys-tools`
-- **Current State:** `A1` is a verified analysis milestone; `A2` is a parity-verified runtime recovery at clean `allys-tools` commit `f2b4c6e`.
-- **Next Wave (A3):** Complete genuine browser-level reconciliation of the three keyboard overlays.
-- **Subsequent Waves:**
-  - `A3`: Genuine feature, permission, and runtime reconciliation of three keyboard overlays (`kb-overlay`, `keyboard-nav-overlay`, `keyboard-nav-overlay-94bf7e`).
-  - `A4`: Port remaining rule candidates with regression fixtures.
+- **Current State:** `A1` and `A3`-`A5` are verified analysis milestones; `A2` is a parity-verified runtime recovery at clean `allys-tools` commit `f2b4c6e`.
+- **Next Wave (A6):** Freeze duplicate donor repositories upon verified parity. `A6` remains a prototype check until owner convergence approval is granted.
+- **Completed Waves:**
+  - `A3`: Feature, permission, and runtime reconciliation of three keyboard overlays (`kb-overlay`, `keyboard-nav-overlay`, `keyboard-nav-overlay-94bf7e`).
+  - `A4`: Remaining rule candidates evaluated against regression fixtures.
   - `A5`: Round-trip contract through `a11y kitchen`.
-  - `A6`: Freeze duplicate donor repositories upon verified parity.
 
 ### Horizon 2 — Operator OS Migration
 - **Target Anchors:** `dotfiles` + `PKos`

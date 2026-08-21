@@ -4,6 +4,49 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-20 — Control-Plane Integrity Repair
+
+Fixed a defect that made the documented `wave ... --record` path raise `AttributeError` for all
+seventeen Operator OS, Brand + Publishing, and Production House waves. Ephemeral runs were
+unaffected, and the existing tests missed it because those waves were only exercised with
+`write_evidence=False`. Record-mode coverage now runs every O/B/P wave against a redirected
+evidence root.
+
+Rewrote the seventeen O/B/P wave objectives and acceptance criteria to describe what their runners
+actually do. Most fingerprint a source repository and then exercise suite-local fixtures; `O2` and
+`B2` genuinely read live source; `O5`, `P4`, and `P5` touch no repository at all. Each wave now
+carries a `runtime_followup` field recording the real runtime integration its former wording
+implied, so narrowing the criteria does not discard the obligation. Wave count is unchanged at 43.
+
+Analysis evidence is now validated for content rather than existence. An analysis claim's
+`evidence_basis` names fields its own receipt must carry — top-level keys for a JSON receipt,
+literal markers for a prose one — and registry validation fails closed when the receipt does not
+contain them. The previous boilerplate basis of `source_inventory, parity_matrix, fixture_catalog`
+was shared verbatim by twenty of twenty-one analysis waves and matched almost none of their
+evidence. Production House runners now retain the source fingerprints their adapters compute
+instead of writing the generated job alone, and `P1`-`P5` evidence was regenerated accordingly.
+
+Verified claims are unchanged: one parity-verified runtime recovery, twenty-one analysis
+milestones, zero adopted workflows, zero converged capabilities.
+
+---
+
+## 2026-08-20 — Analysis Milestones: Waves A3-A5, O1-O6, B1-B6, P1-P5
+
+Promoted twenty analysis milestones across four suites, taking wave completion from 2/43 to 22/43.
+Accessibility added `A3` keyboard-overlay reconciliation, `A4` rule-candidate evaluation, and `A5`
+`a11y kitchen` round-trip. Operator OS added `O1`-`O6`, Brand + Publishing `B1`-`B6`, and
+Production House `P1`-`P5`, each backed by a live source adapter and a retained receipt.
+
+These are analysis claims, not runtime recoveries. Each fingerprints or reads its donor sources and
+then exercises the suite-local engine; none invokes an external runtime. `A2` remains the sole
+parity-verified runtime recovery. Adopted and converged counts remain zero, and 22/43 is a
+planning milestone percentage rather than a functionality-recovery score.
+
+Commits: `16da302`, `b87dfbb`, `b9e8ec5`, `ceb9b23`.
+
+---
+
 ## 2026-08-20 — 9/10 Recovery Standard Adopted
 
 Adopted a portfolio-wide standard that targets 9/10 recovery of valuable functionality rather than
@@ -134,7 +177,7 @@ WAVE VERIFICATION: 1/43 Waves Verified (A1 Parity Matrix); 42 Waves Specified wi
    - Mapped 70 top-level projects and 35 nested git repositories in [project-ledger.json](file:///Users/ryanjohnson/Projects/suites/portfolio/project-ledger.json) and [nested-repositories.json](file:///Users/ryanjohnson/Projects/suites/portfolio/nested-repositories.json).
 
 2. **Unified Contract System**:
-   - Implemented 6 core schemas: `A11yFinding`, `SourceRecord`, `BrandPackage`, `InvestigationRecord`, `ProductionJob`, and `AgentRun`.
+   - Implemented 6 core schemas: `A11yFinding`, `SourceRecord`, `BrandPackage`, `InvestigationRecord`, `ProductionJob`, and `ExperimentRun`.
    - Added automated JSON schema generator and bidirectional schema/contract validation tests.
 
 3. **Control Plane CLI & Dashboard**:

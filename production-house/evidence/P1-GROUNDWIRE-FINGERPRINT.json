@@ -1,60 +1,111 @@
 {
   "schema_version": "1.0.0",
-  "job_id": "job-gw-episode-12-ambient-horror",
-  "domain": "groundwire-audio-play",
-  "task": "render-full-episode-master",
-  "status": "completed",
-  "inputs": [
-    {
-      "name": "episode-12-ambient-horror.fountain",
-      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "type": "script"
-    }
-  ],
-  "outputs": [
-    {
-      "name": "episode-12-ambient-horror-master.flac",
-      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "duration_sec": 784.2
+  "wave": "P1",
+  "status": "fingerprinted",
+  "job": {
+    "schema_version": "1.0.0",
+    "job_id": "job-gw-episode-12-ambient-horror",
+    "domain": "groundwire-audio-play",
+    "task": "render-full-episode-master",
+    "status": "completed",
+    "inputs": [
+      {
+        "name": "episode-12-ambient-horror.fountain",
+        "sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7",
+        "type": "script"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "episode-12-ambient-horror-master.flac",
+        "sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7",
+        "duration_sec": 784.2
+      },
+      {
+        "name": "episode-12-ambient-horror-captions.vtt",
+        "sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7",
+        "cues": 142
+      },
+      {
+        "name": "episode-12-ambient-horror-qc-report.json",
+        "sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7",
+        "lufs": -16.2,
+        "peak_db": -1.0
+      }
+    ],
+    "events": [
+      {
+        "time": "2026-08-21T01:10:54.520616+00:00",
+        "stage": "fountain_parse",
+        "status": "ok",
+        "notes": "Parsed 12 scenes and 4 character voices"
+      },
+      {
+        "time": "2026-08-21T01:10:54.520616+00:00",
+        "stage": "elevenlabs_formatter",
+        "status": "ok",
+        "notes": "Synthesized 142 audio stems"
+      },
+      {
+        "time": "2026-08-21T01:10:54.520616+00:00",
+        "stage": "ambient_sfx_mix",
+        "status": "ok",
+        "notes": "Beds mixed at -22 dB"
+      },
+      {
+        "time": "2026-08-21T01:10:54.520616+00:00",
+        "stage": "mastering_qc",
+        "status": "ok",
+        "notes": "Broadcast loudness achieved (-16.2 LUFS)"
+      }
+    ],
+    "created_at": "2026-08-21T01:10:54.520616+00:00",
+    "updated_at": "2026-08-21T01:10:54.520616+00:00"
+  },
+  "production_house_fingerprint": {
+    "branch": "main",
+    "head": "bb145520744709f23d09ff719227f96fb2766819",
+    "short": "main@bb14552",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "c8e4ae238e1902884d42f75780fc50aa4f5a97a06c4ecd0077661cf7f9b51fc2",
+    "tested_files_fingerprint": {
+      "pyproject.toml": "f79100b7da5bd03e4e58a55385654df7a0528ccde7ce633574cb4701c23ad535",
+      "README.md": "a4ecf9437fdc9f9ae84c8f6cfaae419b78c6b08eb5f433e0e9a77312b6f1deb4"
     },
-    {
-      "name": "episode-12-ambient-horror-captions.vtt",
-      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "cues": 142
+    "target_state": "clean_commit"
+  },
+  "groundwire_fingerprint": {
+    "branch": "groundwire--v2-staff-update",
+    "head": "c72969bdb4dde5c0209315fe337978d97e5332a8",
+    "short": "groundwire--v2-staff-update@c72969b",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "16cdebc568c3e64f35f92dbfc558fa42538554bd477a16cf597dd67002acf513",
+    "tested_files_fingerprint": {
+      "pyproject.toml": "5d0243af003eeb7eb4a8f76f87b8321ee4e9758519a89d170e2d0260f1a68083",
+      "README.md": "0fe6fadf47256abeb9634427af97e805acecc535ced58d466633efdb0d095f2c"
     },
-    {
-      "name": "episode-12-ambient-horror-qc-report.json",
-      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "lufs": -16.2,
-      "peak_db": -1.0
-    }
-  ],
-  "events": [
-    {
-      "time": "2026-08-20T15:51:40.498971+00:00",
-      "stage": "fountain_parse",
-      "status": "ok",
-      "notes": "Parsed 12 scenes and 4 character voices"
+    "target_state": "clean_commit"
+  },
+  "formatter_fingerprint": {
+    "branch": "v3",
+    "head": "2d556905402e7554073f6aeee75a0e4a7a42c4e8",
+    "short": "v3@2d55690",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "1cd0b85edda59a7747364be368e4bba9fce4dcede431eb605a52770c6312cc55",
+    "tested_files_fingerprint": {
+      "pyproject.toml": "9bff5489d3ed3f5dc19004f57b1281bdf578be991aa4dbee841d3af78c51e0e5",
+      "README.md": "40db4768ba78755fd3bec4d5a76fcdc658d582b75faa31052b74951a9777dd4e"
     },
-    {
-      "time": "2026-08-20T15:51:40.498971+00:00",
-      "stage": "elevenlabs_formatter",
-      "status": "ok",
-      "notes": "Synthesized 142 audio stems"
-    },
-    {
-      "time": "2026-08-20T15:51:40.498971+00:00",
-      "stage": "ambient_sfx_mix",
-      "status": "ok",
-      "notes": "Beds mixed at -22 dB"
-    },
-    {
-      "time": "2026-08-20T15:51:40.498971+00:00",
-      "stage": "mastering_qc",
-      "status": "ok",
-      "notes": "Broadcast loudness achieved (-16.2 LUFS)"
-    }
-  ],
-  "created_at": "2026-08-20T15:51:40.498971+00:00",
-  "updated_at": "2026-08-20T15:51:40.498971+00:00"
+    "target_state": "clean_commit"
+  },
+  "all_stages_passed": true
 }

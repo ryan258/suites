@@ -66,55 +66,61 @@
       "id": "B1",
       "order": 12,
       "status": "complete",
-      "objective": "Export one approved BrandPackage and consume it in a downstream dry run.",
-      "acceptance": "Schema validation, version pinning, provenance, and mutation protection are evidenced.",
+      "objective": "Build a canonical BrandPackage in the suite-local engine and consume it in a downstream dry run.",
+      "acceptance": "Schema validation, version pinning, provenance, and mutation protection are evidenced, and the receipt is dry-run only with no live publishing side-effect.",
+      "runtime_followup": "Export the package from the real Brand Maker runtime and consume it in a downstream consumer outside this repository.",
       "evidence": "brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json",
-      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["source_inventory", "parity_matrix", "fixture_catalog"]}
+      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["target", "brand_package", "source_record", "publishing_receipt", "mutation_tests"]}
     },
     {
       "id": "B2",
       "order": 22,
       "status": "complete",
-      "objective": "Map Brand Workshop's nine phases onto Brand Maker workspace state and gates.",
-      "acceptance": "Every phase is ported, rejected, or retained with behavior and recovery evidence.",
+      "objective": "Map Brand Workshop's nine phases onto Brand Maker workspace state and gates, extracting phase ids from live brand_workshop/phases.py.",
+      "acceptance": "All nine phases are read from source and each is mapped, rejected, or retained with a named Maker gate and port action. No phase is implemented in Brand Maker.",
+      "runtime_followup": "Implement the mapped gates in the real Brand Maker workspace with behavior and recovery evidence per phase.",
       "evidence": "brand-publishing/evidence/B2-BRAND-WORKSHOP-PHASES.json",
-      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["source_inventory", "parity_matrix", "fixture_catalog"]}
+      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["donor", "target", "total_phases_mapped", "phase_mappings"]}
     },
     {
       "id": "B3",
       "order": 32,
       "status": "complete",
-      "objective": "Prove sourced draft to VCC review to dry-run publishing receipt.",
-      "acceptance": "SourceRecord, BrandPackage, human approval, artifact version, and dry-run status remain linked.",
+      "objective": "Model sourced draft to VCC review to dry-run publishing receipt through the suite-local engine.",
+      "acceptance": "SourceRecord, BrandPackage, claim matching, and dry-run status remain linked on a single receipt. Nothing is submitted to VCC.",
+      "runtime_followup": "Route a real draft through the actual VCC review path and produce the receipt from that system.",
       "evidence": "brand-publishing/evidence/B3-VCC-PUBLISHING-RECEIPT.json",
-      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["source_inventory", "parity_matrix", "fixture_catalog"]}
+      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["brand_package_id", "source_sha256", "matched_approved_claims_count", "dry_run_only"]}
     },
     {
       "id": "B4",
       "order": 42,
       "status": "complete",
-      "objective": "Wire multi-caller BrandPackage consumers and verify version-pinning boundaries.",
-      "acceptance": "Version-pinning and mutation-protection holds across multiple independent callers.",
+      "objective": "Verify version-pinning and mutation-protection boundaries across two independent suite-local BrandPackage consumers.",
+      "acceptance": "Both consumers resolve the same pinned package id and version, and mutation protection holds across them.",
+      "runtime_followup": "Wire a consumer outside this repository and verify the same boundary across a process or repository seam.",
       "evidence": "brand-publishing/evidence/B4-MULTI-CONSUMER-VERIFICATION.json",
-      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["source_inventory", "parity_matrix", "fixture_catalog"]}
+      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["consumer_1", "consumer_2"]}
     },
     {
       "id": "B5",
       "order": 52,
       "status": "complete",
-      "objective": "Implement 9 Brand Workshop phases into Brand Maker intake state and reconcile duplicate UX.",
-      "acceptance": "9-phase state machine executes intake without data loss and produces canonical BrandPackage.",
+      "objective": "Implement the nine Brand Workshop phases as a Brand Maker intake state machine in the suite-local engine.",
+      "acceptance": "Complete phase inputs drive all nine phases to a canonical BrandPackage without data loss, and empty input completes zero phases and yields no package.",
+      "runtime_followup": "Move the state machine into the real Brand Maker application and reconcile its existing duplicate intake UX.",
       "evidence": "brand-publishing/evidence/B5-BRAND-MAKER-INTAKE-STATE.json",
-      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["source_inventory", "parity_matrix", "fixture_catalog"]}
+      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["phases_total", "phases_completed", "intake_log", "resulting_package"]}
     },
     {
       "id": "B6",
       "order": 62,
       "status": "complete",
-      "objective": "Extend dry-run receipt chain to formal VCC review with human approval gate simulation.",
-      "acceptance": "Draft verification and human signoff verified while preserving operator publish authority.",
+      "objective": "Extend the dry-run receipt chain with a simulated VCC human approval gate.",
+      "acceptance": "Approved, rejected, and unmatched-claim decisions each produce their distinct status, and the approved path stops before live publish, preserving operator publish authority.",
+      "runtime_followup": "Replace the simulated gate with real human signoff in VCC.",
       "evidence": "brand-publishing/evidence/B6-VCC-HUMAN-GATE-APPROVAL.json",
-      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["source_inventory", "parity_matrix", "fixture_catalog"]}
+      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["approved_review", "rejected_probe_status", "unmatched_probe_status"]}
     }
   ]
 }

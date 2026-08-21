@@ -53,6 +53,13 @@ class WaveRunner:
     """Execute wave verification gates and generate structured evidence files."""
 
     @classmethod
+    def _record_evidence(cls, evidence_file: Path, data: Any, passed: bool) -> str | None:
+        """Path-taking variant of _record_evidence for O/B/P waves. Caller already checked write_evidence."""
+        return _record_evidence(
+            evidence_file.parent.parent.name, evidence_file.name, data, True, passed
+        )
+
+    @classmethod
     def run_wave(cls, suite_id: str, wave_id: str, write_evidence: bool = False) -> WaveRunResult:
         suite = get_suite(suite_id)
         if not suite:
@@ -516,7 +523,7 @@ class WaveRunner:
         passed = res.get("all_stages_passed", False)
         evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P1-GROUNDWIRE-FINGERPRINT.json"
         if write_evidence:
-            cls._record_evidence(evidence_file, res.get("job"), passed=passed)
+            cls._record_evidence(evidence_file, res, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -533,7 +540,7 @@ class WaveRunner:
         passed = res.get("all_stages_passed", False)
         evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P2-FORMATTER-JOB-RECEIPT.json"
         if write_evidence:
-            cls._record_evidence(evidence_file, res.get("job"), passed=passed)
+            cls._record_evidence(evidence_file, res, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -550,7 +557,7 @@ class WaveRunner:
         passed = res.get("all_stages_passed", False)
         evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P3-WRITERS-ROOM-HANDOFF.json"
         if write_evidence:
-            cls._record_evidence(evidence_file, res.get("job"), passed=passed)
+            cls._record_evidence(evidence_file, res, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -567,7 +574,7 @@ class WaveRunner:
         passed = res.get("all_stages_passed", False)
         evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P4-DOCUMENTARY-PIPELINE-JOB.json"
         if write_evidence:
-            cls._record_evidence(evidence_file, res.get("job"), passed=passed)
+            cls._record_evidence(evidence_file, res, passed=passed)
 
         return WaveRunResult(
             suite["id"],
@@ -584,7 +591,7 @@ class WaveRunner:
         passed = res.get("all_stages_passed", False)
         evidence_file = SUITES_ROOT / "production-house" / "evidence" / "P5-WRITERS-ROOM-EVENT-STREAM.json"
         if write_evidence:
-            cls._record_evidence(evidence_file, res.get("mapping"), passed=passed)
+            cls._record_evidence(evidence_file, res, passed=passed)
 
         return WaveRunResult(
             suite["id"],

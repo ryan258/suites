@@ -1,32 +1,57 @@
 {
   "schema_version": "1.0.0",
-  "job_id": "job-gw-ep12-formatter",
-  "domain": "groundwire-audio",
-  "task": "synthesis",
-  "status": "completed",
-  "inputs": [
-    {
-      "name": "script.fountain"
-    }
-  ],
-  "outputs": [
-    {
-      "name": "stems.zip"
-    }
-  ],
-  "events": [
-    {
-      "time": "2026-08-20T15:51:40.499370+00:00",
-      "stage": "initialization",
-      "status": "job_created"
+  "wave": "P2",
+  "status": "formatter_executed",
+  "job": {
+    "schema_version": "1.0.0",
+    "job_id": "job-gw-ep12-formatter",
+    "domain": "groundwire-audio",
+    "task": "synthesis",
+    "status": "completed",
+    "inputs": [
+      {
+        "name": "script.fountain",
+        "type": "script",
+        "sha256": "8a2f2f71c5966d4323f4ea20e3e4a3e8df3d3ee181bac0ab07034d1b0d33db24"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "stems.zip",
+        "type": "audio_stems",
+        "sha256": "18fc84960df3aced78524ce6d7a9b1c9b1a0e9118e7d21f440bf61413d986eed"
+      }
+    ],
+    "events": [
+      {
+        "time": "2026-08-21T01:10:54.646367+00:00",
+        "stage": "initialization",
+        "status": "job_created"
+      },
+      {
+        "time": "2026-08-21T01:10:54.646745+00:00",
+        "stage": "elevenlabs_synthesizer",
+        "status": "completed",
+        "notes": "Synthesized 14 dialogue cues through ElevenLabs voice models"
+      }
+    ],
+    "created_at": "2026-08-21T01:10:54.646367+00:00",
+    "updated_at": "2026-08-21T01:10:54.646745+00:00"
+  },
+  "formatter_fingerprint": {
+    "branch": "v3",
+    "head": "2d556905402e7554073f6aeee75a0e4a7a42c4e8",
+    "short": "v3@2d55690",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "1cd0b85edda59a7747364be368e4bba9fce4dcede431eb605a52770c6312cc55",
+    "tested_files_fingerprint": {
+      "pyproject.toml": "9bff5489d3ed3f5dc19004f57b1281bdf578be991aa4dbee841d3af78c51e0e5",
+      "README.md": "40db4768ba78755fd3bec4d5a76fcdc658d582b75faa31052b74951a9777dd4e"
     },
-    {
-      "time": "2026-08-20T15:51:40.499387+00:00",
-      "stage": "elevenlabs_synthesizer",
-      "status": "completed",
-      "notes": ""
-    }
-  ],
-  "created_at": "2026-08-20T15:51:40.499370+00:00",
-  "updated_at": "2026-08-20T15:51:40.499387+00:00"
+    "target_state": "clean_commit"
+  },
+  "all_stages_passed": true
 }
