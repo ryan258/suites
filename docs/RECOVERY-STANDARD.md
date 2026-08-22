@@ -107,11 +107,31 @@ If modifying donor source files leaves a gate green, the gate is verifying only 
    - *Seam vs. Payload Precision (B1)*: Deepened `B1` is Tier 1 for the export seam and contract structure (verifying functions, artifact filenames, token types, and audience categories from donor source), while the specific `BrandPackage` payload values remain adapter-authored literals until real Brand Maker runtime compilation is executed in `runtime_followup`.
    - Machine enforcement: Enforced via `source_derived_assertions` in `_analysis_receipt_semantic_errors`.
 
-2. **Tier 2: Content Recorded / Count-Gated**
+2. **Tier 1b: Behavioral Assertion**
+   - The gate executes authentic destination code against live donor content and asserts a *property of the pipeline* rather than a pinned value — so editing the donor's content correctly leaves the gate green, while breaking the destination turns it red.
+   - Exemplar: `O1` (imports PKos's real `Workspace` and `normalize`, then asserts `checksum_file(cas_object) == checksum_file(donor) == record.sha256` byte for byte, and that normalization produced items and chunks with zero failures).
+   - Do not "upgrade" a Tier 1b gate by pinning donor content: pinning `dotfiles/AGENTS.md` would break `O1` every time Ryan edits his own dotfiles, and would verify strictly less than the round-trip property already does.
+   - Machine enforcement: `operational_errors` must be empty in the recorded receipt, so a swallowed exception cannot present as a clean pass.
+
+3. **Tier 2: Content Recorded / Count-Gated**
    - The gate captures genuine git fingerprints and checks minimum item or byte counts, but does not assert on internal structure.
    - Examples: `O2` (records ryos/core bytes with count check), `B2` (extracts phase IDs with count check).
 
 Every promoted wave must satisfy the Outside-World Sensitivity Test by asserting directly against donor-extracted structures.
+
+## Deferred Runtime Work Must Be Named
+
+A wave completed as an `analysis` claim has, by definition, left its runtime work undone. Unless
+that work is written down, it is not deferred — it is lost: the wave reads as finished, and nothing
+in the ledger remembers what it did not do.
+
+Every wave with `status: complete` and `recovery_claim.kind: analysis` must therefore carry a
+non-empty `runtime_followup` naming the runtime execution still owed. `A4` was promoted without
+one; the rule below is what would have caught it.
+
+Machine enforcement: `validate_registry` refuses any completed analysis wave whose
+`runtime_followup` is missing or blank, and `tests/test_registry.py` asserts the same invariant
+across the whole registry.
 
 ## Resolution is success when it is explicit
 
