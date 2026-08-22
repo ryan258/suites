@@ -142,5 +142,32 @@ class ArtifactTests(unittest.TestCase):
                     )
 
 
+class DocumentedCommandTests(unittest.TestCase):
+    """The README teaches the CLI. A command it teaches has to exist.
+
+    Removing `ai-config` deleted the module, its tests and its guide, but left the
+    README still telling the reader to run it. Nothing caught that: the link checker
+    only sees markdown links, and no test read the usage block.
+    """
+
+    SUBPARSER = re.compile(r'sub\.add_parser\(\s*"([a-z][a-z0-9-]*)"')
+    INVOCATION = re.compile(r"python3 -m portfolio_suites ([a-z][a-z0-9-]*)")
+
+    def test_every_command_the_readme_teaches_is_a_real_subcommand(self):
+        available = set(
+            self.SUBPARSER.findall((ROOT / "src" / "portfolio_suites" / "cli.py").read_text(encoding="utf-8"))
+        )
+        self.assertIn("validate", available, "subcommand discovery found nothing; the regex is stale")
+
+        documented = set(self.INVOCATION.findall((ROOT / "README.md").read_text(encoding="utf-8")))
+        self.assertTrue(documented, "README no longer shows any CLI invocation")
+
+        self.assertEqual(
+            documented - available,
+            set(),
+            "README documents commands the CLI does not define",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

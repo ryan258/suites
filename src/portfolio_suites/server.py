@@ -25,7 +25,7 @@ from .registry import (
     load_suites,
     validate_registry,
 )
-from .waves import WaveRunner
+from .waves import WaveRunner, classify_wave_spec
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_JSON_BODY_BYTES = 1_048_576
@@ -220,13 +220,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                         is_passed = (w_status == "complete")
                         method_name = f"_run_{s_id.replace('-', '_')}_{w_id.lower()}"
                         has_runner = hasattr(WaveRunner, method_name)
-                        claim_kind = w.get("recovery_claim", {}).get("kind")
-                        if is_passed and claim_kind == "runtime":
-                            exec_kind = "verified_runtime_recovery"
-                        elif is_passed:
-                            exec_kind = "verified_analysis"
-                        else:
-                            exec_kind = "prototype_check" if has_runner else "unintegrated_specification"
+                        exec_kind = classify_wave_spec(w, has_runner=has_runner)
                         payload.append({
                             "suite_id": s_id,
                             "wave_id": w_id,

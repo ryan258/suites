@@ -1,3 +1,4 @@
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -96,6 +97,61 @@ class SourceBackedWaveTests(unittest.TestCase):
         self.assertEqual(len(results), 43)
         failed = {result.wave_id for result in results if not (result.passed or result.prototype_passed)}
         self.assertIn("R5", failed)
+
+
+# Every wave that still passes when all donor paths are blinded, i.e. every wave whose
+# result comes only from suite-local fixtures. Each entry is deliberate and declared in
+# its suite manifest's acceptance clause; the pin exists so a wave cannot join this set
+# silently, and so a wave that is supposed to read a donor cannot quietly stop.
+DONOR_INDEPENDENT = {
+    ("accessibility", "A1"),      # hand-authored parity document, structure-checked only
+    ("operator-os", "O5"),        # "closed on paper"; no code ported, no donor read
+    ("brand-publishing", "B5"),   # intake state machine "in the suite-local engine"
+    ("production-house", "P4"),   # "Fixture-driven; no external documentary runtime"
+    ("production-house", "P5"),   # "Revisions are fixtures; Writers Room is not read"
+}
+
+
+class DonorBlindingCensusTests(unittest.TestCase):
+    """Blind every donor path at once and pin exactly which gates still pass.
+
+    The adapters resolve donor paths into module constants at import time, so the
+    environment cannot be patched after the fact -- the constants are patched instead.
+    """
+
+    @staticmethod
+    def _donor_constants():
+        adapters = Path(__file__).resolve().parents[1] / "src" / "portfolio_suites" / "adapters"
+        for module in sorted(adapters.glob("*.py")):
+            for name in re.findall(
+                r"^([A-Z][A-Z0-9_]*(?:_DIR|_ROOT))\s*=\s*get_repo_path", module.read_text(encoding="utf-8"), re.M
+            ):
+                yield f"portfolio_suites.adapters.{module.stem}.{name}"
+
+    def test_only_declared_fixture_waves_survive_donor_blinding(self):
+        targets = list(self._donor_constants())
+        self.assertGreater(len(targets), 25, "donor constant discovery found suspiciously few paths")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "no-such-donor"
+            patches = [patch(target, missing) for target in targets]
+            for active in patches:
+                active.start()
+            try:
+                results = WaveRunner.run_all(write_evidence=False)
+            finally:
+                for active in reversed(patches):
+                    active.stop()
+
+        survived = {
+            (r.suite_id, r.wave_id) for r in results if r.passed or r.prototype_passed
+        }
+        self.assertEqual(
+            survived,
+            DONOR_INDEPENDENT,
+            "waves passing without any donor changed; update DONOR_INDEPENDENT only with "
+            "a matching manifest acceptance clause",
+        )
 
 
 if __name__ == "__main__":

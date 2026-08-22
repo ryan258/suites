@@ -173,16 +173,6 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["matrix"],
         "strings": ["recommendation"],
     },
-    "A4": {
-        "equals": {
-            "wave": "A4",
-            "false_positive_probe_passed": True,
-            "catalog_evaluation.status": "all_backlog_candidates_evidenced",
-        },
-        "objects": ["catalog_evaluation"],
-        "lists": ["catalog_evaluation.evaluations", "heuristic_findings_sample"],
-        "minimums": {"catalog_evaluation.total_candidates_evaluated": 20},
-    },
     "A5": {
         "equals": {"evidence_loss": False, "roundtrip_status": "verified"},
         "objects": ["canonical_finding"],
@@ -917,17 +907,34 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
     current_branch = _git_value(source, "branch", "--show-current") or "DETACHED"
     current_status = _git_value(source, "status", "--porcelain")
     current_lines = len(current_status.splitlines()) if current_status else 0
-    # A dirty-item count is blind to two files changing identity or content while the count holds.
+    # A dirty-item count is blind to two files changing identity while the count holds.
     current_status_sha256 = hashlib.sha256(current_status.encode("utf-8")).hexdigest()
+
+    # Porcelain output is "XY path" -- it carries no file content, so editing an
+    # already-modified tracked file leaves it byte-identical. The patch is what closes
+    # that hole.
+    # ponytail: `git diff HEAD` covers tracked modifications only. Untracked file
+    # *contents* stay unfingerprinted; hash them here if a donor ever parks real work
+    # in untracked files.
+    current_patch = _git_value(source, "diff", "HEAD")
+    patch_readable = current_patch != "unavailable"
+    current_patch_sha256 = (
+        hashlib.sha256(current_patch.encode("utf-8")).hexdigest() if patch_readable else ""
+    )
+
     snap_head = snapshot.get("head")
     snap_branch = snapshot.get("branch")
     snap_lines = snapshot.get("status_lines", 0)
     snap_status_sha256 = snapshot.get("status_sha256")
+    snap_patch_sha256 = snapshot.get("patch_sha256")
 
     head_or_branch_drift = (current_head != snap_head) or (current_branch != snap_branch)
     lines_drift = (current_lines != snap_lines)
     content_drift = bool(snap_status_sha256) and current_status_sha256 != snap_status_sha256
-    has_drift = head_or_branch_drift or lines_drift or content_drift
+    patch_drift = (
+        bool(snap_patch_sha256) and patch_readable and current_patch_sha256 != snap_patch_sha256
+    )
+    has_drift = head_or_branch_drift or lines_drift or content_drift or patch_drift
 
     return {
         "name": name,
@@ -944,6 +951,10 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
         "current_status_sha256": current_status_sha256,
         "content_drift": content_drift,
         "status_unfingerprinted": not snap_status_sha256,
+        "snapshot_patch_sha256": snap_patch_sha256,
+        "current_patch_sha256": current_patch_sha256,
+        "patch_drift": patch_drift,
+        "patch_unfingerprinted": patch_readable and not snap_patch_sha256,
         "has_drift": has_drift,
     }
 
@@ -1359,6 +1370,7 @@ def _live_snapshot(name: str, drift: dict[str, Any]) -> dict[str, Any] | None:
         "head": drift["current_head"],
         "status_lines": drift["current_lines"],
         "status_sha256": drift["current_status_sha256"],
+        "patch_sha256": drift["current_patch_sha256"],
     }
 
 
@@ -1379,10 +1391,12 @@ def pending_snapshots(accept: bool = False) -> dict[str, dict[str, Any]]:
             continue
         if accept and drift["has_drift"]:
             pending[name] = snapshot
-        elif drift["status_unfingerprinted"]:
+        elif drift["status_unfingerprinted"] or drift["patch_unfingerprinted"]:
+            existing = rows[name].get("source_snapshot") or {}
             pending[name] = {
-                **(rows[name].get("source_snapshot") or {}),
-                "status_sha256": snapshot["status_sha256"],
+                **existing,
+                "status_sha256": existing.get("status_sha256") or snapshot["status_sha256"],
+                "patch_sha256": existing.get("patch_sha256") or snapshot["patch_sha256"],
             }
     return pending
 

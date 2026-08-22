@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from portfolio_suites import ai_config, contracts, registry
+from portfolio_suites import contracts, registry
 from portfolio_suites.adapters.common import is_meaningful_git_fingerprint as adapter_predicate
 from portfolio_suites.adapters import common
 from portfolio_suites.paths import SUITES_ROOT
@@ -15,7 +15,7 @@ from portfolio_suites.provenance import is_meaningful_git_fingerprint
 class ProvenanceTests(unittest.TestCase):
     def test_all_control_plane_modules_share_the_canonical_checkout_root(self):
         self.assertEqual(
-            {registry.SUITES_ROOT, contracts.SUITES_ROOT, ai_config.SUITES_ROOT, common.SUITES_ROOT},
+            {registry.SUITES_ROOT, contracts.SUITES_ROOT, common.SUITES_ROOT},
             {SUITES_ROOT},
         )
 

@@ -143,6 +143,36 @@ def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, pass
     return str(evidence_file)
 
 
+def classify_wave_spec(wave_spec: dict[str, Any], has_runner: bool = True) -> str:
+    """Classify the intended execution kind of a wave specification."""
+    manifest_status = wave_spec.get("status", "specified")
+    claim_kind = wave_spec.get("recovery_claim", {}).get("kind")
+    if manifest_status == "complete" and claim_kind == "runtime":
+        return "verified_runtime_recovery"
+    if manifest_status == "complete":
+        return "verified_analysis"
+    return "prototype_check" if has_runner else "unintegrated_specification"
+
+
+def format_wave_tag(execution_kind: str, passed: bool, prototype_passed: bool = False) -> str:
+    """Return the display tag corresponding to an execution outcome."""
+    if execution_kind == "error":
+        return "[ERROR]"
+    if execution_kind == "verified_runtime_recovery" and passed:
+        return "[RECOVERED]"
+    if execution_kind == "verified_analysis" and passed:
+        return "[ANALYSIS]"
+    if execution_kind == "fast_probe" and passed:
+        return "[FAST-PROBE]"
+    if execution_kind == "prototype_check" and (prototype_passed or passed):
+        return "[PROTOTYPE]"
+    if execution_kind == "unverifiable_environment":
+        return "[UNVERIFIABLE]"
+    if execution_kind == "unintegrated_specification":
+        return "[SPECIFIED]"
+    return "[FAIL]"
+
+
 class WaveRunner:
     """Execute wave verification gates and generate structured evidence files."""
 
@@ -199,14 +229,7 @@ class WaveRunner:
         if not runner_fn:
             return cls._run_generic_wave(suite, wave_id, write_evidence)
 
-        manifest_status = wave_spec.get("status", "specified")
-        claim_kind = wave_spec.get("recovery_claim", {}).get("kind")
-        if manifest_status == "complete" and claim_kind == "runtime":
-            exec_kind = "verified_runtime_recovery"
-        elif manifest_status == "complete":
-            exec_kind = "verified_analysis"
-        else:
-            exec_kind = "prototype_check"
+        exec_kind = classify_wave_spec(wave_spec, has_runner=True)
 
         # ponytail: only depth-aware runners declare `full`; the rest keep their 3-arg signature.
         depth_kwargs = {"full": full} if "full" in inspect.signature(runner_fn).parameters else {}
@@ -311,6 +334,14 @@ class WaveRunner:
                 "A2 donor/destination runtime gate is unverifiable in this environment; "
                 "no product failure or recovery pass is claimed."
             )
+        elif not passed:
+            # A gate that did not pass never narrates a pass. The depth branches below
+            # describe what a successful run achieved, and reusing them here printed
+            # "FAST PROBE PASSED" on the same line as [FAIL].
+            message = (
+                f"A2 gate did not pass ({depth_note}); generated {len(findings)} valid "
+                "A11yFindings. No parity is claimed and the retained receipt is unchanged."
+            )
         elif full_stage.get("skipped"):
             message = (
                 "FAST PROBE PASSED; HISTORICAL PARITY RECEIPT RETAINED. Executed WCAG Auditor donor "
@@ -350,13 +381,28 @@ class WaveRunner:
     def _run_accessibility_a4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         receipt = AccessibilitySourceAdapter.execute_wcag_rule_candidates_gate()
         passed = receipt.get("all_stages_passed", False)
+        # Counts come from the receipt this run produced, not from a literal. The old
+        # message asserted "20 committed backlog cases (18 ...)" even on a run that
+        # classified nothing.
+        catalog = receipt.get("catalog_evaluation") or {}
+        counts = (
+            f"{catalog.get('total_candidates_evaluated', 0)} committed backlog cases "
+            f"({catalog.get('port_review_count', 0)} port-review, "
+            f"{catalog.get('port_narrow_count', 0)} port-narrow, "
+            f"{catalog.get('port_options_count', 0)} port-options)"
+        )
+        message = (
+            f"Classified {counts} and ran one suite-local compliant-markup smoke probe."
+            if passed
+            else f"A4 gate did not pass; classified {counts}. No classification claim is made."
+        )
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
             passed,
             receipt,
-            "Classified 20 committed backlog cases (18 port-review, 1 port-narrow, 1 port-options) and ran one suite-local compliant-markup smoke probe.",
+            message,
             receipt.get("catalog_evaluation"),
         )
 
@@ -477,7 +523,8 @@ class WaveRunner:
             write_evidence,
             passed,
             result,
-            "Reconciled Ryos and master-plan inventory: port targets assigned to dotfiles and PKos anchors confirmed.",
+            "Reconciled Ryos and master-plan inventory on paper: port targets assigned to dotfiles and "
+            "PKos anchors confirmed. No donor is read and no code is ported.",
             {"port_candidates_count": result.get("port_candidates_count")},
         )
 
@@ -612,7 +659,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res_complete,
-            "Implemented 9 Brand Workshop phases into Brand Maker intake state; validated input completeness.",
+            "Drove 9 fixture intake phases through the suite-local Brand Maker state machine; "
+            "validated input completeness. Brand Workshop is not read.",
             res_complete,
         )
 
@@ -710,7 +758,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Executed structural episode variant (investigative documentary) through unchanged ProductionJob engine.",
+            "Executed a fixture investigative-documentary variant through the unchanged ProductionJob "
+            "engine. No Groundwire episode is read.",
             res.get("job"),
         )
 
@@ -724,7 +773,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Mapped Writers Room story revisions into ProductionJob events; unified runtime state.",
+            "Mapped fixture story revisions into ProductionJob events; unified runtime state. "
+            "Writers Room is not read.",
             res.get("mapping"),
         )
 

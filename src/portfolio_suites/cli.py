@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from .ai_config import AIConfigError, load_openrouter_config
 from .chains import ChainError, run_chain
 from .engine_actions import EngineActionError, list_actions, run_action
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
@@ -24,7 +23,7 @@ from .registry import (
     validate_registry,
 )
 from .server import serve
-from .waves import WaveRunner
+from .waves import WaveRunner, format_wave_tag
 
 
 # Wave gate exit statuses. An environment blocker is neither a pass nor a product failure
@@ -102,36 +101,6 @@ def _validate(as_json: bool, fast: bool = False) -> int:
             f"{len(report.errors)} error(s), {len(report.warnings)} warning(s)"
         )
     return 0 if report.ok else 1
-
-
-def _ai_config(as_json: bool, require_key: bool) -> int:
-    try:
-        config = load_openrouter_config(require_api_key=require_key)
-    except AIConfigError as error:
-        if as_json:
-            print(json.dumps({"ok": False, "error": str(error)}, indent=2))
-        else:
-            print(f"INVALID: {error}", file=sys.stderr)
-        return 1
-
-    summary = config.safe_summary()
-    if as_json:
-        print(json.dumps({"ok": True, **summary}, indent=2))
-        return 0
-
-    key_status = "configured" if config.api_key_configured else "missing"
-    print(f"OpenRouter API key: {key_status}")
-    print(f"Endpoint: {config.base_url}")
-    print(f"App attribution: {config.app_title} ({config.app_url or 'disabled'})")
-    print("Roles:")
-    for role in config.roles.values():
-        print(
-            f"  {role.name:<14} model={role.model:<24} "
-            f"temperature={role.temperature:<3} max_tokens={role.max_tokens}"
-        )
-    if not config.api_key_configured:
-        print("Add OPENROUTER_API_KEY to the git-ignored .env before making network requests.")
-    return 0
 
 
 def _inspect(target: str) -> int:
@@ -227,22 +196,7 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         fast_probe_count = sum(1 for r in results if r.execution_kind == "fast_probe" and r.passed)
 
         for r in results:
-            if r.execution_kind == "error":
-                tag = "[ERROR]"
-            elif r.execution_kind == "verified_runtime_recovery" and r.passed:
-                tag = "[RECOVERED]"
-            elif r.execution_kind == "verified_analysis" and r.passed:
-                tag = "[ANALYSIS]"
-            elif r.execution_kind == "fast_probe" and r.passed:
-                tag = "[FAST-PROBE]"
-            elif r.execution_kind == "prototype_check" and r.prototype_passed:
-                tag = "[PROTOTYPE]"
-            elif r.execution_kind == "unverifiable_environment":
-                tag = "[UNVERIFIABLE]"
-            elif r.execution_kind == "unintegrated_specification":
-                tag = "[SPECIFIED]"
-            else:
-                tag = "[FAIL]"
+            tag = format_wave_tag(r.execution_kind, r.passed, r.prototype_passed)
             print(f"{tag:<12} {r.suite_id:<20} {r.wave_id:<4} : {r.message}")
         print("-" * 65)
         print(
@@ -261,22 +215,7 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         return 1
 
     result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=write_evidence, full=full)
-    if result.execution_kind == "error":
-        tag = "[ERROR]"
-    elif result.execution_kind == "verified_runtime_recovery" and result.passed:
-        tag = "[RECOVERED]"
-    elif result.execution_kind == "verified_analysis" and result.passed:
-        tag = "[ANALYSIS]"
-    elif result.execution_kind == "fast_probe" and result.passed:
-        tag = "[FAST-PROBE]"
-    elif result.execution_kind == "prototype_check" and result.prototype_passed:
-        tag = "[PROTOTYPE]"
-    elif result.execution_kind == "unverifiable_environment":
-        tag = "[UNVERIFIABLE]"
-    elif result.execution_kind == "unintegrated_specification":
-        tag = "[SPECIFIED]"
-    else:
-        tag = "[FAIL]"
+    tag = format_wave_tag(result.execution_kind, result.passed, result.prototype_passed)
     print(f"{tag} {result.suite_id} / {result.wave_id} ({result.execution_kind}): {result.message}")
     if result.record_note:
         print(f"Evidence NOT written: {result.record_note}. Prior receipt retained.")
@@ -297,11 +236,14 @@ def _drift() -> int:
             print(f"DRIFT {d['name']:<30} snap={d['snapshot_branch']}@{d['snapshot_head']} live={d['current_branch']}@{d['current_head']} (dirty={d['current_lines']})")
     if not drifted:
         print("All monitored repositories match baseline snapshot.")
-    unfingerprinted = [d["name"] for d in drift_items if d["status_unfingerprinted"]]
+    unfingerprinted = [
+        d["name"] for d in drift_items if d["status_unfingerprinted"] or d["patch_unfingerprinted"]
+    ]
     if unfingerprinted:
         print(
-            f"Note: {len(unfingerprinted)} baseline(s) carry no status_sha256; working-tree "
-            "content drift is UNCHECKED for those repos (branch, HEAD and dirty count only)."
+            f"Note: {len(unfingerprinted)} baseline(s) lack a status_sha256 or patch_sha256; "
+            "working-tree content drift is UNCHECKED for those repos (branch, HEAD and dirty "
+            "count only). Run `suites baseline` to record the missing fingerprints."
         )
     return 0
 
@@ -312,7 +254,7 @@ def _baseline(dry_run: bool, accept: bool) -> int:
         print(
             "Baselines already accept live state; nothing to record."
             if accept
-            else "All git-enabled baselines already carry a status_sha256 fingerprint."
+            else "All git-enabled baselines already carry status_sha256 and patch_sha256 fingerprints."
         )
         return 0
     what = "re-capture drifted baseline for" if accept else "fingerprint"
@@ -410,14 +352,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     baseline_p.add_argument("--dry-run", action="store_true", help="report what would change without writing the ledger")
     baseline_p.add_argument("--accept", action="store_true", help="accept live git state as the new baseline for drifted repos")
 
-    ai_config = sub.add_parser("ai-config", help="inspect safe OpenRouter role configuration")
-    ai_config.add_argument("--json", action="store_true", help="emit a machine-readable redacted summary")
-    ai_config.add_argument(
-        "--require-key",
-        action="store_true",
-        help="fail unless OPENROUTER_API_KEY is configured",
-    )
-
     validate = sub.add_parser("validate", help="validate manifests, coverage, and live source drift")
     validate.add_argument("--json", action="store_true", help="emit a machine-readable report")
     validate.add_argument(
@@ -477,8 +411,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _baseline(args.dry_run, args.accept)
     if args.command == "export":
         return _export()
-    if args.command == "ai-config":
-        return _ai_config(args.json, args.require_key)
     if args.command == "validate":
         return _validate(args.json, getattr(args, "fast", False))
     if args.command == "inspect":

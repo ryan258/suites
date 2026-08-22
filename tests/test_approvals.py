@@ -172,3 +172,88 @@ class ApprovalAuthorityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class JarvisMutationBoundaryTests(unittest.TestCase):
+    """The one JARVIS handler that writes to disk must need the authority, not a boolean."""
+
+    ACTION = "backup_data"
+
+    def setUp(self):
+        self.addCleanup(os.environ.pop, STORE_ENV, None)
+        from portfolio_suites.engines.operator_os import OperatorOSEngine
+        from portfolio_suites.registry import SUITES_ROOT
+
+        self.engine = OperatorOSEngine
+        self.snapshots = Path(SUITES_ROOT) / "operator-os" / "evidence" / "snapshots"
+        self.before = set(self.snapshots.glob("*.json")) if self.snapshots.is_dir() else set()
+
+    def _written(self):
+        now = set(self.snapshots.glob("*.json")) if self.snapshots.is_dir() else set()
+        return now - self.before
+
+    def _params(self):
+        return {"vault": "boundary-test", "path": "contracts", "dry_run": False}
+
+    def test_active_backup_without_a_token_writes_nothing(self):
+        os.environ.pop(STORE_ENV, None)
+        receipt = self.engine.execute_jarvis_action_checkpoint(
+            self.ACTION, self._params(), operator_approved=True
+        )
+        self.assertEqual(receipt["status"], "error_unverified_approval")
+        self.assertFalse(receipt["operator_approval_verified"])
+        self.assertIsNone(receipt["execution_receipt"])
+        self.assertEqual(self._written(), set(), "a refused backup must leave no manifest behind")
+
+    def test_a_token_bound_to_other_parameters_is_refused(self):
+        params = self._params()
+        with tempfile.TemporaryDirectory() as tmp:
+            _, token = issue(
+                tmp,
+                operation="jarvis_action_execution",
+                action_name=self.ACTION,
+                payload_sha256=canonical_digest(
+                    {"action_name": self.ACTION, "parameters": {**params, "path": "docs"}}
+                ),
+            )
+            receipt = self.engine.execute_jarvis_action_checkpoint(
+                self.ACTION, params, operator_approved=True, operator_approval_token=token
+            )
+        self.assertEqual(receipt["status"], "error_unverified_approval")
+        self.assertEqual(self._written(), set())
+
+    def test_a_bound_token_permits_exactly_one_backup(self):
+        params = self._params()
+        with tempfile.TemporaryDirectory() as tmp:
+            _, token = issue(
+                tmp,
+                operation="jarvis_action_execution",
+                action_name=self.ACTION,
+                payload_sha256=canonical_digest(
+                    {"action_name": self.ACTION, "parameters": params}
+                ),
+            )
+            first = self.engine.execute_jarvis_action_checkpoint(
+                self.ACTION, params, operator_approved=True, operator_approval_token=token
+            )
+            written = self._written()
+            for path in written:
+                self.addCleanup(path.unlink, True)
+            # The authority consumes on use, so the same token cannot run a second backup.
+            replay = self.engine.execute_jarvis_action_checkpoint(
+                self.ACTION, params, operator_approved=True, operator_approval_token=token
+            )
+
+        self.assertEqual(first["status"], "success")
+        self.assertTrue(first["execution_result"]["manifest_file"])
+        self.assertEqual(len(written), 1)
+        self.assertEqual(replay["status"], "error_unverified_approval")
+
+    def test_dry_run_still_works_without_any_authority(self):
+        os.environ.pop(STORE_ENV, None)
+        receipt = self.engine.execute_jarvis_action_checkpoint(
+            self.ACTION, {**self._params(), "dry_run": True}, operator_approved=True
+        )
+        self.assertEqual(receipt["status"], "success")
+        self.assertEqual(receipt["execution_result"]["manifest_file"], "")
+        self.assertEqual(self._written(), set())

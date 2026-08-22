@@ -13,6 +13,7 @@ import stat
 from pathlib import Path
 import re
 from typing import Any
+from ..approvals import ApprovalError, canonical_digest, verify_operator_approval
 from ..contracts import SCHEMA_VERSION, validate_contract
 from ..identifiers import new_prefixed_id
 from ..registry import SUITES_ROOT
@@ -263,11 +264,17 @@ fenced_from_reingestion: true
         action_name: str,
         parameters: dict[str, Any],
         operator_approved: bool = False,
+        operator_approval_token: str | None = None,
     ) -> dict[str, Any]:
         """Execute a secondary JARVIS action through the preview/approval/receipt/recovery lifecycle (O6 wave).
 
-        Note: `operator_approved` is a modeled boolean token within this suite-local prototype engine.
-        Full runtime deployment will bind to cryptographic session signoffs and external auth gates.
+        `operator_approved` is a modeled boolean within this suite-local prototype engine. It
+        gates the read-only and dry-run surface only -- and a caller supplies it, so it is a
+        request, not an authorization.
+
+        Anything that actually writes to the filesystem needs `operator_approval_token`: a
+        single-use token resolved by :mod:`portfolio_suites.approvals` and bound to this exact
+        action and parameter set. No token, no mutation. The boolean can never reach a write.
         """
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         preview = OperatorOSEngine.preview_jarvis_action(action_name, parameters)
@@ -416,6 +423,27 @@ fenced_from_reingestion: true
 
             manifest_file_path = ""
             if not dry_run:
+                # The only filesystem write in this engine. A caller-supplied boolean is a
+                # request to act; the authority is what permits it. Bound to the action and
+                # its parameters so a token issued for one backup cannot run another.
+                try:
+                    verify_operator_approval(operator_approval_token, {
+                        "operation": "jarvis_action_execution",
+                        "action_name": action_name,
+                        "decision": "approved",
+                        "payload_sha256": canonical_digest(
+                            {"action_name": action_name, "parameters": parameters}
+                        ),
+                    })
+                except ApprovalError as error:
+                    return {
+                        **preview,
+                        "status": "error_unverified_approval",
+                        "state": "error_unverified_approval",
+                        "operator_approval_verified": False,
+                        "error": f"active backup requires a verified operator approval: {error}",
+                        "execution_receipt": None,
+                    }
                 snapshot_dir = SUITES_ROOT / "operator-os" / "evidence" / "snapshots"
                 snapshot_dir.mkdir(parents=True, exist_ok=True)
                 manifest_file = snapshot_dir / f"{snap_id}.json"

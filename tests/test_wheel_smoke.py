@@ -62,13 +62,27 @@ class WheelSmokeTests(unittest.TestCase):
         build = subprocess.run(
             [sys.executable, "-m", "build", "--wheel", "--outdir", str(tmp / "dist"), str(ROOT)],
             capture_output=True, text=True, timeout=600, env=_clean_env(),
+            # Never run from ROOT. Python puts the working directory on sys.path, and a
+            # stale ROOT/build/ artifact directory then shadows the `build` distribution:
+            # "'build' is a package and cannot be directly executed", which reads like a
+            # broken gate rather than a missing tool. ROOT is passed as an argument.
+            cwd=str(tmp),
         )
         # Not SkipTest. Once the operator asks for this gate, "could not build" is the gate
         # failing, not the gate being inapplicable -- a skip exits 0 and would let an
         # unbuildable wheel pass for milestone evidence. The outer skipUnless is the only
         # place where not running is a legitimate outcome.
         if build.returncode != 0:
-            raise AssertionError(f"wheel build failed:\n{build.stdout[-800:]}\n{build.stderr[-800:]}")
+            hint = (
+                "\nhint: `python -m build` is not installed for this interpreter; "
+                "`pip install build`. Per this module's docstring an unavailable builder "
+                "is reported as failure, not a skip."
+                if "No module named build" in build.stderr
+                else ""
+            )
+            raise AssertionError(
+                f"wheel build failed:\n{build.stdout[-800:]}\n{build.stderr[-800:]}{hint}"
+            )
         cls.wheel = next((tmp / "dist").glob("*.whl"))
 
         venv = tmp / "venv"

@@ -370,3 +370,87 @@ class RuntimeFollowupRuleTests(unittest.TestCase):
             and not str(wave.get("runtime_followup") or "").strip()
         ]
         self.assertEqual(missing, [])
+
+
+class WorktreeDriftTests(unittest.TestCase):
+    """`git status --porcelain` carries no file content, so the patch closes that hole."""
+
+    @staticmethod
+    def _git(repo, *args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+
+    def _dirty_repo(self, root):
+        repo = root / "donor"
+        repo.mkdir()
+        self._git(repo, "init", "-q", "-b", "main")
+        self._git(repo, "config", "user.email", "t@example.com")
+        self._git(repo, "config", "user.name", "t")
+        (repo / "f.txt").write_text("committed\n", encoding="utf-8")
+        self._git(repo, "add", "f.txt")
+        self._git(repo, "commit", "-qm", "init")
+        (repo / "f.txt").write_text("dirty edit one\n", encoding="utf-8")
+        return repo
+
+    def test_editing_an_already_dirty_file_is_drift(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = self._dirty_repo(root)
+            with patch("portfolio_suites.registry.PROJECTS_ROOT", root):
+                from portfolio_suites.registry import check_project_git_drift
+
+                first = check_project_git_drift("donor", {"source_snapshot": {"git": True}})
+                baseline = {
+                    "git": True,
+                    "branch": first["current_branch"],
+                    "head": first["current_head"],
+                    "status_lines": first["current_lines"],
+                    "status_sha256": first["current_status_sha256"],
+                    "patch_sha256": first["current_patch_sha256"],
+                }
+                self.assertFalse(check_project_git_drift("donor", {"source_snapshot": baseline})["has_drift"])
+
+                # Same file, still modified, different content: porcelain does not move.
+                (repo / "f.txt").write_text("a completely different dirty edit\n", encoding="utf-8")
+                after = check_project_git_drift("donor", {"source_snapshot": baseline})
+
+        self.assertEqual(after["current_status_sha256"], baseline["status_sha256"])
+        self.assertFalse(after["content_drift"], "porcelain hash is content-blind, as expected")
+        self.assertTrue(after["patch_drift"], "patch hash must catch the content change")
+        self.assertTrue(after["has_drift"])
+
+    def test_a_baseline_without_a_patch_fingerprint_does_not_fail_open_silently(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._dirty_repo(root)
+            with patch("portfolio_suites.registry.PROJECTS_ROOT", root):
+                from portfolio_suites.registry import check_project_git_drift
+
+                drift = check_project_git_drift("donor", {"source_snapshot": {"git": True}})
+        self.assertTrue(drift["patch_unfingerprinted"], "must be reported so `baseline` backfills it")
+        self.assertFalse(drift["patch_drift"], "an absent baseline field cannot itself be drift")
+
+
+class ReceiptSpecTableTests(unittest.TestCase):
+    """A duplicate key in the receipt table silently discards a gate's spec.
+
+    Python keeps the last of a duplicated dict key, so by import time the shadowed
+    entry is already gone and no runtime check can see it. The source is the only
+    place the duplication still exists, so that is where it is checked.
+    """
+
+    def test_receipt_spec_keys_are_declared_once(self):
+        import ast
+
+        source = (SUITES_ROOT / "src" / "portfolio_suites" / "registry.py").read_text(encoding="utf-8")
+        table = next(
+            node.value
+            for node in ast.parse(source).body
+            if isinstance(node, (ast.Assign, ast.AnnAssign))
+            and any(
+                getattr(t, "id", None) == "ANALYSIS_RECEIPT_SPECS"
+                for t in ([node.target] if isinstance(node, ast.AnnAssign) else node.targets)
+            )
+        )
+        keys = [k.value for k in table.keys if isinstance(k, ast.Constant)]
+        duplicates = sorted({k for k in keys if keys.count(k) > 1})
+        self.assertEqual(duplicates, [], f"receipt specs declared more than once: {duplicates}")
