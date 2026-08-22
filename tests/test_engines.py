@@ -156,7 +156,7 @@ class EngineTests(unittest.TestCase):
 
         # Test sync_obsidian_notes within workspace vs unconfined path
         chk_sync = OperatorOSEngine.execute_jarvis_action_checkpoint(
-            "sync_obsidian_notes", {"vault_path": "operator-os/evidence"}, operator_approved=True
+            "sync_obsidian_notes", {"vault_path": "docs"}, operator_approved=True
         )
         self.assertEqual(chk_sync["status"], "success")
         self.assertGreaterEqual(chk_sync["execution_result"]["notes_scanned_count"], 1)
@@ -187,7 +187,8 @@ class EngineTests(unittest.TestCase):
 
     def test_operator_os_adapter(self):
         o1 = OperatorOSSourceAdapter.execute_o1_source_record_observer_gate()
-        self.assertEqual(o1["status"], "verified")
+        self.assertEqual(o1["status"], "cas_projection_verified")
+        self.assertTrue(o1["cas_verified"])
         self.assertTrue(o1["mutation_protection_passed"])
         self.assertTrue(o1["mutation_cases"]["corrupt_sha_rejected"])
         self.assertTrue(o1["mutation_cases"]["no_fence_rejected"])
@@ -858,3 +859,41 @@ class UnimplementedActionTests(unittest.TestCase):
         self.assertEqual(receipt["status"], "success")
         self.assertIs(receipt["execution_result"]["rotated"], False)
         self.assertEqual(receipt["execution_result"]["rotation_mode"], "dry_run")
+
+
+class DonorImportPathTests(unittest.TestCase):
+    """The donor is on sys.path at position 0, so failing to take it back off shadows
+    every later import in the process — including the next wave under `wave --all`."""
+
+    def test_donor_path_and_modules_are_removed_after_the_call(self):
+        import sys
+
+        from portfolio_suites.adapters.operator_os import donor_import_path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            donor = Path(tmpdir)
+            (donor / "fakedonor").mkdir()
+            (donor / "fakedonor" / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+            with donor_import_path(donor, "fakedonor"):
+                import fakedonor
+
+                self.assertEqual(fakedonor.VALUE, 1)
+                self.assertEqual(sys.path[0], str(donor))
+
+            self.assertNotIn(str(donor), sys.path)
+            self.assertNotIn("fakedonor", sys.modules)
+
+    def test_a_path_the_caller_did_not_add_is_left_alone(self):
+        import sys
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            from portfolio_suites.adapters.operator_os import donor_import_path
+
+            sys.path.insert(0, tmpdir)
+            try:
+                with donor_import_path(Path(tmpdir), "nothing_imported"):
+                    pass
+                self.assertIn(tmpdir, sys.path)
+            finally:
+                sys.path.remove(tmpdir)

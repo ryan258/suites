@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import datetime
+import sys
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
@@ -13,6 +17,30 @@ from .common import (
     get_repo_path,
     is_meaningful_git_fingerprint,
 )
+
+@contextlib.contextmanager
+def donor_import_path(donor_dir: Path, package: str):
+    """Expose a donor repo to `import` for one call only, then take it back off sys.path.
+
+    The donor goes in at position 0, so leaving it there would let the donor shadow every
+    later import in the process — including in a subsequent wave under `wave --all`. The
+    donor's own modules are dropped from sys.modules on the way out too: a cached donor
+    module would make a second run in the same process read the first run's code, which is
+    exactly what the outside-world sensitivity test needs to be able to see change in.
+    """
+    entry = str(donor_dir)
+    added = entry not in sys.path
+    if added:
+        sys.path.insert(0, entry)
+    try:
+        yield
+    finally:
+        if added:
+            with contextlib.suppress(ValueError):
+                sys.path.remove(entry)
+        for name in [m for m in sys.modules if m == package or m.startswith(f"{package}.")]:
+            del sys.modules[name]
+
 
 DOTFILES_DIR = get_repo_path("dotfiles", "DOTFILES_DIR")
 PKOS_DIR = get_repo_path("PKos", "PKOS_DIR")
@@ -86,7 +114,7 @@ class OperatorOSSourceAdapter:
 
     @classmethod
     def execute_o1_source_record_observer_gate(cls) -> dict[str, Any]:
-        """Execute O1 wave gate: capture SourceRecord, project fenced Observer note, and verify mutation protection."""
+        """Execute O1 wave gate: acquire live dotfiles into authentic PKos CAS, normalize into SQLite, and project to Observer."""
         dotfiles_fp = get_git_fingerprint(DOTFILES_DIR)
         pkos_fp = get_git_fingerprint(PKOS_DIR)
         observer_fp = get_git_fingerprint(OBSERVER_DIR)
@@ -96,30 +124,92 @@ class OperatorOSSourceAdapter:
         has_pkos_normalize = (PKOS_DIR / "pkos" / "normalize.py").is_file()
         has_pkos_storage = (PKOS_DIR / "pkos" / "storage.py").is_file()
         has_observer_script = (OBSERVER_DIR / "scripts" / "observer.py").is_file()
+        agents_path = DOTFILES_DIR / "AGENTS.md"
+        has_agents = agents_path.is_file()
 
-        sample_content = (
-            "# Strategic Priorities 2026\n"
-            "- Local-first portfolio architecture\n"
-            "- Zero unversioned mutations\n"
-            "- Deterministic human approval boundaries"
-        )
-        src_id = "src-ryan-priorities-2026"
-        origin = "dotfiles://priorities/2026.md"
+        cas_acquisition: dict[str, Any] = {}
+        normalize_counts: dict[str, int] = {}
+        operational_errors: list[dict[str, Any]] = []
+        cas_verified = False
+
+        if not has_agents:
+            operational_errors.append({
+                "stage": "donor_acquisition",
+                "command": f"read {agents_path}",
+                "error_kind": "missing_donor_file",
+                "message": "dotfiles/AGENTS.md is not present; nothing to acquire into CAS.",
+                "environment_blocked": False,
+            })
+        if not (has_pkos_storage and has_pkos_normalize):
+            operational_errors.append({
+                "stage": "cas_acquisition",
+                "command": f"import pkos.storage, pkos.normalize from {PKOS_DIR}",
+                "error_kind": "missing_destination_module",
+                "message": "PKos storage or normalize module is not present on disk.",
+                "environment_blocked": False,
+            })
+
+        if has_agents and has_pkos_storage and has_pkos_normalize:
+            try:
+                with donor_import_path(PKOS_DIR, "pkos"):
+                    from pkos.storage import Workspace, checksum_file
+                    from pkos.normalize import normalize
+
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        ws = Workspace(Path(tmpdir))
+                        acquired_record = ws.acquire_file(
+                            agents_path,
+                            kind="operator_policy",
+                            label="dotfiles/AGENTS.md",
+                        )
+                        # Verify raw CAS object exists and hash matches byte-for-byte
+                        cas_object_path = ws.root / acquired_record["raw_object"]
+                        raw_bytes_match = (
+                            cas_object_path.is_file()
+                            and checksum_file(cas_object_path) == acquired_record["sha256"]
+                            and checksum_file(agents_path) == acquired_record["sha256"]
+                        )
+                        # Run real PKos normalization into SQLite
+                        counts = normalize(ws)
+                        normalize_counts = counts
+                        cas_acquisition = acquired_record
+                        cas_verified = (
+                            raw_bytes_match
+                            and counts.get("acquisitions", 0) >= 1
+                            and counts.get("items", 0) >= 1
+                            and counts.get("chunks", 0) >= 1
+                            and counts.get("failures", 0) == 0
+                        )
+            except Exception as exc:
+                # A silent False here would report a red wave with no way to tell a PKos API
+                # change from a broken donor file. Record why, the way A2 does.
+                cas_verified = False
+                operational_errors.append({
+                    "stage": "cas_acquisition",
+                    "command": f"pkos.storage.Workspace(...).acquire_file({agents_path}) + pkos.normalize.normalize(ws)",
+                    "error_kind": type(exc).__name__,
+                    "message": str(exc),
+                    "environment_blocked": isinstance(exc, (ImportError, ModuleNotFoundError)),
+                })
+
+        donor_content = agents_path.read_text(encoding="utf-8") if has_agents else ""
+        src_id = "src-dotfiles-agents-md"
+        origin = "dotfiles://AGENTS.md"
 
         src_record = OperatorOSEngine.capture_source(
-            content=sample_content,
+            content=donor_content,
             origin=origin,
             source_id=src_id,
             media_type="text/markdown",
             author="Ryan",
-            collector="portfolio_suites.adapters.operator_os",
+            collector="pkos.storage.Workspace",
         )
 
         projection = OperatorOSEngine.project_to_observer(
             source_record=src_record,
-            title="Strategic Priorities 2026 Summary",
-            summary="Key strategic operational priorities for 2026.",
-            body=sample_content,
+            title="Dotfiles Operator Policy Projection",
+            summary="Canonical agent rules and operator boundaries captured from dotfiles/AGENTS.md into PKos CAS.",
+            body=donor_content,
         )
 
         # Non-tautological mutation protection verification using genuine engine validators
@@ -164,21 +254,42 @@ class OperatorOSSourceAdapter:
             and has_pkos_normalize
             and has_pkos_storage
             and has_observer_script
+            and has_agents
+            and cas_verified
         )
-        all_stages_passed = mutation_checks_passed and sources_verified
+        all_stages_passed = mutation_checks_passed and sources_verified and cas_verified
+
+        sensitivity_passed = (
+            cas_verified
+            and is_meaningful_git_fingerprint(dotfiles_fp)
+            and is_meaningful_git_fingerprint(pkos_fp)
+            and is_meaningful_git_fingerprint(observer_fp)
+            and bool(cas_acquisition.get("sha256"))
+            and normalize_counts.get("items", 0) >= 1
+        )
+
+        source_derived_assertions = {
+            "donor_source_path": "dotfiles/AGENTS.md",
+            "donor_sha256": src_record["sha256"],
+            "donor_bytes": src_record["size_bytes"],
+            "cas_object_path": cas_acquisition.get("raw_object", ""),
+            "sqlite_normalized_items": normalize_counts.get("items", 0),
+            "sqlite_normalized_chunks": normalize_counts.get("chunks", 0),
+            "sensitivity_test_passed": sensitivity_passed,
+        }
 
         return {
             "schema_version": SCHEMA_VERSION,
             "wave_id": "O1",
             "executed_at": now_iso,
+            "status": "cas_projection_verified" if all_stages_passed else "source_unverified",
             "source_record": src_record,
+            "cas_acquisition": cas_acquisition,
             "observer_projection_preview": projection,
-            "live_sources_inspected": {
-                "dotfiles": dotfiles_fp,
-                "pkos": {**pkos_fp, "has_normalize": has_pkos_normalize, "has_storage": has_pkos_storage},
-                "obsidian_observer": {**observer_fp, "has_observer_script": has_observer_script},
-            },
+            "source_derived_assertions": source_derived_assertions,
             "all_stages_passed": all_stages_passed,
+            "cas_verified": cas_verified,
+            "operational_errors": operational_errors,
             "source_verification_passed": sources_verified,
             "mutation_protection_passed": mutation_checks_passed,
             "mutation_cases": {
@@ -188,7 +299,20 @@ class OperatorOSSourceAdapter:
                 "anti_reingestion_fence_detected": fence_detected,
                 "reingestion_intake_blocked": reingest_blocked,
             },
-            "status": "verified" if all_stages_passed else "source_unverified",
+            "donor": {
+                "name": "dotfiles",
+                "path": str(DOTFILES_DIR),
+                "fingerprint": dotfiles_fp,
+                "source_file": "AGENTS.md",
+            },
+            "target": {
+                "pkos_name": "PKos",
+                "pkos_path": str(PKOS_DIR),
+                "pkos_fingerprint": pkos_fp,
+                "observer_name": "obsidian-observer",
+                "observer_path": str(OBSERVER_DIR),
+                "observer_fingerprint": observer_fp,
+            },
         }
 
     @classmethod
