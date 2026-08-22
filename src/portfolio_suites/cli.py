@@ -13,6 +13,7 @@ from .chains import ChainError, run_chain
 from .engine_actions import EngineActionError, list_actions, run_action
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
 from .registry import (
+    fingerprint_baselines,
     get_live_drift_report,
     get_portfolio_summary,
     get_project,
@@ -305,6 +306,23 @@ def _drift() -> int:
     return 0
 
 
+def _baseline(dry_run: bool, accept: bool) -> int:
+    updated = fingerprint_baselines(dry_run, accept)
+    if not updated:
+        print(
+            "Baselines already accept live state; nothing to record."
+            if accept
+            else "All git-enabled baselines already carry a status_sha256 fingerprint."
+        )
+        return 0
+    what = "re-capture drifted baseline for" if accept else "fingerprint"
+    verb = f"would {what}" if dry_run else what.replace("re-capture", "re-captured").replace("fingerprint", "fingerprinted")
+    print(f"Baseline {verb} {len(updated)} repo(s): {', '.join(updated)}")
+    if dry_run:
+        print("Dry run: ledger not written.")
+    return 0
+
+
 def _export() -> int:
     summary = get_portfolio_summary()
     suites = load_suites()
@@ -388,6 +406,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     sub.add_parser("drift", help="scan live git status and report drift against baseline snapshots")
     sub.add_parser("export", help="export consolidated portfolio data as JSON")
 
+    baseline_p = sub.add_parser("baseline", help="record status_sha256 fingerprints for baselines that lack one")
+    baseline_p.add_argument("--dry-run", action="store_true", help="report what would change without writing the ledger")
+    baseline_p.add_argument("--accept", action="store_true", help="accept live git state as the new baseline for drifted repos")
+
     ai_config = sub.add_parser("ai-config", help="inspect safe OpenRouter role configuration")
     ai_config.add_argument("--json", action="store_true", help="emit a machine-readable redacted summary")
     ai_config.add_argument(
@@ -451,6 +473,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _next()
     if args.command == "drift":
         return _drift()
+    if args.command == "baseline":
+        return _baseline(args.dry_run, args.accept)
     if args.command == "export":
         return _export()
     if args.command == "ai-config":

@@ -9,6 +9,7 @@ from unittest.mock import patch
 from portfolio_suites.registry import (
     SUITES_ROOT,
     _analysis_evidence_errors,
+    apply_snapshot_updates,
     _analysis_receipt_semantic_errors,
     _git_value,
     _runtime_parity_receipt_errors,
@@ -319,3 +320,37 @@ class UnsupportedEvidenceContractTests(unittest.TestCase):
         errors = evidence_errors(self._wave("runtime", "parity_verified"), Path("/nonexistent/receipt.json"))
         self.assertTrue(errors)
         self.assertNotIn("no versioned evidence receipt contract", errors[0])
+
+
+class ApplySnapshotUpdatesTest(unittest.TestCase):
+    LEDGER = (
+        '{\n  "projects": [\n'
+        '    {"name":"alpha","source_snapshot":{"git":true,"head":"aaa","status_lines":0}},\n'
+        '    {"name":"beta","source_snapshot":{"git":true,"head":"bbb","status_lines":2,"status_sha256":"kept"}},\n'
+        '    {"name":"gamma","source_snapshot":{"git":false}}\n'
+        '  ]\n}\n'
+    )
+
+    def test_rewrites_only_named_rows_and_preserves_layout(self):
+        text, updated = apply_snapshot_updates(
+            self.LEDGER,
+            {
+                "alpha": {"git": True, "head": "aaa", "status_lines": 0, "status_sha256": "deadbeef"},
+                "beta": {"git": True, "head": "bbb", "status_lines": 2, "status_sha256": "kept"},
+            },
+        )
+        self.assertEqual(updated, ["alpha"])  # beta is unchanged, so it is not reported
+        rows = json.loads(text)["projects"]
+        self.assertEqual(rows[0]["source_snapshot"]["status_sha256"], "deadbeef")
+        self.assertEqual(rows[1]["source_snapshot"]["status_sha256"], "kept")
+        self.assertNotIn("status_sha256", rows[2]["source_snapshot"])
+        self.assertEqual(text.count("\n"), self.LEDGER.count("\n"))
+
+    def test_accepting_new_state_replaces_the_whole_snapshot(self):
+        text, updated = apply_snapshot_updates(
+            self.LEDGER,
+            {"beta": {"git": True, "branch": "main", "head": "ccc", "status_lines": 0, "status_sha256": "fresh"}},
+        )
+        self.assertEqual(updated, ["beta"])
+        snapshot = json.loads(text)["projects"][1]["source_snapshot"]
+        self.assertEqual(snapshot, {"git": True, "branch": "main", "head": "ccc", "status_lines": 0, "status_sha256": "fresh"})

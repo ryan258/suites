@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1249,3 +1250,80 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                 report.errors.append(f"nested Git marker no longer exists: {path}")
 
     return report
+
+
+_LEDGER_PATH = SUITES_ROOT / "portfolio" / "project-ledger.json"
+_SNAPSHOT_RE = re.compile(r'"source_snapshot":\{[^}]*\}')
+_NAME_RE = re.compile(r'"name":"([^"]+)"')
+
+
+def apply_snapshot_updates(text: str, snapshots: dict[str, dict[str, Any]]) -> tuple[str, list[str]]:
+    """Rewrite named rows' `source_snapshot` in place, preserving the file's formatting.
+
+    Only rows named in `snapshots` are touched, and only where the new snapshot actually
+    differs from what is on disk.
+    """
+    # ponytail: line-oriented rewrite because the ledger keeps one project per line and
+    # source_snapshot holds no nested objects; switch to a JSON round-trip if either changes.
+    updated: list[str] = []
+    out = []
+    for line in text.splitlines(keepends=True):
+        name_match = _NAME_RE.search(line)
+        name = name_match.group(1) if name_match else None
+        snapshot = snapshots.get(name) if name else None
+        if snapshot is None or not _SNAPSHOT_RE.search(line):
+            out.append(line)
+            continue
+        rendered = '"source_snapshot":' + json.dumps(snapshot, separators=(",", ":"))
+        new_line = _SNAPSHOT_RE.sub(lambda _m: rendered, line, count=1)
+        if new_line != line:
+            updated.append(name)
+        out.append(new_line)
+    return "".join(out), updated
+
+
+def _live_snapshot(name: str, drift: dict[str, Any]) -> dict[str, Any] | None:
+    """Build a baseline snapshot from a project's live git state, or None if git is unreadable."""
+    if "unavailable" in {drift["current_head"], drift["current_branch"]}:
+        return None
+    return {
+        "git": True,
+        "branch": drift["current_branch"],
+        "head": drift["current_head"],
+        "status_lines": drift["current_lines"],
+        "status_sha256": drift["current_status_sha256"],
+    }
+
+
+def pending_snapshots(accept: bool = False) -> dict[str, dict[str, Any]]:
+    """Snapshots to write: missing fingerprints always, full live state for drifted rows on accept.
+
+    Without `accept` this only fills in an absent `status_sha256`, leaving the owner's
+    recorded branch, HEAD, and dirty count alone. With `accept` a drifted row's whole
+    baseline is replaced by live state — that is the owner blessing the drift, so the
+    caller is expected to have asked for it explicitly.
+    """
+    rows = {row.get("name"): row for row in load_ledger().get("projects", [])}
+    pending: dict[str, dict[str, Any]] = {}
+    for drift in get_live_drift_report():
+        name = drift["name"]
+        snapshot = _live_snapshot(name, drift)
+        if snapshot is None:
+            continue
+        if accept and drift["has_drift"]:
+            pending[name] = snapshot
+        elif drift["status_unfingerprinted"]:
+            pending[name] = {
+                **(rows[name].get("source_snapshot") or {}),
+                "status_sha256": snapshot["status_sha256"],
+            }
+    return pending
+
+
+def fingerprint_baselines(dry_run: bool = False, accept: bool = False) -> list[str]:
+    """Record missing baseline fingerprints, and on `accept` re-capture drifted baselines."""
+    text = _LEDGER_PATH.read_text(encoding="utf-8")
+    new_text, updated = apply_snapshot_updates(text, pending_snapshots(accept))
+    if updated and not dry_run:
+        _LEDGER_PATH.write_text(new_text, encoding="utf-8")
+    return updated

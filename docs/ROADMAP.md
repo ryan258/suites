@@ -6,9 +6,12 @@ The `/Users/ryanjohnson/Projects/suites` control plane governs portfolio migrati
 
 - **Completed Foundation & Milestones**: 5/43 waves verified (1 runtime recovery `A2`, 4 analysis milestones `A1`, `A3`, `O2`, `B2`). Detailed logs and completed foundations are recorded in [CHANGELOG.md](CHANGELOG.md).
 - **Remaining Work**: 38 migration waves across 8 suites requiring authentic donor-backed implementation, runtime execution, and parity verification.
-- **Current Promotion Target**: 0/58 monitored source repositories drifted on branch, HEAD, and dirty
-  count; `allys-tools` clean at `f2b4c6e`. All 58 baselines lack `status_sha256`, so working-tree
-  *content* drift is unchecked for every one of them — the zero is a narrower claim than it reads.
+- **Current Promotion Target**: 0/58 monitored source repositories drifted; `allys-tools` clean at
+  `f2b4c6e`. All 58 baselines carry `status_sha256` as of 2026-08-22, so working-tree *content* drift
+  is now checked alongside branch, HEAD, and dirty count — the zero is the full claim it reads as.
+  Five repos (`alias-scanner`, `code-tutorial-builder`, `cyborg-agent`, `obsidian-observer`, `sif`)
+  had gone from 1 dirty item to 0 since the 2026-08-19 snapshot and were re-baselined by owner
+  instruction via `suites baseline --accept`.
 
 ### Machine-Checked State
 
