@@ -92,14 +92,15 @@
         "source": "brand-maker-spec",
         "commit": "cb5bc9a3091835e0426f1533a468ef4246836b10",
         "operator": "Ryan Johnson",
-        "timestamp": "2026-08-19T18:00:00+00:00"
+        "timestamp": "2026-08-19T18:00:00+00:00",
+        "derivation": "verified_against, not_compiled_from"
       }
     ]
   },
   "source_record": {
     "schema_version": "1.0.0",
     "source_id": "src-manifesto-draft-001",
-    "acquired_at": "2026-08-22T01:48:58.776797+00:00",
+    "acquired_at": "2026-08-22T16:24:32.802045+00:00",
     "sha256": "b058afcc9f6feea84f00e027ef5aec6d2b1a750e923d17a0559beec453560c73",
     "size_bytes": 94,
     "media_type": "text/markdown",
@@ -111,10 +112,10 @@
     }
   },
   "publishing_receipt": {
-    "receipt_id": "pub-dry-1787363338",
+    "receipt_id": "pub-dry-1787415872",
     "channel": "blog",
     "status": "dry_run_verified",
-    "timestamp": "2026-08-22T01:48:58.776797+00:00",
+    "timestamp": "2026-08-22T16:24:32.802045+00:00",
     "brand_package_id": "pkg-cyborg-brand-v1",
     "brand_version": "1.0.0",
     "source_id": "src-manifesto-draft-001",
@@ -158,6 +159,50 @@
   "mutation_protection_passed": true,
   "source_verification_passed": true,
   "all_stages_passed": true,
+  "source_derived_assertions": {
+    "donor_source_path": "src/brand_maker/publishing/developer_exports.py",
+    "spec_source_path": "docs/specs/living-brand-system.md",
+    "asserted_exports": [
+      "-bible.md",
+      "-bible.pdf",
+      "change-manifest.json",
+      "patterns.json",
+      "rules.json",
+      "tailwind.config.js",
+      "tokens.css",
+      "tokens.json",
+      "voice-context.json"
+    ],
+    "asserted_functions": [
+      "__init__",
+      "_asset_zip_filename",
+      "_css_value",
+      "_safe_zip_filename",
+      "_semantic_name",
+      "build_brand_kit_zip",
+      "export_developer_package",
+      "export_draft_tokens",
+      "write_entry"
+    ],
+    "asserted_token_categories": [
+      "color",
+      "dimension",
+      "duration",
+      "font"
+    ],
+    "asserted_voice_sections": [
+      "section.audience",
+      "section.messaging",
+      "section.voice"
+    ],
+    "asserted_audiences": [
+      "agencies",
+      "professional designers",
+      "small businesses",
+      "solo creators"
+    ],
+    "sensitivity_test_passed": true
+  },
   "target": {
     "name": "brand-maker-spec",
     "path": "/Users/ryanjohnson/Projects/brand-maker-spec",
@@ -179,6 +224,28 @@
       "target_state": "clean_commit"
     },
     "has_developer_exports": true,
-    "has_spec": true
+    "has_spec": true,
+    "has_living_spec": true
+  },
+  "consumer": {
+    "name": "cyborg",
+    "path": "/Users/ryanjohnson/Projects/cyborg",
+    "fingerprint": {
+      "branch": "main",
+      "head": "97acf9e24f2854d8229a689e028602a6e38818c2",
+      "short": "main@97acf9e",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "README.md": "84ddfd25f0f300e0941cafab7109787aeeffbd3a96056d3315d43f1377a3c182",
+        "MANUAL.md": "31fdb4912d2d2ea7347976784b5635860819c554bf9ab9f382fb6ab95c7df88d"
+      },
+      "target_state": "clean_commit"
+    },
+    "has_manual": true,
+    "has_blog": true
   }
 }

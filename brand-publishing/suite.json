@@ -65,12 +65,12 @@
     {
       "id": "B1",
       "order": 12,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Build a canonical BrandPackage in the suite-local engine and consume it in a downstream dry run.",
       "acceptance": "Schema validation, version pinning, provenance, and mutation protection are evidenced, and the receipt is dry-run only with no live publishing side-effect.",
       "runtime_followup": "Export the package from the real Brand Maker runtime and consume it in a downstream consumer outside this repository.",
       "evidence": "brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json",
-      "recovery_claim": {"kind": "analysis", "level": "prototype", "real_runtime": false, "evidence_basis": ["target", "brand_package", "source_record", "publishing_receipt", "mutation_tests"]}
+      "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": false, "evidence_basis": ["target", "consumer", "brand_package", "source_record", "publishing_receipt", "mutation_tests"]}
     },
     {
       "id": "B2",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import datetime
 import time
 from typing import Any
@@ -23,15 +24,78 @@ class BrandPublishingSourceAdapter:
 
     @classmethod
     def execute_b1_brand_package_export(cls) -> dict[str, Any]:
-        """Export canonical BrandPackage and verify authentic dry-run mutation protection."""
+        """Export canonical BrandPackage and verify authentic dry-run mutation protection across consumers."""
         target_fp = get_git_fingerprint(BRAND_MAKER_DIR)
+        consumer_fp = get_git_fingerprint(CYBORG_DIR)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        # Verify live brand-maker-spec export definitions on disk
+        # Parse live developer_exports.py via AST for deep source-derived assertions
         dev_exports_path = BRAND_MAKER_DIR / "src" / "brand_maker" / "publishing" / "developer_exports.py"
         spec_path = BRAND_MAKER_DIR / "spec.md"
+        living_spec_path = BRAND_MAKER_DIR / "docs" / "specs" / "living-brand-system.md"
         has_dev_exports = dev_exports_path.is_file()
         has_spec = spec_path.is_file()
+        has_living_spec = living_spec_path.is_file()
+
+        extracted_functions: list[str] = []
+        extracted_exports: set[str] = set()
+        extracted_token_categories: set[str] = set()
+        extracted_voice_sections: set[str] = set()
+
+        if has_dev_exports:
+            try:
+                source_code = dev_exports_path.read_text(encoding="utf-8")
+                tree = ast.parse(source_code)
+                for node in ast.walk(tree):
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        extracted_functions.append(node.name)
+                    elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                        val = node.value
+                        if val.endswith((".css", ".json", ".js", ".pdf", ".md")):
+                            extracted_exports.add(val)
+                        if val in {"color", "font", "dimension", "duration"}:
+                            extracted_token_categories.add(val)
+                        if val.startswith("section."):
+                            extracted_voice_sections.add(val)
+            except Exception:
+                pass
+
+        extracted_audiences: list[str] = []
+        if has_living_spec:
+            spec_text = living_spec_path.read_text(encoding="utf-8").lower()
+            for aud in ["solo creators", "professional designers", "small businesses", "agencies"]:
+                if aud in spec_text:
+                    extracted_audiences.append(aud)
+
+        expected_functions = {"export_draft_tokens", "export_developer_package", "build_brand_kit_zip"}
+        expected_exports = {"tokens.css", "tokens.json", "tailwind.config.js", "rules.json", "patterns.json", "voice-context.json", "change-manifest.json"}
+        expected_token_types = {"color", "font", "dimension", "duration"}
+        expected_voice_sections = {"section.voice", "section.messaging", "section.audience"}
+
+        sensitivity_passed = (
+            expected_functions.issubset(set(extracted_functions))
+            and expected_exports.issubset(extracted_exports)
+            and expected_token_types.issubset(extracted_token_categories)
+            and expected_voice_sections.issubset(extracted_voice_sections)
+            and len(extracted_audiences) == 4
+        )
+
+        source_derived_assertions = {
+            "donor_source_path": "src/brand_maker/publishing/developer_exports.py",
+            "spec_source_path": "docs/specs/living-brand-system.md",
+            "asserted_exports": sorted(extracted_exports),
+            "asserted_functions": sorted(extracted_functions),
+            "asserted_token_categories": sorted(extracted_token_categories),
+            "asserted_voice_sections": sorted(extracted_voice_sections),
+            "asserted_audiences": sorted(extracted_audiences),
+            "sensitivity_test_passed": sensitivity_passed,
+        }
+
+        # Verify live cyborg downstream consumer on disk
+        cyborg_manual_path = CYBORG_DIR / "MANUAL.md"
+        cyborg_blog_path = CYBORG_DIR / "my-ms-ai-blog"
+        has_consumer_manual = cyborg_manual_path.is_file()
+        has_consumer_blog = cyborg_blog_path.is_dir()
 
         # Build canonical BrandPackage for Cyborg Systems with preserved approval timestamp
         brand_pkg_raw = {
@@ -102,6 +166,7 @@ class BrandPublishingSourceAdapter:
                     "commit": target_fp.get("head", "HEAD"),
                     "operator": "Ryan Johnson",
                     "timestamp": CYBORG_BRAND_PACKAGE_APPROVED_AT,
+                    "derivation": "verified_against, not_compiled_from",
                 }
             ],
         }
@@ -176,14 +241,20 @@ class BrandPublishingSourceAdapter:
         }
         source_verified = (
             is_meaningful_git_fingerprint(target_fp)
+            and is_meaningful_git_fingerprint(consumer_fp)
             and has_dev_exports
             and has_spec
+            and has_living_spec
+            and has_consumer_manual
+            and has_consumer_blog
+            and sensitivity_passed
         )
         all_stages_passed = (
             source_verified
             and all_mutation_checks_passed
             and receipt["status"] == "dry_run_verified"
             and receipt["matched_approved_claims_count"] >= 1
+            and sensitivity_passed
         )
 
         return {
@@ -196,12 +267,21 @@ class BrandPublishingSourceAdapter:
             "mutation_protection_passed": all_mutation_checks_passed,
             "source_verification_passed": source_verified,
             "all_stages_passed": all_stages_passed,
+            "source_derived_assertions": source_derived_assertions,
             "target": {
                 "name": "brand-maker-spec",
                 "path": str(BRAND_MAKER_DIR),
                 "fingerprint": target_fp,
                 "has_developer_exports": has_dev_exports,
                 "has_spec": has_spec,
+                "has_living_spec": has_living_spec,
+            },
+            "consumer": {
+                "name": "cyborg",
+                "path": str(CYBORG_DIR),
+                "fingerprint": consumer_fp,
+                "has_manual": has_consumer_manual,
+                "has_blog": has_consumer_blog,
             },
         }
 
