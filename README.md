@@ -102,6 +102,7 @@ PYTHONPATH=src python3 -m portfolio_suites chain my-chain.json
 PYTHONPATH=src python3 -m portfolio_suites chain my-chain.json --quiet
 
 # Launch the zero-dependency local web dashboard (Toolbench tab runs and chains engine actions)
+./start.sh                                              # default port 8383 (or ./start.sh <port>)
 PYTHONPATH=src python3 -m portfolio_suites serve --port 8383
 
 # Run complete test suite
