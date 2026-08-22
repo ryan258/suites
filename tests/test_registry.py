@@ -244,7 +244,7 @@ class RegistryTests(unittest.TestCase):
     def test_summary_separates_analysis_from_runtime_recovery(self):
         summary = get_portfolio_summary()
         self.assertEqual(summary["recovery_target_score"], 9.0)
-        self.assertEqual(summary["verified_analysis_milestones"], 4)
+        self.assertEqual(summary["verified_analysis_milestones"], 7)
         self.assertEqual(summary["recovered_runtime_behaviors"], 1)
         self.assertEqual(summary["adopted_runtime_behaviors"], 0)
         self.assertEqual(summary["converged_runtime_behaviors"], 0)
@@ -354,3 +354,19 @@ class ApplySnapshotUpdatesTest(unittest.TestCase):
         self.assertEqual(updated, ["beta"])
         snapshot = json.loads(text)["projects"][1]["source_snapshot"]
         self.assertEqual(snapshot, {"git": True, "branch": "main", "head": "ccc", "status_lines": 0, "status_sha256": "fresh"})
+
+
+class RuntimeFollowupRuleTests(unittest.TestCase):
+    """A completed analysis wave has left its runtime work undone by definition. Without a
+    written followup that work is not deferred, it is lost."""
+
+    def test_every_completed_analysis_wave_records_its_deferred_runtime_work(self):
+        missing = [
+            f"{suite_id}/{wave['id']}"
+            for suite_id, manifest in load_suites().items()
+            for wave in manifest.get("waves", [])
+            if wave.get("status") == "complete"
+            and (wave.get("recovery_claim") or {}).get("kind") == "analysis"
+            and not str(wave.get("runtime_followup") or "").strip()
+        ]
+        self.assertEqual(missing, [])

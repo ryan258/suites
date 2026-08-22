@@ -393,7 +393,9 @@ class WaveRunner:
         result = OperatorOSSourceAdapter.execute_o1_source_record_observer_gate()
         passed = (
             result.get("mutation_protection_passed") is True
-            and result.get("status") == "verified"
+            and result.get("cas_verified") is True
+            and result.get("all_stages_passed") is True
+            and result.get("status") == "cas_projection_verified"
             and result.get("source_record", {}).get("schema_version") == "1.0.0"
         )
         return cls._settle(
@@ -401,8 +403,8 @@ class WaveRunner:
             wave_id,
             write_evidence,
             passed,
-            result.get("observer_projection_preview", ""),
-            "Captured content-addressed SourceRecord and projected fenced Observer note with mutation protection.",
+            result,
+            "Acquired live dotfiles into authentic PKos CAS, normalized into SQLite, and generated fenced Observer projection.",
             result.get("source_record"),
         )
 

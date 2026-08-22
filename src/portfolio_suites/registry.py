@@ -246,6 +246,31 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["fail_closed_test", "preview_test"],
         "fingerprints": ["jarvis_fingerprint"],
     },
+    "O1": {
+        "equals": {
+            "wave_id": "O1",
+            "status": "cas_projection_verified",
+            "all_stages_passed": True,
+            "cas_verified": True,
+            "mutation_protection_passed": True,
+            "operational_errors": [],
+            "source_derived_assertions.sensitivity_test_passed": True,
+        },
+        "objects": ["source_record", "cas_acquisition", "source_derived_assertions", "target", "donor"],
+        "strings": [
+            "observer_projection_preview",
+            "source_derived_assertions.donor_source_path",
+            "source_derived_assertions.donor_sha256",
+            "source_derived_assertions.cas_object_path",
+        ],
+        "minimums": {
+            "source_derived_assertions.donor_bytes": 100,
+            "source_derived_assertions.sqlite_normalized_items": 1,
+            "source_derived_assertions.sqlite_normalized_chunks": 1,
+        },
+        "fingerprints": ["donor.fingerprint", "target.pkos_fingerprint", "target.observer_fingerprint"],
+        "contracts": {"source_record": "SourceRecord"},
+    },
     "B1": {
         "equals": {
             "wave": "B1",
@@ -253,10 +278,22 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
             "mutation_protection_passed": True,
             "publishing_receipt.dry_run_only": True,
             "publishing_receipt.live_published": False,
+            "source_derived_assertions.sensitivity_test_passed": True,
         },
-        "objects": ["brand_package", "source_record", "publishing_receipt", "target"],
-        "lists": ["mutation_tests"],
-        "fingerprints": ["target.fingerprint"],
+        "objects": ["brand_package", "source_record", "publishing_receipt", "target", "consumer", "source_derived_assertions"],
+        "lists": [
+            "mutation_tests",
+            "source_derived_assertions.asserted_exports",
+            "source_derived_assertions.asserted_functions",
+            "source_derived_assertions.asserted_token_categories",
+            "source_derived_assertions.asserted_voice_sections",
+            "source_derived_assertions.asserted_audiences",
+        ],
+        "strings": [
+            "source_derived_assertions.donor_source_path",
+            "source_derived_assertions.spec_source_path",
+        ],
+        "fingerprints": ["target.fingerprint", "consumer.fingerprint"],
         "contracts": {"brand_package": "BrandPackage", "source_record": "SourceRecord"},
     },
     "B2": {
@@ -392,6 +429,29 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "lists": ["canonical_run.iterations", "kernel_generality.domains_scored"],
         "fingerprints": ["ai_chess_fingerprint"],
         "contracts": {"canonical_run": "ExperimentRun"},
+    },
+    "A4": {
+        "equals": {
+            "wave": "A4",
+            "status": "parity_verified",
+            "all_stages_passed": True,
+            "false_positive_probe_passed": True,
+            "source_derived_assertions.sensitivity_test_passed": True,
+        },
+        "objects": ["catalog_evaluation", "source_derived_assertions", "target", "donor"],
+        "lists": [
+            "heuristic_findings_sample",
+            "catalog_evaluation.evaluations",
+            "source_derived_assertions.asserted_rules",
+            "source_derived_assertions.asserted_criteria",
+            "source_derived_assertions.asserted_modules",
+        ],
+        "strings": ["source_derived_assertions.donor_source_path"],
+        "minimums": {
+            "catalog_evaluation.total_candidates_evaluated": 20,
+            "catalog_evaluation.port_review_count": 18,
+        },
+        "fingerprints": ["target.fingerprint", "donor.fingerprint"],
     },
     "A6": {
         "equals": {
@@ -1149,6 +1209,13 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: runtime recovery must exercise a real runtime")
             if claim_kind == "analysis" and claim.get("real_runtime") is not False:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: analysis claim cannot manufacture runtime execution")
+            # A completed analysis wave has, by definition, left its runtime work undone.
+            # Without a written followup that work is not deferred, it is lost: the wave
+            # reads as finished and nothing in the ledger remembers what it did not do.
+            if is_complete and claim_kind == "analysis" and not str(wave.get("runtime_followup") or "").strip():
+                report.errors.append(
+                    f"{suite_id}/{wave.get('id')}: completed analysis wave must record the runtime work it deferred in runtime_followup"
+                )
 
             evidence_basis = claim.get("evidence_basis")
             if (

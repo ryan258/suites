@@ -54,8 +54,8 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(len(results), 43)
 
         verified = [r for r in results if r.passed]
-        # Only A1/A3/O2/B2 read donor source; A2 adds the runtime probe when it is available.
-        self.assertIn(len(verified), {4, 5})
+        # Only A1/A3/A4/O1/O2/B1/B2 read donor source; A2 adds the runtime probe when it is available.
+        self.assertIn(len(verified), {7, 8})
         a1 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A1")
         self.assertEqual(a1.execution_kind, "verified_analysis")
         self.assertTrue(a1.passed)
@@ -73,9 +73,8 @@ class WaveTests(unittest.TestCase):
         self.assertTrue(a3.passed)
 
         a4 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A4")
-        self.assertEqual(a4.execution_kind, "prototype_check")
-        self.assertFalse(a4.passed)
-        self.assertTrue(a4.prototype_passed)
+        self.assertEqual(a4.execution_kind, "verified_analysis")
+        self.assertTrue(a4.passed)
 
         # A5 only fingerprints A11y Kitchen; it never reads it, so it is a prototype.
         a5 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A5")
@@ -83,25 +82,23 @@ class WaveTests(unittest.TestCase):
         self.assertFalse(a5.passed)
         self.assertTrue(a5.prototype_passed)
 
-        # O2 and B2 read donor content; the rest only fingerprint or stat it.
-        for suite_id, wave_id in (("operator-os", "O2"), ("brand-publishing", "B2")):
-            res = next(r for r in results if r.suite_id == suite_id and r.wave_id == wave_id)
-            self.assertEqual(res.execution_kind, "verified_analysis")
-            self.assertTrue(res.passed)
-
-        for suite_id, wave_ids in (
-            ("operator-os", ("O1", "O3", "O4", "O6")),
-            ("brand-publishing", ("B1", "B3", "B4", "B6")),
-            ("production-house", ("P1", "P2", "P3")),
-        ):
-            for wave_id in wave_ids:
-                res = next(r for r in results if r.suite_id == suite_id and r.wave_id == wave_id)
-                self.assertEqual(res.execution_kind, "prototype_check")
-                self.assertFalse(res.passed)
-                self.assertTrue(res.prototype_passed)
+        # Waves for other suites run as prototypes unless their donor is missing.
+        for r in results:
+            if (r.suite_id, r.wave_id) not in {
+                ("accessibility", "A1"),
+                ("accessibility", "A2"),
+                ("accessibility", "A3"),
+                ("accessibility", "A4"),
+                ("operator-os", "O1"),
+                ("operator-os", "O2"),
+                ("brand-publishing", "B1"),
+                ("brand-publishing", "B2"),
+            }:
+                self.assertFalse(r.passed)
+                self.assertTrue(r.prototype_passed)
 
         prototypes = [r for r in results if r.execution_kind == "prototype_check"]
-        self.assertEqual(len(prototypes), 38)
+        self.assertEqual(len(prototypes), 35)
         for r in prototypes:
             self.assertTrue(r.prototype_passed, f"Prototype check for {r.suite_id}/{r.wave_id} failed: {r.message}")
 
@@ -109,10 +106,10 @@ class WaveTests(unittest.TestCase):
         self.assertFalse(any(r.execution_kind == "error" for r in results))
 
         unverified = [r for r in results if not r.passed]
-        self.assertIn(len(unverified), {38, 39})
+        self.assertIn(len(unverified), {35, 36})
 
     def test_run_individual_waves(self):
-        # A1 and A3 are verified analysis milestones; A2 is runtime recovery.
+        # A1, A3, and A4 are verified analysis milestones; A2 is runtime recovery.
         a1 = WaveRunner.run_wave("accessibility", "A1", write_evidence=False)
         self.assertTrue(a1.passed)
         self.assertEqual(a1.execution_kind, "verified_analysis")
@@ -128,6 +125,7 @@ class WaveTests(unittest.TestCase):
             self.assertTrue(a2.passed)
             self.assertEqual(a2.data.get("receipt_kind"), "clean_commit_receipt")
             self.assertEqual(a2.data.get("status"), "parity_verified")
+            self.assertIsNone(a2.evidence_path)
             self.assertTrue(a2.data.get("all_stages_passed"))
             self.assertTrue(a2.data.get("donor", {}).get("donor_parity_verified"))
             self.assertEqual(len(a2.data.get("operational_errors", [])), 0)
@@ -141,9 +139,8 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(a3.execution_kind, "verified_analysis")
 
         a4 = WaveRunner.run_wave("accessibility", "A4", write_evidence=False)
-        self.assertFalse(a4.passed)
-        self.assertTrue(a4.prototype_passed)
-        self.assertEqual(a4.execution_kind, "prototype_check")
+        self.assertTrue(a4.passed)
+        self.assertEqual(a4.execution_kind, "verified_analysis")
 
         a5 = WaveRunner.run_wave("accessibility", "A5", write_evidence=False)
         self.assertFalse(a5.passed)
@@ -156,8 +153,8 @@ class WaveTests(unittest.TestCase):
         self.assertTrue(a6.prototype_passed)
         self.assertEqual(a6.execution_kind, "prototype_check")
 
-        # O2 and B2 are the only donor-reading analysis milestones outside accessibility.
-        for suite_id, wave_id in (("operator-os", "O2"), ("brand-publishing", "B2")):
+        # O1, O2, B1, and B2 are donor-reading analysis milestones outside accessibility.
+        for suite_id, wave_id in (("operator-os", "O1"), ("operator-os", "O2"), ("brand-publishing", "B1"), ("brand-publishing", "B2")):
             res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
             self.assertTrue(res.passed, f"{suite_id} wave {wave_id} failed: {res.message}")
             self.assertEqual(res.execution_kind, "verified_analysis")
@@ -165,8 +162,8 @@ class WaveTests(unittest.TestCase):
 
         # These gates only fingerprint or stat their donor, so they cannot claim an analysis.
         for suite_id, wave_ids in (
-            ("operator-os", ("O1", "O3", "O4", "O6")),
-            ("brand-publishing", ("B1", "B3", "B4", "B6")),
+            ("operator-os", ("O3", "O4", "O6")),
+            ("brand-publishing", ("B3", "B4", "B6")),
             ("production-house", ("P1", "P2", "P3")),
         ):
             for wave_id in wave_ids:
