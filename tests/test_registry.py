@@ -177,6 +177,69 @@ class RegistryTests(unittest.TestCase):
         self.assertTrue(any("clean three-donor pass" in error for error in errors))
         self.assertTrue(any("verified source measurements" in error for error in errors))
 
+    def test_a3_receipt_containing_only_source_inventory_cannot_claim_parity_verified(self):
+        errors = _analysis_receipt_semantic_errors(
+            {
+                "id": "A3",
+                "recovery_claim": {
+                    "kind": "analysis",
+                    "level": "parity_verified",
+                    "real_runtime": False,
+                },
+            },
+            {
+                "receipt_version": "accessibility-a3-analysis-v2",
+                "canonical_target": "kb-overlay",
+                "recommendation": "candidate only",
+                "source_verification": {
+                    "passed": True,
+                    "errors": [],
+                    "donors_checked": 3,
+                },
+                "matrix": {
+                    name: {
+                        "source_available": True,
+                        "manifest_valid": True,
+                        "fingerprint_verified": True,
+                        "features": ["spatial_nav"],
+                        "code_size_bytes": 100,
+                        "git_fingerprint": {"branch": "main", "head": "a" * 40},
+                    }
+                    for name in (
+                        "kb-overlay",
+                        "keyboard-nav-overlay",
+                        "keyboard-nav-overlay-94bf7e",
+                    )
+                },
+            },
+        )
+        self.assertTrue(any("cannot substantiate a parity_verified claim" in error for error in errors))
+
+    def test_a3_parity_guard_survives_missing_or_unknown_receipt_version(self):
+        def receipt(**overrides):
+            document = {
+                "receipt_version": "accessibility-a3-analysis-v2",
+                "canonical_target": "kb-overlay",
+                "recommendation": "candidate only",
+                "matrix": {
+                    name: {"features": ["spatial_nav"], "code_size_bytes": 100}
+                    for name in ("kb-overlay", "keyboard-nav-overlay", "keyboard-nav-overlay-94bf7e")
+                },
+            }
+            document.update(overrides)
+            if overrides.get("receipt_version") is None and "receipt_version" in overrides:
+                del document["receipt_version"]
+            return document
+
+        wave = {
+            "id": "A3",
+            "recovery_claim": {"kind": "analysis", "level": "parity_verified", "real_runtime": False},
+        }
+        for overrides in ({"receipt_version": None}, {"receipt_version": ""}, {"receipt_version": "accessibility-a3-analysis-v1"}):
+            errors = _analysis_receipt_semantic_errors(wave, receipt(**overrides))
+            self.assertTrue(any("cannot substantiate a parity_verified claim" in error for error in errors), overrides)
+            self.assertTrue(any("receipt_version must be" in error for error in errors), overrides)
+
     def test_summary_separates_analysis_from_runtime_recovery(self):
         summary = get_portfolio_summary()
         self.assertEqual(summary["recovery_target_score"], 9.0)

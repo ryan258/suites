@@ -297,12 +297,14 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
     },
     "B6": {
         "equals": {
-            "approved_review.status": "ready_for_operator_release",
-            "approved_review.human_gate.boundary_check": "stopped_before_live_publish",
+            "approved_review.status": "simulated_review_passed",
+            "approved_review.simulated_gate.boundary_check": "stopped_before_live_publish",
+            "approved_review.simulated_gate.decision_source": "simulated_fixture",
+            "approved_review.simulated_gate.human_confirmation_claimed": False,
             "approved_review.dry_run_receipt.dry_run_only": True,
             "approved_review.dry_run_receipt.live_published": False,
-            "rejected_probe_status": "blocked_rejected",
-            "unmatched_probe_status": "blocked_unmatched_claims",
+            "rejected_probe_status": "simulated_blocked_rejected",
+            "unmatched_probe_status": "simulated_blocked_unmatched_claims",
         },
         "objects": ["approved_review"],
     },
@@ -633,7 +635,15 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
                     and overlay.get("code_size_bytes", 0) > 0
                 ):
                     errors.append(f"matrix.{name} must retain non-empty inventory measurements")
-        if isinstance(matrix, dict) and document.get("receipt_version") == "accessibility-a3-analysis-v2":
+        claim_level = (wave.get("recovery_claim") or {}).get("level")
+        if claim_level == "parity_verified" and not (
+            document.get("browser_evaluation_passed") is True
+            and document.get("accessibility_parity_verified") is True
+        ):
+            errors.append("A3 receipt containing only source inventory cannot substantiate a parity_verified claim")
+        if document.get("receipt_version") != "accessibility-a3-analysis-v2":
+            errors.append("A3 receipt_version must be accessibility-a3-analysis-v2")
+        elif isinstance(matrix, dict):
             verification = document.get("source_verification", {})
             if not (
                 isinstance(verification, dict)
@@ -680,6 +690,14 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
     elif wave_id == "B5":
         if len(document.get("intake_log", [])) != 9:
             errors.append("B5 must retain exactly nine intake phases")
+    elif wave_id == "B6":
+        app_rev = document.get("approved_review", {})
+        sim_gate = app_rev.get("simulated_gate") or app_rev.get("human_gate", {})
+        if isinstance(sim_gate, dict):
+            if sim_gate.get("decision_source") == "simulated_fixture" and sim_gate.get("human_confirmation_claimed") is not False:
+                errors.append("B6 simulated review gate must declare human_confirmation_claimed as false")
+            if sim_gate.get("decision_source") == "simulated_fixture" and app_rev.get("status") == "ready_for_operator_release":
+                errors.append("B6 simulated review cannot claim ready_for_operator_release without explicit operator approval")
     elif wave_id in {"P1", "P2", "P3", "P4"}:
         job = document.get("job", {})
         expected_collection = "inputs" if wave_id == "P3" else "outputs"

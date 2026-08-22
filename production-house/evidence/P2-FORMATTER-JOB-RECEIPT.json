@@ -24,19 +24,19 @@
     ],
     "events": [
       {
-        "time": "2026-08-21T01:10:54.646367+00:00",
+        "time": "2026-08-22T01:32:34.506724+00:00",
         "stage": "initialization",
         "status": "job_created"
       },
       {
-        "time": "2026-08-21T01:10:54.646745+00:00",
+        "time": "2026-08-22T01:32:34.506849+00:00",
         "stage": "elevenlabs_synthesizer",
         "status": "completed",
         "notes": "Synthesized 14 dialogue cues through ElevenLabs voice models"
       }
     ],
-    "created_at": "2026-08-21T01:10:54.646367+00:00",
-    "updated_at": "2026-08-21T01:10:54.646745+00:00"
+    "created_at": "2026-08-22T01:32:34.506724+00:00",
+    "updated_at": "2026-08-22T01:32:34.506849+00:00"
   },
   "formatter_fingerprint": {
     "branch": "v3",
@@ -53,5 +53,6 @@
     },
     "target_state": "clean_commit"
   },
+  "source_verification_passed": true,
   "all_stages_passed": true
 }

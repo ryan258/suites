@@ -106,8 +106,8 @@
   },
   "stages": {
     "donor_source_invocation": {
-      "command": "/Library/Developer/CommandLineTools/usr/bin/python3 /Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_wcag_331_source_probe.py /Users/ryanjohnson/Projects/wcag-auditor",
-      "duration_ms": 31.21,
+      "command": "/opt/homebrew/opt/python@3.14/bin/python3.14 /Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_wcag_331_source_probe.py /Users/ryanjohnson/Projects/wcag-auditor",
+      "duration_ms": 49.99,
       "rule_id": "input-assistance-error-msg",
       "wcag_criterion": "3.3.1",
       "source_path": "/Users/ryanjohnson/Projects/wcag-auditor/wcag_auditor/rules/understandable_rules.py",
@@ -115,13 +115,13 @@
     },
     "donor_browser_evaluation": {
       "command": "node /Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_wcag_331_browser_probe.mjs",
-      "duration_ms": 1253.27,
+      "duration_ms": 871.69,
       "case_count": 3,
       "passed": true
     },
     "focused_parity_gate": {
-      "command": "npx tsx --test a11y-tools/tests/wcag-331-error-association.test.ts",
-      "duration_ms": 917.97,
+      "command": "npx --no-install tsx --test a11y-tools/tests/wcag-331-error-association.test.ts",
+      "duration_ms": 979.64,
       "passed_tests": 6,
       "failed_tests": 0,
       "passed": true
@@ -129,15 +129,15 @@
     "full_suite_and_typecheck_gate": {
       "command": "npm run check",
       "skipped": false,
-      "duration_ms": 43710.14,
+      "duration_ms": 48094.8,
       "total_tests_passed": 127,
       "failed_tests": 0,
       "passed": true
     },
     "full_audit_integration_gate": {
-      "command": "npx tsx --test a11y-tools/tests/full-audit.test.ts",
+      "command": "npx --no-install tsx --test a11y-tools/tests/full-audit.test.ts",
       "skipped": false,
-      "duration_ms": 37540.47,
+      "duration_ms": 40608.23,
       "passed_tests": 7,
       "failed_tests": 0,
       "manifest_coverage_verified": true,
@@ -158,7 +158,7 @@
           "html": "<input id=\"email\" type=\"email\" class=\"is-invalid\" aria-invalid=\"true\">",
           "source_status": "unverified",
           "verification_state": "unverified_deterministic_finding",
-          "timestamp": "2026-08-20T21:54:41.380739+00:00"
+          "timestamp": "2026-08-22T01:34:29.441316+00:00"
         }
       ],
       "evidence_kind": "deterministic",
@@ -180,5 +180,5 @@
     "needs_review_preserved": true,
     "human_confirmation_claimed": false
   },
-  "generated_at": "2026-08-20T21:54:41.380739+00:00"
+  "generated_at": "2026-08-22T01:34:29.441316+00:00"
 }

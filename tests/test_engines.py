@@ -267,15 +267,331 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(bm_res_full["phases_completed"], 9)
         self.assertIsNotNone(bm_res_full["resulting_package"])
 
-        # Test human approval branching (Finding 3 fix)
+        # Test simulated approval branching without minting human operator decisions
         vcc_rev_app = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency local-first portfolio control plane", human_decision="approved")
-        self.assertEqual(vcc_rev_app["status"], "ready_for_operator_release")
+        self.assertEqual(vcc_rev_app["status"], "simulated_review_passed")
+        self.assertFalse(vcc_rev_app["simulated_gate"]["human_confirmation_claimed"])
+        self.assertEqual(vcc_rev_app["simulated_gate"]["decision_source"], "simulated_fixture")
 
         vcc_rev_rej = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency draft", human_decision="rejected")
-        self.assertEqual(vcc_rev_rej["status"], "blocked_rejected")
+        self.assertEqual(vcc_rev_rej["status"], "simulated_blocked_rejected")
 
         vcc_rev_unmatched = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Unrelated text with no claims", human_decision="approved")
-        self.assertEqual(vcc_rev_unmatched["status"], "blocked_unmatched_claims")
+        self.assertEqual(vcc_rev_unmatched["status"], "simulated_blocked_unmatched_claims")
+
+    def test_normal_record_run_cannot_mint_real_reviewer_or_human_approval(self):
+        pkg = generate_sample("BrandPackage")
+        src = generate_sample("SourceRecord")
+        sim_review = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency local-first portfolio control plane")
+        self.assertFalse(sim_review["simulated_gate"]["human_confirmation_claimed"])
+        self.assertEqual(sim_review["simulated_gate"]["decision_source"], "simulated_fixture")
+        self.assertNotEqual(sim_review["status"], "ready_for_operator_release")
+
+    def test_rerunning_prototype_does_not_rewrite_existing_package_approval_time(self):
+        from portfolio_suites.adapters.brand_publishing import BrandPublishingSourceAdapter, CYBORG_BRAND_PACKAGE_APPROVED_AT
+        export1 = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
+        export2 = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
+        self.assertEqual(export1["brand_package"]["approved_at"], CYBORG_BRAND_PACKAGE_APPROVED_AT)
+        self.assertEqual(export2["brand_package"]["approved_at"], CYBORG_BRAND_PACKAGE_APPROVED_AT)
+        self.assertEqual(export1["brand_package"]["approved_at"], export2["brand_package"]["approved_at"])
+
+    @staticmethod
+    def _issue_approval(tmpdir, **record):
+        """Act as the out-of-band approval authority a real operator would use."""
+        import datetime, json, os
+        from portfolio_suites.approvals import APPROVAL_SCHEMA, STORE_ENV, token_sha256
+        token = f"opa1.{record['approval_id']}.s3cret-{record['approval_id']}"
+        record.setdefault("schema", APPROVAL_SCHEMA)
+        record.setdefault("reviewer", "Ryan Johnson")
+        record.setdefault("issued_at", datetime.datetime.now(datetime.timezone.utc).isoformat())
+        record.setdefault("expires_at", "2099-01-01T00:00:00+00:00")
+        record["token_sha256"] = token_sha256(token)
+        store = os.path.join(tmpdir, "approvals.json")
+        with open(store, "w", encoding="utf-8") as handle:
+            json.dump({"approvals": [record]}, handle)
+        os.environ[STORE_ENV] = store
+        return store, token
+
+    @staticmethod
+    def _vcc_payload_digest(pkg, src, draft, decision="approved"):
+        from portfolio_suites.approvals import canonical_digest
+        from portfolio_suites.engines.brand_publishing import build_vcc_release_payload
+        return canonical_digest(build_vcc_release_payload(pkg, src, draft, decision))
+
+    def test_real_approval_path_fails_closed_without_explicit_approval_source(self):
+        import os, tempfile
+        from portfolio_suites.approvals import STORE_ENV
+        pkg = generate_sample("BrandPackage")
+        src = generate_sample("SourceRecord")
+        # Without explicit operator_approval_token, it must NOT produce ready_for_operator_release
+        sim_no_token = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency local-first portfolio control plane", human_decision="approved", operator_approval_token=None)
+        self.assertNotEqual(sim_no_token["status"], "ready_for_operator_release")
+        self.assertEqual(sim_no_token["status"], "simulated_review_passed")
+        self.assertFalse(sim_no_token["simulated_gate"]["human_confirmation_claimed"])
+
+        self.addCleanup(os.environ.pop, STORE_ENV, None)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Arbitrary caller-invented strings are never approvals, store or no store.
+            for invented in ("x", "op-tok-valid-ryan-2026", "opa1.unknown-id.s3cret-unknown-id"):
+                blocked = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency local-first portfolio control plane", human_decision="approved", operator_approval_token=invented)
+                self.assertEqual(blocked["status"], "blocked_unverified_operator_approval", invented)
+
+            store, token = self._issue_approval(
+                tmpdir,
+                approval_id="apr-001",
+                reviewer="Ryan Johnson",
+                operation="vcc_release",
+                package_id=pkg["package_id"],
+                package_version=pkg["version"],
+                source_id=src["source_id"],
+                decision="approved",
+                payload_sha256=self._vcc_payload_digest(
+                    pkg,
+                    src,
+                    "Zero-dependency local-first portfolio control plane",
+                ),
+            )
+            # An approval bound to another package cannot release this one.
+            other = dict(pkg, package_id="pkg-someone-else-v1")
+            self.assertEqual(
+                BrandPublishingEngine.simulate_vcc_human_approval(other, src, "Zero-dependency local-first portfolio control plane", human_decision="approved", operator_approval_token=token)["status"],
+                "blocked_unverified_operator_approval",
+            )
+
+            verified = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency local-first portfolio control plane", human_decision="approved", operator_approval_token=token)
+            self.assertEqual(verified["status"], "ready_for_operator_release")
+            self.assertTrue(verified["simulated_gate"]["human_confirmation_claimed"])
+            self.assertEqual(verified["simulated_gate"]["decision_source"], "verified_operator_approval")
+            self.assertEqual(verified["simulated_gate"]["actor"], "Ryan Johnson")
+
+            # Single use: replaying the same token fails closed.
+            self.assertEqual(
+                BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency local-first portfolio control plane", human_decision="approved", operator_approval_token=token)["status"],
+                "blocked_unverified_operator_approval",
+            )
+
+    def test_expired_operator_approval_is_rejected(self):
+        import os, tempfile
+        from portfolio_suites.approvals import STORE_ENV
+        pkg = generate_sample("BrandPackage")
+        src = generate_sample("SourceRecord")
+        self.addCleanup(os.environ.pop, STORE_ENV, None)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = self._issue_approval(
+                tmpdir,
+                approval_id="apr-expired",
+                reviewer="Ryan Johnson",
+                operation="vcc_release",
+                package_id=pkg["package_id"],
+                package_version=pkg["version"],
+                source_id=src["source_id"],
+                decision="approved",
+                payload_sha256=self._vcc_payload_digest(
+                    pkg,
+                    src,
+                    "Zero-dependency local-first portfolio control plane",
+                ),
+                expires_at="2020-01-01T00:00:00+00:00",
+            )
+            self.assertEqual(
+                BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, "Zero-dependency local-first portfolio control plane", human_decision="approved", operator_approval_token=token)["status"],
+                "blocked_unverified_operator_approval",
+            )
+
+    def test_approval_does_not_survive_a_substituted_draft(self):
+        import os, tempfile
+        from portfolio_suites.approvals import STORE_ENV
+        pkg = generate_sample("BrandPackage")
+        src = generate_sample("SourceRecord")
+        reviewed = "Zero-dependency local-first portfolio control plane"
+        self.addCleanup(os.environ.pop, STORE_ENV, None)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = self._issue_approval(
+                tmpdir,
+                approval_id="apr-draft",
+                operation="vcc_release",
+                package_id=pkg["package_id"],
+                package_version=pkg["version"],
+                source_id=src["source_id"],
+                decision="approved",
+                payload_sha256=self._vcc_payload_digest(pkg, src, reviewed),
+            )
+            substituted = reviewed + " UNREVIEWED SUBSTITUTE CONTENT"
+            blocked = BrandPublishingEngine.simulate_vcc_human_approval(pkg, src, substituted, human_decision="approved", operator_approval_token=token)
+            self.assertEqual(blocked["status"], "blocked_unverified_operator_approval")
+            self.assertIn("payload_sha256", blocked["error"])
+
+    def test_vcc_approval_does_not_survive_package_or_source_substitution(self):
+        import json, os, tempfile
+        from portfolio_suites.approvals import STORE_ENV
+        pkg = generate_sample("BrandPackage")
+        src = generate_sample("SourceRecord")
+        reviewed = "Zero-dependency local-first portfolio control plane"
+        self.addCleanup(os.environ.pop, STORE_ENV, None)
+
+        mutated_pkg = dict(pkg)
+        mutated_pkg["approved_claims"] = [{"claim_id": "injected", "claim": reviewed}]
+        mutated_src = dict(src)
+        mutated_src["sha256"] = "f" * 64
+        substitutions = {
+            "brand_package": (mutated_pkg, src),
+            "source_record": (pkg, mutated_src),
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for label, (candidate_pkg, candidate_src) in substitutions.items():
+                store, token = self._issue_approval(
+                    tmpdir,
+                    approval_id=f"apr-context-{label}",
+                    operation="vcc_release",
+                    package_id=pkg["package_id"],
+                    package_version=pkg["version"],
+                    source_id=src["source_id"],
+                    decision="approved",
+                    payload_sha256=self._vcc_payload_digest(pkg, src, reviewed),
+                )
+                blocked = BrandPublishingEngine.simulate_vcc_human_approval(
+                    candidate_pkg,
+                    candidate_src,
+                    reviewed,
+                    operator_approval_token=token,
+                )
+                self.assertEqual(blocked["status"], "blocked_unverified_operator_approval", label)
+                self.assertIn("payload_sha256", blocked["error"], label)
+                with open(store, encoding="utf-8") as handle:
+                    self.assertFalse(json.load(handle)["approvals"][0].get("consumed"), label)
+
+    def test_approval_does_not_survive_mutated_package_content(self):
+        import os, tempfile
+        from portfolio_suites.approvals import STORE_ENV, canonical_digest
+        base = {
+            1: {"one_liner": "A", "enemy": "B", "brand_name": "Test Brand"},
+            2: {"primary_operator": "Ryan", "pain_points": ["drift"], "target_audience": "Devs"},
+            3: {"tone_adjectives": ["crisp"], "taboo_words": ["bad"]},
+            4: {"palette_hex": ["#000"], "typeface_pair": "Inter", "tagline": "Tag"},
+            5: {"verifiable_claims": ["Fast"]},
+            6: {"logo_paths": ["l.svg"], "icon_set": "lucide"},
+            7: {"do_list": ["Pin"], "dont_list": ["Mutate"], "usage_rules": ["Rule 1"]},
+            8: {"formats": ["json"], "cadence": "daily"},
+            9: {"approver_signoff": "Ryan"},
+        }
+        # Digest of the package the reviewer actually saw.
+        reviewed_digest = canonical_digest({
+            "schema_version": "1.0.0",
+            "package_id": "pkg-bm-test-brand-1.0.0",
+            "brand_id": "test-brand",
+            "version": "1.0.0",
+            "identity": {"name": "Test Brand", "tagline": "Tag"},
+            "voice": {"tone": ["crisp"]},
+            "audience": {"primary": "Devs"},
+            "approved_claims": [{"claim_id": "claim-01", "claim": "Fast"}],
+            "assets": [{"asset_type": "logo", "path": "l.svg"}],
+            "usage_rules": ["Rule 1"],
+        })
+        self.addCleanup(os.environ.pop, STORE_ENV, None)
+        mutations = {
+            "claim": {5: {"verifiable_claims": ["Fast and unreviewed"]}},
+            "voice": {3: {"tone_adjectives": ["crisp", "smuggled"], "taboo_words": ["bad"]}},
+            "identity": {4: {"palette_hex": ["#000"], "typeface_pair": "Inter", "tagline": "Different Tag"}},
+            "asset": {6: {"logo_paths": ["evil.svg"], "icon_set": "lucide"}},
+            "usage_rule": {7: {"do_list": ["Pin"], "dont_list": ["Mutate"], "usage_rules": ["Rule 2"]}},
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for label, patch in mutations.items():
+                store, token = self._issue_approval(
+                    tmpdir,
+                    approval_id=f"apr-pkg-{label}",
+                    operation="brand_maker_package_approval",
+                    package_id="pkg-bm-test-brand-1.0.0",
+                    package_version="1.0.0",
+                    decision="approved",
+                    payload_sha256=reviewed_digest,
+                )
+                prov = BrandPublishingEngine.execute_brand_maker_intake(
+                    "test-brand", {**base, **patch}, operator_approval_token=token
+                )["resulting_package"]["provenance"][0]
+                self.assertEqual(prov["decision_source"], "simulated_fixture", label)
+                self.assertFalse(prov["human_confirmation_claimed"], label)
+
+            # The unmutated package, by contrast, is genuinely approved.
+            store, token = self._issue_approval(
+                tmpdir,
+                approval_id="apr-pkg-clean",
+                operation="brand_maker_package_approval",
+                package_id="pkg-bm-test-brand-1.0.0",
+                package_version="1.0.0",
+                decision="approved",
+                payload_sha256=reviewed_digest,
+            )
+            approved = BrandPublishingEngine.execute_brand_maker_intake("test-brand", base, operator_approval_token=token)["resulting_package"]
+            self.assertEqual(approved["provenance"][0]["decision_source"], "verified_operator_approval")
+
+    def test_real_approval_chronology_comes_from_the_authority_not_the_fixture(self):
+        import datetime, os, tempfile
+        from portfolio_suites.approvals import STORE_ENV, canonical_digest
+        from portfolio_suites.engines.brand_publishing import SIMULATED_PACKAGE_APPROVED_AT
+        issued_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        inputs = {
+            1: {"one_liner": "A", "enemy": "B", "brand_name": "Late Brand"},
+            2: {"primary_operator": "Ryan", "pain_points": ["drift"], "target_audience": "Devs"},
+            3: {"tone_adjectives": ["crisp"], "taboo_words": ["bad"]},
+            4: {"palette_hex": ["#000"], "typeface_pair": "Inter", "tagline": "Tag"},
+            5: {"verifiable_claims": ["Fast"]},
+            6: {"logo_paths": ["l.svg"], "icon_set": "lucide"},
+            7: {"do_list": ["Pin"], "dont_list": ["Mutate"], "usage_rules": ["Rule 1"]},
+            8: {"formats": ["json"], "cadence": "daily"},
+            9: {"approver_signoff": "Ryan"},
+        }
+        digest = canonical_digest({
+            "schema_version": "1.0.0",
+            "package_id": "pkg-bm-late-brand-1.0.0",
+            "brand_id": "late-brand",
+            "version": "1.0.0",
+            "identity": {"name": "Late Brand", "tagline": "Tag"},
+            "voice": {"tone": ["crisp"]},
+            "audience": {"primary": "Devs"},
+            "approved_claims": [{"claim_id": "claim-01", "claim": "Fast"}],
+            "assets": [{"asset_type": "logo", "path": "l.svg"}],
+            "usage_rules": ["Rule 1"],
+        })
+        self.addCleanup(os.environ.pop, STORE_ENV, None)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = self._issue_approval(
+                tmpdir,
+                approval_id="apr-late",
+                operation="brand_maker_package_approval",
+                package_id="pkg-bm-late-brand-1.0.0",
+                package_version="1.0.0",
+                decision="approved",
+                payload_sha256=digest,
+                issued_at=issued_at,
+            )
+            result = BrandPublishingEngine.execute_brand_maker_intake("late-brand", inputs, operator_approval_token=token)["resulting_package"]
+            self.assertEqual(result["provenance"][0]["decision_source"], "verified_operator_approval")
+            self.assertEqual(result["approved_at"], issued_at)
+            self.assertEqual(result["provenance"][0]["timestamp"], issued_at)
+            self.assertNotEqual(result["approved_at"], SIMULATED_PACKAGE_APPROVED_AT)
+            self.assertGreater(
+                datetime.datetime.fromisoformat(result["approved_at"]),
+                datetime.datetime.fromisoformat(SIMULATED_PACKAGE_APPROVED_AT),
+            )
+
+    def test_arbitrary_approver_signoff_cannot_mint_human_confirmation(self):
+        for name in ("Ryan", "Ryan Johnson", "operator", "simulated_fixture_operator"):
+            inputs = {
+                1: {"one_liner": "A", "enemy": "B", "brand_name": "Test Brand"},
+                2: {"primary_operator": "Ryan", "pain_points": ["drift"], "target_audience": "Devs"},
+                3: {"tone_adjectives": ["crisp"], "taboo_words": ["bad"]},
+                4: {"palette_hex": ["#000"], "typeface_pair": "Inter", "tagline": "Tag"},
+                5: {"verifiable_claims": ["Fast"]},
+                6: {"logo_paths": ["l.svg"], "icon_set": "lucide"},
+                7: {"do_list": ["Pin"], "dont_list": ["Mutate"], "usage_rules": ["Rule 1"]},
+                8: {"formats": ["json"], "cadence": "daily"},
+                9: {"approver_signoff": name},
+            }
+            prov = BrandPublishingEngine.execute_brand_maker_intake("test-brand", inputs)["resulting_package"]["provenance"][0]
+            self.assertEqual(prov["decision_source"], "simulated_fixture", name)
+            self.assertFalse(prov["human_confirmation_claimed"], name)
 
     def test_production_house_engine(self):
         job = ProductionHouseEngine.create_job("job-test-01", "groundwire-audio", "synthesis", [{"name": "script.fountain"}])

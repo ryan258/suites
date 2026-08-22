@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave_id": "O2",
-  "executed_at": "2026-08-20T21:04:57.970612+00:00",
+  "executed_at": "2026-08-22T01:32:33.941293+00:00",
   "fingerprints": {
     "ryos": {
       "branch": "main",
@@ -227,5 +227,7 @@
     "projection_view": "Observer",
     "orchestration_gateway": "JARVIS"
   },
+  "all_stages_passed": true,
+  "source_verification_passed": true,
   "status": "verified"
 }

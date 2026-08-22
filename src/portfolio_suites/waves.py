@@ -593,7 +593,7 @@ class WaveRunner:
             6: {"logo_paths": ["assets/logo.svg"], "icon_set": "lucide"},
             7: {"do_list": ["Pin versions"], "dont_list": ["Silent mutations"], "usage_rules": ["Never modify without explicit version bump"]},
             8: {"formats": ["markdown", "json"], "cadence": "on_demand"},
-            9: {"approver_signoff": "Ryan Johnson"},
+            9: {"approver_signoff": "simulated_fixture_operator"},
         }
         res_complete = BrandPublishingEngine.execute_brand_maker_intake("cyborg-brand", complete_phase_inputs)
         res_empty = BrandPublishingEngine.execute_brand_maker_intake("cyborg-brand", {})
@@ -630,12 +630,15 @@ class WaveRunner:
             pkg, src, "Draft with zero matching approved claims.", human_decision="approved"
         )
 
+        sim_gate = approved_receipt.get("simulated_gate", {})
         passed = (
             b1_result.get("all_stages_passed") is True
-            and approved_receipt.get("status") == "ready_for_operator_release"
-            and rejected_receipt.get("status") == "blocked_rejected"
-            and unmatched_receipt.get("status") == "blocked_unmatched_claims"
-            and approved_receipt.get("human_gate", {}).get("boundary_check") == "stopped_before_live_publish"
+            and approved_receipt.get("status") == "simulated_review_passed"
+            and rejected_receipt.get("status") == "simulated_blocked_rejected"
+            and unmatched_receipt.get("status") == "simulated_blocked_unmatched_claims"
+            and sim_gate.get("boundary_check") == "stopped_before_live_publish"
+            and sim_gate.get("decision_source") == "simulated_fixture"
+            and sim_gate.get("human_confirmation_claimed") is False
             and approved_receipt.get("brand_package_id") == "pkg-cyborg-brand-v1"
             and approved_receipt.get("source_id") == "src-manifesto-draft-001"
         )

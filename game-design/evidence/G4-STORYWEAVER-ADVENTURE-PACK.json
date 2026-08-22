@@ -121,7 +121,7 @@
       }
     ],
     "deterministic_graph": true,
-    "created_at": "2026-08-21T18:40:13.940805+00:00",
+    "created_at": "2026-08-22T01:32:37.846698+00:00",
     "generality_proof": "Storyweaver schema successfully models spatial branching puzzles without engine changes."
   },
   "schema_check": {

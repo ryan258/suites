@@ -118,5 +118,7 @@
       "port_action": "port-as-monitoring-register",
       "status": "mapped"
     }
-  ]
+  ],
+  "source_verification_passed": true,
+  "all_stages_passed": true
 }

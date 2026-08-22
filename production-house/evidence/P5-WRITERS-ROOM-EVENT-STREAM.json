@@ -32,31 +32,31 @@
       ],
       "events": [
         {
-          "time": "2026-08-21T01:10:54.929298+00:00",
+          "time": "2026-08-22T01:32:34.552305+00:00",
           "stage": "initialization",
           "status": "job_created"
         },
         {
-          "time": "2026-08-21T01:10:54.929345+00:00",
+          "time": "2026-08-22T01:32:34.552333+00:00",
           "stage": "scene_1_revision_rev-1",
           "status": "running",
           "notes": "Initial intro dialogue"
         },
         {
-          "time": "2026-08-21T01:10:54.929368+00:00",
+          "time": "2026-08-22T01:32:34.552355+00:00",
           "stage": "scene_2_revision_rev-2",
           "status": "running",
           "notes": "Added ambient sound cue"
         },
         {
-          "time": "2026-08-21T01:10:54.929389+00:00",
+          "time": "2026-08-22T01:32:34.552376+00:00",
           "stage": "room_signoff",
           "status": "completed",
           "notes": "Writers Room reached unanimous canon signoff; ready for speech synthesis."
         }
       ],
-      "created_at": "2026-08-21T01:10:54.929298+00:00",
-      "updated_at": "2026-08-21T01:10:54.929389+00:00"
+      "created_at": "2026-08-22T01:32:34.552305+00:00",
+      "updated_at": "2026-08-22T01:32:34.552376+00:00"
     },
     "reconciliation": "writers_room_collaborative_events_unified_under_production_job",
     "runtime_consolidation": "single_canonical_engine"

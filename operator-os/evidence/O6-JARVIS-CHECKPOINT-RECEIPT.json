@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave_id": "O6",
-  "executed_at": "2026-08-21T20:44:39.831843+00:00",
+  "executed_at": "2026-08-22T01:32:34.053421+00:00",
   "jarvis_fingerprint": {
     "branch": "main",
     "head": "9ea2d889d823b79441a0d6d8805a69805b9124a4",
@@ -22,13 +22,13 @@
     "action": "audit_secrets",
     "operator_approved": false,
     "result": {
-      "action_id": "act-jarvis-59e9ec00810e43ba8683b7fb5704cd51",
+      "action_id": "act-jarvis-bf0a832eeeff435f95697f4b50532977",
       "action_name": "audit_secrets",
       "parameters": {
         "path": "/Users/ryanjohnson/Projects/suites"
       },
       "state": "blocked_missing_approval",
-      "preview_at": "2026-08-21T20:44:39.863287+00:00",
+      "preview_at": "2026-08-22T01:32:34.086316+00:00",
       "requires_human_approval": true,
       "destructive": false,
       "recovery_path": "undo_via_backup_or_clean_revert",
@@ -41,7 +41,7 @@
   "preview_test": {
     "action": "backup_data",
     "preview": {
-      "action_id": "act-jarvis-52d87dece9b44ebeb8edf6029fe78d3d",
+      "action_id": "act-jarvis-81c9b1b947e54603bf16ea380fe46f08",
       "action_name": "backup_data",
       "parameters": {
         "vault": "operator-os-vault",
@@ -49,7 +49,7 @@
         "dry_run": true
       },
       "state": "preview_ready",
-      "preview_at": "2026-08-21T20:44:39.863329+00:00",
+      "preview_at": "2026-08-22T01:32:34.086352+00:00",
       "requires_human_approval": true,
       "destructive": false,
       "recovery_path": "undo_via_backup_or_clean_revert"

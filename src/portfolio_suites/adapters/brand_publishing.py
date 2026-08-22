@@ -15,6 +15,9 @@ BRAND_WORKSHOP_DIR = get_repo_path("brand-workshop", "BRAND_WORKSHOP_DIR")
 CYBORG_DIR = get_repo_path("cyborg", "CYBORG_DIR")
 
 
+CYBORG_BRAND_PACKAGE_APPROVED_AT = "2026-08-19T18:00:00+00:00"
+
+
 class BrandPublishingSourceAdapter:
     """Invokes and inspects authentic brand-maker-spec, brand-workshop, and cyborg runtimes."""
 
@@ -30,13 +33,13 @@ class BrandPublishingSourceAdapter:
         has_dev_exports = dev_exports_path.is_file()
         has_spec = spec_path.is_file()
 
-        # Build canonical BrandPackage for Cyborg Systems
+        # Build canonical BrandPackage for Cyborg Systems with preserved approval timestamp
         brand_pkg_raw = {
             "schema_version": SCHEMA_VERSION,
             "package_id": "pkg-cyborg-brand-v1",
             "brand_id": "brand-cyborg-systems",
             "version": "1.0.0",
-            "approved_at": now_iso,
+            "approved_at": CYBORG_BRAND_PACKAGE_APPROVED_AT,
             "identity": {
                 "brand_name": "Cyborg Systems",
                 "tagline": "Cognitive infrastructure for the modern operator",
@@ -98,7 +101,7 @@ class BrandPublishingSourceAdapter:
                     "source": "brand-maker-spec",
                     "commit": target_fp.get("head", "HEAD"),
                     "operator": "Ryan Johnson",
-                    "timestamp": now_iso,
+                    "timestamp": CYBORG_BRAND_PACKAGE_APPROVED_AT,
                 }
             ],
         }

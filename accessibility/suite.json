@@ -97,12 +97,12 @@
       "id": "A3",
       "order": 30,
       "status": "complete",
-      "objective": "Reconcile three keyboard overlays and select one canonical implementation.",
-      "acceptance": "Feature, file, permissions, browser, and accessibility parity evidence supports the decision.",
+      "objective": "Reconcile three keyboard overlays through source, manifest, permissions, and feature inventory.",
+      "acceptance": "Source inventory, manifest structure, permissions, and feature comparative analysis support the canonical anchor selection.",
       "evidence": "accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.json",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "parity_verified",
+        "level": "source_verified",
         "real_runtime": false,
         "evidence_basis": [
           "canonical_target",

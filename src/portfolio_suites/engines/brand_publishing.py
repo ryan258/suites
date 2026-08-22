@@ -6,8 +6,35 @@ from __future__ import annotations
 
 import datetime
 from typing import Any
+from ..approvals import ApprovalError, canonical_digest, verify_operator_approval
 from ..contracts import SCHEMA_VERSION, validate_contract
 from ..identifiers import new_prefixed_id
+
+# Fixture chronology for simulated (unapproved) intake packages only.
+SIMULATED_PACKAGE_APPROVED_AT = "2026-08-19T18:00:00+00:00"
+VCC_RELEASE_SCHEMA = "vcc-release-approval-v1"
+
+
+def build_vcc_release_payload(
+    brand_pkg: dict[str, Any],
+    source_record: dict[str, Any],
+    draft_content: str,
+    human_decision: str,
+    channel: str = "vcc-focus-group",
+) -> dict[str, Any]:
+    """Build the validated, canonical authorization envelope for a VCC release."""
+    valid_pkg = validate_contract("BrandPackage", brand_pkg)
+    valid_source = validate_contract("SourceRecord", source_record)
+    if not isinstance(draft_content, str):
+        raise TypeError("draft_content must be a string")
+    return {
+        "release_schema": VCC_RELEASE_SCHEMA,
+        "channel": channel,
+        "decision": human_decision,
+        "draft_content": draft_content,
+        "brand_package": valid_pkg,
+        "source_record": valid_source,
+    }
 
 
 class BrandPublishingEngine:
@@ -132,13 +159,13 @@ class BrandPublishingEngine:
     def execute_brand_maker_intake(
         brand_id: str,
         phase_inputs: dict[int, dict[str, Any]],
-        approver: str = "Ryan",
+        approver: str = "simulated_fixture_operator",
+        operator_approval_token: str | None = None,
     ) -> dict[str, Any]:
         """Execute Brand Workshop 9-phase intake within Brand Maker state machine (B5 wave)."""
         phases = BrandPublishingEngine.get_brand_workshop_phases()
         completed_phases = []
         all_completed = True
-        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         for phase in phases:
             p_num = phase["phase"]
@@ -204,12 +231,16 @@ class BrandPublishingEngine:
         tagline_val = p4.get("tagline") or p1.get("one_liner") or "Instituted Brand Package"
         name_val = p1.get("brand_name") or brand_id.replace("-", " ").title()
 
+        approver_name = str(p9.get("approver_signoff") or approver)
+        package_id = f"pkg-bm-{brand_id}-1.0.0"
+
+        # Canonical content, excluding approval metadata (approved_at/provenance) so the
+        # digest covers exactly what a reviewer would have read.
         pkg = {
             "schema_version": SCHEMA_VERSION,
-            "package_id": f"pkg-bm-{brand_id}-1.0.0",
+            "package_id": package_id,
             "brand_id": brand_id,
             "version": "1.0.0",
-            "approved_at": now_iso,
             "identity": {
                 "name": name_val,
                 "tagline": tagline_val,
@@ -223,12 +254,36 @@ class BrandPublishingEngine:
             "approved_claims": approved_claims,
             "assets": assets,
             "usage_rules": usage_rules_list,
-            "provenance": [{
-                "author": p9.get("approver_signoff") or approver,
-                "method": "brand_maker_9_phase_intake",
-                "timestamp": now_iso,
-            }],
         }
+
+        # A phase-input name is attribution, never authorization: the decision is a
+        # simulation unless an approval issued for this exact content resolves.
+        approval = None
+        try:
+            approval = verify_operator_approval(operator_approval_token, {
+                "operation": "brand_maker_package_approval",
+                "package_id": package_id,
+                "package_version": "1.0.0",
+                "decision": "approved",
+                "payload_sha256": canonical_digest(pkg),
+            })
+        except ApprovalError:
+            approval = None
+
+        # Simulated fixtures keep the stable historical date; a real approval dates the
+        # package from the authority record, never from a fixture constant.
+        package_approved_at = str(approval["issued_at"]) if approval else SIMULATED_PACKAGE_APPROVED_AT
+
+        pkg.update({
+            "approved_at": package_approved_at,
+            "provenance": [{
+                "author": str(approval["reviewer"]) if approval else approver_name,
+                "method": "brand_maker_9_phase_intake",
+                "decision_source": "verified_operator_approval" if approval else "simulated_fixture",
+                "human_confirmation_claimed": bool(approval),
+                "timestamp": package_approved_at,
+            }],
+        })
         validated_pkg = validate_contract("BrandPackage", pkg)
 
         return {
@@ -246,7 +301,8 @@ class BrandPublishingEngine:
         source_record: dict[str, Any],
         draft_content: str,
         human_decision: str = "approved",
-        reviewer: str = "Ryan",
+        reviewer: str = "simulated_fixture_reviewer",
+        operator_approval_token: str | None = None,
     ) -> dict[str, Any]:
         """Simulate VCC editorial review with human approval gate stopping short of live publish (B6 wave)."""
         valid_decisions = {"approved", "rejected", "needs_revision"}
@@ -257,30 +313,76 @@ class BrandPublishingEngine:
                 "status": "blocked_invalid_decision",
             }
 
-        dry_receipt = BrandPublishingEngine.dry_run_publish(brand_pkg, source_record, draft_content, channel="vcc-focus-group")
+        release_payload = build_vcc_release_payload(
+            brand_pkg,
+            source_record,
+            draft_content,
+            human_decision,
+        )
+        valid_pkg = release_payload["brand_package"]
+        valid_source = release_payload["source_record"]
+        dry_receipt = BrandPublishingEngine.dry_run_publish(
+            valid_pkg,
+            valid_source,
+            draft_content,
+            channel=release_payload["channel"],
+        )
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        approval = None
+        approval_error = None
+        try:
+            approval = verify_operator_approval(operator_approval_token, {
+                "operation": "vcc_release",
+                "package_id": valid_pkg["package_id"],
+                "package_version": valid_pkg["version"],
+                "source_id": valid_source["source_id"],
+                "decision": human_decision,
+                "payload_sha256": canonical_digest(release_payload),
+            })
+        except ApprovalError as error:
+            approval_error = str(error)
+        if operator_approval_token is not None and approval is None:
+            return {
+                "review_id": new_prefixed_id("vcc-rev"),
+                "brand_package_id": valid_pkg["package_id"],
+                "source_id": valid_source["source_id"],
+                "error": approval_error,
+                "status": "blocked_unverified_operator_approval",
+            }
+        is_real_operator_approved = approval is not None
+        decision_source = "verified_operator_approval" if is_real_operator_approved else "simulated_fixture"
+        human_confirmation_claimed = is_real_operator_approved
 
         # Derive final status from human decision and dry-run claim match
         if human_decision == "rejected":
-            status = "blocked_rejected"
+            status = "simulated_blocked_rejected"
         elif human_decision == "needs_revision":
-            status = "blocked_revision_required"
+            status = "simulated_blocked_revision_required"
         elif dry_receipt.get("matched_approved_claims_count", 0) == 0:
-            status = "blocked_unmatched_claims"
-        else:
+            status = "simulated_blocked_unmatched_claims"
+        elif is_real_operator_approved:
             status = "ready_for_operator_release"
+        else:
+            status = "simulated_review_passed"
 
         return {
             "review_id": new_prefixed_id("vcc-rev"),
-            "brand_package_id": brand_pkg.get("package_id"),
-            "source_id": source_record.get("source_id"),
+            "brand_package_id": valid_pkg["package_id"],
+            "source_id": valid_source["source_id"],
             "dry_run_receipt": dry_receipt,
-            "human_gate": {
-                "reviewer": reviewer,
+            "simulated_gate": {
+                "actor": str(approval["reviewer"]) if approval else reviewer,
                 "decision": human_decision,
+                "decision_source": decision_source,
+                "human_confirmation_claimed": human_confirmation_claimed,
                 "timestamp": now_iso,
                 "boundary_check": "stopped_before_live_publish",
-                "notes": "Verified against BrandPackage truth; human signoff recorded; live publish authority preserved for operator.",
+                "notes": (
+                    "Verified against BrandPackage truth; live operator release verified."
+                    if is_real_operator_approved
+                    else "Verified against BrandPackage truth; gate simulation executed; authentic operator approval authority preserved."
+                ),
             },
             "status": status,
         }

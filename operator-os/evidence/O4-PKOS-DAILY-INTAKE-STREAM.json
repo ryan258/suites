@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave_id": "O4",
-  "executed_at": "2026-08-21T20:44:39.584773+00:00",
+  "executed_at": "2026-08-22T01:32:33.986113+00:00",
   "pkos_fingerprint": {
     "branch": "main",
     "head": "6c861b6e032f91f6289c36a859241e363583d5d3",
@@ -41,7 +41,7 @@
     {
       "schema_version": "1.0.0",
       "source_id": "src-daily-log-20260820",
-      "acquired_at": "2026-08-21T20:44:39.647403+00:00",
+      "acquired_at": "2026-08-22T01:32:34.050675+00:00",
       "sha256": "aa4a06367eaa04b3a0cd19ce7c634ca27feadc5e53d3310b62e3eb00d528cb0a",
       "size_bytes": 208,
       "media_type": "text/markdown",
@@ -56,7 +56,7 @@
     {
       "schema_version": "1.0.0",
       "source_id": "src-arch-decision-009",
-      "acquired_at": "2026-08-21T20:44:39.648092+00:00",
+      "acquired_at": "2026-08-22T01:32:34.050784+00:00",
       "sha256": "61e98abe3dc2ae5f6956c9f97bfe0dea2b89f60627f3e373449f60e9676161ee",
       "size_bytes": 197,
       "media_type": "text/markdown",
@@ -71,7 +71,7 @@
     {
       "schema_version": "1.0.0",
       "source_id": "src-security-boundary-003",
-      "acquired_at": "2026-08-21T20:44:39.648125+00:00",
+      "acquired_at": "2026-08-22T01:32:34.050811+00:00",
       "sha256": "56d5569e797809254d5f01a2fd636c2bd8411b0aa6ca17386be38ff5846530e1",
       "size_bytes": 146,
       "media_type": "text/markdown",

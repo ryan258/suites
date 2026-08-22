@@ -1,4 +1,6 @@
 {
+  "receipt_version": "accessibility-a3-analysis-v2",
+  "all_stages_passed": true,
   "canonical_target": "kb-overlay",
   "matrix": {
     "kb-overlay": {
@@ -14,12 +16,37 @@
         "mutation_observer_updates",
         "global_chrome_command"
       ],
+      "feature_inventory_kind": "declared_analysis",
       "permissions": [
         "activeTab",
         "storage"
       ],
-      "code_size_bytes": 33434,
-      "active_status": "retained_canonical"
+      "host_scope": [
+        "<all_urls>"
+      ],
+      "code_size_bytes": 37014,
+      "code_files_count": 7,
+      "active_status": "retained_canonical",
+      "git_fingerprint": {
+        "branch": "main",
+        "head": "5ac00b304956e1f61f53cfa46f618160b7abc89a",
+        "short": "main@5ac00b3",
+        "is_dirty": true,
+        "dirty_files_count": 1,
+        "dirty_files": [
+          "?? .DS_Store"
+        ],
+        "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lockfile_sha256": "",
+        "tested_files_fingerprint": {
+          "README.md": "e512f36fe00c30cecfd9efefefad837b723c3d2c737746d909ab6b9f2c44df89",
+          ".DS_Store": "cbe28ac6c48927dc111d65ed77ad601743ea0ea071e1a0a07ab876dd7ad5ceee"
+        },
+        "target_state": "local_working_tree_candidate"
+      },
+      "source_available": true,
+      "manifest_valid": true,
+      "fingerprint_verified": true
     },
     "keyboard-nav-overlay": {
       "role": "duplicate_donor",
@@ -28,12 +55,34 @@
         "spatial_nav",
         "visual_focus_ring"
       ],
+      "feature_inventory_kind": "declared_analysis",
       "permissions": [
         "activeTab",
         "storage"
       ],
-      "code_size_bytes": 9497,
+      "host_scope": [
+        "<all_urls>"
+      ],
+      "code_size_bytes": 11804,
+      "code_files_count": 6,
       "active_status": "superseded_by_kb-overlay",
+      "git_fingerprint": {
+        "branch": "main",
+        "head": "fbb14fe6fe329ddd83245b5d14b5cb271e4f56f7",
+        "short": "main@fbb14fe",
+        "is_dirty": false,
+        "dirty_files_count": 0,
+        "dirty_files": [],
+        "patch_sha256": "",
+        "lockfile_sha256": "",
+        "tested_files_fingerprint": {
+          "README.md": "7ffa463bb28efaaab257ada0a3012be36b77944816d01f4fcb324a59e5d54167"
+        },
+        "target_state": "clean_commit"
+      },
+      "source_available": true,
+      "manifest_valid": true,
+      "fingerprint_verified": true,
       "flaws_identified": [
         "syntax_typos_in_content_js",
         "global_css_leakage_no_shadow_dom"
@@ -45,17 +94,45 @@
       "features": [
         "spatial_nav"
       ],
+      "feature_inventory_kind": "declared_analysis",
       "permissions": [
         "activeTab",
-        "storage"
+        "scripting"
       ],
-      "code_size_bytes": 4073,
+      "host_scope": [
+        "<all_urls>"
+      ],
+      "code_size_bytes": 5040,
+      "code_files_count": 6,
       "active_status": "superseded_by_kb-overlay",
+      "git_fingerprint": {
+        "branch": "main",
+        "head": "0023057715cb5243727da0bca06ee106a3322ea4",
+        "short": "main@0023057",
+        "is_dirty": false,
+        "dirty_files_count": 0,
+        "dirty_files": [],
+        "patch_sha256": "",
+        "lockfile_sha256": "",
+        "tested_files_fingerprint": {
+          "README.md": "0f0530b40424feb95a6119d22c2468812f5aa72aebd3f3b6a5a698dada2da1ea"
+        },
+        "target_state": "clean_commit"
+      },
+      "source_available": true,
+      "manifest_valid": true,
+      "fingerprint_verified": true,
       "flaws_identified": [
         "unencapsulated_dom",
         "incomplete_event_handling"
       ]
     }
   },
-  "recommendation": "Preserve kb-overlay as single canonical extension; donor extensions are 100% superseded in capability and ready for frozen status."
+  "source_verification": {
+    "passed": true,
+    "errors": [],
+    "donors_checked": 3
+  },
+  "recommendation": "Source inventory supports kb-overlay as the canonical candidate; behavioral and owner-controlled convergence gates remain outstanding.",
+  "generated_at": "2026-08-22T01:48:58.818590+00:00"
 }

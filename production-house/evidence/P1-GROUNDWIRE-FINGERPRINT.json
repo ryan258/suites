@@ -35,32 +35,32 @@
     ],
     "events": [
       {
-        "time": "2026-08-21T01:10:54.520616+00:00",
+        "time": "2026-08-22T01:32:34.470043+00:00",
         "stage": "fountain_parse",
         "status": "ok",
         "notes": "Parsed 12 scenes and 4 character voices"
       },
       {
-        "time": "2026-08-21T01:10:54.520616+00:00",
+        "time": "2026-08-22T01:32:34.470043+00:00",
         "stage": "elevenlabs_formatter",
         "status": "ok",
         "notes": "Synthesized 142 audio stems"
       },
       {
-        "time": "2026-08-21T01:10:54.520616+00:00",
+        "time": "2026-08-22T01:32:34.470043+00:00",
         "stage": "ambient_sfx_mix",
         "status": "ok",
         "notes": "Beds mixed at -22 dB"
       },
       {
-        "time": "2026-08-21T01:10:54.520616+00:00",
+        "time": "2026-08-22T01:32:34.470043+00:00",
         "stage": "mastering_qc",
         "status": "ok",
         "notes": "Broadcast loudness achieved (-16.2 LUFS)"
       }
     ],
-    "created_at": "2026-08-21T01:10:54.520616+00:00",
-    "updated_at": "2026-08-21T01:10:54.520616+00:00"
+    "created_at": "2026-08-22T01:32:34.470043+00:00",
+    "updated_at": "2026-08-22T01:32:34.470043+00:00"
   },
   "production_house_fingerprint": {
     "branch": "main",
@@ -107,5 +107,6 @@
     },
     "target_state": "clean_commit"
   },
+  "source_verification_passed": true,
   "all_stages_passed": true
 }

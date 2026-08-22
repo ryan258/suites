@@ -6,7 +6,7 @@
     "package_id": "pkg-cyborg-brand-v1",
     "brand_id": "brand-cyborg-systems",
     "version": "1.0.0",
-    "approved_at": "2026-08-21T20:31:24.291083+00:00",
+    "approved_at": "2026-08-19T18:00:00+00:00",
     "identity": {
       "brand_name": "Cyborg Systems",
       "tagline": "Cognitive infrastructure for the modern operator",
@@ -92,14 +92,14 @@
         "source": "brand-maker-spec",
         "commit": "cb5bc9a3091835e0426f1533a468ef4246836b10",
         "operator": "Ryan Johnson",
-        "timestamp": "2026-08-21T20:31:24.291083+00:00"
+        "timestamp": "2026-08-19T18:00:00+00:00"
       }
     ]
   },
   "source_record": {
     "schema_version": "1.0.0",
     "source_id": "src-manifesto-draft-001",
-    "acquired_at": "2026-08-21T20:31:24.291083+00:00",
+    "acquired_at": "2026-08-22T01:48:58.776797+00:00",
     "sha256": "b058afcc9f6feea84f00e027ef5aec6d2b1a750e923d17a0559beec453560c73",
     "size_bytes": 94,
     "media_type": "text/markdown",
@@ -111,10 +111,10 @@
     }
   },
   "publishing_receipt": {
-    "receipt_id": "pub-dry-1787344284",
+    "receipt_id": "pub-dry-1787363338",
     "channel": "blog",
     "status": "dry_run_verified",
-    "timestamp": "2026-08-21T20:31:24.291083+00:00",
+    "timestamp": "2026-08-22T01:48:58.776797+00:00",
     "brand_package_id": "pkg-cyborg-brand-v1",
     "brand_version": "1.0.0",
     "source_id": "src-manifesto-draft-001",
