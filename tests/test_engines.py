@@ -1,4 +1,7 @@
+import os
+import tempfile
 import unittest
+from pathlib import Path
 
 from portfolio_suites.engines.accessibility import AccessibilityEngine
 from portfolio_suites.engines.operator_os import OperatorOSEngine
@@ -150,6 +153,37 @@ class EngineTests(unittest.TestCase):
         )
         self.assertEqual(chk_secrets_clean["status"], "success")
         self.assertTrue(chk_secrets_clean["execution_result"]["clean"])
+
+        # Test sync_obsidian_notes within workspace vs unconfined path
+        chk_sync = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "sync_obsidian_notes", {"vault_path": "operator-os/evidence"}, operator_approved=True
+        )
+        self.assertEqual(chk_sync["status"], "success")
+        self.assertGreaterEqual(chk_sync["execution_result"]["notes_scanned_count"], 1)
+
+        chk_sync_unconfined = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "sync_obsidian_notes", {"vault_path": str(Path.home() / ".ssh")}, operator_approved=True
+        )
+        self.assertEqual(chk_sync_unconfined["status"], "error_unconfined_path")
+
+        # Test rotate_local_cache dry run vs unconfined path
+        chk_cache_dry = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "rotate_local_cache", {"cache_dir": ".cache", "dry_run": True}, operator_approved=True
+        )
+        self.assertEqual(chk_cache_dry["status"], "success")
+        self.assertFalse(chk_cache_dry["execution_result"]["rotated"])
+        self.assertEqual(chk_cache_dry["execution_result"]["rotation_mode"], "dry_run")
+
+        chk_cache_unconfined = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "rotate_local_cache", {"cache_dir": str(Path.home() / ".ssh")}, operator_approved=True
+        )
+        self.assertEqual(chk_cache_unconfined["status"], "error_unconfined_path")
+
+        # Test unknown action rejection
+        chk_unknown = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "unknown_command", {}, operator_approved=True
+        )
+        self.assertEqual(chk_unknown["status"], "error_unknown_action")
 
     def test_operator_os_adapter(self):
         o1 = OperatorOSSourceAdapter.execute_o1_source_record_observer_gate()
@@ -359,3 +393,152 @@ class EngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _scan_probe_dir(probe_name):
+    """Run the audit in a child process so an indefinite open shows up as a live process."""
+    from portfolio_suites.engines.operator_os import OperatorOSEngine
+
+    OperatorOSEngine.execute_jarvis_action_checkpoint(
+        "audit_secrets", {"path": f"operator-os/{probe_name}"}, operator_approved=True
+    )
+
+
+class OperatorConfinementTests(unittest.TestCase):
+    """Path confinement has to survive the walk, not just the walk's root."""
+
+    @staticmethod
+    def _probe_dir():
+        from portfolio_suites.paths import SUITES_ROOT
+
+        return SUITES_ROOT / "operator-os" / "_confinement_probe"
+
+    def setUp(self):
+        self.probe = self._probe_dir()
+        self.probe.mkdir(parents=True, exist_ok=True)
+        self.external = Path(tempfile.mkdtemp()) / "external_secret.txt"
+        self.external.write_text('API_KEY = "abcdefghijklmnop123456"\n', encoding="utf-8")
+
+    def tearDown(self):
+        for child in self.probe.iterdir():
+            child.unlink()
+        self.probe.rmdir()
+        self.external.unlink(missing_ok=True)
+        self.external.parent.rmdir()
+
+    def test_audit_does_not_read_through_a_symlink_out_of_the_workspace(self):
+        from portfolio_suites.engines.operator_os import OperatorOSEngine
+
+        os.symlink(self.external, self.probe / "linked.txt")
+        receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "audit_secrets", {"path": f"operator-os/{self.probe.name}"}, operator_approved=True
+        )
+        result = receipt["execution_result"]
+        self.assertEqual(result["scanned_files_count"], 0)
+        self.assertEqual(result["findings"], [])
+
+    def test_backup_does_not_hash_a_symlink_out_of_the_workspace(self):
+        from portfolio_suites.engines.operator_os import OperatorOSEngine
+
+        os.symlink(self.external, self.probe / "linked.txt")
+        receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "backup_data",
+            {"path": f"operator-os/{self.probe.name}", "dry_run": True},
+            operator_approved=True,
+        )
+        self.assertEqual(receipt["execution_result"]["files_backed_up"], 0)
+
+    def test_a_symlink_raced_in_after_the_boundary_check_is_still_refused(self):
+        """Checking the path and opening it are two lookups; O_NOFOLLOW must catch the swap."""
+        from unittest.mock import patch
+
+        import portfolio_suites.engines.operator_os as operator_os
+
+        victim = self.probe / "real.txt"
+        victim.write_text('API_KEY = "abcdefghijklmnop123456"\n', encoding="utf-8")
+        real_confined = operator_os._confined_path
+
+        def swap_then_allow(candidate):
+            resolved = real_confined(candidate)
+            if resolved is not None and Path(candidate).name == "real.txt":
+                Path(candidate).unlink()
+                os.symlink(self.external, candidate)
+            return resolved
+
+        with patch.object(operator_os, "_confined_path", swap_then_allow):
+            receipt = operator_os.OperatorOSEngine.execute_jarvis_action_checkpoint(
+                "audit_secrets", {"path": f"operator-os/{self.probe.name}"}, operator_approved=True
+            )
+        result = receipt["execution_result"]
+        self.assertEqual(result["scanned_files_count"], 0)
+        self.assertEqual(result["findings"], [])
+
+    def test_a_fifo_candidate_does_not_block_the_walk(self):
+        """A FIFO with no writer blocks a plain O_RDONLY open forever; it must be refused."""
+        import multiprocessing
+
+        os.mkfifo(self.probe / "pipe.txt")
+        (self.probe / "real.txt").write_text("harmless\n", encoding="utf-8")
+
+        worker = multiprocessing.Process(target=_scan_probe_dir, args=(self.probe.name,))
+        worker.start()
+        worker.join(timeout=20)
+        blocked = worker.is_alive()
+        if blocked:
+            worker.terminate()
+            worker.join()
+        self.assertFalse(blocked, "audit_secrets blocked opening a FIFO")
+        self.assertEqual(worker.exitcode, 0)
+
+    def test_a_fifo_is_not_counted_as_backed_up(self):
+        from portfolio_suites.engines.operator_os import OperatorOSEngine
+
+        os.mkfifo(self.probe / "pipe.txt")
+        receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "backup_data",
+            {"path": f"operator-os/{self.probe.name}", "dry_run": True},
+            operator_approved=True,
+        )
+        self.assertEqual(receipt["execution_result"]["files_backed_up"], 0)
+
+    def test_a_file_growing_past_the_cap_while_read_is_refused(self):
+        """fstat fixes the inode, not the size; the limit has to hold during the read too."""
+        from portfolio_suites.engines.operator_os import _read_confined_file
+
+        target = self.probe / "grows.txt"
+        target.write_bytes(b"x" * 128)
+        self.assertIsNone(_read_confined_file(target, max_bytes=64))
+        self.assertEqual(_read_confined_file(target, max_bytes=4096), b"x" * 128)
+
+    def test_an_ordinary_file_in_the_workspace_is_still_scanned(self):
+        from portfolio_suites.engines.operator_os import OperatorOSEngine
+
+        (self.probe / "real.txt").write_text('API_KEY = "abcdefghijklmnop123456"\n', encoding="utf-8")
+        receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "audit_secrets", {"path": f"operator-os/{self.probe.name}"}, operator_approved=True
+        )
+        result = receipt["execution_result"]
+        self.assertEqual(result["scanned_files_count"], 1)
+        self.assertEqual(len(result["findings"]), 1)
+
+
+class UnimplementedActionTests(unittest.TestCase):
+    def test_active_cache_rotation_is_refused_rather_than_reported_as_done(self):
+        from portfolio_suites.engines.operator_os import OperatorOSEngine
+
+        receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "rotate_local_cache", {"cache_dir": "operator-os", "dry_run": False}, operator_approved=True
+        )
+        self.assertEqual(receipt["status"], "error_unimplemented_action")
+        self.assertIsNone(receipt["execution_receipt"])
+        self.assertNotIn("execution_result", receipt)
+
+    def test_dry_run_cache_rotation_never_claims_a_rotation_happened(self):
+        from portfolio_suites.engines.operator_os import OperatorOSEngine
+
+        receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "rotate_local_cache", {"cache_dir": "operator-os"}, operator_approved=True
+        )
+        self.assertEqual(receipt["status"], "success")
+        self.assertIs(receipt["execution_result"]["rotated"], False)
+        self.assertEqual(receipt["execution_result"]["rotation_mode"], "dry_run")

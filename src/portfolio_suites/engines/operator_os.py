@@ -9,12 +9,83 @@ import datetime
 import hashlib
 import json
 import os
+import stat
 from pathlib import Path
 import re
 from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
 from ..identifiers import new_prefixed_id
 from ..registry import SUITES_ROOT
+
+
+def _confined_path(raw_path: str | Path) -> Path | None:
+    """Validate and return resolved path if strictly confined to workspace; return None if unconfined or sensitive."""
+    target_p = (Path(raw_path) if Path(raw_path).is_absolute() else (SUITES_ROOT / raw_path)).resolve()
+    suites_resolved = SUITES_ROOT.resolve()
+    projects_dir = suites_resolved.parent
+    home_resolved = Path.home().resolve()
+    sensitive_markers = {".ssh", ".aws", ".gnupg", ".netrc", ".bash_history", ".zsh_history"}
+
+    if (
+        target_p == home_resolved
+        or target_p == Path("/")
+        or any(m in target_p.parts for m in sensitive_markers)
+        or not (target_p.is_relative_to(suites_resolved) or target_p.is_relative_to(projects_dir))
+    ):
+        return None
+    return target_p
+
+
+def _read_confined_file(candidate: Path, max_bytes: int | None = None) -> bytes | None:
+    """Read a file found by a directory walk, or None if it may not be read.
+
+    Confining the walk root is not enough. `os.walk` declines to follow *directory*
+    symlinks, but a *file* symlink inside an allowed directory is an ordinary file to
+    `is_file()`, and reading it follows the link wherever it points. So every candidate is
+    rechecked against the boundary its root was checked against.
+
+    Testing the path and then opening it are two separate lookups, and a candidate swapped
+    for a symlink in between would still be followed -- checking first does not avoid that
+    race, it just moves it. O_NOFOLLOW puts the refusal inside the open itself (ELOOP).
+
+    A walk also turns up things that are not files. Opening a FIFO with no writer blocks
+    forever, and blocking happens *before* `fstat` could say what it is, so the type check
+    has to be bought with O_NONBLOCK on the open rather than paid for afterwards. Only a
+    regular file is then read, from that same descriptor.
+
+    The cap is enforced while reading, not just against the opening `st_size`: `fstat`
+    fixes which inode is being read, not how large it stays, and a file growing under the
+    loop would otherwise walk straight past the limit.
+
+    ponytail: the file is anchored, its parent directories are not. Swapping a parent for a
+    symlinked directory mid-walk is out of scope; closing that means rebuilding the walk on
+    directory descriptors (os.fwalk + openat), which is more than a read-only audit of a
+    local checkout earns. The threat this does close is a symlink planted in donor content.
+    """
+    if _confined_path(candidate) is None:
+        return None
+    fd = None
+    try:
+        fd = os.open(candidate, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            return None
+        if max_bytes is not None and info.st_size > max_bytes:
+            return None
+        chunks: list[bytes] = []
+        total = 0
+        while chunk := os.read(fd, 65536):
+            total += len(chunk)
+            if max_bytes is not None and total > max_bytes:
+                return None
+            chunks.append(chunk)
+        return b"".join(chunks)
+    except OSError:
+        # ELOOP for a symlink, ENXIO/EISDIR/ENOENT for anything else the walk raced away.
+        return None
+    finally:
+        if fd is not None:
+            os.close(fd)
 
 
 class OperatorOSEngine:
@@ -193,7 +264,11 @@ fenced_from_reingestion: true
         parameters: dict[str, Any],
         operator_approved: bool = False,
     ) -> dict[str, Any]:
-        """Execute a secondary JARVIS action through the preview/approval/receipt/recovery lifecycle (O6 wave)."""
+        """Execute a secondary JARVIS action through the preview/approval/receipt/recovery lifecycle (O6 wave).
+
+        Note: `operator_approved` is a modeled boolean token within this suite-local prototype engine.
+        Full runtime deployment will bind to cryptographic session signoffs and external auth gates.
+        """
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         preview = OperatorOSEngine.preview_jarvis_action(action_name, parameters)
 
@@ -222,7 +297,16 @@ fenced_from_reingestion: true
         action_results: dict[str, Any] = {}
         if action_name == "audit_secrets":
             search_path = parameters.get("path", ".")
-            target_p = Path(search_path)
+            target_p = _confined_path(search_path)
+            if target_p is None:
+                return {
+                    **preview,
+                    "status": "error_unconfined_path",
+                    "state": "error_unconfined_path",
+                    "operator_approval_verified": True,
+                    "error": f"Target path is outside allowed workspace boundaries: {search_path}",
+                    "execution_receipt": None,
+                }
             if not target_p.exists():
                 return {
                     **preview,
@@ -253,13 +337,13 @@ fenced_from_reingestion: true
                             candidate_files.append(Path(root) / f)
 
             for cf in candidate_files:
+                data = _read_confined_file(cf, max_bytes=500_000)
+                if data is None:
+                    continue
                 try:
-                    stat = cf.stat()
-                    if stat.st_size > 500_000:
-                        continue
-                    text = cf.read_text(encoding="utf-8", errors="ignore")
+                    text = data.decode("utf-8", errors="ignore")
                     scanned_files += 1
-                    scanned_bytes += stat.st_size
+                    scanned_bytes += len(data)
                     if secret_pattern.search(text):
                         findings.append(
                             str(cf.relative_to(target_p.parent) if cf.is_relative_to(target_p.parent) else cf)
@@ -277,9 +361,19 @@ fenced_from_reingestion: true
             }
         elif action_name == "backup_data":
             target_vault = parameters.get("vault", "default-vault")
-            raw_path = Path(parameters.get("path", "operator-os/evidence"))
-            vault_src = raw_path if raw_path.is_absolute() else (SUITES_ROOT / raw_path).resolve()
+            raw_path = parameters.get("path", "operator-os/evidence")
+            vault_src = _confined_path(raw_path)
             dry_run = parameters.get("dry_run", True)
+
+            if vault_src is None:
+                return {
+                    **preview,
+                    "status": "error_unconfined_path",
+                    "state": "error_unconfined_path",
+                    "operator_approval_verified": True,
+                    "error": f"Vault source path is outside allowed workspace boundaries: {raw_path}",
+                    "execution_receipt": None,
+                }
             if not vault_src.exists():
                 return {
                     **preview,
@@ -294,8 +388,10 @@ fenced_from_reingestion: true
             for root, _, files in sorted(os.walk(vault_src)):
                 for f in sorted(files):
                     fp = Path(root) / f
-                    if fp.is_file() and not fp.name.startswith("snap-"):
-                        data = fp.read_bytes()
+                    if fp.name.startswith("snap-"):
+                        continue
+                    data = _read_confined_file(fp)
+                    if data is not None:
                         backed_up_files.append({
                             "path": str(fp),
                             "size": len(data),
@@ -334,8 +430,88 @@ fenced_from_reingestion: true
                 "files_backed_up": len(backed_up_files),
                 "verified": True,
             }
+        elif action_name == "sync_obsidian_notes":
+            vault_path = parameters.get("vault_path", "operator-os/evidence")
+            vault_p = _confined_path(vault_path)
+            if vault_p is None:
+                return {
+                    **preview,
+                    "status": "error_unconfined_path",
+                    "state": "error_unconfined_path",
+                    "operator_approval_verified": True,
+                    "error": f"Vault path is outside workspace boundaries: {vault_path}",
+                    "execution_receipt": None,
+                }
+            if not vault_p.exists():
+                return {
+                    **preview,
+                    "status": "error_path_not_found",
+                    "state": "error_path_not_found",
+                    "operator_approval_verified": True,
+                    "error": f"Vault path does not exist: {vault_path}",
+                    "execution_receipt": None,
+                }
+            md_files = []
+            if vault_p.is_file() and vault_p.suffix == ".md":
+                md_files.append(vault_p)
+            elif vault_p.is_dir():
+                for root, dirs, files in os.walk(vault_p):
+                    dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "node_modules", ".venv")]
+                    for f in files:
+                        if f.endswith(".md"):
+                            md_files.append(Path(root) / f)
+                            if len(md_files) >= 1000:
+                                break
+                    if len(md_files) >= 1000:
+                        break
+            action_results = {
+                "vault_path": str(vault_p),
+                "notes_scanned_count": len(md_files),
+                "sync_mode": "read_only_verification",
+                "verified": True,
+            }
+        elif action_name == "rotate_local_cache":
+            cache_dir = parameters.get("cache_dir", ".cache")
+            cache_p = _confined_path(cache_dir)
+            if cache_p is None:
+                return {
+                    **preview,
+                    "status": "error_unconfined_path",
+                    "state": "error_unconfined_path",
+                    "operator_approval_verified": True,
+                    "error": f"Cache directory is outside allowed workspace boundaries: {cache_dir}",
+                    "execution_receipt": None,
+                }
+            # No rotation operation exists yet, so active mode is refused rather than
+            # reported. A receipt saying `rotated: true` for work that never happened is
+            # worse than no receipt: it is the evidence layer certifying its own fiction.
+            # Implementing this needs a retention policy, an atomic and recoverable
+            # mutation, and before/after evidence -- then `rotated` derives from a
+            # verified postcondition instead of from the request.
+            if not parameters.get("dry_run", True):
+                return {
+                    **preview,
+                    "status": "error_unimplemented_action",
+                    "state": "error_unimplemented_action",
+                    "operator_approval_verified": True,
+                    "error": "rotate_local_cache has no active rotation implementation; only dry_run inspection is supported",
+                    "execution_receipt": None,
+                }
+            action_results = {
+                "cache_target": str(cache_p),
+                "cache_target_exists": cache_p.is_dir(),
+                "rotated": False,
+                "rotation_mode": "dry_run",
+            }
         else:
-            action_results = {"executed": True, "details": parameters}
+            return {
+                **preview,
+                "status": "error_unknown_action",
+                "state": "error_unknown_action",
+                "operator_approval_verified": True,
+                "error": f"Unimplemented JARVIS action: {action_name}",
+                "execution_receipt": None,
+            }
 
         receipt = {
             "action_id": preview["action_id"],
