@@ -147,12 +147,16 @@ The control plane uses the promotion model in the [9/10 recovery standard](RECOV
 cd /Users/ryanjohnson/Projects/suites
 PYTHONPATH=src python3 -m portfolio_suites status
 PYTHONPATH=src python3 -m portfolio_suites next
+PYTHONPATH=src python3 -m portfolio_suites validate --fast
 PYTHONPATH=src python3 -m portfolio_suites validate
 PYTHONPATH=src python3 -m portfolio_suites drift
 PYTHONPATH=src python3 -m portfolio_suites wave --all
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A4 --record --full
 PYTHONPATH=src python3 -m portfolio_suites ai-config
 PYTHONPATH=src python3 -m unittest discover -s tests -v
+
+# Opt-in fail-closed distribution packaging gate
+SUITES_WHEEL_SMOKE=1 PYTHONPATH=src python3 -m unittest tests/test_wheel_smoke.py -v
 ```
 
 > [!TIP]

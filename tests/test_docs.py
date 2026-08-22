@@ -51,13 +51,16 @@ class ArtifactTests(unittest.TestCase):
 
     def test_readme_states_the_current_prototype_count(self):
         """The README kickstart block restates the same counts; drift there is a reporting defect."""
+        from portfolio_suites.engine_actions import list_actions
         from portfolio_suites.registry import get_portfolio_summary
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         summary = get_portfolio_summary()
         prototypes = summary["total_waves"] - summary["completed_waves"]
+        total_actions = sum(len(c["actions"]) for c in list_actions().values())
         self.assertIn(f"PROTOTYPES: {prototypes} source-backed checks passing", readme)
         self.assertIn(f"{summary['total_projects']} Projects Dispositioned", readme)
+        self.assertIn(f"list all {total_actions} actions", readme)
 
 
 if __name__ == "__main__":

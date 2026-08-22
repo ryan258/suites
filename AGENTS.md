@@ -11,7 +11,7 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
 ### Execution Hierarchy (From Cheapest to Most Expensive)
 
 1. **Level 0: Schema & Registry Fast-Path (<100ms)**
-   - Run `PYTHONPATH=src python3 -m portfolio_suites validate` to verify contracts, suite schemas, and file boundaries.
+   - Run `PYTHONPATH=src python3 -m portfolio_suites validate --fast` to verify contracts, suite schemas, and file boundaries offline.
    - Use this for syntax, schema, or registry manifest verification.
 
 2. **Level 1: Targeted Single-Test Execution (<500ms)**
@@ -28,7 +28,7 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
      ```
    - Only supply `--record` when generating intentional milestone evidence.
 
-4. **Level 3: Full Test Suite (`discover`) — Milestone Only (~12s+)**
+4. **Level 3: Full Test Suite (`discover`) — Milestone Only (~35-40s)**
    - Reserve `PYTHONPATH=src python3 -m unittest discover -s tests` **strictly** for:
      - End-of-horizon completion.
      - Final validation before handing off or committing.
@@ -75,7 +75,7 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
 ## 4. Reporting & Communication Rules
 
 1. **Lead with Outcome / Next Action:** Maximize signal and recovery speed.
-2. **Deterministic Gates Run Quietly:** Report failures, anomalies, or concise summary counts (e.g. `58/58 tests passed, 0 errors/warnings`), not raw passing-test transcripts.
+2. **Deterministic Gates Run Quietly:** Report failures, anomalies, or concise summary counts (e.g. `137/137 tests passed, 0 errors/warnings`), not raw passing-test transcripts.
 3. **One Material Decision at a Time:** If human judgment is required, ask one focused question.
 4. **Distinguish Evidence Types:** Clearly differentiate between deterministic facts, reference prototypes, live runtime checks, and unverified assumptions.
 
@@ -120,7 +120,7 @@ node .gitnexus/run.cjs status
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **suites** (1067 symbols, 2271 relationships, 85 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **suites** (1170 symbols, 2513 relationships, 94 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

@@ -25,6 +25,26 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 
 ---
 
+## 2026-08-21 — Security Hardening, Descriptor Confinement & Packaging Gates
+
+Implemented control-plane security hardening, file descriptor-anchored workspace confinement in Operator OS, deterministic CLI exits, environment-independent root resolution, and opt-in fail-closed distribution smoke tests:
+
+- **Descriptor-Anchored Confinement (`_read_confined_file`)**: Hardened Operator OS file operations (`backup_file`, `audit_workspace_confinement`, `quarantine_file`, `diff_file_against_snapshot`) against path traversal, symlink escapes, and FIFO blocking. Enforces a strict 8-step read sequence:
+  1. Recheck candidate confinement against workspace root.
+  2. Open with `O_RDONLY | O_NOFOLLOW | O_NONBLOCK`.
+  3. Inspect descriptor with `fstat`.
+  4. Reject anything other than regular files (`S_ISREG`), blocking FIFOs, sockets, and character/block devices without stalling.
+  5. Reject files exceeding initial maximum byte limits (`st_size > max_bytes`).
+  6. Stream-read through the open descriptor, tracking cumulative bytes to reject files growing beyond the cap during concurrent writes.
+  7. Read strictly through the anchored descriptor.
+  8. Ensure descriptor closure across all normal and exception return paths.
+- **Deterministic CLI Exit Codes & Fast Validation**: Standardized exit codes across all CLI commands (exit 0 on success/clean, exit 1 on errors/unresolved drift/failures, exit 2 on invalid argument flags). Added `--fast` flag to `validate` (`suites validate --fast`) for instant offline schema and contract verification without heavy external or runtime probes.
+- **Environment & Out-of-Tree Resolution (`SUITES_ROOT`)**: Updated `portfolio_suites.paths` to support explicit `SUITES_ROOT` environment override when running from an installed wheel or out-of-tree working directory, emitting actionable diagnostic errors when root markers are absent.
+- **Fail-Closed Installed Wheel Gate (`test_wheel_smoke.py`)**: Added an opt-in distribution verification gate triggered via `SUITES_WHEEL_SMOKE=1`. The gate builds the wheel, installs it into an isolated virtual environment with `PYTHONPATH` scrubbed, verifies non-Python package assets (`suite.json`, schemas, dashboard assets), exercises the installed console script outside the checkout, and proves fail-closed behavior when `SUITES_ROOT` is unset or invalid.
+- **Test Suite Expansion**: Added 19 comprehensive unit tests across engine confinement, CLI status codes, server error handlers, out-of-tree root detection, and wheel installation, bringing full milestone test suite coverage to 163 passing tests (plus 4 opt-in distribution smoke tests).
+
+---
+
 ## 2026-08-21 — Engine Action Chaining across CLI, Server, and Web Dashboard
 
 Added the engine action chaining framework (`portfolio_suites.chains`), enabling sequential execution where earlier action outputs feed into subsequent action arguments via `{"$from": <step_index>}` references with optional dotted or indexed `path` resolution:

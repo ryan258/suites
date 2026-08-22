@@ -59,8 +59,8 @@ requires Node.js plus the already-installed, lockfile-pinned dependencies in `al
 the Playwright runtime used by the WCAG Auditor browser probe. Verification commands use
 `npx --no-install`, so a gate fails closed instead of downloading a missing package.
 The repository root manifests, published contract schemas, evidence, and dashboard assets are
-part of the runtime. This project is therefore supported from its checkout, not as a standalone
-installed command.
+part of the runtime. When running from the checkout, the root is detected automatically; when
+installed as a wheel/package, set `SUITES_ROOT=/path/to/suites` (e.g. `SUITES_ROOT=~/Projects/suites suites validate --fast`).
 
 ```bash
 cd /Users/ryanjohnson/Projects/suites
@@ -69,6 +69,7 @@ cd /Users/ryanjohnson/Projects/suites
 PYTHONPATH=src python3 -m portfolio_suites status
 PYTHONPATH=src python3 -m portfolio_suites list
 PYTHONPATH=src python3 -m portfolio_suites next
+PYTHONPATH=src python3 -m portfolio_suites validate --fast
 PYTHONPATH=src python3 -m portfolio_suites validate
 PYTHONPATH=src python3 -m portfolio_suites inspect accessibility
 PYTHONPATH=src python3 -m portfolio_suites drift
@@ -90,7 +91,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --full
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record --full
 
 # Run the suite engines directly (Toolbench surface)
-PYTHONPATH=src python3 -m portfolio_suites engine                       # list all 45 actions
+PYTHONPATH=src python3 -m portfolio_suites engine                       # list all 46 actions
 PYTHONPATH=src python3 -m portfolio_suites engine accessibility          # list one suite's actions
 PYTHONPATH=src python3 -m portfolio_suites engine accessibility audit_html_snippet \
   --args '{"html_content": "<img src=hero.png>"}'
