@@ -16,5 +16,9 @@ decision](evidence/A1-WCAG-AUDITOR-PARITY.md). Its required structure is checked
 not execute a donor or runtime gate. The document records 34 registered donor rules: 15 covered, 18
 heuristic/narrow port candidates, and one rejected as a standalone WCAG failure. A2 subsequently
 ported the narrow `aria-invalid` error-association check into Ally's ARIA validator with regression
-and full-suite evidence. A4 remains a suite-local prototype until its candidate rules run against
-real donor inputs.
+and full-suite evidence. A3 reconciled the three keyboard overlays, and A4 evaluated 20 candidate
+WCAG Auditor rules against live donor rule ASTs with zero false positives on compliant markup —
+both as analysis milestones whose runtime follow-ups remain outstanding.
+
+Verified: A1, A2, A3, A4 (4/6). Next wave: A5 — ingest `A11yFinding` contracts through the
+`a11y-kitchen` teaching surface with authentic donor fixtures.

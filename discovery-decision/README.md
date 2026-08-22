@@ -10,3 +10,8 @@ private, energy-gated, and explicitly non-clinical.
 First move: compare one SIF investigation to Forge's `InvestigationRecord` and port one bounded
 stage only after output and recovery semantics are explicit.
 
+Verified: none (0/5). All 5 waves carry source-backed prototype receipts; a prototype
+proves only what its runner read, never recovered functionality.
+
+Next wave: D1 — create a SIF-to-Forge stage and artifact parity matrix, each candidate stage
+carrying typed inputs, outputs, budget, failure, and resume evidence.
