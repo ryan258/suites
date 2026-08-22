@@ -38,7 +38,10 @@ def get_repo_path(repo_name: str, env_var: str | None = None) -> Path:
     sibling = (SUITES_ROOT.parent / repo_name).resolve()
     if sibling.exists():
         return sibling
-    return (Path("/Users/ryanjohnson/Projects") / repo_name).resolve()
+    home_projects = (Path.home() / "Projects" / repo_name).resolve()
+    if home_projects.exists():
+        return home_projects
+    return sibling
 
 
 def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) -> dict[str, Any]:

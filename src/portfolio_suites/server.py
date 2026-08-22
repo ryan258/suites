@@ -5,6 +5,7 @@ from __future__ import annotations
 import http.server
 import json
 import socketserver
+import traceback
 import urllib.parse
 from pathlib import Path
 from typing import Any
@@ -165,7 +166,8 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
             elif path == "/api/graph":
                 self._send_json(200, get_dependency_graph())
             elif path == "/api/validate":
-                report = validate_registry(check_live=True)
+                fast = query.get("fast", ["false"])[0].lower() in ("true", "1")
+                report = validate_registry(check_live=not fast)
                 self._send_json(200, {"ok": report.ok, "errors": report.errors, "warnings": report.warnings})
             elif path == "/api/engines":
                 self._send_json(200, list_actions())
@@ -265,6 +267,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self._send_json(404, {"error": f"Unknown endpoint: {path}"})
         except Exception:
+            traceback.print_exc()
             self._send_json(500, {"error": "Internal server error"})
 
     def do_POST(self) -> None:
@@ -287,6 +290,9 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 except ContractError as exc:
                     self._send_json(400, {"ok": False, "error": str(exc)})
             elif path == "/api/chains/run":
+                if not self._execution_request_is_trusted():
+                    self._send_json(403, {"error": "cross-origin chain execution is refused"})
+                    return
                 body = self._read_json_body()
                 steps = body.get("steps") if isinstance(body, dict) else body
                 try:
@@ -294,6 +300,9 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 except ChainError as exc:
                     self._send_json(400, {"error": str(exc), "step": exc.step_index})
             elif path.startswith("/api/engines/") and path.endswith("/run"):
+                if not self._execution_request_is_trusted():
+                    self._send_json(403, {"error": "cross-origin engine execution is refused"})
+                    return
                 parts = [urllib.parse.unquote(part) for part in path[len("/api/engines/"):-len("/run")].split("/") if part]
                 if len(parts) != 2:
                     self._send_json(404, {"error": "expected /api/engines/<suite>/<action>/run"})
@@ -341,7 +350,8 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     "execution_kind": res.execution_kind,
                     "message": res.message,
                     "record_requested": record_param,
-                    "recorded": res.evidence_path is not None,
+                    "recorded": record_param and res.evidence_path is not None and res.record_note is None,
+                    "record_note": res.record_note,
                     "evidence_path": res.evidence_path,
                     "data": res.data,
                 })
@@ -350,6 +360,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         except RequestBodyError as error:
             self._send_json(error.status, {"error": str(error)})
         except Exception:
+            traceback.print_exc()
             self._send_json(500, {"error": "Internal server error"})
 
 

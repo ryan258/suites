@@ -26,6 +26,14 @@ from .server import serve
 from .waves import WaveRunner
 
 
+# Wave gate exit statuses. An environment blocker is neither a pass nor a product failure
+# (see RECOVERY_ENFORCEMENT), but it is also not a success: the required gate did not run.
+# Collapsing it into either 0 or 1 tells CI something untrue, so it gets its own status.
+EXIT_OK = 0
+EXIT_FAILED = 1
+EXIT_INCOMPLETE = 2
+
+
 def _list() -> int:
     suites = load_suites()
     for manifest in suites.values():
@@ -79,8 +87,8 @@ def _next() -> int:
     return 0
 
 
-def _validate(as_json: bool) -> int:
-    report = validate_registry(check_live=True)
+def _validate(as_json: bool, fast: bool = False) -> int:
+    report = validate_registry(check_live=not fast)
     if as_json:
         print(json.dumps({"ok": report.ok, "errors": report.errors, "warnings": report.warnings}, indent=2))
     else:
@@ -203,10 +211,13 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         runtime_count = sum(1 for r in results if r.execution_kind == "verified_runtime_recovery" and r.passed)
         analysis_count = sum(1 for r in results if r.execution_kind == "verified_analysis" and r.passed)
         prototype_count = sum(1 for r in results if r.execution_kind == "prototype_check" and r.prototype_passed)
+        # Every kind that actually ran a gate: if one of these did not pass, the run found a
+        # product failure. `fast_probe` belongs here too -- it is a wave that executed and
+        # came back failing, and leaving it out let a printed [FAIL] exit 0.
         failed_count = sum(
             1
             for r in results
-            if r.execution_kind in {"verified_analysis", "verified_runtime_recovery", "prototype_check"}
+            if r.execution_kind in {"verified_analysis", "verified_runtime_recovery", "prototype_check", "fast_probe"}
             and not (r.passed or r.prototype_passed)
         )
         unintegrated_count = sum(1 for r in results if r.execution_kind == "unintegrated_specification")
@@ -240,7 +251,9 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
             f"{unverifiable_count} environment-unverifiable, {unintegrated_count} unintegrated, "
             f"{error_count} errors."
         )
-        return 1 if failed_count or unverifiable_count or unintegrated_count or error_count else 0
+        if failed_count or unintegrated_count or error_count:
+            return EXIT_FAILED
+        return EXIT_INCOMPLETE if unverifiable_count else EXIT_OK
 
     if not suite_id or not wave_id:
         print("Error: Specify suite and wave (e.g. 'suites wave accessibility A2') or '--all'", file=sys.stderr)
@@ -264,11 +277,13 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
     else:
         tag = "[FAIL]"
     print(f"{tag} {result.suite_id} / {result.wave_id} ({result.execution_kind}): {result.message}")
-    if result.evidence_path:
-        print(f"Evidence recorded at: {result.evidence_path}")
-    elif write_evidence:
+    if result.record_note:
         print(f"Evidence NOT written: {result.record_note}. Prior receipt retained.")
-    return 0 if result.passed or result.prototype_passed else 1
+    elif result.evidence_path and write_evidence:
+        print(f"Evidence recorded at: {result.evidence_path}")
+    if result.execution_kind == "unverifiable_environment":
+        return EXIT_INCOMPLETE
+    return EXIT_OK if result.passed or result.prototype_passed else EXIT_FAILED
 
 
 def _drift() -> int:
@@ -383,6 +398,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     validate = sub.add_parser("validate", help="validate manifests, coverage, and live source drift")
     validate.add_argument("--json", action="store_true", help="emit a machine-readable report")
+    validate.add_argument(
+        "--fast",
+        "--offline",
+        action="store_true",
+        help="fast-path offline validation without probing live git repositories",
+    )
 
     inspect_p = sub.add_parser("inspect", help="inspect details of a specific suite or project")
     inspect_p.add_argument("target", help="suite id or project name to inspect")
@@ -435,7 +456,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "ai-config":
         return _ai_config(args.json, args.require_key)
     if args.command == "validate":
-        return _validate(args.json)
+        return _validate(args.json, getattr(args, "fast", False))
     if args.command == "inspect":
         return _inspect(args.target)
     if args.command == "contract":

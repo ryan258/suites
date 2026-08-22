@@ -222,3 +222,37 @@ class RegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnsupportedEvidenceContractTests(unittest.TestCase):
+    """A receipt no contract can check must be refused, not silently accepted."""
+
+    def _wave(self, kind, level="adopted"):
+        return {
+            "id": "X1",
+            "recovery_claim": {"kind": kind, "level": level, "evidence_basis": ["something"]},
+        }
+
+    def test_claim_kinds_without_a_receipt_contract_are_refused(self):
+        from portfolio_suites.registry import evidence_errors
+
+        missing = Path("/nonexistent/receipt.json")
+        for kind in ("adoption", "convergence", "resolution"):
+            with self.subTest(kind=kind):
+                errors = evidence_errors(self._wave(kind), missing)
+                self.assertTrue(errors)
+                self.assertIn("no versioned evidence receipt contract", errors[0])
+
+    def test_runtime_below_parity_is_refused(self):
+        from portfolio_suites.registry import evidence_errors
+
+        errors = evidence_errors(self._wave("runtime", "source_verified"), Path("/nonexistent/receipt.json"))
+        self.assertTrue(errors)
+        self.assertIn("no versioned evidence receipt contract", errors[0])
+
+    def test_contracted_claim_kinds_are_still_evaluated(self):
+        from portfolio_suites.registry import evidence_errors
+
+        errors = evidence_errors(self._wave("runtime", "parity_verified"), Path("/nonexistent/receipt.json"))
+        self.assertTrue(errors)
+        self.assertNotIn("no versioned evidence receipt contract", errors[0])

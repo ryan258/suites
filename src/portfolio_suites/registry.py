@@ -147,6 +147,15 @@ def _analysis_evidence_errors(path: Path, evidence_basis: set[str]) -> list[str]
 
 _MISSING = object()
 
+# Accepting a receipt no contract can check is indistinguishable from checking it and
+# finding nothing wrong, and the recorder writes on that same empty list. A claim kind
+# without a versioned receipt contract therefore refuses rather than passes; adding the
+# contract is what lifts the refusal.
+_UNSUPPORTED_EVIDENCE_CONTRACT = (
+    "no versioned evidence receipt contract is implemented for {what}, "
+    "so its receipt cannot be verified and is refused"
+)
+
 
 def _receipt_value(document: dict[str, Any], dotted_path: str) -> Any:
     value: Any = document
@@ -573,7 +582,7 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
     wave_id = wave.get("id")
     spec = ANALYSIS_RECEIPT_SPECS.get(wave_id)
     if not spec:
-        return []
+        return [f"wave {wave_id} has no ANALYSIS_RECEIPT_SPECS definition for JSON semantic validation"]
 
     errors: list[str] = []
     for dotted_path, expected in spec.get("equals", {}).items():
@@ -596,15 +605,18 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
         actual = _receipt_value(document, dotted_path)
         if isinstance(actual, bool) or not isinstance(actual, (int, float)) or actual < minimum:
             errors.append(f"{dotted_path} must be at least {minimum}")
+    for dotted_path, contract_name in spec.get("contracts", {}).items():
+        actual = _receipt_value(document, dotted_path)
+        if not isinstance(actual, dict):
+            errors.append(f"{dotted_path} must be a valid {contract_name} object")
+            continue
+        try:
+            validate_contract(contract_name, actual)
+        except ContractError as error:
+            errors.append(f"{dotted_path} violates {contract_name}: {error}")
     for dotted_path in spec.get("fingerprints", []):
         if not is_meaningful_git_fingerprint(_receipt_value(document, dotted_path)):
             errors.append(f"{dotted_path} must be a meaningful source fingerprint")
-    for dotted_path, contract_name in spec.get("contracts", {}).items():
-        value = _receipt_value(document, dotted_path)
-        try:
-            validate_contract(contract_name, value)
-        except (ContractError, TypeError) as error:
-            errors.append(f"{dotted_path} violates {contract_name}: {error}")
 
     if wave_id == "A3":
         matrix = document.get("matrix", {})
@@ -760,15 +772,28 @@ def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
     successfully cannot then fail `suites validate`. The recorder is the stricter of the
     two: `validate` only inspects completed waves, while a wave with no declared claim
     can never record at all (see `evidence_ineligibility_reason`).
+
+    Which claims have a receipt contract:
+    - `analysis` is checked against its declared basis and `ANALYSIS_RECEIPT_SPECS`.
+    - `runtime` at `parity_verified`, `adopted`, or `converged` is checked against a
+      versioned parity receipt contract from `RECOVERY_RECEIPT_CONTRACTS`.
+    - `adoption`, `convergence`, `resolution`, and `runtime` below `parity_verified` have
+      no contract yet and are *refused*, not waved through. `RECOVERY_CLAIM_KINDS` says
+      those kinds are declarable; this says their receipts are not yet verifiable. Writing
+      the contract is what makes them recordable.
     """
     claim = wave.get("recovery_claim", {}) or {}
     kind = claim.get("kind")
     if not kind:
         return [evidence_ineligibility_reason(wave) or "wave has no declared recovery evidence contract"]
-    if kind == "runtime" and claim.get("level") in {"parity_verified", "adopted", "converged"}:
-        return _runtime_parity_receipt_errors(path, claim.get("receipt_contract", ""))
-    basis = {b for b in (claim.get("evidence_basis") or []) if isinstance(b, str) and b}
-    if kind == "analysis" and basis:
+    if kind == "runtime":
+        if claim.get("level") in {"parity_verified", "adopted", "converged"}:
+            return _runtime_parity_receipt_errors(path, claim.get("receipt_contract", ""))
+        return [_UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"runtime claim at level {claim.get('level')!r}")]
+    if kind == "analysis":
+        basis = {b for b in (claim.get("evidence_basis") or []) if isinstance(b, str) and b}
+        if not basis:
+            return ["analysis wave has empty or invalid evidence_basis"]
         errors = _analysis_evidence_errors(path, basis)
         if errors or path.suffix != ".json":
             return errors
@@ -777,7 +802,7 @@ def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
         except (OSError, ValueError, json.JSONDecodeError) as error:
             return [f"analysis evidence cannot be loaded for semantic validation: {error}"]
         return _analysis_receipt_semantic_errors(wave, document)
-    return []
+    return [_UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"recovery claim kind {kind!r}")]
 
 
 def get_project(name: str) -> dict[str, Any] | None:

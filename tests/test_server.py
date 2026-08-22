@@ -79,6 +79,12 @@ class ServerTests(unittest.TestCase):
         self.assertIsNone(data["evidence_path"])
         self.assertIsNotNone(data["data"])
 
+        a1_data = self._post_json("/api/waves/accessibility/A1/run?record=true")
+        self.assertFalse(a1_data["recorded"])
+        self.assertTrue(a1_data["passed"])
+        self.assertIsNotNone(a1_data["record_note"])
+        self.assertIn("read-only", a1_data["record_note"])
+
     def test_unknown_wave_post_returns_not_found(self):
         req = urllib.request.Request(
             "http://127.0.0.1:8399/api/waves/missing-suite/X1/run",
@@ -202,6 +208,40 @@ class ServerTrustBoundaryTests(unittest.TestCase):
                 urllib.request.urlopen(request)
         self.assertEqual(context.exception.code, 403)
         run_wave.assert_not_called()
+
+    def test_cross_origin_engine_execution_is_rejected_before_dispatch(self):
+        request = urllib.request.Request(
+            "http://127.0.0.1:8400/api/engines/operator-os/audit_secrets/run",
+            data=json.dumps({"path": "."}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "https://attacker.example",
+                "Sec-Fetch-Site": "cross-site",
+            },
+            method="POST",
+        )
+        with patch("portfolio_suites.server.run_action") as run_action:
+            with self.assertRaises(urllib.error.HTTPError) as context:
+                urllib.request.urlopen(request)
+        self.assertEqual(context.exception.code, 403)
+        run_action.assert_not_called()
+
+    def test_cross_origin_chain_execution_is_rejected_before_dispatch(self):
+        request = urllib.request.Request(
+            "http://127.0.0.1:8400/api/chains/run",
+            data=json.dumps([{"suite": "accessibility", "action": "audit_html_snippet", "arguments": {"html_content": "<p>test</p>"}}]).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "https://attacker.example",
+                "Sec-Fetch-Site": "cross-site",
+            },
+            method="POST",
+        )
+        with patch("portfolio_suites.server.run_chain") as run_chain:
+            with self.assertRaises(urllib.error.HTTPError) as context:
+                urllib.request.urlopen(request)
+        self.assertEqual(context.exception.code, 403)
+        run_chain.assert_not_called()
 
     def test_get_cannot_trigger_live_wave_execution(self):
         with patch("portfolio_suites.server.WaveRunner.run_all") as run_all:

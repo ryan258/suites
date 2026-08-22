@@ -1,4 +1,9 @@
-"""Fail-closed OpenRouter configuration and role routing for suite AI work."""
+"""Fail-closed OpenRouter configuration and role routing for suite AI work.
+
+Note: This module defines strict configuration schemas, environment loading, and
+role-based routing parameters ahead of active outbound model client consumers.
+It does not execute HTTP requests itself.
+"""
 
 from __future__ import annotations
 

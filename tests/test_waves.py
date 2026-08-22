@@ -118,6 +118,11 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(a1.execution_kind, "verified_analysis")
         self.assertIsNotNone(a1.evidence_path)
 
+        a1_rec = WaveRunner.run_wave("accessibility", "A1", write_evidence=True)
+        self.assertTrue(a1_rec.passed)
+        self.assertIsNotNone(a1_rec.record_note)
+        self.assertIn("read-only", a1_rec.record_note)
+
         a2 = WaveRunner.run_wave("accessibility", "A2", write_evidence=False)
         if a2.execution_kind == "fast_probe":
             self.assertTrue(a2.passed)

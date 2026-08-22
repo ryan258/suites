@@ -104,10 +104,11 @@ class CLITests(unittest.TestCase):
         f = io.StringIO()
         with redirect_stdout(f):
             code = main(["wave", "accessibility", "A2"])
-        self.assertIn(code, {0, 1})
+        # A2 drives a donor runtime, so a machine without it is incomplete (2), not failed (1).
+        self.assertIn(code, {0, 2})
         self.assertEqual(evidence.read_bytes(), before)
         self.assertNotIn("Evidence recorded at", f.getvalue())
-        if code == 1:
+        if code == 2:
             self.assertIn("[UNVERIFIABLE]", f.getvalue())
 
     def test_wave_unknown_fails_closed(self):
@@ -122,15 +123,94 @@ class CLITests(unittest.TestCase):
         with redirect_stdout(f):
             code = main(["wave", "--all", "--no-record"])
         output = f.getvalue()
-        self.assertIn(code, {0, 1})
+        self.assertIn(code, {0, 2})
         self.assertIn("4 verified analyses", output)
         self.assertIn("38 prototype checks passed", output)
         self.assertIn("0 runtime recoveries", output)
         if code == 0:
             self.assertIn("1 fast probes", output)
         else:
+            self.assertIn("[UNVERIFIABLE]", output)
             self.assertIn("1 environment-unverifiable", output)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class WaveExitStatusTests(unittest.TestCase):
+    """An unrun gate must not report the same shell status as a verified one."""
+
+    @staticmethod
+    def _failed_probe():
+        from portfolio_suites.waves import WaveRunResult
+
+        return WaveRunResult(
+            "accessibility", "A2", False, "probe failed", execution_kind="fast_probe",
+        )
+
+    @staticmethod
+    def _blocked():
+        from portfolio_suites.waves import WaveRunResult
+
+        return WaveRunResult(
+            "accessibility", "A2", False, "donor runtime unavailable",
+            execution_kind="unverifiable_environment", data={"environment_blocked": True},
+        )
+
+    def test_single_environment_blocked_wave_is_incomplete_not_success(self):
+        from unittest.mock import patch
+
+        from portfolio_suites.cli import EXIT_INCOMPLETE
+
+        with patch("portfolio_suites.waves.WaveRunner.run_wave", return_value=self._blocked()):
+            with redirect_stdout(io.StringIO()):
+                code = main(["wave", "accessibility", "A2"])
+        self.assertEqual(code, EXIT_INCOMPLETE)
+
+    def test_all_waves_with_only_a_blocked_gate_is_incomplete_not_success(self):
+        from unittest.mock import patch
+
+        from portfolio_suites.cli import EXIT_INCOMPLETE
+
+        with patch("portfolio_suites.waves.WaveRunner.run_all", return_value=[self._blocked()]):
+            with redirect_stdout(io.StringIO()):
+                code = main(["wave", "--all"])
+        self.assertEqual(code, EXIT_INCOMPLETE)
+
+    def test_a_failed_fast_probe_is_a_product_failure(self):
+        """A fast probe that ran and came back failing prints [FAIL]; the exit code must agree."""
+        from unittest.mock import patch
+
+        from portfolio_suites.cli import EXIT_FAILED
+
+        with patch("portfolio_suites.waves.WaveRunner.run_all", return_value=[self._failed_probe()]):
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                code = main(["wave", "--all"])
+        self.assertEqual(code, EXIT_FAILED)
+        self.assertIn("[FAIL]", buf.getvalue())
+        self.assertIn("1 checks failed", buf.getvalue())
+
+    def test_a_failed_fast_probe_outranks_an_environment_blocker(self):
+        from unittest.mock import patch
+
+        from portfolio_suites.cli import EXIT_FAILED
+
+        with patch(
+            "portfolio_suites.waves.WaveRunner.run_all",
+            return_value=[self._failed_probe(), self._blocked()],
+        ):
+            with redirect_stdout(io.StringIO()):
+                code = main(["wave", "--all"])
+        self.assertEqual(code, EXIT_FAILED)
+
+    def test_a_product_failure_still_outranks_an_environment_blocker(self):
+        from unittest.mock import patch
+
+        from portfolio_suites.cli import EXIT_FAILED
+        from portfolio_suites.waves import WaveRunResult
+
+        failed = WaveRunResult(
+            "accessibility", "A3", False, "gate failed", execution_kind="verified_analysis",
+        )
+        with patch("portfolio_suites.waves.WaveRunner.run_all", return_value=[self._blocked(), failed]):
+            with redirect_stdout(io.StringIO()):
+                code = main(["wave", "--all"])
+        self.assertEqual(code, EXIT_FAILED)

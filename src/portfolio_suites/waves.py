@@ -225,8 +225,8 @@ class WaveRunner:
         prototype_passed = exec_kind == "prototype_check" and raw_res.passed
         gate_passed = raw_res.passed or prototype_passed
 
-        record_note: str | None = None
-        if write_evidence and raw_res.evidence_path is None:
+        record_note: str | None = raw_res.record_note
+        if record_note is None and write_evidence and raw_res.evidence_path is None:
             record_note = (
                 evidence_ineligibility_reason(wave_spec)
                 or ("gate did not pass, so no receipt was offered" if not gate_passed
@@ -275,12 +275,14 @@ class WaveRunner:
                 valid = len(content) > 100 and not evidence_errors(wave, evidence_file)
             except OSError:
                 valid = False
+        record_note = "A1 is a hand-authored analysis document and is read-only; recording is not supported" if write_evidence else None
         return WaveRunResult(
             suite["id"],
             wave_id,
             valid,
             "Parity matrix and fixture catalog verified." if valid else "Missing or invalid A1 parity evidence file.",
-            str(evidence_file) if valid else None,
+            evidence_path=str(evidence_file) if valid else None,
+            record_note=record_note,
         )
 
     @classmethod
@@ -926,7 +928,7 @@ class WaveRunner:
             wave_id,
             write_evidence,
             res.get("all_stages_passed", False),
-            res["document"],
+            res.get("document", {}),
             "Fingerprinted the donor's real rules data and 1000 recorded runs into a parity fixture.",
             res.get("outcome_distribution"),
         )
