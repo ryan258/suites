@@ -9,8 +9,14 @@ description = "Portfolio contracts, provenance, and migration control for Ryan's
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+suites = "portfolio_suites.cli:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+portfolio_suites = ["web/*", "adapters/*.mjs", "adapters/*.py"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
