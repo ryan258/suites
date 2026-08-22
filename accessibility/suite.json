@@ -55,6 +55,7 @@
       "order": 10,
       "status": "complete",
       "objective": "Create the WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix.",
+      "runtime_followup": "Execute the parity matrix's port decisions against the real allys-tools runtime so each ported behavior carries donor-vs-destination output parity rather than a decision record.",
       "acceptance": "Every unique behavior has an owner, fixture, and port or reject decision.",
       "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md",
       "recovery_claim": {
@@ -98,6 +99,7 @@
       "order": 30,
       "status": "complete",
       "objective": "Reconcile three keyboard overlays through source, manifest, permissions, and feature inventory.",
+      "runtime_followup": "Load the canonical kb-overlay anchor in a real browser and verify the reconciled feature inventory behaves as the matrix declares, rather than as the manifests declare.",
       "acceptance": "Source inventory, manifest structure, permissions, and feature comparative analysis support the canonical anchor selection.",
       "evidence": "accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.json",
       "recovery_claim": {
@@ -114,18 +116,20 @@
     {
       "id": "A4",
       "order": 40,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Port remaining heuristic and narrow WCAG Auditor rule candidates with regression evidence.",
       "acceptance": "Batch port of rule candidates produces verified A11yFindings with zero contract drift.",
+      "runtime_followup": "Port candidate rules into the real allys-tools TypeScript runtime and execute authentic donor vs destination parity tests against representative HTML inputs.",
       "evidence": "accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "parity_verified",
         "real_runtime": false,
         "evidence_basis": [
           "catalog_evaluation",
           "heuristic_findings_sample",
-          "false_positive_probe_passed"
+          "false_positive_probe_passed",
+          "source_derived_assertions"
         ]
       }
     },

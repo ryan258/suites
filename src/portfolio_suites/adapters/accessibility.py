@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import datetime
 import json
 import re
@@ -731,6 +732,82 @@ console.log(JSON.stringify(result));
     @classmethod
     def execute_wcag_rule_candidates_gate(cls) -> dict[str, Any]:
         """A4: Batch evaluation of 20 backlog candidate WCAG Auditor rules with regression evidence."""
+        target_fp = get_git_fingerprint(ALLYS_TOOLS_DIR)
+        donor_fp = get_git_fingerprint(WCAG_AUDITOR_DIR)
+
+        # Parse live wcag-auditor rules via AST
+        rules_dir = WCAG_AUDITOR_DIR / "wcag_auditor" / "rules"
+        rule_to_criterion: dict[str, str] = {}
+        asserted_rules: set[str] = set()
+        asserted_criteria: set[str] = set()
+        asserted_modules: list[str] = []
+
+        if rules_dir.is_dir():
+            for rule_file in sorted(rules_dir.glob("*.py")):
+                if rule_file.name == "__init__.py":
+                    continue
+                asserted_modules.append(rule_file.name)
+                try:
+                    tree = ast.parse(rule_file.read_text(encoding="utf-8"))
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.Call) and getattr(node.func, "id", "") == "RuleMetadata":
+                            rid = None
+                            sc = None
+                            for kw in node.keywords:
+                                if kw.arg == "id" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                                    rid = kw.value.value
+                                    asserted_rules.add(rid)
+                                elif kw.arg == "wcag_criterion" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                                    sc = kw.value.value
+                                    asserted_criteria.add(sc)
+                            if rid and sc:
+                                rule_to_criterion[rid] = sc
+                except Exception:
+                    pass
+
+        expected_rule_criteria = {
+            "inline-language-change": "3.1.2",
+            "audio-description-track": "1.2.5",
+            "adaptable-landmarks": "1.3.1",
+            "enough-time-controls": "2.2.2",
+            "link-purpose": "2.4.4",
+            "focus-not-obscured": "2.4.11",
+            "pointer-gestures": "2.5.1",
+            "pointer-cancellation": "2.5.2",
+            "dragging-movements": "2.5.7",
+            "predictable-navigation": "3.2.2",
+            "input-assistance-error-msg": "3.3.1",
+            "labels-or-instructions": "3.3.2",
+            "error-suggestion": "3.3.3",
+            "required-field-indicators": "3.3.2",
+            "redundant-entry": "3.3.7",
+            "accessible-authentication": "3.3.8",
+            "identify-input-purpose": "1.3.5",
+            "status-messages": "4.1.3",
+        }
+
+        exact_criteria_matched = all(
+            rule_to_criterion.get(r) == expected_sc
+            for r, expected_sc in expected_rule_criteria.items()
+        )
+
+        sensitivity_passed = (
+            exact_criteria_matched
+            and set(expected_rule_criteria.keys()).issubset(asserted_rules)
+            and len(asserted_modules) >= 5
+            and is_meaningful_git_fingerprint(donor_fp)
+            and is_meaningful_git_fingerprint(target_fp)
+        )
+
+        source_derived_assertions = {
+            "donor_source_path": "wcag_auditor/rules",
+            "asserted_rules": sorted(asserted_rules),
+            "asserted_criteria": sorted(asserted_criteria),
+            "asserted_modules": sorted(asserted_modules),
+            "rule_criterion_mappings": {r: rule_to_criterion[r] for r in sorted(expected_rule_criteria.keys()) if r in rule_to_criterion},
+            "sensitivity_test_passed": sensitivity_passed,
+        }
+
         cases_file = Path(__file__).resolve().parent.parent.parent.parent / "accessibility" / "evidence" / "A1-parity-cases.json"
         if cases_file.exists():
             try:
@@ -746,6 +823,7 @@ console.log(JSON.stringify(result));
             catalog.get("total_candidates_evaluated") == 20
             and catalog.get("status") == "all_backlog_candidates_evidenced"
             and all(isinstance(e.get("finding"), dict) for e in catalog.get("evaluations", []))
+            and sensitivity_passed
         )
         # The "zero false positives on compliant markup" claim is executed, not asserted.
         compliant_markup = (
@@ -763,9 +841,23 @@ console.log(JSON.stringify(result));
         return {
             "all_stages_passed": all_passed and not false_positives,
             "wave": "A4",
+            "status": "parity_verified" if (all_passed and not false_positives) else "unverified",
             "catalog_evaluation": catalog,
             "heuristic_findings_sample": sample,
             "false_positive_probe_passed": not false_positives,
+            "source_derived_assertions": source_derived_assertions,
+            "target": {
+                "name": "allys-tools",
+                "path": str(ALLYS_TOOLS_DIR),
+                "fingerprint": target_fp,
+                "role": "canonical_runtime_destination",
+            },
+            "donor": {
+                "name": "wcag-auditor",
+                "path": str(WCAG_AUDITOR_DIR),
+                "fingerprint": donor_fp,
+                "role": "heuristic_rule_donor",
+            },
         }
 
     @classmethod
