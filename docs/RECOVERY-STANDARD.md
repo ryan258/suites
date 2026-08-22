@@ -98,7 +98,7 @@ deletion.
 
 A core invariant governs wave promotion: **What change in the outside world turns the receipt red?**
 
-If modifying donor source files leaves a gate green, the gate is verifying only its own internal comparator rather than the donor. To enforce honest accounting, evidence receipts fall into two tiers:
+If modifying donor source files leaves a gate green, the gate is verifying only its own internal comparator rather than the donor. To enforce honest accounting, evidence receipts fall into three tiers:
 
 1. **Tier 1: Content Asserted (Gold Standard)**
    - The gate parses or executes authentic donor/destination source and asserts against specific extracted values, finding distributions, or AST structures.
@@ -126,8 +126,9 @@ that work is written down, it is not deferred — it is lost: the wave reads as 
 in the ledger remembers what it did not do.
 
 Every wave with `status: complete` and `recovery_claim.kind: analysis` must therefore carry a
-non-empty `runtime_followup` naming the runtime execution still owed. `A4` was promoted without
-one; the rule below is what would have caught it.
+non-empty `runtime_followup` naming the runtime execution still owed. `A4` was originally promoted
+without one; the rule below is what would have caught it, and every completed analysis wave now
+carries a followup.
 
 Machine enforcement: `validate_registry` refuses any completed analysis wave whose
 `runtime_followup` is missing or blank, and `tests/test_registry.py` asserts the same invariant

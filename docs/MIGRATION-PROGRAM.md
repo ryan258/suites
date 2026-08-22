@@ -1,10 +1,10 @@
 # Migration Program
 
-Tranche 0's control-plane foundation is complete, and Tranches 1–3 have source-backed prototype
-artifacts: every one of the 43 wave gates now reads donor content before it makes a claim, and no
-wave remains an unintegrated specification. Those artifacts are still not completed migrations.
-Reading a donor's files is not executing its runtime. Real ports, adoption, retirement, and
-single-runtime convergence follow the [9/10 recovery standard](RECOVERY-STANDARD.md) and the
+Tranche 0's control-plane foundation is complete, eight migration wave milestones are verified (one
+runtime recovery, seven analysis milestones), and the remaining 35 waves carry source-backed
+prototype receipts. Every wave gate reads donor content before making a claim. Prototype artifacts
+prove only what their runner exercised, not completed migrations. Real ports, adoption, retirement,
+and single-runtime convergence follow the [9/10 recovery standard](RECOVERY-STANDARD.md) and the
 [roadmap](ROADMAP.md).
 
 ## Destination rule
@@ -46,26 +46,43 @@ A scaffold, README, build, or passing narrow unit test is not completion.
 
 ## Tranche 1 — Prove the three active bets
 
-### Accessibility
+Seven waves in this tranche are verified (plus `A1` from Tranche 0, bringing the portfolio total to
+eight): one runtime recovery (`A2`) and seven analysis milestones (`A1`, `A3`, `A4`, `O1`, `O2`,
+`B1`, `B2`). Every verified analysis milestone still carries a `runtime_followup` obligation
+recorded in its wave manifest; the milestone is not that obligation discharged.
 
-- **A2:** finish runtime verification of the narrow WCAG 3.3.1 ARIA error-association port.
-- **A3:** reconcile the three keyboard overlays before any archive action.
-- Then port crawl controls and one explicit review-candidate producer, not 17 pseudo-certification
-  rules.
+### Accessibility (4/6 verified)
 
-### Operator OS
+- **A1 — done in Tranche 0 (analysis):** WCAG Auditor to Ally rule, crawl, finding, and deliverable
+  parity matrix.
+- **A2 — done (runtime recovery):** the narrow WCAG 3.3.1 ARIA error-association port is verified
+  against the real `allys-tools` runtime.
+- **A3 — done (analysis):** the three keyboard overlays are reconciled; no archive action taken.
+- **A4 — done (analysis):** 20 candidate WCAG Auditor rules evaluated against live donor rule ASTs,
+  zero false positives on compliant markup. Porting them into the TypeScript runtime is the
+  follow-up.
+- **A5 / A6 remain:** finding round-trip through `a11y-kitchen`, then overlay consolidation and the
+  host-permission narrowing that precedes any owner-approved donor freeze.
 
-- **O1:** capture one authored Markdown source into PKOS, retrieve it with citation, and project one
-  stable Observer note that is fenced from re-ingestion.
-- **O2:** compare Ryos/master-plan behavior against current dotfiles/Observer state.
-- **O3:** make one JARVIS action use a canonical service with preview, approval, receipt, and recovery.
+### Operator OS (2/6 verified)
 
-### Brand + Publishing
+- **O1 — done (analysis):** an authored source is captured into real PKos CAS, normalized into
+  SQLite, and projected into a fenced Observer note that refuses re-ingestion.
+- **O2 — done (analysis):** Ryos/master-plan inventory compared against current dotfiles/Observer
+  state; the assigned ports are follow-up work.
+- **O3 remains:** make one JARVIS action use a canonical service with preview, approval, receipt,
+  and recovery against real side effects. `O4`–`O6` scale the intake stream, execute the Ryos ports,
+  and generalize the JARVIS lifecycle.
 
-- **B1:** export one approved `BrandPackage` and consume it in a dry run with version pinning and
-  mutation protection.
-- **B2:** map and port Brand Workshop's nine low-typing phases into Brand Maker state.
-- **B3:** prove SourceRecord → governed draft → VCC review → dry-run publishing receipt.
+### Brand + Publishing (2/6 verified)
+
+- **B1 — done (analysis):** an approved `BrandPackage` is exported from live `brand-maker-spec`
+  sources and consumed in a `cyborg` dry run with version pinning and mutation protection.
+- **B2 — done (analysis):** Brand Workshop's nine low-typing phases are mapped onto Brand Maker
+  workspace state and gates; implementing those gates is the follow-up.
+- **B3 remains:** prove SourceRecord → governed draft → VCC review → publishing receipt through the
+  real VCC path. `B4`–`B6` cross a repository seam, migrate the intake state machine, and replace
+  the simulated approval gate with real human signoff.
 
 ## Tranche 2 — Prove the next systems
 

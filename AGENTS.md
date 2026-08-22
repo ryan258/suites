@@ -28,7 +28,7 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
      ```
    - Only supply `--record` when generating intentional milestone evidence.
 
-4. **Level 3: Full Test Suite (`discover`) — Milestone Only (~35-40s)**
+4. **Level 3: Full Test Suite (`discover`) — Milestone Only**
    - Reserve `PYTHONPATH=src python3 -m unittest discover -s tests` **strictly** for:
      - End-of-horizon completion.
      - Final validation before handing off or committing.
@@ -75,7 +75,7 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
 ## 4. Reporting & Communication Rules
 
 1. **Lead with Outcome / Next Action:** Maximize signal and recovery speed.
-2. **Deterministic Gates Run Quietly:** Report failures, anomalies, or concise summary counts (e.g. `137/137 tests passed, 0 errors/warnings`), not raw passing-test transcripts.
+2. **Deterministic Gates Run Quietly:** Report failures, anomalies, or concise summary counts (e.g. `all tests passed, 0 errors/warnings`), not raw passing-test transcripts.
 3. **One Material Decision at a Time:** If human judgment is required, ask one focused question.
 4. **Distinguish Evidence Types:** Clearly differentiate between deterministic facts, reference prototypes, live runtime checks, and unverified assumptions.
 

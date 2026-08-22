@@ -73,6 +73,10 @@ PYTHONPATH=src python3 -m portfolio_suites validate --fast
 PYTHONPATH=src python3 -m portfolio_suites validate
 PYTHONPATH=src python3 -m portfolio_suites inspect accessibility
 PYTHONPATH=src python3 -m portfolio_suites drift
+PYTHONPATH=src python3 -m portfolio_suites export                # consolidated portfolio data as JSON
+PYTHONPATH=src python3 -m portfolio_suites baseline --dry-run    # report baselines lacking status_sha256
+PYTHONPATH=src python3 -m portfolio_suites baseline              # write those missing fingerprints
+PYTHONPATH=src python3 -m portfolio_suites baseline --accept     # adopt live state for drifted repos (owner instruction only)
 PYTHONPATH=src python3 -m portfolio_suites ai-config
 
 # Cross-suite contract inspection & testing

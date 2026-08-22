@@ -2,6 +2,14 @@
 
 This document records genuine, verified milestones for the `/Users/ryanjohnson/Projects/suites` portfolio control plane.
 
+> **Counts inside a dated entry are point-in-time.** Every wave, prototype, milestone, and test
+> count below states what was true when that entry was written, including counts captured inside
+> `text` snapshot blocks. Wave milestones moved 1/43 → 22/43 → 17/43 → 5/43 → 8/43 as gates were
+> promoted and then reclassified, so a number read out of its entry will not match today's state.
+> For current state run `PYTHONPATH=src python3 -m portfolio_suites status`; the summary block
+> below and [ROADMAP.md](ROADMAP.md) are the only current-state figures here, and both are checked
+> against the registry by `tests/test_docs.py`.
+
 ---
 
 ## Verified Completed Milestones & Control-Plane Foundations
@@ -19,12 +27,12 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 ### Verified Wave Milestones Completed (8/43)
 1. **`A1` — Accessibility (Analysis Milestone)**: WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md)).
 2. **`A2` — Accessibility (Runtime Recovery)**: WCAG 3.3.1 Error Association rule port into destination runtime [`allys-tools`](file:///Users/ryanjohnson/Projects/allys-tools) (`f2b4c6e`) with 127/127 tests passing and four-stage adapter verification ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A2-WCAG-331-EVIDENCE.json)).
-3. **`A3` — Accessibility (Analysis Milestone)**: Keyboard overlay reconciliation across `kb-overlay`, `keyboard-nav-overlay`, and `keyboard-nav-overlay-94bf7e` ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A3-KEYBOARD-OVERLAYS.md)).
-4. **`A4` — Accessibility (Parity Verified)**: Batch evaluation of 20 candidate WCAG Auditor rules with live donor rule AST parsing, zero contract drift on `A11yFinding`, and zero false positives on compliant markup ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json)).
-5. **`O1` — Operator OS (Analysis / Runtime Ingestion Milestone)**: Authentic `dotfiles` capture into `PKos` Content-Addressed Storage (`pkos.storage.Workspace`), SQLite normalization, and fenced `obsidian-observer` vault projection ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json)).
-6. **`O2` — Operator OS (Analysis Milestone)**: Full feature inventory and spec mapping of `ryos` and `master-upgrade-plan` against `dotfiles` and `obsidian-observer` ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O2-RYOS-DISPOSITION.md)).
+3. **`A3` — Accessibility (Analysis Milestone)**: Keyboard overlay reconciliation across `kb-overlay`, `keyboard-nav-overlay`, and `keyboard-nav-overlay-94bf7e` ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.json)).
+4. **`A4` — Accessibility (Analysis Milestone)**: Batch evaluation of 20 candidate WCAG Auditor rules with live donor rule AST parsing, zero contract drift on `A11yFinding`, and zero false positives on compliant markup ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json)).
+5. **`O1` — Operator OS (Analysis Milestone)**: Authentic `dotfiles` capture into `PKos` Content-Addressed Storage (`pkos.storage.Workspace`), SQLite normalization, and fenced `obsidian-observer` vault projection ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json)).
+6. **`O2` — Operator OS (Analysis Milestone)**: Full feature inventory and spec mapping of `ryos` and `master-upgrade-plan` against `dotfiles` and `obsidian-observer` ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O2-RYOS-INVENTORY.json)).
 7. **`B1` — Brand + Publishing (Analysis Milestone)**: Canonical `BrandPackage` export from live `brand-maker-spec` with AST-parsed donor assertions, multi-case mutation protection, and authentic dry-run consumer boundary verification against downstream `cyborg` ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json)).
-8. **`B2` — Brand + Publishing (Analysis Milestone)**: Live source mapping of Brand Workshop's nine phases onto `brand-maker-spec` workspace state and gates ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B2-WORKSHOP-MAPPING.json)).
+8. **`B2` — Brand + Publishing (Analysis Milestone)**: Live source mapping of Brand Workshop's nine phases onto `brand-maker-spec` workspace state and gates ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B2-BRAND-WORKSHOP-PHASES.json)).
 
 ---
 
@@ -140,9 +148,13 @@ produce, the receipt status names what was actually done:
   `migration_acceptance_verified: false`; narrowing that scope and freezing the donors are both
   outstanding, and the freeze remains an owner action.
 
-Wave counts are unchanged: 43 waves, 5 complete (1 runtime recovery, 4 analysis milestones), 38
-prototype checks. What changed is that no prototype check now passes without reading its donor,
-and none of them names an outcome it did not produce.
+What changed is that no prototype check now passes without reading its donor, and none of them
+names an outcome it did not produce. Wave counts are unchanged by this entry.
+
+**State after this entry (2026-08-21):** 5/43 wave milestones complete — 1 runtime recovery, 4
+analysis milestones — and 38 prototype checks.
+
+---
 
 ## 2026-08-21 — Cosmetic-Fingerprint Reclassification
 
@@ -161,14 +173,15 @@ repository that is never read is indistinguishable, from outside, from failing c
 is.
 
 Reclassified to prototype: `A5`, `O1`, `O3`, `O4`, `O6`, `B1`, `B3`, `B4`, `B6`, `P1`, `P2`, `P3`.
-Verified analysis milestones are now four (`A1`, `A3`, `O2`, `B2`), prototype checks are
-thirty-eight, and complete wave milestones are 5/43. All reclassified waves also had their
-`recovery_claim.level` corrected from `parity_verified` to `prototype`; the previous batch retained
-a `parity_verified` claim that the raw manifests served over `/api/suites` while the status-derived
-views reported a prototype.
+All reclassified waves also had their `recovery_claim.level` corrected from `parity_verified` to
+`prototype`; the previous batch retained a `parity_verified` claim that the raw manifests served
+over `/api/suites` while the status-derived views reported a prototype.
 
 The donor-backed migrations these waves describe remain future work. Nothing was retired, and no
 source repository was modified.
+
+**State after this entry (2026-08-21):** 5/43 wave milestones complete — 1 runtime recovery, 4
+analysis milestones (`A1`, `A3`, `O2`, `B2`) — and 38 prototype checks.
 
 ---
 
@@ -177,15 +190,16 @@ source repository was modified.
 Reclassified `A4`, `O5`, `B5`, `P4`, and `P5` from complete analysis milestones to prototype
 checks. Their runners exercise suite-local engines, constants, or committed fixtures without
 reading a donor repository, so donor fingerprint requirements would be cosmetic rather than
-evidence of migration. The verified analysis count is now sixteen, the prototype count is
-twenty-six, and complete wave milestones are 17/43. The corresponding donor-backed migrations
-remain future work.
+evidence of migration. The corresponding donor-backed migrations remain future work.
 
 `A1` remains an analysis milestone because its intended artifact is a reviewed, hand-authored
 parity decision. Its runner checks the document's required structure; it does not execute a donor
 or runtime gate. `A4` output now describes the actual 20-case classification and single
 suite-local compliant-markup smoke probe instead of claiming 17 candidates and broad false-positive
 verification.
+
+**State after this entry (2026-08-21):** 17/43 wave milestones complete — 1 runtime recovery, 16
+analysis milestones — and 26 prototype checks.
 
 ---
 
@@ -225,8 +239,11 @@ Production House `P1`-`P5`, each backed by a live source adapter and a retained 
 
 These are analysis claims, not runtime recoveries. Each fingerprints or reads its donor sources and
 then exercises the suite-local engine; none invokes an external runtime. `A2` remains the sole
-parity-verified runtime recovery. Adopted and converged counts remain zero, and 22/43 is a
-planning milestone percentage rather than a functionality-recovery score.
+parity-verified runtime recovery. Adopted and converged counts remain zero, and the figure below
+is a planning milestone percentage rather than a functionality-recovery score.
+
+**State after this entry (2026-08-20):** 22/43 wave milestones complete — 1 runtime recovery, 21
+analysis milestones — up from 2/43 before this promotion.
 
 Commits: `16da302`, `b87dfbb`, `b9e8ec5`, `ceb9b23`.
 
