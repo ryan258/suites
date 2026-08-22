@@ -4,8 +4,8 @@
 
 The `/Users/ryanjohnson/Projects/suites` control plane governs portfolio migration under the **9.0/10 Recovery Standard**.
 
-- **Completed Foundation & Milestones**: 5/43 waves verified (1 runtime recovery `A2`, 4 analysis milestones `A1`, `A3`, `O2`, `B2`). Detailed logs and completed foundations are recorded in [CHANGELOG.md](CHANGELOG.md).
-- **Remaining Work**: 38 migration waves across 8 suites requiring authentic donor-backed implementation, runtime execution, and parity verification.
+- **Completed Foundation & Milestones**: 8/43 waves verified (1 runtime recovery `A2`, 7 analysis milestones `A1`, `A3`, `A4`, `O1`, `O2`, `B1`, `B2`). Detailed logs and completed foundations are recorded in [CHANGELOG.md](CHANGELOG.md).
+- **Remaining Work**: 35 migration waves across 8 suites requiring authentic donor-backed implementation, runtime execution, and parity verification.
 - **Current Promotion Target**: 0/58 monitored source repositories drifted; `allys-tools` clean at
   `f2b4c6e`. All 58 baselines carry `status_sha256` as of 2026-08-22, so working-tree *content* drift
   is now checked alongside branch, HEAD, and dirty count — the zero is the full claim it reads as.
@@ -19,8 +19,8 @@ These figures are restated from the registry and are verified against it by
 `tests/test_docs.py`; they are scheduling and inventory metrics, not the recovery score.
 
 - **70 Top-level projects** dispositioned across 8 suite boundaries and independent/archive containers.
-- **43 Migration wave specifications** defined; wave milestone progress is 5/43.
-- **38/43 source-backed prototype checks** passing. A prototype check proves only the concept its
+- **43 Migration wave specifications** defined; wave milestone progress is 8/43.
+- **35/43 source-backed prototype checks** passing. A prototype check proves only the concept its
   runner exercised; none of them counts as recovered functionality.
 - **6 Shared contracts implemented**: `A11yFinding`, `BrandPackage`, `ExperimentRun`, `InvestigationRecord`, `ProductionJob`, `SourceRecord`.
 
@@ -30,9 +30,9 @@ These figures are restated from the registry and are verified against it by
 
 | Suite | Verified | Next Target | Evidence Required for Promotion |
 |---|---:|---|---|
-| Accessibility | 3/6 | `A4` | Run candidate rules against real donor inputs; retain per-rule donor/destination parity evidence |
-| Operator OS | 1/6 | `O1` | Connect real dotfiles capture through PKos; retain an authentic Observer projection receipt |
-| Brand + Publishing | 1/6 | `B1` | Compile a BrandPackage from real Brand Maker source; exercise the actual consumer boundary |
+| Accessibility | 4/6 | `A5` | Ingest A11yFinding contracts through the a11y-kitchen teaching surface with live donor fixtures |
+| Operator OS | 2/6 | `O3` | Model a JARVIS action preview receipt with an approval boundary in the suite-local engine |
+| Brand + Publishing | 2/6 | `B3` | Route a real draft through the actual VCC review path; produce authentic distribution receipts |
 | Production House | 0/5 | `P1` | Read a real Groundwire workflow; retain authentic job and QC outputs |
 | Model Behavior Lab | 0/5 | `M1` | Authentic normalized run records from OpenRouter or an identified local model vs recorded baseline |
 | Discovery + Decision | 0/5 | `D1` | Executed SIF and Forge runs compared stage by stage with call-budget accounting |
@@ -45,17 +45,15 @@ These figures are restated from the registry and are verified against it by
 
 ### Horizon 1 — Ally Accessibility Suite
 - **Destination Anchor:** `allys-tools`
-- **Completed:** `A1` (WCAG parity matrix), `A2` (WCAG 3.3.1 error association runtime recovery), `A3` (keyboard overlay reconciliation).
+- **Completed:** `A1` (WCAG parity matrix), `A2` (WCAG 3.3.1 error association runtime recovery), `A3` (keyboard overlay reconciliation), `A4` (WCAG rule candidate evaluation with live donor AST verification and zero-false-positive validation).
 - **Remaining Waves:**
-  - **`A4` — Rule Candidate Ports:** Port remaining heuristic and narrow rule candidates from `wcag-auditor` into `allys-tools` with regression evidence and live donor/destination parity verification.
   - **`A5` — Finding Ingestion Round-Trip:** Ingest `A11yFinding` contracts through the `a11y-kitchen` interactive teaching surface using authentic donor fixtures.
   - **`A6` — Keyboard Overlay Consolidation:** Narrow canonical content-script host permissions below `<all_urls>`, institute `kb-overlay`, and present donor freeze recommendations for owner approval.
 
 ### Horizon 2 — Operator OS Migration
 - **Destination Anchors:** `dotfiles` + `PKos` + `obsidian-observer`
-- **Completed:** `O2` (Ryos core file and master-plan inventory against dotfiles and Observer).
+- **Completed:** `O1` (Dotfiles capture to authentic PKos CAS, SQLite normalization, and fenced Observer note projection), `O2` (Ryos core file and master-plan inventory against dotfiles and Observer).
 - **Remaining Waves:**
-  - **`O1` — Dotfiles Capture to PKos CAS & Observer Projection:** Ingest real captured source through live `PKos` runtime and land projected note in actual `obsidian-observer` vault with fenced re-ingestion.
   - **`O3` — JARVIS System Action Lifecycle:** Drive real JARVIS actions through preview, approval, execution receipt, failure, and recovery over owned system APIs.
   - **`O4` — Daily Intake Stream Scaling:** Run real day-to-day daily-notes stream through live `PKos` capture path and scale multi-source batching.
   - **`O5` — Ryos Port Execution & Feature Disposition:** Execute assigned ports in `dotfiles` backed by tests, name superseded features, and retire duplicate launcher code.
@@ -63,9 +61,8 @@ These figures are restated from the registry and are verified against it by
 
 ### Horizon 3 — Brand + Publishing Migration
 - **Destination Anchors:** `brand-maker-spec` + `cyborg`
-- **Completed:** `B2` (Brand Workshop 9-phase mapping onto workspace state and gates).
+- **Completed:** `B1` (BrandPackage export, provenance, and consumer dry-run verification), `B2` (Brand Workshop 9-phase mapping onto workspace state and gates).
 - **Remaining Waves:**
-  - **`B1` — BrandPackage Export & Downstream Consumption:** Export compiled `BrandPackage` from real Brand Maker runtime and consume it in downstream `cyborg` publishing pipeline.
   - **`B3` — Sourced Draft to VCC Review Pipeline:** Route real draft through actual VCC review path and produce authentic distribution receipts.
   - **`B4` — Cross-Consumer Boundary Verification:** Wire external consumer outside repository and verify version-pinning and mutation-protection across process boundaries.
   - **`B5` — Brand Maker Intake State Machine Migration:** Move 9-phase state machine into real Brand Maker application and reconcile duplicate intake UX.

@@ -94,6 +94,25 @@ It cannot become `adopted` until three authentic uses are accepted. It cannot be
 until duplicate state writers are closed and Ryan explicitly approves any freeze, archival, or
 deletion.
 
+## Outside-World Sensitivity Standard (Content Asserted vs. Content Recorded)
+
+A core invariant governs wave promotion: **What change in the outside world turns the receipt red?**
+
+If modifying donor source files leaves a gate green, the gate is verifying only its own internal comparator rather than the donor. To enforce honest accounting, evidence receipts fall into two tiers:
+
+1. **Tier 1: Content Asserted (Gold Standard)**
+   - The gate parses or executes authentic donor/destination source and asserts against specific extracted values, finding distributions, or AST structures.
+   - Modifying rule logic, export definitions, or schemas in the donor repository causes the receipt gate to fail immediately.
+   - Exemplars: `A2` (executes donor rule via subprocess against live inputs), `A3` (parses real manifest scopes and permissions), and deepened `B1` (parses live `developer_exports.py` AST and `living-brand-system.md` specifications).
+   - *Seam vs. Payload Precision (B1)*: Deepened `B1` is Tier 1 for the export seam and contract structure (verifying functions, artifact filenames, token types, and audience categories from donor source), while the specific `BrandPackage` payload values remain adapter-authored literals until real Brand Maker runtime compilation is executed in `runtime_followup`.
+   - Machine enforcement: Enforced via `source_derived_assertions` in `_analysis_receipt_semantic_errors`.
+
+2. **Tier 2: Content Recorded / Count-Gated**
+   - The gate captures genuine git fingerprints and checks minimum item or byte counts, but does not assert on internal structure.
+   - Examples: `O2` (records ryos/core bytes with count check), `B2` (extracts phase IDs with count check).
+
+Every promoted wave must satisfy the Outside-World Sensitivity Test by asserting directly against donor-extracted structures.
+
 ## Resolution is success when it is explicit
 
 Every material capability ultimately receives one outcome: `ported`, `already_covered`,

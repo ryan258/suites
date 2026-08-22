@@ -16,12 +16,44 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 - **43 Migration Wave Specifications**: Defined across 8 source adapters; every wave runner reads donor content, declares a recovery claim, and specifies runtime follow-up obligations.
 - **9/10 Recovery Standard Adopted**: Weighted rubrics, strict promotion gates (`prototype` → `source_verified` → `parity_verified` → `adopted` → `converged`), and fail-closed validation.
 
-### Verified Wave Milestones Completed (5/43)
+### Verified Wave Milestones Completed (8/43)
 1. **`A1` — Accessibility (Analysis Milestone)**: WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md)).
 2. **`A2` — Accessibility (Runtime Recovery)**: WCAG 3.3.1 Error Association rule port into destination runtime [`allys-tools`](file:///Users/ryanjohnson/Projects/allys-tools) (`f2b4c6e`) with 127/127 tests passing and four-stage adapter verification ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A2-WCAG-331-EVIDENCE.json)).
 3. **`A3` — Accessibility (Analysis Milestone)**: Keyboard overlay reconciliation across `kb-overlay`, `keyboard-nav-overlay`, and `keyboard-nav-overlay-94bf7e` ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A3-KEYBOARD-OVERLAYS.md)).
-4. **`O2` — Operator OS (Analysis Milestone)**: Full feature inventory and spec mapping of `ryos` and `master-upgrade-plan` against `dotfiles` and `obsidian-observer` ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O2-RYOS-DISPOSITION.md)).
-5. **`B2` — Brand + Publishing (Analysis Milestone)**: Live source mapping of Brand Workshop's nine phases onto `brand-maker-spec` workspace state and gates ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B2-WORKSHOP-MAPPING.json)).
+4. **`A4` — Accessibility (Parity Verified)**: Batch evaluation of 20 candidate WCAG Auditor rules with live donor rule AST parsing, zero contract drift on `A11yFinding`, and zero false positives on compliant markup ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json)).
+5. **`O1` — Operator OS (Analysis / Runtime Ingestion Milestone)**: Authentic `dotfiles` capture into `PKos` Content-Addressed Storage (`pkos.storage.Workspace`), SQLite normalization, and fenced `obsidian-observer` vault projection ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json)).
+6. **`O2` — Operator OS (Analysis Milestone)**: Full feature inventory and spec mapping of `ryos` and `master-upgrade-plan` against `dotfiles` and `obsidian-observer` ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O2-RYOS-DISPOSITION.md)).
+7. **`B1` — Brand + Publishing (Analysis Milestone)**: Canonical `BrandPackage` export from live `brand-maker-spec` with AST-parsed donor assertions, multi-case mutation protection, and authentic dry-run consumer boundary verification against downstream `cyborg` ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json)).
+8. **`B2` — Brand + Publishing (Analysis Milestone)**: Live source mapping of Brand Workshop's nine phases onto `brand-maker-spec` workspace state and gates ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B2-WORKSHOP-MAPPING.json)).
+
+---
+
+## 2026-08-22 — Operator OS Wave O1 CAS Acquisition & Projection Verified
+
+Promoted **Wave O1** (`operator-os`) to verified milestone:
+- **Live PKos CAS Acquisition**: Connected `OperatorOSSourceAdapter` directly to `PKos` (`pkos.storage.Workspace`), acquiring real `dotfiles/AGENTS.md` and verifying raw CAS objects and SHA-256 digests byte-for-byte.
+- **SQLite Normalization**: Executed `pkos.normalize.normalize` into SQLite database `pkos.db`, proving authentic document revision and chunk extraction.
+- **Fenced Observer Projection**: Generated authentic `obsidian-observer` projection with anti-reingestion fence and validated fail-closed refusal when re-ingestion is attempted.
+- **Fail-Closed Evidence Receipt**: Recorded receipt ([`O1-SOURCE-RECORD-OBSERVER-PROJECTION.json`](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json)) with dual git fingerprints for `dotfiles`, `PKos`, and `obsidian-observer`.
+
+---
+
+## 2026-08-22 — Accessibility Wave A4 & Outside-World Sensitivity Verified
+
+Promoted **Wave A4** (`accessibility`) to parity verified milestone and established the machine-checked **Outside-World Sensitivity Standard**:
+- **Outside-World Sensitivity Invariant**: Enforced `source_derived_assertions` across `ANALYSIS_RECEIPT_SPECS` so that altering donor rule source causes gates to fail red immediately.
+- **20-Candidate WCAG Rule Evaluation**: Verified all 20 candidate rules from `wcag-auditor` across perceivable, operable, understandable, and robust domains with live AST inspection of donor modules.
+- **Contract & False-Positive Verification**: Validated full `A11yFinding` contract adherence and verified 0 false positives against compliant markup fixtures.
+- **Fail-Closed Evidence Receipt**: Recorded receipt ([`A4-WCAG-RULE-CANDIDATES-EVIDENCE.json`](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json)) with dual git fingerprints for `wcag-auditor` and `allys-tools`.
+
+---
+
+## 2026-08-22 — Brand & Publishing Wave B1 Migration Verified
+
+Verified and promoted **Wave B1** under the 9.0/10 Recovery Standard:
+- **Authentic Donor & Consumer Boundary**: Connected `BrandPublishingSourceAdapter` to inspect live developer export models from `brand-maker-spec` (`developer_exports.py`, `spec.md`) and downstream `cyborg` content consumer structures (`MANUAL.md`, `my-ms-ai-blog`).
+- **Mutation Protection Invariants**: Validated multi-case mutation shields preventing silent downstream alteration of identity, voice, or approved claims under identical version pinning.
+- **Fail-Closed Evidence Receipt**: Recorded content-addressed receipt ([`B1-BRAND-PACKAGE-DRY-RUN.json`](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json)) capturing live git fingerprints for both target and consumer repositories, proving zero live publishing side-effects.
 
 ---
 
