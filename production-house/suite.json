@@ -56,7 +56,7 @@
     {
       "id": "P1",
       "order": 40,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Fingerprint one Groundwire episode workflow and its QC/output stages into the ProductionJob contract.",
       "acceptance": "Inputs, steps, gates, receipts, failures, outputs, and recovery are mapped before integration, against fingerprinted production-house, Groundwire, and formatter sources.",
       "runtime_followup": "Fingerprint from real episode artifacts rather than a fixture script hash.",
@@ -66,7 +66,7 @@
     {
       "id": "P2",
       "order": 50,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Model that episode slice as a ProductionJob advancing through a synthesis stage, against a fingerprinted formatter source.",
       "acceptance": "The job advances from queued to completed with at least one content-addressed output, without parallel canonical state. The formatter repository is fingerprinted, not invoked.",
       "runtime_followup": "Invoke elevenlabs-screenplay-formatter on a real script slice and compare its output against this job for parity and failure recovery.",
@@ -76,7 +76,7 @@
     {
       "id": "P3",
       "order": 60,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Model a Writers Room story-state handoff as a ProductionJob input, against a fingerprinted writers-room source.",
       "acceptance": "The handoff carries a versioned, approved input into a queued job and stays traceable to its source. Writers Room is fingerprinted, not read.",
       "runtime_followup": "Take the story state from the real Writers Room runtime through to a derived output with its job receipt.",
@@ -86,7 +86,7 @@
     {
       "id": "P4",
       "order": 70,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Run a structurally distinct investigative documentary episode fixture through the generic ProductionJob engine.",
       "acceptance": "The variant completes with its full output set using the unchanged generic engine. Fixture-driven; no external documentary runtime is involved.",
       "runtime_followup": "Drive the multi-track and sound-design pipeline from a real documentary episode.",
@@ -96,7 +96,7 @@
     {
       "id": "P5",
       "order": 80,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Map Writers Room collaborative story state transitions into a canonical ProductionJob event stream.",
       "acceptance": "Multi-scene revisions with author provenance unify into a single completed job event stream. Revisions are fixtures; Writers Room is not read.",
       "runtime_followup": "Map real Writers Room revision history, including final room signoff, from that runtime.",

@@ -18,13 +18,13 @@
     "outputs": [],
     "events": [
       {
-        "time": "2026-08-22T01:32:34.548889+00:00",
+        "time": "2026-08-22T23:07:37.927662+00:00",
         "stage": "initialization",
         "status": "job_created"
       }
     ],
-    "created_at": "2026-08-22T01:32:34.548889+00:00",
-    "updated_at": "2026-08-22T01:32:34.548889+00:00"
+    "created_at": "2026-08-22T23:07:37.927662+00:00",
+    "updated_at": "2026-08-22T23:07:37.927662+00:00"
   },
   "writers_room_fingerprint": {
     "branch": "v3.0",

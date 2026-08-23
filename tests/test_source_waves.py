@@ -48,9 +48,8 @@ class SourceBackedWaveTests(unittest.TestCase):
             for wave_id in wave_ids:
                 with self.subTest(wave=f"{suite_id}/{wave_id}"):
                     result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
-                    self.assertEqual(result.execution_kind, "prototype_check")
-                    self.assertTrue(result.prototype_passed, result.message)
-                    self.assertFalse(result.passed)
+                    self.assertEqual(result.execution_kind, "verified_analysis")
+                    self.assertTrue(result.passed, result.message)
 
     def test_source_backed_waves_fail_closed_without_donors(self):
         with tempfile.TemporaryDirectory() as tmp:

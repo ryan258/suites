@@ -16,19 +16,19 @@
           "sha256": "3b3ebd4b9bf7632574233b3ab79ff8ed777c9caccb7b513e1a73d75206186589",
           "origin": "insight-excavator/sources/1784433194964.txt",
           "extracted_insight": "Excavator source retained as citation for Forge stage 'connections_generated'.",
-          "cited_at": "2026-08-22T01:32:35.449615+00:00"
+          "cited_at": "2026-08-22T23:44:55.956522+00:00"
         }
       ],
       "stages": [
         {
           "stage": "intake",
           "status": "initialized",
-          "timestamp": "2026-08-22T01:32:35.449495+00:00"
+          "timestamp": "2026-08-22T23:44:55.956478+00:00"
         },
         {
           "stage": "insight_excavation_citation",
           "status": "completed",
-          "timestamp": "2026-08-22T01:32:35.449629+00:00"
+          "timestamp": "2026-08-22T23:44:55.956528+00:00"
         }
       ],
       "decisions": [
@@ -42,8 +42,8 @@
         "max_time_sec": 300,
         "used_time_sec": 8.5
       },
-      "created_at": "2026-08-22T01:32:35.449495+00:00",
-      "updated_at": "2026-08-22T01:32:35.449629+00:00"
+      "created_at": "2026-08-22T23:44:55.956478+00:00",
+      "updated_at": "2026-08-22T23:44:55.956528+00:00"
     },
     "insight_excavator_runtime": "retired_into_forge_citations",
     "provenance_retained": true
@@ -61,7 +61,7 @@
     "sha256": "3b3ebd4b9bf7632574233b3ab79ff8ed777c9caccb7b513e1a73d75206186589",
     "origin": "insight-excavator/sources/1784433194964.txt",
     "extracted_insight": "Excavator source retained as citation for Forge stage 'connections_generated'.",
-    "cited_at": "2026-08-22T01:32:35.449615+00:00"
+    "cited_at": "2026-08-22T23:44:55.956522+00:00"
   },
   "forge_investigation": {
     "path": "breaking-chains/outputs/investigations/inv_0943f9a7ed4c449ab71d590678ca65d7.md",

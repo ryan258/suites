@@ -22,7 +22,7 @@
         "dom_snippet": "<input id=\"email\" class=\"is-invalid\">",
         "selector": "input#email",
         "source": "kitchen://module-01",
-        "timestamp": "2026-08-22T01:32:33.234151+00:00"
+        "timestamp": "2026-08-22T23:03:58.668266+00:00"
       }
     ],
     "evidence_kind": "deterministic",

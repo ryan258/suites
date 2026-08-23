@@ -22,12 +22,12 @@
       {
         "stage": "intake",
         "status": "initialized",
-        "timestamp": "2026-08-22T01:32:35.322052+00:00"
+        "timestamp": "2026-08-22T23:41:48.957897+00:00"
       },
       {
         "stage": "analogy",
         "status": "completed",
-        "timestamp": "2026-08-22T01:32:35.322214+00:00"
+        "timestamp": "2026-08-22T23:41:48.958745+00:00"
       }
     ],
     "decisions": [
@@ -41,8 +41,8 @@
       "max_time_sec": 300,
       "used_time_sec": 5.0
     },
-    "created_at": "2026-08-22T01:32:35.322052+00:00",
-    "updated_at": "2026-08-22T01:32:35.322214+00:00"
+    "created_at": "2026-08-22T23:41:48.957897+00:00",
+    "updated_at": "2026-08-22T23:41:48.958745+00:00"
   },
   "donor_artifact": {
     "kind": "donor_artifact",
@@ -59,22 +59,19 @@
     "branch": "insightful",
     "head": "13c300b2844c2a7feeb8ae0623ddf46942088489",
     "short": "insightful@13c300b",
-    "is_dirty": true,
-    "dirty_files_count": 1,
-    "dirty_files": [
-      "?? .DS_Store"
-    ],
-    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
     "lockfile_sha256": "0942d437b270d661eb063f0a53339b4071afc256857f33831f21762e9d7d6cbb",
     "tested_files_fingerprint": {
       "src/sif/nodes.py": "48fdf1a81be9a12909ff52dea44a2cbc8eb412c533e43ab62902bcb4b728a97e",
       "src/sif/graph.py": "61d62837bc383647f64b92135874341d7c1088cd1bb670f1ca4529d06d022b78",
       "src/sif/schemas.py": "fc9672a546e1d376bbfb706557806b09331be68d897a0dc3f95302b9c224326d",
       "pyproject.toml": "01b3b346670094453c1a100a68e8ecfc834ea0b8377e3c38929f536ace14ed15",
-      "README.md": "08c823a3c7e9ee39897ec4d4c1ce12ecb7f5d25a47ac5a605bb450249b92553a",
-      ".DS_Store": "dbf6d8e094c08a05d24672b53fe18c5e772863870a6b58d98e9ca8b997dd8b61"
+      "README.md": "08c823a3c7e9ee39897ec4d4c1ce12ecb7f5d25a47ac5a605bb450249b92553a"
     },
-    "target_state": "local_working_tree_candidate"
+    "target_state": "clean_commit"
   },
   "forge_fingerprint": {
     "branch": "main",

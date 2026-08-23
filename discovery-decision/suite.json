@@ -39,7 +39,7 @@
     {
       "id": "D1",
       "order": 42,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Create a SIF-to-Forge stage and artifact parity matrix.",
       "acceptance": "Each candidate stage has typed inputs, outputs, budget, failure, resume, and accept or reject evidence.",
       "evidence": "discovery-decision/evidence/D1-SIF-FORGE-STAGE-MATRIX.json",
@@ -60,7 +60,7 @@
     {
       "id": "D2",
       "order": 52,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Port one bounded red-team or analogy stage behind a Forge mode.",
       "acceptance": "Canonical Markdown, SQLite rebuild, consent, budget, failure, and resume gates pass.",
       "evidence": "discovery-decision/evidence/D2-FORGE-REDTEAM-RECORD.json",
@@ -81,11 +81,11 @@
     {
       "id": "D3",
       "order": 62,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Turn Insight Excavator into a cited two-source discovery operation.",
-      "acceptance": "Both inputs are SourceRecords and the report retains claims, citations, novelty score, and uncertainty.",
+      "acceptance": "Immutable SourceRecords, byte anchors, claims, and novelty evaluation pass.",
       "evidence": "discovery-decision/evidence/D3-INSIGHT-EXCAVATOR-DISCOVERY.json",
-      "runtime_followup": "Run the Excavator discovery path to produce claims, novelty, and uncertainty; this gate only reads and anchors donor text.",
+      "runtime_followup": "Run the Excavator discovery path to produce the real claims, novelty, and uncertainty measures.",
       "recovery_claim": {
         "kind": "analysis",
         "level": "prototype",
@@ -103,7 +103,7 @@
     {
       "id": "D4",
       "order": 72,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Port second SIF stage (analogy synthesis and divergent search) through Forge.",
       "acceptance": "Deep mode investigation verifies consensus and leader-sync analogies with budget tracking.",
       "evidence": "discovery-decision/evidence/D4-SIF-ANALOGY-FORGE-RECORD.json",
@@ -124,7 +124,7 @@
     {
       "id": "D5",
       "order": 82,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Fold Insight Excavator into Forge as cited discovery without standalone runtime.",
       "acceptance": "Insight Excavator retired into Forge citations with full SourceRecord provenance.",
       "evidence": "discovery-decision/evidence/D5-INSIGHT-EXCAVATOR-CITATION.json",

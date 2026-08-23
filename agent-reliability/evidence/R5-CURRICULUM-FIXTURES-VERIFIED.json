@@ -13,7 +13,7 @@
           "plan_validation",
           "capability_routing"
         ],
-        "verified_at": "2026-08-22T01:32:37.641767+00:00"
+        "verified_at": "2026-08-22T23:44:59.567710+00:00"
       },
       {
         "module_id": "mod-planning_swarm_real_briefs",
@@ -22,7 +22,7 @@
           "plan_validation",
           "capability_routing"
         ],
-        "verified_at": "2026-08-22T01:32:37.641767+00:00"
+        "verified_at": "2026-08-22T23:44:59.567710+00:00"
       },
       {
         "module_id": "mod-agentic-harness-smoke",
@@ -31,7 +31,7 @@
           "artifact_written",
           "content_match"
         ],
-        "verified_at": "2026-08-22T01:32:37.641767+00:00"
+        "verified_at": "2026-08-22T23:44:59.567710+00:00"
       }
     ],
     "status": "curriculum_fixtures_verified"

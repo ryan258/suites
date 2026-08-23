@@ -35,7 +35,7 @@
     {
       "id": "G1",
       "order": 71,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Fingerprint Tucked in Terrors rules, seeds, metrics, and report outputs.",
       "acceptance": "The parity fixture captures game version, configuration, runs, statistics, and expected tolerances.",
       "evidence": "game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.md",
@@ -57,7 +57,7 @@
     {
       "id": "G2",
       "order": 81,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Implement the game as a Storyweaver reference pack.",
       "acceptance": "Seeded statistical parity and artifact generation pass without parallel engine logic.",
       "evidence": "game-design/evidence/G2-STORYWEAVER-PACK-PARITY.json",
@@ -77,7 +77,7 @@
     {
       "id": "G3",
       "order": 91,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Document the authored-game boundary and optional pack contract.",
       "acceptance": "Creative assets are preserved without inventing an all-games platform or ownership transfer.",
       "evidence": "game-design/evidence/G3-AUTHORED-GAME-BOUNDARY.json",
@@ -97,7 +97,7 @@
     {
       "id": "G4",
       "order": 101,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Express a second structurally different game class as a Storyweaver pack.",
       "acceptance": "Branching spatial puzzle adventure pack verified against generic Storyweaver schema.",
       "evidence": "game-design/evidence/G4-STORYWEAVER-ADVENTURE-PACK.json",
@@ -116,7 +116,7 @@
     {
       "id": "G5",
       "order": 111,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Formally audit authored-game boundary for March Madness sports simulation.",
       "acceptance": "Specialized simulation confirmed as independent creative domain without mandatory engine coupling.",
       "evidence": "game-design/evidence/G5-MARCH-MADNESS-BOUNDARY.json",

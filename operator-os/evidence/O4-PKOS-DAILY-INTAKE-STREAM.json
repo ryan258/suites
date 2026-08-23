@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave_id": "O4",
-  "executed_at": "2026-08-22T01:32:33.986113+00:00",
+  "executed_at": "2026-08-22T23:06:09.297282+00:00",
   "pkos_fingerprint": {
     "branch": "main",
     "head": "6c861b6e032f91f6289c36a859241e363583d5d3",
@@ -21,18 +21,15 @@
     "branch": "main",
     "head": "5ea72135f1efb0296b9fa493fc11dd3775255f89",
     "short": "main@5ea7213",
-    "is_dirty": true,
-    "dirty_files_count": 1,
-    "dirty_files": [
-      "?? .DS_Store"
-    ],
-    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
     "lockfile_sha256": "",
     "tested_files_fingerprint": {
-      "README.md": "256df082fce9a6c02726ee81392f44604c0c65eb0dccdb1ae8b06de405d6ad99",
-      ".DS_Store": "05e3c8486797956711a46ce920d514620991521e02538fe29db5c2668788e917"
+      "README.md": "256df082fce9a6c02726ee81392f44604c0c65eb0dccdb1ae8b06de405d6ad99"
     },
-    "target_state": "local_working_tree_candidate"
+    "target_state": "clean_commit"
   },
   "batch_size": 3,
   "all_fenced_from_reingestion": true,
@@ -41,7 +38,7 @@
     {
       "schema_version": "1.0.0",
       "source_id": "src-daily-log-20260820",
-      "acquired_at": "2026-08-22T01:32:34.050675+00:00",
+      "acquired_at": "2026-08-22T23:06:09.364636+00:00",
       "sha256": "aa4a06367eaa04b3a0cd19ce7c634ca27feadc5e53d3310b62e3eb00d528cb0a",
       "size_bytes": 208,
       "media_type": "text/markdown",
@@ -56,7 +53,7 @@
     {
       "schema_version": "1.0.0",
       "source_id": "src-arch-decision-009",
-      "acquired_at": "2026-08-22T01:32:34.050784+00:00",
+      "acquired_at": "2026-08-22T23:06:09.365932+00:00",
       "sha256": "61e98abe3dc2ae5f6956c9f97bfe0dea2b89f60627f3e373449f60e9676161ee",
       "size_bytes": 197,
       "media_type": "text/markdown",
@@ -71,7 +68,7 @@
     {
       "schema_version": "1.0.0",
       "source_id": "src-security-boundary-003",
-      "acquired_at": "2026-08-22T01:32:34.050811+00:00",
+      "acquired_at": "2026-08-22T23:06:09.365965+00:00",
       "sha256": "56d5569e797809254d5f01a2fd636c2bd8411b0aa6ca17386be38ff5846530e1",
       "size_bytes": 146,
       "media_type": "text/markdown",

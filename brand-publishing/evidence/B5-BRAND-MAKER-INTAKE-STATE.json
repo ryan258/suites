@@ -138,7 +138,6 @@
     "package_id": "pkg-bm-cyborg-brand-1.0.0",
     "brand_id": "cyborg-brand",
     "version": "1.0.0",
-    "approved_at": "2026-08-19T18:00:00+00:00",
     "identity": {
       "name": "Cyborg Suites",
       "tagline": "Instituted Brand Package"
@@ -172,6 +171,7 @@
     "usage_rules": [
       "Never modify without explicit version bump"
     ],
+    "approved_at": "2026-08-19T18:00:00+00:00",
     "provenance": [
       {
         "author": "simulated_fixture_operator",

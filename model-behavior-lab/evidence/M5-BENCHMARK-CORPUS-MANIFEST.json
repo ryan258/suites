@@ -6,7 +6,7 @@
     "artifact_kind": "reference_prototype_corpus",
     "corpus_id": "corpus-mbl-v1",
     "corpus_version": "1.0.0",
-    "created_at": "2026-08-22T01:32:34.928888+00:00",
+    "created_at": "2026-08-22T23:44:49.993628+00:00",
     "benchmarks_included": [
       "bench-chess-recorded-openings",
       "bench-ethics-facial_recognition_surveillance"

@@ -228,7 +228,7 @@
   },
   "engine_scorecard": {
     "schema_version": "1.0.0",
-    "run_id": "run-rel-harness-01fa78d2f6ce48d28fe65b5037d18354",
+    "run_id": "run-rel-harness-efe1d880bac24f4e88ed3b9be5d85f45",
     "benchmark_id": "bench-agent-adversarial-gates",
     "benchmark_version": "1.0.0",
     "provider": "agent-reliability-lab",

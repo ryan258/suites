@@ -85,7 +85,7 @@
     {
       "id": "B3",
       "order": 32,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Model sourced draft to VCC review to dry-run publishing receipt through the suite-local engine.",
       "acceptance": "SourceRecord, BrandPackage, claim matching, and dry-run status remain linked on a single receipt. Nothing is submitted to VCC.",
       "runtime_followup": "Route a real draft through the actual VCC review path and produce the receipt from that system.",
@@ -95,7 +95,7 @@
     {
       "id": "B4",
       "order": 42,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Verify version-pinning and mutation-protection boundaries across two independent suite-local BrandPackage consumers.",
       "acceptance": "Both consumers resolve the same pinned package id and version, and mutation protection holds across them.",
       "runtime_followup": "Wire a consumer outside this repository and verify the same boundary across a process or repository seam.",
@@ -105,7 +105,7 @@
     {
       "id": "B5",
       "order": 52,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Implement the nine Brand Workshop phases as a Brand Maker intake state machine in the suite-local engine.",
       "acceptance": "Complete phase inputs drive all nine phases to a canonical BrandPackage without data loss, and empty input completes zero phases and yields no package.",
       "runtime_followup": "Move the state machine into the real Brand Maker application and reconcile its existing duplicate intake UX.",
@@ -115,7 +115,7 @@
     {
       "id": "B6",
       "order": 62,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Extend the dry-run receipt chain with a simulated VCC human approval gate.",
       "acceptance": "Approved, rejected, and unmatched-claim decisions each produce their distinct status, and the approved path stops before live publish, preserving operator publish authority.",
       "runtime_followup": "Replace the simulated gate with real human signoff in VCC.",

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave_id": "O3",
-  "executed_at": "2026-08-22T01:32:33.983998+00:00",
+  "executed_at": "2026-08-22T23:03:40.139120+00:00",
   "jarvis_runtime": {
     "branch": "main",
     "head": "9ea2d889d823b79441a0d6d8805a69805b9124a4",
@@ -21,7 +21,7 @@
     "has_main": true
   },
   "action_preview": {
-    "action_id": "act-jarvis-1c01cad8df844cf6918d5704dc0abd3d",
+    "action_id": "act-jarvis-f25830ba104b46dc85e922ce0485bd80",
     "action_name": "run_portfolio_backup",
     "parameters": {
       "target_vault": "local_encrypted_vault",
@@ -32,7 +32,7 @@
       "compression": "none"
     },
     "state": "preview_ready",
-    "preview_at": "2026-08-22T01:32:33.984044+00:00",
+    "preview_at": "2026-08-22T23:03:40.139414+00:00",
     "requires_human_approval": true,
     "destructive": false,
     "recovery_path": "undo_via_backup_or_clean_revert"

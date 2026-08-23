@@ -45,32 +45,32 @@
     ],
     "events": [
       {
-        "time": "2026-08-22T01:32:34.550895+00:00",
+        "time": "2026-08-22T23:41:37.831025+00:00",
         "stage": "multi_source_intake",
         "status": "ok",
         "notes": "Ingested archival tape and multi-mic stems"
       },
       {
-        "time": "2026-08-22T01:32:34.550895+00:00",
+        "time": "2026-08-22T23:41:37.831025+00:00",
         "stage": "dialogue_clean_dereverb",
         "status": "ok",
         "notes": "Noise reduction gate applied"
       },
       {
-        "time": "2026-08-22T01:32:34.550895+00:00",
+        "time": "2026-08-22T23:41:37.831025+00:00",
         "stage": "dynamic_ducking_mix",
         "status": "ok",
         "notes": "Automated voice-over ducking at -18dB"
       },
       {
-        "time": "2026-08-22T01:32:34.550895+00:00",
+        "time": "2026-08-22T23:41:37.831025+00:00",
         "stage": "broadcast_qc_audit",
         "status": "ok",
         "notes": "EBU R128 compliance verified"
       }
     ],
-    "created_at": "2026-08-22T01:32:34.550895+00:00",
-    "updated_at": "2026-08-22T01:32:34.550895+00:00"
+    "created_at": "2026-08-22T23:41:37.831025+00:00",
+    "updated_at": "2026-08-22T23:41:37.831025+00:00"
   },
   "all_stages_passed": true
 }

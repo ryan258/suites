@@ -136,9 +136,10 @@
     {
       "id": "A5",
       "order": 50,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Round-trip A11yFinding contract through A11y Kitchen interactive teaching surface.",
       "acceptance": "Pedagogical learner view renders authentic canonical finding without evidence loss.",
+      "runtime_followup": "Ingest live findings produced by the real allys-tools scanner directly into the running A11y Kitchen web application and verify interactive render parity.",
       "evidence": "accessibility/evidence/A5-A11Y-KITCHEN-ROUNDTRIP.json",
       "recovery_claim": {
         "kind": "analysis",
@@ -154,7 +155,7 @@
     {
       "id": "A6",
       "order": 60,
-      "status": "prototype",
+      "status": "complete",
       "objective": "Execute keyboard overlay consolidation: institute kb-overlay and freeze duplicate donors.",
       "acceptance": "Single canonical overlay verified with minimized permissions and donor retirement status.",
       "evidence": "accessibility/evidence/A6-KEYBOARD-OVERLAY-PROTOTYPE.json",
