@@ -101,6 +101,32 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(backlog_res["port_review_count"], 1)
         self.assertEqual(backlog_res["port_narrow_count"], 1)
 
+    def test_hyphenated_attributes_are_not_mistaken_for_the_real_attribute(self):
+        """`\\b` matches inside `data-alt`/`no-error-state`; attribute rules must not."""
+        rule = lambda html: [f["rule_id"] for f in AccessibilityEngine.audit_html_snippet(html)]
+
+        # Missing the real attribute: a look-alike neighbour must not suppress the finding.
+        self.assertEqual(rule('<img src="a.png" data-alt="x">'), ["wcag-1.1.1-non-text-content"])
+        self.assertEqual(rule('<input class="error" data-aria-describedby="x">'), ["wcag-3.3.1-error-identification"])
+        self.assertEqual(rule("<button data-title=\"x\"></button>"), ["wcag-4.1.2-name-role-value"])
+        self.assertEqual(
+            [f["rule_id"] for f in AccessibilityEngine.audit_rule_families('<input name="email" data-autocomplete="x">')],
+            ["wcag-1.3.5-identify-input-purpose"],
+        )
+
+        # Carrying the real attribute, including with whitespace around `=`: no finding.
+        self.assertEqual(rule('<img src="a.png" alt = "hi">'), [])
+        self.assertEqual(rule('<input class="error" aria-invalid="true">'), [])
+        self.assertEqual(rule('<input class="error" aria-invalid>'), [])
+        self.assertEqual(rule("<button title=\"x\"></button>"), [])
+        self.assertEqual(
+            AccessibilityEngine.audit_rule_families('<input name="email" autocomplete="email">'), []
+        )
+
+        # A hyphenated class that merely contains "error" is not an error state.
+        self.assertEqual(rule('<input class="no-error-state" id="a">'), [])
+        self.assertEqual(rule('<input class="form-control is-invalid" id="d">'), ["wcag-3.3.1-error-identification"])
+
     def test_operator_os_engine(self):
         src = OperatorOSEngine.capture_source("# Test Note", "note://test", "src-test-01")
         self.assertEqual(src["source_id"], "src-test-01")

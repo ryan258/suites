@@ -11,6 +11,12 @@ from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
 
 
+# HTML attribute names are hyphenated, so `\b` matches *inside* them: `\balt=` fires on
+# `data-alt=` and `\berror\b` fires on `no-error-state`. An attribute name only ever starts
+# after whitespace or the tag name, never after a word character or a hyphen.
+ATTR = r"(?<![\w-])"
+
+
 class AccessibilityEngine:
     """Reference prototype for DOM/HTML snippet auditing, A11yFinding contract generation, and overlay reconciliation."""
 
@@ -23,7 +29,7 @@ class AccessibilityEngine:
         # Rule 1: Form error association (WCAG 3.3.1)
         # Check inputs with class 'error' or 'is-invalid' without aria-describedby or aria-invalid
         input_matches = re.finditer(
-            r'<input\b(?=[^>]*\bclass=["\'][^"\']*\b(is-invalid|error)\b[^"\']*["\'])(?![^>]*\b(aria-describedby|aria-invalid)\b)[^>]*>',
+            rf'<input\b(?=[^>]*{ATTR}class\s*=["\'][^"\']*{ATTR}(is-invalid|error)(?![\w-])[^"\']*["\'])(?![^>]*{ATTR}(aria-describedby|aria-invalid)(?![\w-]))[^>]*>',
             html_content,
             re.IGNORECASE,
         )
@@ -53,7 +59,7 @@ class AccessibilityEngine:
             findings.append(validate_contract("A11yFinding", finding))
 
         # Rule 2: Image alt text (WCAG 1.1.1)
-        img_matches = re.finditer(r'<img\b(?![^>]*\balt=)[^>]*>', html_content, re.IGNORECASE)
+        img_matches = re.finditer(rf'<img\b(?![^>]*{ATTR}alt\s*=)[^>]*>', html_content, re.IGNORECASE)
         for idx, match in enumerate(img_matches, start=1):
             raw_tag = match.group(0)
             src_match = re.search(r'src=["\']([^"\']+)["\']', raw_tag)
@@ -81,7 +87,7 @@ class AccessibilityEngine:
 
         # Rule 3: Button without accessible name (WCAG 4.1.2)
         btn_matches = re.finditer(
-            r'<button\b(?![^>]*\b(aria-label|aria-labelledby|title)=)[^>]*>\s*(?:<[^>]+>\s*)*</button>',
+            rf'<button\b(?![^>]*{ATTR}(aria-label|aria-labelledby|title)\s*=)[^>]*>\s*(?:<[^>]+>\s*)*</button>',
             html_content,
             re.IGNORECASE,
         )
@@ -116,16 +122,16 @@ class AccessibilityEngine:
             inner_html = match.group(2).strip()
 
             # Check if <a> has direct accessible name attributes
-            has_direct_name = bool(re.search(r'\b(aria-label|aria-labelledby|title)=["\'][^"\']+["\']', attrs, re.IGNORECASE))
+            has_direct_name = bool(re.search(rf'{ATTR}(aria-label|aria-labelledby|title)\s*=["\'][^"\']+["\']', attrs, re.IGNORECASE))
 
             # Check if inner content has visible text (excluding tags)
             visible_text = re.sub(r'<[^>]+>', '', inner_html).strip()
 
             # Check if inner content contains image with non-empty alt
-            has_img_alt = bool(re.search(r'<img\b[^>]*\balt=["\'][^"\']+["\']', inner_html, re.IGNORECASE))
+            has_img_alt = bool(re.search(rf'<img\b[^>]*{ATTR}alt\s*=["\'][^"\']+["\']', inner_html, re.IGNORECASE))
 
             # Check if inner content contains svg with aria-label
-            has_svg_label = bool(re.search(r'<svg\b[^>]*\baria-label=["\'][^"\']+["\']', inner_html, re.IGNORECASE))
+            has_svg_label = bool(re.search(rf'<svg\b[^>]*{ATTR}aria-label\s*=["\'][^"\']+["\']', inner_html, re.IGNORECASE))
 
             if not (has_direct_name or visible_text or has_img_alt or has_svg_label):
                 raw_tag = match.group(0)
@@ -221,7 +227,7 @@ class AccessibilityEngine:
 
         # Backlog Candidate 2: Identify Input Purpose (WCAG 1.3.5 - port-review)
         # Check personal inputs (email, tel, name) missing autocomplete attribute
-        personal_inputs = re.finditer(r'<input\b(?=[^>]*\b(?:type=["\'](?:email|tel)["\']|name=["\'](?:email|tel|name|fname|lname)["\']))(?![^>]*\bautocomplete=)[^>]*>', html_content, re.IGNORECASE)
+        personal_inputs = re.finditer(rf'<input\b(?=[^>]*{ATTR}(?:type\s*=["\'](?:email|tel)["\']|name\s*=["\'](?:email|tel|name|fname|lname)["\']))(?![^>]*{ATTR}autocomplete\s*=)[^>]*>', html_content, re.IGNORECASE)
         for idx, match in enumerate(personal_inputs, start=1):
             findings.append(
                 validate_contract(
