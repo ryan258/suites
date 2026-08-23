@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0.0",
   "wave": "P1",
-  "status": "fingerprinted",
+  "status": "source_fingerprints_with_fixture_projection_verified",
   "job": {
     "schema_version": "1.0.0",
     "job_id": "job-gw-episode-12-ambient-horror",
     "domain": "groundwire-audio-play",
-    "task": "render-full-episode-master",
+    "task": "project-full-episode-fixture",
     "status": "completed",
     "inputs": [
       {
@@ -35,32 +35,35 @@
     ],
     "events": [
       {
-        "time": "2026-08-22T23:05:06.979656+00:00",
-        "stage": "fountain_parse",
-        "status": "ok",
-        "notes": "Parsed 12 scenes and 4 character voices"
+        "time": "2026-08-23T18:45:40.120885+00:00",
+        "stage": "fixture_fountain_parse",
+        "status": "modeled",
+        "notes": "Projected a 12-scene, 4-voice fixture; no parser was invoked"
       },
       {
-        "time": "2026-08-22T23:05:06.979656+00:00",
-        "stage": "elevenlabs_formatter",
-        "status": "ok",
-        "notes": "Synthesized 142 audio stems"
+        "time": "2026-08-23T18:45:40.120885+00:00",
+        "stage": "fixture_formatter_projection",
+        "status": "modeled",
+        "notes": "Projected metadata for 142 fixture stems; no voice provider was invoked"
       },
       {
-        "time": "2026-08-22T23:05:06.979656+00:00",
-        "stage": "ambient_sfx_mix",
-        "status": "ok",
-        "notes": "Beds mixed at -22 dB"
+        "time": "2026-08-23T18:45:40.120885+00:00",
+        "stage": "fixture_mix_projection",
+        "status": "modeled",
+        "notes": "Projected a -22 dB fixture mix target; no audio was mixed"
       },
       {
-        "time": "2026-08-22T23:05:06.979656+00:00",
-        "stage": "mastering_qc",
-        "status": "ok",
-        "notes": "Broadcast loudness achieved (-16.2 LUFS)"
+        "time": "2026-08-23T18:45:40.120885+00:00",
+        "stage": "fixture_qc_projection",
+        "status": "modeled",
+        "notes": "Projected a -16.2 LUFS fixture result; no broadcast QC was performed"
       }
     ],
-    "created_at": "2026-08-22T23:05:06.979656+00:00",
-    "updated_at": "2026-08-22T23:05:06.979656+00:00"
+    "created_at": "2026-08-23T18:45:40.120885+00:00",
+    "updated_at": "2026-08-23T18:45:40.120885+00:00",
+    "execution_kind": "deterministic_fixture_model",
+    "external_runtime_invoked": false,
+    "fixture_input_sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7"
   },
   "production_house_fingerprint": {
     "branch": "main",
@@ -108,5 +111,8 @@
     "target_state": "clean_commit"
   },
   "source_verification_passed": true,
+  "episode_artifacts_read": false,
+  "external_runtime_invoked": false,
+  "fixture_output_only": true,
   "all_stages_passed": true
 }

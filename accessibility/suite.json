@@ -117,8 +117,8 @@
       "id": "A4",
       "order": 40,
       "status": "complete",
-      "objective": "Port remaining heuristic and narrow WCAG Auditor rule candidates with regression evidence.",
-      "acceptance": "Batch port of rule candidates produces verified A11yFindings with zero contract drift.",
+      "objective": "Evaluate remaining heuristic and narrow WCAG Auditor rule candidates for later ports.",
+      "acceptance": "Live donor AST inspection classifies 20 candidates, suite-local A11yFinding projections validate, and the compliant-markup smoke probe has zero findings; neither runtime is invoked.",
       "runtime_followup": "Port candidate rules into the real allys-tools TypeScript runtime and execute authentic donor vs destination parity tests against representative HTML inputs.",
       "evidence": "accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json",
       "recovery_claim": {
@@ -137,8 +137,8 @@
       "id": "A5",
       "order": 50,
       "status": "complete",
-      "objective": "Round-trip A11yFinding contract through A11y Kitchen interactive teaching surface.",
-      "acceptance": "Pedagogical learner view renders authentic canonical finding without evidence loss.",
+      "objective": "Project A11yFinding through a suite-local teaching view shaped for A11y Kitchen.",
+      "acceptance": "The suite-local learner projection preserves every canonical finding field and explicitly records that the A11y Kitchen runtime was not invoked.",
       "runtime_followup": "Ingest live findings produced by the real allys-tools scanner directly into the running A11y Kitchen web application and verify interactive render parity.",
       "evidence": "accessibility/evidence/A5-A11Y-KITCHEN-ROUNDTRIP.json",
       "recovery_claim": {
@@ -156,8 +156,8 @@
       "id": "A6",
       "order": 60,
       "status": "complete",
-      "objective": "Execute keyboard overlay consolidation: institute kb-overlay and freeze duplicate donors.",
-      "acceptance": "Single canonical overlay verified with minimized permissions and donor retirement status.",
+      "objective": "Measure the keyboard-overlay permission surface and prepare a consolidation proposal.",
+      "acceptance": "The proposal compares all three sources, records the broad host scope, and leaves permission minimization, runtime acceptance, donor freeze, and retirement explicitly outstanding.",
       "evidence": "accessibility/evidence/A6-KEYBOARD-OVERLAY-PROTOTYPE.json",
       "runtime_followup": "Narrow the canonical content-script host scope below <all_urls>, then the owner freezes the two superseded donor repositories; this gate performs neither.",
       "recovery_claim": {

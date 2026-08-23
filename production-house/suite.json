@@ -57,8 +57,8 @@
       "id": "P1",
       "order": 40,
       "status": "complete",
-      "objective": "Fingerprint one Groundwire episode workflow and its QC/output stages into the ProductionJob contract.",
-      "acceptance": "Inputs, steps, gates, receipts, failures, outputs, and recovery are mapped before integration, against fingerprinted production-house, Groundwire, and formatter sources.",
+      "objective": "Record production-house, Groundwire, and formatter repository fingerprints and project a deterministic episode fixture into the ProductionJob contract.",
+      "acceptance": "The three donor repositories have meaningful Git fingerprints and the fixture projects inputs, steps, QC targets, and outputs without claiming that episode artifacts or an external runtime were executed.",
       "runtime_followup": "Fingerprint from real episode artifacts rather than a fixture script hash.",
       "evidence": "production-house/evidence/P1-GROUNDWIRE-FINGERPRINT.json",
       "recovery_claim": {"kind": "analysis", "level": "prototype", "real_runtime": false, "evidence_basis": ["job", "production_house_fingerprint", "groundwire_fingerprint", "formatter_fingerprint"]}
@@ -78,7 +78,7 @@
       "order": 60,
       "status": "complete",
       "objective": "Model a Writers Room story-state handoff as a ProductionJob input, against a fingerprinted writers-room source.",
-      "acceptance": "The handoff carries a versioned, approved input into a queued job and stays traceable to its source. Writers Room is fingerprinted, not read.",
+      "acceptance": "The handoff projects a versioned fixture input into a queued job and stays traceable to its source without claiming approval or signoff. Writers Room is fingerprinted, not read.",
       "runtime_followup": "Take the story state from the real Writers Room runtime through to a derived output with its job receipt.",
       "evidence": "production-house/evidence/P3-WRITERS-ROOM-HANDOFF.json",
       "recovery_claim": {"kind": "analysis", "level": "prototype", "real_runtime": false, "evidence_basis": ["job", "writers_room_fingerprint"]}

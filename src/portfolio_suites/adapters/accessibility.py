@@ -654,6 +654,7 @@ console.log(JSON.stringify(result));
 
             code_size = 0
             code_files_count = 0
+            source_fragments: list[str] = []
             if source_available:
                 try:
                     for f in repo_path.glob("**/*"):
@@ -662,6 +663,11 @@ console.log(JSON.stringify(result));
                             if f.suffix in {".js", ".ts", ".html", ".css", ".json"}:
                                 code_size += f.stat().st_size
                                 code_files_count += 1
+                                if f.stat().st_size <= 1_000_000:
+                                    try:
+                                        source_fragments.append(f.read_text(encoding="utf-8", errors="ignore"))
+                                    except OSError:
+                                        pass
                 except OSError as error:
                     source_errors.append(f"{name}: source inventory could not be read: {error}")
 
@@ -675,33 +681,37 @@ console.log(JSON.stringify(result));
             if not fingerprint_verified:
                 source_errors.append(f"{name}: meaningful Git/source fingerprint unavailable")
 
-            if name == "kb-overlay":
-                features = [
-                    "spatial_nav",
-                    "visual_focus_ring",
-                    "keyboard_shortcuts",
-                    "settings_storage",
-                    "aria_tree_scan",
-                    "shadow_dom_encapsulation",
-                    "mutation_observer_updates",
-                    "global_chrome_command",
-                ]
-                flaws: list[str] = []
-                active_status = "retained_canonical"
-            elif name == "keyboard-nav-overlay":
-                features = ["spatial_nav", "visual_focus_ring"]
-                flaws = ["syntax_typos_in_content_js", "global_css_leakage_no_shadow_dom"]
-                active_status = "superseded_by_kb-overlay"
-            else:
-                features = ["spatial_nav"]
-                flaws = ["unencapsulated_dom", "incomplete_event_handling"]
-                active_status = "superseded_by_kb-overlay"
+            source_text = "\n".join(source_fragments)
+            feature_markers = {
+                "spatial_nav": ("ArrowDown", "ArrowUp", "getBoundingClientRect"),
+                "visual_focus_ring": ("outline", "box-shadow"),
+                "keyboard_shortcuts": ("keydown", "onCommand"),
+                "settings_storage": ("chrome.storage", "browser.storage"),
+                "aria_tree_scan": ("aria-", "getAttribute(\"role\")"),
+                "shadow_dom_encapsulation": ("attachShadow", "shadowRoot"),
+                "mutation_observer_updates": ("MutationObserver",),
+                "global_chrome_command": ("chrome.commands", '"commands"'),
+            }
+            features = [
+                feature
+                for feature, markers in feature_markers.items()
+                if any(marker in source_text for marker in markers)
+            ]
+            flaws: list[str] = []
+            if source_available and "shadow_dom_encapsulation" not in features:
+                flaws.append("no_observed_shadow_dom_encapsulation")
+            if source_available and "keyboard_shortcuts" not in features:
+                flaws.append("no_observed_keyboard_shortcut_handler")
+            active_status = (
+                "retained_canonical" if name == "kb-overlay" else "superseded_candidate_pending_behavior_parity"
+            )
 
             overlays_info[name] = {
                 "role": default_role,
                 "manifest_version": manifest_v,
                 "features": features,
-                "feature_inventory_kind": "declared_analysis",
+                "feature_inventory_kind": "source_marker_observation",
+                "feature_marker_vocabulary": feature_markers,
                 "permissions": permissions,
                 "host_scope": host_scope,
                 "code_size_bytes": code_size,
@@ -862,7 +872,11 @@ console.log(JSON.stringify(result));
         return {
             "all_stages_passed": all_passed and not false_positives,
             "wave": "A4",
-            "status": "parity_verified" if (all_passed and not false_positives) else "unverified",
+            "status": "catalog_analysis_verified" if (all_passed and not false_positives) else "unverified",
+            "parity_verified": False,
+            "donor_runtime_invoked": False,
+            "target_runtime_invoked": False,
+            "verification_scope": "source_catalog_and_suite_projection_only",
             "catalog_evaluation": catalog,
             "heuristic_findings_sample": sample,
             "false_positive_probe_passed": not false_positives,
@@ -883,7 +897,7 @@ console.log(JSON.stringify(result));
 
     @classmethod
     def execute_a11y_kitchen_roundtrip_gate(cls) -> dict[str, Any]:
-        """A5: Round-trip A11yFinding contract through A11y Kitchen interactive teaching surface."""
+        """A5: Verify the suite-owned learning projection while retaining Kitchen as an external target."""
         html_sample = '<input id="email" class="is-invalid">'
         findings = AccessibilityEngine.audit_html_snippet(html_sample, source_url="kitchen://module-01")
         if not findings:
@@ -917,12 +931,14 @@ console.log(JSON.stringify(result));
             and has_all_modes
             and target_retained
             and finding_equal
-            and kitchen_receipt.get("roundtrip_status") == "verified"
+            and kitchen_receipt.get("roundtrip_status") == "suite_projection_verified"
             and kitchen_receipt.get("evidence_loss") is False
         )
         kitchen_receipt["all_stages_passed"] = all_passed
         kitchen_receipt["source_verification_passed"] = source_verified
         kitchen_receipt["kitchen_fingerprint"] = kitchen_fp
+        kitchen_receipt["a11y_kitchen_runtime_invoked"] = False
+        kitchen_receipt["external_roundtrip_verified"] = False
         return kitchen_receipt
 
     @classmethod
@@ -1003,7 +1019,7 @@ console.log(JSON.stringify(result));
             and permission_analysis["canonical_no_broader_than_donors"]
             and len(donor_retirement) == 2
             and all(entry["source_present"] for entry in donor_retirement.values())
-            and all(str(entry["active_status"]).startswith("superseded_by") for entry in donor_retirement.values())
+            and all(str(entry["active_status"]).startswith("superseded_") for entry in donor_retirement.values())
         )
 
         return {

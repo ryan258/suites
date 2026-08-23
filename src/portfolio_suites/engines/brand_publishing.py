@@ -5,6 +5,7 @@ NOTE: This is a control-plane reference prototype and fixture comparator, not a 
 from __future__ import annotations
 
 import datetime
+import re
 from typing import Any
 from ..approvals import ApprovalError, canonical_digest, verify_operator_approval
 from ..contracts import SCHEMA_VERSION, validate_contract
@@ -73,20 +74,38 @@ class BrandPublishingEngine:
 
     @staticmethod
     def verify_immutability(canonical_pkg: dict[str, Any], candidate_pkg: dict[str, Any]) -> tuple[bool, list[str]]:
-        """Verify that downstream consumers have not mutated brand truth without a version bump."""
-        violations = []
-        if canonical_pkg.get("version") == candidate_pkg.get("version"):
-            # If same version, contents must be strictly identical
-            if canonical_pkg.get("identity") != candidate_pkg.get("identity"):
-                violations.append("Unauthorized mutation of 'identity' under identical version pin.")
-            if canonical_pkg.get("voice") != candidate_pkg.get("voice"):
-                violations.append("Unauthorized mutation of 'voice' under identical version pin.")
-            if canonical_pkg.get("approved_claims") != candidate_pkg.get("approved_claims"):
-                violations.append("Unauthorized modification of 'approved_claims' under identical version pin.")
-            if canonical_pkg.get("usage_rules") != candidate_pkg.get("usage_rules"):
-                violations.append("Unauthorized mutation of 'usage_rules' under identical version pin.")
+        """Verify the complete normalized package, including IDs, assets, audience, and provenance."""
+        try:
+            canonical = validate_contract("BrandPackage", canonical_pkg)
+            candidate = validate_contract("BrandPackage", candidate_pkg)
+        except (TypeError, ValueError) as error:
+            return False, [f"Candidate or canonical package is invalid: {error}"]
 
-        return (len(violations) == 0, violations)
+        violations: list[str] = []
+        canonical_version = tuple(int(part) for part in canonical["version"].split("."))
+        candidate_version = tuple(int(part) for part in candidate["version"].split("."))
+        if canonical_version == candidate_version:
+            if canonical_digest(canonical) != canonical_digest(candidate):
+                changed = sorted(
+                    key for key in set(canonical) | set(candidate)
+                    if canonical.get(key) != candidate.get(key)
+                )
+                violations.append(
+                    "Unauthorized same-version mutation of complete BrandPackage field(s): "
+                    + ", ".join(changed)
+                )
+        else:
+            if candidate_version <= canonical_version:
+                violations.append("BrandPackage version transitions must increase semantic version.")
+            # Provenance is evidence *about* authority, not authority itself; any caller can
+            # construct an object claiming `verified_operator_approval`. This comparator never
+            # consumes approval tokens, so a different version remains review-required and must
+            # go through the independently bound release workflow before it can be canonical.
+            violations.append(
+                "A version change is outside the same-version immutability comparator and "
+                "requires the independently verified release workflow."
+            )
+        return not violations, violations
 
     @staticmethod
     def dry_run_publish(
@@ -96,10 +115,22 @@ class BrandPublishingEngine:
         channel: str = "blog",
     ) -> dict[str, Any]:
         """Validate draft against BrandPackage and generate a non-destructive publishing receipt."""
+        valid_pkg = validate_contract("BrandPackage", brand_pkg)
+        valid_source = validate_contract("SourceRecord", source_record)
+        if not isinstance(draft_content, str) or not draft_content.strip():
+            raise ValueError("draft_content must be a non-empty string")
+        if not isinstance(channel, str) or not channel.strip():
+            raise ValueError("channel must be a non-empty string")
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        # Verify brand claims alignment
-        claims = [c.get("claim", "") for c in brand_pkg.get("approved_claims", [])]
-        matched_claims = [c for c in claims if c.lower() in draft_content.lower()]
+        claims = [
+            claim.get("claim", "")
+            for claim in valid_pkg["approved_claims"]
+            if isinstance(claim, dict) and isinstance(claim.get("claim"), str) and claim["claim"].strip()
+        ]
+        matched_claims = [
+            claim for claim in claims
+            if re.search(rf"(?<!\w){re.escape(claim)}(?!\w)", draft_content, re.IGNORECASE)
+        ]
 
         # Generate publication receipt
         receipt = {
@@ -107,13 +138,17 @@ class BrandPublishingEngine:
             "channel": channel,
             "status": "dry_run_verified",
             "timestamp": now_iso,
-            "brand_package_id": brand_pkg.get("package_id"),
-            "brand_version": brand_pkg.get("version"),
-            "source_id": source_record.get("source_id"),
-            "source_sha256": source_record.get("sha256"),
+            "brand_package_id": valid_pkg["package_id"],
+            "brand_version": valid_pkg["version"],
+            "brand_package_sha256": canonical_digest(valid_pkg),
+            "source_id": valid_source["source_id"],
+            "source_sha256": valid_source["sha256"],
             "matched_approved_claims_count": len(matched_claims),
+            "matched_approved_claims": matched_claims,
+            "unmatched_approved_claims": [claim for claim in claims if claim not in matched_claims],
             "dry_run_only": True,
             "live_published": False,
+            "human_review_required": True,
             "notes": "Draft successfully verified against brand constraints. Awaiting explicit manual release."
         }
         return receipt
@@ -139,10 +174,16 @@ class BrandPublishingEngine:
         consumer_name: str,
         pinned_version: str,
         read_only_intent: bool = True,
+        expected_package_sha256: str | None = None,
     ) -> dict[str, Any]:
         """Validate multi-caller BrandPackage consumption with version pinning (B4 wave)."""
         valid_pkg = validate_contract("BrandPackage", brand_pkg)
         is_version_match = valid_pkg["version"] == pinned_version
+        observed_digest = canonical_digest(valid_pkg)
+        digest_match = (
+            isinstance(expected_package_sha256, str)
+            and expected_package_sha256 == observed_digest
+        )
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         return {
             "package_id": valid_pkg["package_id"],
@@ -150,9 +191,17 @@ class BrandPublishingEngine:
             "pinned_version": pinned_version,
             "package_version": valid_pkg["version"],
             "version_match": is_version_match,
-            "mutation_shield_active": read_only_intent,
+            "read_only_intent": read_only_intent,
+            "package_sha256": observed_digest,
+            "expected_package_sha256": expected_package_sha256,
+            "digest_match": digest_match,
+            "mutation_shield_active": bool(read_only_intent and digest_match),
             "verified_at": now_iso,
-            "status": "verified" if is_version_match else "version_mismatch",
+            "status": (
+                "verified" if is_version_match and digest_match
+                else "digest_unpinned" if is_version_match
+                else "version_mismatch"
+            ),
         }
 
     @staticmethod

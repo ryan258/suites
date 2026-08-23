@@ -157,7 +157,7 @@ class DiscoveryDecisionSourceAdapter:
 
     @classmethod
     def execute_d1_sif_forge_stage_matrix(cls) -> dict[str, Any]:
-        """D1: Build the SIF-to-Forge parity matrix from real phase nodes, budgets, and artifacts."""
+        """D1: Build a SIF-to-Forge stage matrix from real phase nodes, budgets, and artifacts."""
         sif_fp = get_git_fingerprint(SIF_DIR, SIF_TRACKED)
         forge_fp = get_git_fingerprint(FORGE_DIR, FORGE_TRACKED)
         phases = _sif_phase_nodes()
@@ -194,7 +194,7 @@ class DiscoveryDecisionSourceAdapter:
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "D1",
-            "status": "parity_mapped" if all_stages_passed else "source_unverified",
+            "status": "stage_matrix_verified" if all_stages_passed else "source_unverified",
             "matrix": matrix,
             "forge_budgets": budgets,
             "sif_run_sampled": {
@@ -246,7 +246,7 @@ class DiscoveryDecisionSourceAdapter:
         )
         record = DiscoveryDecisionEngine.create_investigation(
             investigation_id,
-            f"SIF {phase} finding ported into Forge {stage_name}",
+            f"SIF {phase} artifact projected into suite-local Forge {stage_name} record",
             mode=mode,
             max_iterations=budgets.get(mode, budgets.get("standard", 10)),
         )
@@ -260,7 +260,7 @@ class DiscoveryDecisionSourceAdapter:
                 "bytes": artifact.stat().st_size,
                 "headline": headline[:280],
             }],
-            [{"decision": f"Adopt {phase} output as the {stage_name} stage of record."}],
+            [{"decision": f"Retain {phase} as a fixture projection for the {stage_name} stage."}],
             iteration_cost=1,
             status="completed",
         )
@@ -275,7 +275,15 @@ class DiscoveryDecisionSourceAdapter:
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": wave,
-            "status": "stage_ported" if all_stages_passed else "stage_rejected",
+            "status": "artifact_projection_verified" if all_stages_passed else "projection_rejected",
+            "execution_scope": {
+                "suite_projection_invoked": True,
+                "sif_runtime_invoked": False,
+                "forge_runtime_invoked": False,
+                "consent_gate_executed": False,
+                "resume_gate_executed": False,
+                "sqlite_rebuild_executed": False,
+            },
             "investigation": record,
             "donor_artifact": record["evidence"][0],
             "budget_source": {"mode": mode, "forge_max_calls": budgets.get(mode)},
@@ -287,7 +295,7 @@ class DiscoveryDecisionSourceAdapter:
 
     @classmethod
     def execute_d2_forge_redteam_record(cls) -> dict[str, Any]:
-        """D2: Port the real SIF red-team phase behind a bounded Forge mode."""
+        """D2: Project a retained SIF red-team artifact into a bounded suite-local record."""
         return cls._stage_from_sif_artifact("D2", "phase3a", "inv-forge-redteam-01", "red_team", "quick")
 
     @classmethod
@@ -354,7 +362,7 @@ class DiscoveryDecisionSourceAdapter:
 
     @classmethod
     def execute_d4_sif_analogy_forge_record(cls) -> dict[str, Any]:
-        """D4: Port the real SIF analogy phase through the same bounded Forge path."""
+        """D4: Project a retained SIF analogy artifact through the same suite-local path."""
         return cls._stage_from_sif_artifact("D4", "phase3b", "inv-forge-analogy-01", "analogy", "deep")
 
     @classmethod

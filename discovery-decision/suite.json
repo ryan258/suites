@@ -61,8 +61,8 @@
       "id": "D2",
       "order": 52,
       "status": "complete",
-      "objective": "Port one bounded red-team or analogy stage behind a Forge mode.",
-      "acceptance": "Canonical Markdown, SQLite rebuild, consent, budget, failure, and resume gates pass.",
+      "objective": "Project one retained SIF red-team artifact into a bounded suite-local Forge record.",
+      "acceptance": "The content-addressed donor artifact is retained in a contract-valid InvestigationRecord with a source-derived budget, while runtime, consent, resume, and SQLite gates are explicitly recorded as unexecuted.",
       "evidence": "discovery-decision/evidence/D2-FORGE-REDTEAM-RECORD.json",
       "runtime_followup": "Run the red-team stage live inside Forge with consent and resume gates, not a carried artifact.",
       "recovery_claim": {
@@ -82,8 +82,8 @@
       "id": "D3",
       "order": 62,
       "status": "complete",
-      "objective": "Turn Insight Excavator into a cited two-source discovery operation.",
-      "acceptance": "Immutable SourceRecords, byte anchors, claims, and novelty evaluation pass.",
+      "objective": "Anchor two Insight Excavator documents as cited SourceRecords without claiming semantic discovery.",
+      "acceptance": "Immutable SourceRecords and byte anchors validate, lexical overlap is measured, and semantic discovery, novelty, and uncertainty remain explicitly unclaimed.",
       "evidence": "discovery-decision/evidence/D3-INSIGHT-EXCAVATOR-DISCOVERY.json",
       "runtime_followup": "Run the Excavator discovery path to produce the real claims, novelty, and uncertainty measures.",
       "recovery_claim": {
@@ -104,8 +104,8 @@
       "id": "D4",
       "order": 72,
       "status": "complete",
-      "objective": "Port second SIF stage (analogy synthesis and divergent search) through Forge.",
-      "acceptance": "Deep mode investigation verifies consensus and leader-sync analogies with budget tracking.",
+      "objective": "Project a retained SIF analogy artifact through a bounded suite-local Forge record.",
+      "acceptance": "The content-addressed artifact is retained in a contract-valid deep-mode InvestigationRecord with a source-derived budget, while both donor runtimes remain unexecuted.",
       "evidence": "discovery-decision/evidence/D4-SIF-ANALOGY-FORGE-RECORD.json",
       "runtime_followup": "Run analogy synthesis live in deep mode with real call-budget accounting.",
       "recovery_claim": {
@@ -125,8 +125,8 @@
       "id": "D5",
       "order": 82,
       "status": "complete",
-      "objective": "Fold Insight Excavator into Forge as cited discovery without standalone runtime.",
-      "acceptance": "Insight Excavator retired into Forge citations with full SourceRecord provenance.",
+      "objective": "Project one Insight Excavator citation into a suite-local Forge record and prepare a retirement proposal.",
+      "acceptance": "SourceRecord provenance survives the projection while runtime ingestion, owner approval, and standalone-runtime retirement remain explicitly false.",
       "evidence": "discovery-decision/evidence/D5-INSIGHT-EXCAVATOR-CITATION.json",
       "runtime_followup": "Forge ingests Excavator sources directly and the owner approves the disposition; only then is the standalone runtime retired.",
       "recovery_claim": {

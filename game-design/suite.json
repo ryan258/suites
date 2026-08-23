@@ -58,8 +58,8 @@
       "id": "G2",
       "order": 81,
       "status": "complete",
-      "objective": "Implement the game as a Storyweaver reference pack.",
-      "acceptance": "Seeded statistical parity and artifact generation pass without parallel engine logic.",
+      "objective": "Project the recorded game rows into Storyweaver reference-pack vocabulary.",
+      "acceptance": "The suite-local shape projection is validated without claiming on-disk pack materialization, independent resimulation, statistical parity, or Storyweaver runtime execution.",
       "evidence": "game-design/evidence/G2-STORYWEAVER-PACK-PARITY.json",
       "runtime_followup": "Materialize the pack, run it in Storyweaver, and compare independently generated statistics to the donor sample.",
       "recovery_claim": {
@@ -98,8 +98,8 @@
       "id": "G4",
       "order": 101,
       "status": "complete",
-      "objective": "Express a second structurally different game class as a Storyweaver pack.",
-      "acceptance": "Branching spatial puzzle adventure pack verified against generic Storyweaver schema.",
+      "objective": "Project a second structurally different fixture into Storyweaver pack vocabulary.",
+      "acceptance": "The suite-local branching spatial-puzzle shape validates against the declared slots; Storyweaver has not generated or run the pack.",
       "evidence": "game-design/evidence/G4-STORYWEAVER-ADVENTURE-PACK.json",
       "runtime_followup": "Generate the adventure pack through Storyweaver itself and diff the written gds slots.",
       "recovery_claim": {

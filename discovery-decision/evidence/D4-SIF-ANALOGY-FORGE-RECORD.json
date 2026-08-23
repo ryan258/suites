@@ -1,11 +1,19 @@
 {
   "schema_version": "1.0.0",
   "wave": "D4",
-  "status": "stage_ported",
+  "status": "artifact_projection_verified",
+  "execution_scope": {
+    "suite_projection_invoked": true,
+    "sif_runtime_invoked": false,
+    "forge_runtime_invoked": false,
+    "consent_gate_executed": false,
+    "resume_gate_executed": false,
+    "sqlite_rebuild_executed": false
+  },
   "investigation": {
     "schema_version": "1.0.0",
     "investigation_id": "inv-forge-analogy-01",
-    "question": "SIF phase3b finding ported into Forge analogy",
+    "question": "SIF phase3b artifact projected into suite-local Forge analogy record",
     "mode": "deep",
     "status": "completed",
     "premises": [],
@@ -22,17 +30,17 @@
       {
         "stage": "intake",
         "status": "initialized",
-        "timestamp": "2026-08-22T23:41:48.957897+00:00"
+        "timestamp": "2026-08-23T19:03:53.935257+00:00"
       },
       {
         "stage": "analogy",
         "status": "completed",
-        "timestamp": "2026-08-22T23:41:48.958745+00:00"
+        "timestamp": "2026-08-23T19:03:53.936067+00:00"
       }
     ],
     "decisions": [
       {
-        "decision": "Adopt phase3b output as the analogy stage of record."
+        "decision": "Retain phase3b as a fixture projection for the analogy stage."
       }
     ],
     "budget": {
@@ -41,8 +49,8 @@
       "max_time_sec": 300,
       "used_time_sec": 5.0
     },
-    "created_at": "2026-08-22T23:41:48.957897+00:00",
-    "updated_at": "2026-08-22T23:41:48.958745+00:00"
+    "created_at": "2026-08-23T19:03:53.935257+00:00",
+    "updated_at": "2026-08-23T19:03:53.936067+00:00"
   },
   "donor_artifact": {
     "kind": "donor_artifact",

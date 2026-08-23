@@ -22,7 +22,7 @@
         "dom_snippet": "<input id=\"email\" class=\"is-invalid\">",
         "selector": "input#email",
         "source": "kitchen://module-01",
-        "timestamp": "2026-08-22T23:03:58.668266+00:00"
+        "timestamp": "2026-08-23T19:03:53.698124+00:00"
       }
     ],
     "evidence_kind": "deterministic",
@@ -30,7 +30,9 @@
     "status": "open"
   },
   "evidence_loss": false,
-  "roundtrip_status": "verified",
+  "roundtrip_status": "suite_projection_verified",
+  "projection_runtime": "portfolio_suites.engines.accessibility",
+  "external_consumer_invoked": false,
   "all_stages_passed": true,
   "source_verification_passed": true,
   "kitchen_fingerprint": {
@@ -48,5 +50,7 @@
       "tsconfig.json": "b5b0a5b04a14cddd7713c5e1c82e86c79c17c2f86b170e26e9b170b3d5e01cd9"
     },
     "target_state": "clean_commit"
-  }
+  },
+  "a11y_kitchen_runtime_invoked": false,
+  "external_roundtrip_verified": false
 }

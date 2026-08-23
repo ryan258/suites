@@ -13,12 +13,37 @@ from ..contracts import SCHEMA_VERSION, validate_contract
 from ..identifiers import new_prefixed_id
 
 
+MAX_PLAN_CHARS = 1_000_000
+MAX_PLAN_STEPS = 100_000
+MAX_COLLECTION_ITEMS = 10_000
+
+
+def _require_text(name: str, value: Any, *, max_length: int = 512) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be a non-empty string")
+    cleaned = value.strip()
+    if len(cleaned) > max_length:
+        raise ValueError(f"{name} must be at most {max_length} characters")
+    return cleaned
+
+
+def _require_json_safe(name: str, value: Any) -> None:
+    try:
+        json.dumps(value, allow_nan=False)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{name} must be JSON serializable: {error}") from error
+
+
 class AgentReliabilityEngine:
     """Run adversarial harness fixtures testing path confinement, malformed plans, budget bounds, and rollback."""
 
     @staticmethod
     def verify_path_confinement(workspace_root: str, target_path: str) -> tuple[bool, str]:
         """Check if target_path is strictly confined within workspace_root without traversal escapes."""
+        if not isinstance(workspace_root, str) or not workspace_root.strip():
+            return (False, "Path confinement requires a non-empty workspace_root string.")
+        if not isinstance(target_path, str) or not target_path.strip():
+            return (False, "Path confinement requires a non-empty target_path string.")
         root = Path(workspace_root).resolve()
         try:
             target = (root / target_path).resolve()
@@ -88,10 +113,27 @@ class AgentReliabilityEngine:
         """
         if not isinstance(raw_plan, str):
             return {"status": "refused", "recovered": False, "plan": None, "reason": "plan must be a string"}
+        if len(raw_plan) > MAX_PLAN_CHARS:
+            return {
+                "status": "refused",
+                "recovered": False,
+                "plan": None,
+                "reason": f"plan must be at most {MAX_PLAN_CHARS} characters",
+            }
         try:
-            return {"status": "valid", "recovered": False, "plan": json.loads(raw_plan), "repairs": []}
+            parsed = json.loads(raw_plan)
         except json.JSONDecodeError as first_error:
             original_reason = first_error.msg
+        else:
+            if not isinstance(parsed, dict):
+                return {
+                    "status": "refused",
+                    "recovered": False,
+                    "plan": None,
+                    "repairs": [],
+                    "reason": "plan JSON must be an object",
+                }
+            return {"status": "valid", "recovered": False, "plan": parsed, "repairs": []}
 
         attempts: list[tuple[list[str], str]] = []
         for names in (["dropped_trailing_comma"], ["quoted_bare_key"], ["dropped_trailing_comma", "quoted_bare_key"]):
@@ -105,14 +147,24 @@ class AgentReliabilityEngine:
         last_error = original_reason
         for names, candidate in attempts:
             try:
-                return {
-                    "status": "repaired",
-                    "recovered": True,
-                    "plan": json.loads(candidate),
-                    "repairs": names,
-                }
+                parsed = json.loads(candidate)
             except json.JSONDecodeError as error:
                 last_error = error.msg
+                continue
+            if not isinstance(parsed, dict):
+                return {
+                    "status": "refused",
+                    "recovered": False,
+                    "plan": None,
+                    "repairs": names,
+                    "reason": "repaired plan JSON must be an object",
+                }
+            return {
+                "status": "repaired",
+                "recovered": True,
+                "plan": parsed,
+                "repairs": names,
+            }
 
         return {
             "status": "unrecoverable",
@@ -140,6 +192,11 @@ class AgentReliabilityEngine:
             raise ValueError("max_steps must be a non-negative integer")
         if not isinstance(steps, list):
             raise ValueError("steps must be a list")
+        if max_steps > MAX_PLAN_STEPS:
+            raise ValueError(f"max_steps must be at most {MAX_PLAN_STEPS}")
+        if len(steps) > MAX_PLAN_STEPS:
+            raise ValueError(f"steps must contain at most {MAX_PLAN_STEPS} items")
+        _require_json_safe("steps", steps)
         accepted = steps[:max_steps]
         deferred = steps[max_steps:]
         return {
@@ -164,11 +221,18 @@ class AgentReliabilityEngine:
         """
         if not isinstance(initial_state, dict) or not isinstance(edits, list):
             raise ValueError("initial_state must be an object and edits a list")
+        if len(edits) > MAX_PLAN_STEPS:
+            raise ValueError(f"edits must contain at most {MAX_PLAN_STEPS} items")
+        _require_json_safe("initial_state", initial_state)
+        _require_json_safe("edits", edits)
         working = dict(initial_state)
         applied: list[str] = []
         for index, edit in enumerate(edits):
             if not isinstance(edit, dict) or "key" not in edit:
                 raise ValueError(f"edit {index} needs a 'key'")
+            key = _require_text(f"edit {index}.key", edit["key"], max_length=256)
+            if "fails" in edit and not isinstance(edit["fails"], bool):
+                raise ValueError(f"edit {index}.fails must be a boolean")
             if edit.get("fails"):
                 return {
                     "committed": False,
@@ -177,8 +241,8 @@ class AgentReliabilityEngine:
                     "failed_at_index": index,
                     "rolled_back": True,
                 }
-            working[edit["key"]] = edit.get("value")
-            applied.append(edit["key"])
+            working[key] = edit.get("value")
+            applied.append(key)
         return {
             "committed": True,
             "state": working,
@@ -311,22 +375,47 @@ class AgentReliabilityEngine:
         candidates: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """Audit shared components to enforce the 2-real-consumers craft rule (R4 wave)."""
+        if not isinstance(candidates, list):
+            raise ValueError("candidates must be a list of component objects")
+        if len(candidates) > MAX_COLLECTION_ITEMS:
+            raise ValueError(f"candidates must contain at most {MAX_COLLECTION_ITEMS} items")
         retained = []
         demoted = []
 
-        for comp in candidates:
-            consumers = comp.get("consumers", [])
+        for index, comp in enumerate(candidates):
+            if not isinstance(comp, dict):
+                raise ValueError(f"candidates[{index}] must be an object")
+            component_id = _require_text(
+                f"candidates[{index}].component_id",
+                comp.get("component_id"),
+                max_length=128,
+            )
+            consumers_value = comp.get("consumers", [])
+            if not isinstance(consumers_value, list):
+                raise ValueError(f"candidates[{index}].consumers must be a list")
+            consumers = []
+            for consumer_index, consumer in enumerate(consumers_value):
+                consumer = _require_text(
+                    f"candidates[{index}].consumers[{consumer_index}]",
+                    consumer,
+                    max_length=256,
+                )
+                if consumer not in consumers:
+                    consumers.append(consumer)
+            path = comp.get("path")
+            if path is not None and not isinstance(path, str):
+                raise ValueError(f"candidates[{index}].path must be a string or null")
             if len(consumers) >= 2:
                 retained.append({
-                    "component_id": comp["component_id"],
-                    "path": comp.get("path"),
+                    "component_id": component_id,
+                    "path": path,
                     "consumers": consumers,
                     "status": "promoted_shared_component",
                 })
             else:
                 demoted.append({
-                    "component_id": comp["component_id"],
-                    "path": comp.get("path"),
+                    "component_id": component_id,
+                    "path": path,
                     "consumers": consumers,
                     "status": "demoted_to_home_repo",
                     "reason": "Fewer than 2 active portfolio consumers; violates shared-boundary promotion rule.",
@@ -346,13 +435,41 @@ class AgentReliabilityEngine:
         modules: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """Mine AI Staff and prompt-chain fixtures into deterministic test curriculum (R5 wave)."""
+        if not isinstance(modules, list):
+            raise ValueError("modules must be a list of module objects")
+        if len(modules) > MAX_COLLECTION_ITEMS:
+            raise ValueError(f"modules must contain at most {MAX_COLLECTION_ITEMS} items")
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         fixtures = []
-        for mod in modules:
+        for index, mod in enumerate(modules):
+            if not isinstance(mod, dict):
+                raise ValueError(f"modules[{index}] must be an object")
+            module_id = _require_text(
+                f"modules[{index}].id",
+                mod.get("id"),
+                max_length=128,
+            )
+            topic = _require_text(
+                f"modules[{index}].topic",
+                mod.get("topic"),
+                max_length=512,
+            )
+            gates_value = mod.get("gates", ["confinement", "budget", "rollback"])
+            if not isinstance(gates_value, list) or not gates_value:
+                raise ValueError(f"modules[{index}].gates must be a non-empty list")
+            gates = []
+            for gate_index, gate in enumerate(gates_value):
+                gate = _require_text(
+                    f"modules[{index}].gates[{gate_index}]",
+                    gate,
+                    max_length=128,
+                )
+                if gate not in gates:
+                    gates.append(gate)
             fixtures.append({
-                "module_id": mod["id"],
-                "topic": mod["topic"],
-                "deterministic_gates": mod.get("gates", ["confinement", "budget", "rollback"]),
+                "module_id": module_id,
+                "topic": topic,
+                "deterministic_gates": gates,
                 "verified_at": now_iso,
             })
 

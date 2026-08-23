@@ -7,7 +7,12 @@ first demanding domain pack. ElevenLabs Screenplay Formatter is the synthesis/ex
 Writers Room is collaborative story state. Quiznauts, Rockit, and face blur join only where they
 actually reuse the job/state/evidence contracts.
 
-First move: run one Groundwire episode slice through a `ProductionJob` while retaining its current
-QC doctrine and formatter manifests. If the generic engine adds friction, simplify it.
+The suite-local engine now enforces legal job transitions, immutable terminal states, unique named
+artifacts, and lowercase SHA-256 identities for every input and output. Its Groundwire,
+documentary, formatter, and Writers Room helpers are deterministic fixture projections: receipts
+explicitly say that no formatter, voice provider, media pipeline, external Writers Room runtime, or
+human signoff was invoked.
 
-Verified: P1, P2, P3, P4, P5 (5/5). All wave milestones verified.
+Verified: P1, P2, P3, P4, P5 (5/5) analysis milestones. The next runtime move is still to run one
+real Groundwire episode slice through the formatter and compare its artifacts, failures, and QC
+behavior against `ProductionJob`; the fixtures are not that migration.

@@ -5,8 +5,48 @@ NOTE: This is a control-plane reference prototype and fixture comparator, not a 
 from __future__ import annotations
 
 import datetime
+import hashlib
+import json
+import re
 from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
+
+
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+TERMINAL_STATUSES = {"completed", "cancelled"}
+TRANSITIONS = {
+    "queued": {"running", "blocked", "failed", "cancelled"},
+    "running": {"running", "blocked", "failed", "completed", "cancelled"},
+    "blocked": {"running", "failed", "cancelled"},
+    "failed": {"queued", "running", "cancelled"},
+}
+
+
+def _artifact_digest(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _validate_artifacts(name: str, artifacts: Any) -> list[dict[str, Any]]:
+    if not isinstance(artifacts, list):
+        raise ValueError(f"{name} must be a list of artifact objects")
+    validated = []
+    seen_names: set[str] = set()
+    for index, artifact in enumerate(artifacts):
+        if not isinstance(artifact, dict):
+            raise ValueError(f"{name}[{index}] must be an object")
+        artifact_name = artifact.get("name")
+        digest = artifact.get("sha256")
+        if not isinstance(artifact_name, str) or not artifact_name.strip():
+            raise ValueError(f"{name}[{index}].name must be a non-empty string")
+        if artifact_name in seen_names:
+            raise ValueError(f"{name} contains duplicate artifact name {artifact_name!r}")
+        if not isinstance(digest, str) or not SHA256.fullmatch(digest):
+            raise ValueError(f"{name}[{index}].sha256 must be a lowercase SHA-256 digest")
+        seen_names.add(artifact_name)
+        validated.append(dict(artifact))
+    return validated
 
 
 class ProductionHouseEngine:
@@ -15,6 +55,7 @@ class ProductionHouseEngine:
     @staticmethod
     def create_job(job_id: str, domain: str, task: str, inputs: list[dict[str, Any]]) -> dict[str, Any]:
         """Initialize a new ProductionJob in queued state."""
+        validated_inputs = _validate_artifacts("inputs", inputs)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         job = {
             "schema_version": SCHEMA_VERSION,
@@ -22,7 +63,7 @@ class ProductionHouseEngine:
             "domain": domain,
             "task": task,
             "status": "queued",
-            "inputs": inputs,
+            "inputs": validated_inputs,
             "outputs": [],
             "events": [
                 {"time": now_iso, "stage": "initialization", "status": "job_created"}
@@ -41,7 +82,20 @@ class ProductionHouseEngine:
         notes: str = "",
     ) -> dict[str, Any]:
         """Advance a job through pipeline stages, logging events and appending outputs."""
-        updated = dict(job)
+        updated = validate_contract("ProductionJob", job)
+        current_status = updated["status"]
+        if current_status in TERMINAL_STATUSES:
+            raise ValueError(f"terminal ProductionJob status {current_status!r} is immutable")
+        allowed = TRANSITIONS.get(current_status, set())
+        if status not in allowed:
+            raise ValueError(f"illegal ProductionJob transition {current_status!r} -> {status!r}")
+        if not isinstance(stage_name, str) or not stage_name.strip():
+            raise ValueError("stage_name must be a non-empty string")
+        if not isinstance(notes, str):
+            raise ValueError("notes must be a string")
+        validated_outputs = _validate_artifacts("new_outputs", new_outputs or [])
+        if status == "completed" and not (updated.get("outputs") or validated_outputs):
+            raise ValueError("a completed ProductionJob must retain at least one hashed output")
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         updated["status"] = status
         updated["updated_at"] = now_iso
@@ -55,22 +109,30 @@ class ProductionHouseEngine:
         })
         updated["events"] = events
 
-        if new_outputs:
+        if validated_outputs:
             outputs = list(updated.get("outputs", []))
-            outputs.extend(new_outputs)
+            existing_names = {item.get("name") for item in outputs if isinstance(item, dict)}
+            overlap = sorted(existing_names & {item["name"] for item in validated_outputs})
+            if overlap:
+                raise ValueError(f"new_outputs duplicate existing artifact(s): {', '.join(overlap)}")
+            outputs.extend(validated_outputs)
             updated["outputs"] = outputs
 
         return validate_contract("ProductionJob", updated)
 
     @staticmethod
     def build_groundwire_pipeline_job(episode_slug: str, script_sha: str) -> dict[str, Any]:
-        """Create a complete production pipeline job for a Groundwire audio play episode."""
+        """Create a completed deterministic fixture model; no external audio runtime is invoked."""
+        if not isinstance(episode_slug, str) or not episode_slug.strip():
+            raise ValueError("episode_slug must be a non-empty string")
+        if not isinstance(script_sha, str) or not SHA256.fullmatch(script_sha):
+            raise ValueError("script_sha must be a lowercase SHA-256 digest")
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         job = {
             "schema_version": SCHEMA_VERSION,
             "job_id": f"job-gw-{episode_slug}",
             "domain": "groundwire-audio-play",
-            "task": "render-full-episode-master",
+            "task": "project-full-episode-fixture",
             "status": "completed",
             "inputs": [
                 {"name": f"{episode_slug}.fountain", "sha256": script_sha, "type": "script"}
@@ -81,25 +143,32 @@ class ProductionHouseEngine:
                 {"name": f"{episode_slug}-qc-report.json", "sha256": script_sha, "lufs": -16.2, "peak_db": -1.0}
             ],
             "events": [
-                {"time": now_iso, "stage": "fountain_parse", "status": "ok", "notes": "Parsed 12 scenes and 4 character voices"},
-                {"time": now_iso, "stage": "elevenlabs_formatter", "status": "ok", "notes": "Synthesized 142 audio stems"},
-                {"time": now_iso, "stage": "ambient_sfx_mix", "status": "ok", "notes": "Beds mixed at -22 dB"},
-                {"time": now_iso, "stage": "mastering_qc", "status": "ok", "notes": "Broadcast loudness achieved (-16.2 LUFS)"}
+                {"time": now_iso, "stage": "fixture_fountain_parse", "status": "modeled", "notes": "Projected a 12-scene, 4-voice fixture; no parser was invoked"},
+                {"time": now_iso, "stage": "fixture_formatter_projection", "status": "modeled", "notes": "Projected metadata for 142 fixture stems; no voice provider was invoked"},
+                {"time": now_iso, "stage": "fixture_mix_projection", "status": "modeled", "notes": "Projected a -22 dB fixture mix target; no audio was mixed"},
+                {"time": now_iso, "stage": "fixture_qc_projection", "status": "modeled", "notes": "Projected a -16.2 LUFS fixture result; no broadcast QC was performed"}
             ],
             "created_at": now_iso,
             "updated_at": now_iso,
+            "execution_kind": "deterministic_fixture_model",
+            "external_runtime_invoked": False,
+            "fixture_input_sha256": script_sha,
         }
         return validate_contract("ProductionJob", job)
 
     @staticmethod
     def build_investigative_documentary_job(episode_slug: str, script_sha: str) -> dict[str, Any]:
-        """Create a production pipeline job for structurally distinct investigative documentary audio (P4 wave)."""
+        """Create a deterministic documentary fixture model; no media is rendered."""
+        if not isinstance(episode_slug, str) or not episode_slug.strip():
+            raise ValueError("episode_slug must be a non-empty string")
+        if not isinstance(script_sha, str) or not SHA256.fullmatch(script_sha):
+            raise ValueError("script_sha must be a lowercase SHA-256 digest")
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         job = {
             "schema_version": SCHEMA_VERSION,
             "job_id": f"job-gw-doc-{episode_slug}",
             "domain": "groundwire-documentary",
-            "task": "render-investigative-podcast",
+            "task": "project-investigative-documentary-fixture",
             "status": "completed",
             "inputs": [
                 {"name": f"{episode_slug}.fountain", "sha256": script_sha, "type": "script"},
@@ -112,13 +181,16 @@ class ProductionHouseEngine:
                 {"name": f"{episode_slug}-provenance-manifest.json", "sha256": script_sha, "lufs": -16.0, "sources": 3}
             ],
             "events": [
-                {"time": now_iso, "stage": "multi_source_intake", "status": "ok", "notes": "Ingested archival tape and multi-mic stems"},
-                {"time": now_iso, "stage": "dialogue_clean_dereverb", "status": "ok", "notes": "Noise reduction gate applied"},
-                {"time": now_iso, "stage": "dynamic_ducking_mix", "status": "ok", "notes": "Automated voice-over ducking at -18dB"},
-                {"time": now_iso, "stage": "broadcast_qc_audit", "status": "ok", "notes": "EBU R128 compliance verified"}
+                {"time": now_iso, "stage": "fixture_multi_source_intake", "status": "modeled", "notes": "Projected archival-tape and multi-mic fixture inputs; no media was ingested"},
+                {"time": now_iso, "stage": "fixture_dialogue_cleanup", "status": "modeled", "notes": "Projected a dereverb step; no noise-reduction runtime was invoked"},
+                {"time": now_iso, "stage": "fixture_ducking_mix", "status": "modeled", "notes": "Projected a -18 dB ducking target; no audio was mixed"},
+                {"time": now_iso, "stage": "fixture_broadcast_qc", "status": "modeled", "notes": "Projected an EBU R128 target; compliance was not measured"}
             ],
             "created_at": now_iso,
             "updated_at": now_iso,
+            "execution_kind": "deterministic_fixture_model",
+            "external_runtime_invoked": False,
+            "fixture_input_sha256": script_sha,
         }
         return validate_contract("ProductionJob", job)
 
@@ -127,35 +199,53 @@ class ProductionHouseEngine:
         story_id: str,
         scene_revisions: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        """Map Writers Room collaborative story state into ProductionJob event streams (P5 wave)."""
+        """Project fixture revisions into ProductionJob events without invoking Writers Room."""
+        if not isinstance(scene_revisions, list) or not scene_revisions:
+            raise ValueError("scene_revisions must be a non-empty list")
+        if any(not isinstance(revision, dict) for revision in scene_revisions):
+            raise ValueError("scene_revisions must contain only objects")
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         job = ProductionHouseEngine.create_job(
             job_id=f"job-wr-{story_id}",
-            domain="writers-room-collaboration",
-            task="collaborative-scene-assembly",
-            inputs=[{"name": f"{story_id}-manifest.json", "type": "writers_room_manifest"}],
+            domain="writers-room-fixture-projection",
+            task="project-collaborative-scene-fixtures",
+            inputs=[{
+                "name": f"{story_id}-manifest.json",
+                "type": "writers_room_manifest",
+                "sha256": _artifact_digest(scene_revisions),
+            }],
         )
 
         for rev in scene_revisions:
             job = ProductionHouseEngine.advance_job_stage(
                 job=job,
                 stage_name=f"scene_{rev.get('scene_number', 1)}_revision_{rev.get('revision_id', 'v1')}",
-                new_outputs=[{"name": f"scene-{rev.get('scene_number', 1)}.fountain", "author": rev.get("author", "Ryan")}],
+                new_outputs=[{
+                    "name": f"scene-{rev.get('scene_number', 1)}-{rev.get('revision_id', 'v1')}.fountain",
+                    "author": rev.get("author", "Ryan"),
+                    "sha256": _artifact_digest(rev),
+                }],
                 status="running",
                 notes=rev.get("change_summary", "Collaborative draft update"),
             )
 
         job = ProductionHouseEngine.advance_job_stage(
             job=job,
-            stage_name="room_signoff",
-            new_outputs=[{"name": f"{story_id}-final-screenplay.fountain", "type": "production_ready_script"}],
+            stage_name="fixture_assembly_complete",
+            new_outputs=[{
+                "name": f"{story_id}-final-screenplay.fountain",
+                "type": "modeled_production_ready_script",
+                "sha256": _artifact_digest({"story_id": story_id, "revisions": scene_revisions}),
+            }],
             status="completed",
-            notes="Writers Room reached unanimous canon signoff; ready for speech synthesis.",
+            notes="Fixture revisions were assembled; no Writers Room signoff or synthesis was performed.",
         )
 
         return {
             "story_id": story_id,
             "mapped_job": job,
-            "reconciliation": "writers_room_collaborative_events_unified_under_production_job",
-            "runtime_consolidation": "single_canonical_engine",
+            "reconciliation": "suite_fixture_events_projected_into_production_job",
+            "runtime_consolidation": "not_performed",
+            "writers_room_runtime_invoked": False,
+            "signoff_observed": False,
         }

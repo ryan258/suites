@@ -126,7 +126,11 @@ class AccessibilityAdapterTests(unittest.TestCase):
         self.assertIn("keyboard-nav-overlay", rec["matrix"])
         self.assertIn("keyboard-nav-overlay-94bf7e", rec["matrix"])
         self.assertEqual(rec["matrix"]["kb-overlay"]["active_status"], "retained_canonical")
-        self.assertGreaterEqual(len(rec["matrix"]["kb-overlay"]["features"]), 8)
+        self.assertGreaterEqual(len(rec["matrix"]["kb-overlay"]["features"]), 1)
+        self.assertEqual(
+            rec["matrix"]["kb-overlay"]["feature_inventory_kind"],
+            "source_marker_observation",
+        )
 
     def test_keyboard_overlay_reconciliation_fails_closed_without_donors(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -173,7 +177,21 @@ class AccessibilityAdapterTests(unittest.TestCase):
                     json.dumps({"manifest_version": 3, "permissions": []}),
                     encoding="utf-8",
                 )
-                (repository / "content.js").write_text("export const ready = true;", encoding="utf-8")
+                (repository / "content.js").write_text(
+                    """
+                    document.addEventListener('keydown', () => {
+                      void chrome.storage;
+                      void chrome.commands;
+                      void new MutationObserver(() => {});
+                      void document.body.attachShadow;
+                      void document.body.shadowRoot;
+                      void document.body.getBoundingClientRect();
+                      void document.body.getAttribute(\"role\");
+                    });
+                    // ArrowDown ArrowUp aria- outline box-shadow onCommand
+                    """,
+                    encoding="utf-8",
+                )
 
             with (
                 patch.object(accessibility_module, "KB_OVERLAY_DIR", repositories["KB_OVERLAY_DIR"]),
@@ -210,13 +228,19 @@ class AccessibilityAdapterTests(unittest.TestCase):
         receipt = AccessibilitySourceAdapter.execute_wcag_rule_candidates_gate()
         self.assertTrue(receipt["all_stages_passed"])
         self.assertEqual(receipt["wave"], "A4")
+        self.assertEqual(receipt["status"], "catalog_analysis_verified")
+        self.assertFalse(receipt["parity_verified"])
+        self.assertFalse(receipt["donor_runtime_invoked"])
+        self.assertFalse(receipt["target_runtime_invoked"])
         self.assertEqual(receipt["catalog_evaluation"]["total_candidates_evaluated"], 20)
         self.assertEqual(receipt["catalog_evaluation"]["status"], "all_backlog_candidates_evidenced")
 
     def test_a11y_kitchen_roundtrip_gate(self):
         kitchen = AccessibilitySourceAdapter.execute_a11y_kitchen_roundtrip_gate()
         self.assertTrue(kitchen["all_stages_passed"])
-        self.assertEqual(kitchen["roundtrip_status"], "verified")
+        self.assertEqual(kitchen["roundtrip_status"], "suite_projection_verified")
+        self.assertFalse(kitchen["a11y_kitchen_runtime_invoked"])
+        self.assertFalse(kitchen["external_roundtrip_verified"])
         self.assertFalse(kitchen["evidence_loss"])
         self.assertIn("advocate", kitchen["modes"])
         self.assertIn("builder", kitchen["modes"])

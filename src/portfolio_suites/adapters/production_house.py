@@ -15,11 +15,11 @@ GROUNDWIRE_DIR = get_repo_path("production-house_audio-plays--ambient-horror", "
 
 
 class ProductionHouseSourceAdapter:
-    """Invokes and inspects authentic production-house, formatter, and writers-room runtimes."""
+    """Fingerprint Production House donors and build explicit suite-local fixture projections."""
 
     @classmethod
     def execute_p1_groundwire_fingerprint(cls) -> dict[str, Any]:
-        """P1: Fingerprint Groundwire episode workflow and outputs into ProductionJob contract."""
+        """P1: Record donor fingerprints and project a Groundwire fixture into ProductionJob."""
         prod_fp = get_git_fingerprint(PRODUCTION_HOUSE_DIR)
         gw_fp = get_git_fingerprint(GROUNDWIRE_DIR)
         fmt_fp = get_git_fingerprint(FORMATTER_DIR)
@@ -35,71 +35,101 @@ class ProductionHouseSourceAdapter:
             sources_verified
             and job.get("status") == "completed"
             and len(job.get("outputs", [])) == 3
+            and job.get("external_runtime_invoked") is False
         )
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "P1",
-            "status": "fingerprinted" if all_stages_passed else "source_unverified",
+            "status": (
+                "source_fingerprints_with_fixture_projection_verified"
+                if all_stages_passed
+                else "source_unverified"
+            ),
             "job": job,
             "production_house_fingerprint": prod_fp,
             "groundwire_fingerprint": gw_fp,
             "formatter_fingerprint": fmt_fp,
             "source_verification_passed": sources_verified,
+            "episode_artifacts_read": False,
+            "external_runtime_invoked": False,
+            "fixture_output_only": True,
             "all_stages_passed": all_stages_passed,
         }
 
     @classmethod
     def execute_p2_formatter_job(cls) -> dict[str, Any]:
-        """P2: Run episode slice as a ProductionJob through screenplay formatter adapter."""
+        """P2: Project an episode fixture into ProductionJob against a formatter fingerprint."""
         fmt_fp = get_git_fingerprint(FORMATTER_DIR)
         job = ProductionHouseEngine.create_job(
             "job-gw-ep12-formatter",
-            "groundwire-audio",
-            "synthesis",
+            "groundwire-formatter-fixture-projection",
+            "project-formatter-output-fixture",
             [{"name": "script.fountain", "type": "script", "sha256": compute_sha256(b"fountain script content")}],
         )
         job = ProductionHouseEngine.advance_job_stage(
             job,
-            "elevenlabs_synthesizer",
+            "formatter_fixture_preparation",
+            status="running",
+            notes="Prepared deterministic formatter adapter fixture; external formatter not invoked",
+        )
+        job = ProductionHouseEngine.advance_job_stage(
+            job,
+            "fixture_output_projection",
             [{"name": "stems.zip", "type": "audio_stems", "sha256": compute_sha256(b"stems zip archive")}],
             status="completed",
-            notes="Synthesized 14 dialogue cues through ElevenLabs voice models",
+            notes="Projected a deterministic fixture artifact; no ElevenLabs synthesis was performed",
         )
+        job["execution_kind"] = "deterministic_fixture_projection"
+        job["external_runtime_invoked"] = False
+        job["fixture_output_only"] = True
         source_verified = is_meaningful_git_fingerprint(fmt_fp)
         all_stages_passed = (
             source_verified
             and job.get("status") == "completed"
             and len(job.get("outputs", [])) >= 1
+            and job.get("external_runtime_invoked") is not True
         )
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "P2",
-            "status": "formatter_executed" if all_stages_passed else "source_unverified",
+            "status": "fixture_output_projection_verified" if all_stages_passed else "source_unverified",
             "job": job,
             "formatter_fingerprint": fmt_fp,
             "source_verification_passed": source_verified,
+            "external_formatter_invoked": False,
+            "fixture_output_only": True,
             "all_stages_passed": all_stages_passed,
         }
 
     @classmethod
     def execute_p3_writers_room_handoff(cls) -> dict[str, Any]:
-        """P3: Prove Writers Room story-state handoff into ProductionJob lifecycle."""
+        """P3: Project a handoff fixture into ProductionJob against a Writers Room fingerprint."""
         wr_fp = get_git_fingerprint(WRITERS_ROOM_DIR)
         job = ProductionHouseEngine.create_job(
             job_id="job-gw-ep12-handoff",
-            domain="writers-room-handoff",
-            task="validate-story-state",
-            inputs=[{"name": "arc-season-2.fountain", "version": "1.2.0", "status": "approved_for_synthesis"}],
+            domain="writers-room-handoff-fixture-projection",
+            task="validate-fixture-story-state-shape",
+            inputs=[{
+                "name": "arc-season-2.fountain",
+                "version": "1.2.0",
+                "status": "fixture_input_not_observed_signoff",
+                "sha256": compute_sha256(b"writers-room handoff fixture"),
+            }],
         )
+        job["execution_kind"] = "deterministic_fixture_projection"
+        job["external_runtime_invoked"] = False
+        job["signoff_observed"] = False
         source_verified = is_meaningful_git_fingerprint(wr_fp)
         passed = source_verified and job.get("status") == "queued" and len(job.get("inputs", [])) == 1
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "P3",
-            "status": "handoff_verified" if passed else "source_unverified",
+            "status": "fixture_handoff_projection_verified" if passed else "source_unverified",
             "job": job,
             "writers_room_fingerprint": wr_fp,
             "source_verification_passed": source_verified,
+            "writers_room_runtime_invoked": False,
+            "signoff_observed": False,
             "all_stages_passed": passed,
         }
 
@@ -112,8 +142,10 @@ class ProductionHouseSourceAdapter:
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "P4",
-            "status": "documentary_pipeline_verified",
+            "status": "documentary_fixture_model_verified" if passed else "fixture_model_failed",
             "job": job,
+            "external_runtime_invoked": False,
+            "fixture_output_only": True,
             "all_stages_passed": passed,
         }
 
@@ -129,7 +161,9 @@ class ProductionHouseSourceAdapter:
         return {
             "schema_version": SCHEMA_VERSION,
             "wave": "P5",
-            "status": "event_stream_unified",
+            "status": "fixture_event_projection_verified" if passed else "fixture_projection_failed",
             "mapping": mapping,
+            "writers_room_runtime_invoked": False,
+            "runtime_consolidation_performed": False,
             "all_stages_passed": passed,
         }

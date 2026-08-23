@@ -98,7 +98,7 @@ class ModelBehaviorSourceAdapter:
             if not it["passed"]
         ]
         tally = {
-            option_id: sum(1 for it in iterations if it["option_id"] == option_id)
+            str(option_id): sum(1 for it in iterations if it["option_id"] == option_id)
             for option_id in sorted(option_ids)
         }
 
@@ -132,7 +132,7 @@ class ModelBehaviorSourceAdapter:
         canonical_run = validate_contract("ExperimentRun", run)
 
         donor_tally = {
-            option.get("id"): option.get("count")
+            str(option.get("id")): option.get("count")
             for option in donor.get("summary", {}).get("options", [])
             if isinstance(option, dict)
         }

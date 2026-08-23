@@ -64,8 +64,8 @@
       "id": "M2",
       "order": 51,
       "status": "complete",
-      "objective": "Extract ethics as a benchmark pack over the comparator kernel.",
-      "acceptance": "No duplicate provider client, run store, report lifecycle, or identifier system remains in the slice.",
+      "objective": "Measure the duplicated subsystems that an ethics benchmark-pack extraction would replace.",
+      "acceptance": "The extraction matrix names both donor corpora and every measured duplicate subsystem while recording that no canonical slice was implemented and no runtime was removed.",
       "evidence": "model-behavior-lab/evidence/M2-COMPARATOR-KERNEL-MATRIX.json",
       "runtime_followup": "Implement the shared slice and delete the duplicated donor subsystems; this gate only measures them.",
       "recovery_claim": {
@@ -84,8 +84,8 @@
       "id": "M3",
       "order": 61,
       "status": "complete",
-      "objective": "Build the chess adapter and legal-move validator.",
-      "acceptance": "A sample game advances legally without a parallel chess engine or custom rule code.",
+      "objective": "Build a recorded-opening chess fixture and exercise the donor legality checker.",
+      "acceptance": "The first recorded ply receives a stable legality verdict and the receipt states that a whole match was not replayed or advanced.",
       "evidence": "model-behavior-lab/evidence/M3-CHESS-ADAPTER-FIXTURE.json",
       "runtime_followup": "Replay a whole recorded match once the engine can apply moves, rather than validating opening ply.",
       "recovery_claim": {
@@ -122,8 +122,8 @@
       "id": "M5",
       "order": 81,
       "status": "complete",
-      "objective": "Define versioned benchmark corpus format and back-fill ethics and chess packs.",
-      "acceptance": "Corpus manifest provides 100% reproducible re-run path for all historical and live evaluations.",
+      "objective": "Define a content-pinned corpus manifest for the retained ethics and chess inputs.",
+      "acceptance": "Every listed retained input is content-addressed and source-fingerprinted; an end-to-end historical or live re-run remains a runtime follow-up.",
       "evidence": "model-behavior-lab/evidence/M5-BENCHMARK-CORPUS-MANIFEST.json",
       "runtime_followup": "Prove the manifest re-runs a historical evaluation end to end from its pinned hashes.",
       "recovery_claim": {

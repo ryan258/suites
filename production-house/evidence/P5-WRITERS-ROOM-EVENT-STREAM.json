@@ -1,65 +1,73 @@
 {
   "schema_version": "1.0.0",
   "wave": "P5",
-  "status": "event_stream_unified",
+  "status": "fixture_event_projection_verified",
   "mapping": {
     "story_id": "arc-season-3",
     "mapped_job": {
       "schema_version": "1.0.0",
       "job_id": "job-wr-arc-season-3",
-      "domain": "writers-room-collaboration",
-      "task": "collaborative-scene-assembly",
+      "domain": "writers-room-fixture-projection",
+      "task": "project-collaborative-scene-fixtures",
       "status": "completed",
       "inputs": [
         {
           "name": "arc-season-3-manifest.json",
-          "type": "writers_room_manifest"
+          "type": "writers_room_manifest",
+          "sha256": "c9fa389b8454a4b8a6feefdbd5a308ec22984676ff15fef8a30982aff2846e64"
         }
       ],
       "outputs": [
         {
-          "name": "scene-1.fountain",
-          "author": "Ryan"
+          "name": "scene-1-rev-1.fountain",
+          "author": "Ryan",
+          "sha256": "802ba013c67a41a16858e768b27eb38681781e45b6f958d3b50bdd224f8831cf"
         },
         {
-          "name": "scene-2.fountain",
-          "author": "Ryan"
+          "name": "scene-2-rev-2.fountain",
+          "author": "Ryan",
+          "sha256": "f4af61f46cf2d586b8a2ae8e24496283a9233c5e60604a50288cdd70bd098470"
         },
         {
           "name": "arc-season-3-final-screenplay.fountain",
-          "type": "production_ready_script"
+          "type": "modeled_production_ready_script",
+          "sha256": "4b792346e387e41bb53a645be8a6a2d191f2578f7919f8d9c64ec3ed3af7658b"
         }
       ],
       "events": [
         {
-          "time": "2026-08-22T23:44:38.099606+00:00",
+          "time": "2026-08-23T18:45:40.952242+00:00",
           "stage": "initialization",
           "status": "job_created"
         },
         {
-          "time": "2026-08-22T23:44:38.100886+00:00",
+          "time": "2026-08-23T18:45:40.952704+00:00",
           "stage": "scene_1_revision_rev-1",
           "status": "running",
           "notes": "Initial intro dialogue"
         },
         {
-          "time": "2026-08-22T23:44:38.100917+00:00",
+          "time": "2026-08-23T18:45:40.952787+00:00",
           "stage": "scene_2_revision_rev-2",
           "status": "running",
           "notes": "Added ambient sound cue"
         },
         {
-          "time": "2026-08-22T23:44:38.100941+00:00",
-          "stage": "room_signoff",
+          "time": "2026-08-23T18:45:40.952878+00:00",
+          "stage": "fixture_assembly_complete",
           "status": "completed",
-          "notes": "Writers Room reached unanimous canon signoff; ready for speech synthesis."
+          "notes": "Fixture revisions were assembled; no Writers Room signoff or synthesis was performed."
         }
       ],
-      "created_at": "2026-08-22T23:44:38.099606+00:00",
-      "updated_at": "2026-08-22T23:44:38.100941+00:00"
+      "created_at": "2026-08-23T18:45:40.952242+00:00",
+      "updated_at": "2026-08-23T18:45:40.952878+00:00"
     },
-    "reconciliation": "writers_room_collaborative_events_unified_under_production_job",
-    "runtime_consolidation": "single_canonical_engine"
+    "reconciliation": "suite_fixture_events_projected_into_production_job",
+    "runtime_consolidation": "not_performed",
+    "writers_room_runtime_invoked": false,
+    "signoff_observed": false
   },
+  "writers_room_runtime_invoked": false,
+  "runtime_consolidation_performed": false,
   "all_stages_passed": true
 }

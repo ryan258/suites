@@ -4,7 +4,11 @@ import unittest
 from pathlib import Path
 
 from portfolio_suites.engines.accessibility import AccessibilityEngine
-from portfolio_suites.engines.operator_os import OperatorOSEngine
+from portfolio_suites.engines.operator_os import (
+    OperatorOSEngine,
+    _archive_manifest,
+    _write_backup_archive,
+)
 from portfolio_suites.engines.brand_publishing import BrandPublishingEngine
 from portfolio_suites.engines.production_house import ProductionHouseEngine
 from portfolio_suites.engines.model_behavior import ModelBehaviorEngine
@@ -12,6 +16,7 @@ from portfolio_suites.engines.discovery_decision import DiscoveryDecisionEngine
 from portfolio_suites.engines.agent_reliability import AgentReliabilityEngine
 from portfolio_suites.engines.game_design import GameDesignEngine
 from portfolio_suites.adapters.operator_os import OperatorOSSourceAdapter
+from portfolio_suites.approvals import canonical_digest
 from portfolio_suites.contracts import generate_sample
 
 
@@ -85,7 +90,8 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(reconcile["canonical_target"], "kb-overlay")
 
         kitchen = AccessibilityEngine.roundtrip_kitchen_learning_finding(findings[0])
-        self.assertEqual(kitchen["roundtrip_status"], "verified")
+        self.assertEqual(kitchen["roundtrip_status"], "suite_projection_verified")
+        self.assertFalse(kitchen["external_consumer_invoked"])
         self.assertFalse(kitchen["evidence_loss"])
 
         final_overlay = AccessibilityEngine.finalize_overlay_reconciliation()
@@ -158,7 +164,8 @@ class EngineTests(unittest.TestCase):
             "backup_data", {"vault": "test-vault", "path": "contracts", "dry_run": True}, operator_approved=True
         )
         self.assertEqual(chk_dry_run["status"], "success")
-        self.assertTrue(chk_dry_run["operator_approval_verified"])
+        self.assertFalse(chk_dry_run["operator_approval_verified"])
+        self.assertEqual(chk_dry_run["execution_authority"], "caller_confirmed_read_only_or_dry_run")
         self.assertTrue(chk_dry_run["execution_result"]["dry_run"])
         self.assertEqual(chk_dry_run["execution_result"]["manifest_file"], "")
         self.assertTrue(chk_dry_run["execution_result"]["snapshot_id"].startswith("snap-"))
@@ -248,6 +255,8 @@ class EngineTests(unittest.TestCase):
         self.assertTrue(o6["multi_action_lifecycle_passed"])
         self.assertTrue(o6["fail_closed_test"]["verified"])
         self.assertTrue(o6["preview_test"]["verified"])
+        self.assertTrue(o6["execution_test"]["verified"])
+        self.assertEqual(o6["execution_test"]["mutation_mode"], "read_only")
         self.assertFalse(o6["disk_mutations_performed"])
 
     def test_brand_publishing_engine(self):
@@ -270,7 +279,12 @@ class EngineTests(unittest.TestCase):
         phases = BrandPublishingEngine.get_brand_workshop_phases()
         self.assertEqual(len(phases), 9)
 
-        v_cons = BrandPublishingEngine.verify_package_consumer(pkg, "site-fixture", "1.0.0")
+        v_cons = BrandPublishingEngine.verify_package_consumer(
+            pkg,
+            "site-fixture",
+            "1.0.0",
+            expected_package_sha256=canonical_digest(pkg),
+        )
         self.assertEqual(v_cons["status"], "verified")
 
         # Test empty intake: must NOT claim 9 phases or produce package (Finding 5 fix)
@@ -621,9 +635,20 @@ class EngineTests(unittest.TestCase):
             self.assertFalse(prov["human_confirmation_claimed"], name)
 
     def test_production_house_engine(self):
-        job = ProductionHouseEngine.create_job("job-test-01", "groundwire-audio", "synthesis", [{"name": "script.fountain"}])
+        job = ProductionHouseEngine.create_job(
+            "job-test-01",
+            "groundwire-audio",
+            "synthesis",
+            [{"name": "script.fountain", "sha256": "a" * 64}],
+        )
         self.assertEqual(job["status"], "queued")
-        advanced = ProductionHouseEngine.advance_job_stage(job, "synthesis", [{"name": "stems.zip"}], status="completed")
+        running = ProductionHouseEngine.advance_job_stage(job, "synthesis", status="running")
+        advanced = ProductionHouseEngine.advance_job_stage(
+            running,
+            "artifact_projection",
+            [{"name": "stems.zip", "sha256": "b" * 64}],
+            status="completed",
+        )
         self.assertEqual(advanced["status"], "completed")
         self.assertEqual(len(advanced["outputs"]), 1)
 
@@ -790,6 +815,7 @@ class OperatorConfinementTests(unittest.TestCase):
             operator_approved=True,
         )
         self.assertEqual(receipt["execution_result"]["files_backed_up"], 0)
+        self.assertEqual(receipt["execution_result"]["files_inventoried"], 0)
 
     def test_a_symlink_raced_in_after_the_boundary_check_is_still_refused(self):
         """Checking the path and opening it are two lookups; O_NOFOLLOW must catch the swap."""
@@ -865,14 +891,14 @@ class OperatorConfinementTests(unittest.TestCase):
         self.assertEqual(len(result["findings"]), 1)
 
 
-class UnimplementedActionTests(unittest.TestCase):
-    def test_active_cache_rotation_is_refused_rather_than_reported_as_done(self):
+class CacheRotationTests(unittest.TestCase):
+    def test_active_cache_rotation_refuses_a_non_cache_directory(self):
         from portfolio_suites.engines.operator_os import OperatorOSEngine
 
         receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
             "rotate_local_cache", {"cache_dir": "operator-os", "dry_run": False}, operator_approved=True
         )
-        self.assertEqual(receipt["status"], "error_unimplemented_action")
+        self.assertEqual(receipt["status"], "error_invalid_cache_target")
         self.assertIsNone(receipt["execution_receipt"])
         self.assertNotIn("execution_result", receipt)
 
@@ -998,7 +1024,8 @@ class BackupSensitiveFileTests(unittest.TestCase):
             operator_approved=True,
         )
         result = receipt["execution_result"]
-        self.assertEqual(result["files_backed_up"], 1)
+        self.assertEqual(result["files_backed_up"], 0)
+        self.assertEqual(result["files_inventoried"], 1)
         self.assertEqual(result["skipped_sensitive_count"], 2)
 
     def test_no_credential_path_appears_anywhere_in_the_receipt(self):
@@ -1013,6 +1040,111 @@ class BackupSensitiveFileTests(unittest.TestCase):
         self.assertNotIn("id_rsa", rendered)
         self.assertNotIn(".env", rendered)
         self.assertNotIn("sk-live-secret", rendered)
+
+
+class BackupTraversalTests(unittest.TestCase):
+    def test_pruned_directories_are_never_inventoried(self):
+        from portfolio_suites.paths import SUITES_ROOT
+
+        with tempfile.TemporaryDirectory(dir=SUITES_ROOT / "operator-os") as tmp:
+            vault = Path(tmp)
+            (vault / "notes").mkdir()
+            (vault / "notes" / "a.md").write_text("# Keep\n", encoding="utf-8")
+            (vault / ".git").mkdir()
+            (vault / ".git" / "config").write_text("ignored\n", encoding="utf-8")
+            (vault / "node_modules" / "pkg").mkdir(parents=True)
+            (vault / "node_modules" / "pkg" / "index.js").write_text(
+                "ignored\n",
+                encoding="utf-8",
+            )
+
+            receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+                "backup_data",
+                {"vault": "pruning-test", "path": str(vault), "dry_run": True},
+                operator_approved=True,
+            )
+
+        self.assertEqual(receipt["status"], "success")
+        self.assertEqual(receipt["execution_result"]["files_inventoried"], 1)
+
+    def test_sensitive_words_in_vault_ancestors_do_not_hide_ordinary_children(self):
+        from portfolio_suites.paths import SUITES_ROOT
+
+        with tempfile.TemporaryDirectory(dir=SUITES_ROOT.parent) as tmp:
+            for name in ("secrets-vault", "credentialing-app", "Secret Santa"):
+                with self.subTest(name=name):
+                    vault = Path(tmp) / name
+                    (vault / "notes").mkdir(parents=True)
+                    (vault / "notes" / "todo.md").write_text("ordinary\n", encoding="utf-8")
+                    receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+                        "backup_data",
+                        {"vault": name, "path": str(vault), "dry_run": True},
+                        operator_approved=True,
+                    )
+                    self.assertEqual(receipt["status"], "success")
+                    self.assertEqual(receipt["execution_result"]["files_inventoried"], 1)
+                    self.assertEqual(receipt["execution_result"]["skipped_sensitive_count"], 0)
+
+    def test_sync_judges_sensitivity_relative_to_the_vault_root(self):
+        """Backup and sync must answer "is this credential material?" the same way.
+
+        Sync reached its sensitivity verdict from the absolute path after backup had moved
+        to the vault-relative one, so a vault under an ancestor like `secrets-vault` synced
+        nothing at all and said so only by omission.
+        """
+        from portfolio_suites.paths import SUITES_ROOT
+
+        with tempfile.TemporaryDirectory(dir=SUITES_ROOT.parent) as tmp:
+            vault = Path(tmp) / "secrets-vault"
+            (vault / "notes").mkdir(parents=True)
+            (vault / "notes" / "todo.md").write_text("ordinary\n", encoding="utf-8")
+
+            receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+                "sync_obsidian_notes",
+                {"vault_path": str(vault), "dry_run": True},
+                operator_approved=True,
+            )
+
+        self.assertEqual(receipt["status"], "success")
+        self.assertEqual(receipt["execution_result"]["notes_scanned_count"], 1)
+
+    def test_skipping_a_new_credential_file_does_not_break_the_next_backup(self):
+        """A skipped file changes no archived byte.
+
+        `snap_id` covers the vault and the inventoried file set. The skip counts rode along
+        inside the archived manifest without being part of that identity, so dropping a
+        `.env` into an already-archived vault produced different bytes under the same name
+        and the collision guard refused every later backup of it.
+        """
+        entries = [("notes/a.md", b"ordinary\n")]
+
+        def snapshot(skipped_sensitive):
+            return {
+                "snapshot_id": "snap-000000000000",
+                "vault": "collision-test",
+                "created_at": f"2026-08-23T10:0{skipped_sensitive}:00+00:00",
+                "source": "/tmp/collision-test",
+                "dry_run": False,
+                "files_count": 1,
+                "total_bytes": len(entries[0][1]),
+                "skipped_sensitive_count": skipped_sensitive,
+                "skipped_unreadable_count": 0,
+                "files": [{"path": "notes/a.md", "size": len(entries[0][1])}],
+            }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / "snap-000000000000.zip"
+            before = _write_backup_archive(destination, entries, _archive_manifest(snapshot(0)))
+            after = _write_backup_archive(destination, entries, _archive_manifest(snapshot(1)))
+            self.assertEqual(before, after)
+
+            # The guard still has to refuse genuinely different content under a reused name.
+            with self.assertRaises(OSError):
+                _write_backup_archive(
+                    destination,
+                    [("notes/a.md", b"changed\n")],
+                    _archive_manifest(snapshot(0)),
+                )
 
 
 class AdversarialFixtureTests(unittest.TestCase):

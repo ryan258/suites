@@ -381,7 +381,9 @@ class AccessibilityEngine:
             "remediation_hint": valid_finding["summary"],
             "canonical_finding": valid_finding,
             "evidence_loss": False,
-            "roundtrip_status": "verified",
+            "roundtrip_status": "suite_projection_verified",
+            "projection_runtime": "portfolio_suites.engines.accessibility",
+            "external_consumer_invoked": False,
         }
 
     @staticmethod

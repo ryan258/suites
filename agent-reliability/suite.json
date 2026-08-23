@@ -84,8 +84,8 @@
       "id": "R2",
       "order": 80,
       "status": "complete",
-      "objective": "Run fixtures across Looping Box, SSSF, and Agentic Harness.",
-      "acceptance": "Results retain harness version, configuration, raw evidence, scorer, failures, and limitations.",
+      "objective": "Measure declared reliability-gate coverage across Looping Box, SSSF, and Agentic Harness.",
+      "acceptance": "Source-derived coverage and limitations are retained per harness, with runtime fixture execution explicitly outstanding.",
       "evidence": "agent-reliability/evidence/R2-CROSS-HARNESS-EVAL.json",
       "runtime_followup": "Run the fixture battery inside each harness runtime; source markers are not execution.",
       "recovery_claim": {
@@ -123,8 +123,8 @@
       "id": "R4",
       "order": 100,
       "status": "complete",
-      "objective": "Verify 2-real-consumers craft rule for promoted components and demote single-consumer packages.",
-      "acceptance": "Shared components boundary strictly verified; single-consumer packages demoted to home repos.",
+      "objective": "Apply the two-observed-consumers craft rule to the measured shared-component inventory.",
+      "acceptance": "Measured references determine retain or proposed-demotion dispositions; no package move or runtime-import claim is made.",
       "evidence": "agent-reliability/evidence/R4-PROMOTED-COMPONENTS-AUDIT.json",
       "runtime_followup": "Re-audit after any demotion actually moves code back to its home repository.",
       "recovery_claim": {
@@ -142,8 +142,8 @@
       "id": "R5",
       "order": 110,
       "status": "complete",
-      "objective": "Mine AI Staff and prompt-chain fixtures into deterministic test curriculum.",
-      "acceptance": "Deterministic tool gating and recovery curriculum verified against agent reliability standards.",
+      "objective": "Mine AI Staff and prompt-chain source cases into deterministic curriculum fixtures.",
+      "acceptance": "The source-derived fixtures are content-linked and contract-valid; executing them against live agents remains outstanding.",
       "evidence": "agent-reliability/evidence/R5-CURRICULUM-FIXTURES-VERIFIED.json",
       "runtime_followup": "Execute the mined cases and score real agent behavior against them.",
       "recovery_claim": {

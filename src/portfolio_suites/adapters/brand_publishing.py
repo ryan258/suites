@@ -20,11 +20,11 @@ CYBORG_BRAND_PACKAGE_APPROVED_AT = "2026-08-19T18:00:00+00:00"
 
 
 class BrandPublishingSourceAdapter:
-    """Invokes and inspects authentic brand-maker-spec, brand-workshop, and cyborg runtimes."""
+    """Inspects donor sources and exercises explicit suite-local publishing projections."""
 
     @classmethod
     def execute_b1_brand_package_export(cls) -> dict[str, Any]:
-        """Export canonical BrandPackage and verify authentic dry-run mutation protection across consumers."""
+        """Build a source-informed BrandPackage projection and verify dry-run mutation protection."""
         target_fp = get_git_fingerprint(BRAND_MAKER_DIR)
         consumer_fp = get_git_fingerprint(CYBORG_DIR)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()

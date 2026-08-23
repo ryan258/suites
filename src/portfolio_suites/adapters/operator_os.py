@@ -567,8 +567,23 @@ class OperatorOSSourceAdapter:
             and preview_res.get("requires_human_approval") is True
             and preview_res.get("destructive") is False
         )
+        # 3. Complete the lifecycle with a real, approved-by-caller read-only execution. The
+        # boolean is not represented as cryptographic operator authority; it only permits a
+        # zero-mutation audit action.
+        execution_res = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            action_name="audit_secrets",
+            parameters={"path": str(SUITES_ROOT / "src")},
+            operator_approved=True,
+        )
+        execution_ok = (
+            execution_res.get("status") == "success"
+            and execution_res.get("state") == "executed_with_receipt"
+            and execution_res.get("operator_approval_verified") is False
+            and execution_res.get("execution_authority") == "caller_confirmed_read_only_or_dry_run"
+            and isinstance(execution_res.get("execution_result", {}).get("scanned_files_count"), int)
+        )
         source_verified = is_meaningful_git_fingerprint(jarvis_fp)
-        all_stages_passed = fail_closed_ok and preview_ok and source_verified
+        all_stages_passed = fail_closed_ok and preview_ok and execution_ok and source_verified
 
         return {
             "schema_version": SCHEMA_VERSION,
@@ -585,6 +600,12 @@ class OperatorOSSourceAdapter:
                 "action": "backup_data",
                 "preview": preview_res,
                 "verified": preview_ok,
+            },
+            "execution_test": {
+                "action": "audit_secrets",
+                "mutation_mode": "read_only",
+                "result": execution_res,
+                "verified": execution_ok,
             },
             "multi_action_lifecycle_passed": all_stages_passed,
             "source_verification_passed": source_verified,

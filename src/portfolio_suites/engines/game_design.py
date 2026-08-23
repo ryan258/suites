@@ -5,6 +5,7 @@ NOTE: This is a control-plane reference prototype and fixture comparator, not a 
 from __future__ import annotations
 
 import datetime
+import math
 import random
 from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
@@ -20,6 +21,17 @@ class GameDesignEngine:
         difficulty_modifier: float = 1.0,
     ) -> dict[str, Any]:
         """Simulate Tucked in Terrors card/dice encounters using deterministic PRNG."""
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise ValueError("seed must be an integer")
+        if isinstance(trials, bool) or not isinstance(trials, int) or not 1 <= trials <= 1_000_000:
+            raise ValueError("trials must be an integer from 1 through 1,000,000")
+        if (
+            isinstance(difficulty_modifier, bool)
+            or not isinstance(difficulty_modifier, (int, float))
+            or not math.isfinite(difficulty_modifier)
+            or not 0.1 <= float(difficulty_modifier) <= 10.0
+        ):
+            raise ValueError("difficulty_modifier must be a finite number from 0.1 through 10.0")
         rng = random.Random(seed)
         trial_wins: list[int] = []
         turn_counts: list[int] = []
@@ -102,11 +114,22 @@ class GameDesignEngine:
     @staticmethod
     def generate_printable_balance_sheet(sim_result: dict[str, Any]) -> str:
         """Generate a formatted markdown printable balance sheet."""
-        ev = sim_result.get("evidence", [{}])[0]
-        params = sim_result.get("parameters", {})
+        valid_result = validate_contract("ExperimentRun", sim_result)
+        evidence = valid_result.get("evidence", [])
+        if not evidence or not isinstance(evidence[0], dict):
+            raise ValueError("sim_result must retain a simulation evidence object")
+        ev = evidence[0]
+        required_metrics = ("win_rate", "loss_rate", "avg_turn_count", "avg_peak_terror")
+        for metric in required_metrics:
+            value = ev.get(metric)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise ValueError(f"sim_result evidence must include finite numeric {metric}")
+        if ev.get("balance_status") not in {"optimal", "unbalanced"}:
+            raise ValueError("sim_result evidence must include a recognized balance_status")
+        params = valid_result.get("parameters", {})
         return f"""# Tucked in Terrors — Statistical Balance Sheet
 
-**Simulation Run ID:** `{sim_result.get('run_id')}`
+**Simulation Run ID:** `{valid_result.get('run_id')}`
 **Seed:** `{params.get('seed')}` | **Trials:** `{params.get('trials')}` | **Modifier:** `{params.get('difficulty_modifier')}`
 
 ---
@@ -128,6 +151,10 @@ class GameDesignEngine:
     @staticmethod
     def build_text_adventure_pack(pack_id: str, rooms_count: int = 8) -> dict[str, Any]:
         """Express a structurally distinct text adventure game as a Storyweaver pack (G4 wave)."""
+        if not isinstance(pack_id, str) or not pack_id.strip():
+            raise ValueError("pack_id must be a non-empty string")
+        if isinstance(rooms_count, bool) or not isinstance(rooms_count, int) or not 1 <= rooms_count <= 1_000:
+            raise ValueError("rooms_count must be an integer from 1 through 1,000")
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         rooms = [
             {
@@ -147,12 +174,16 @@ class GameDesignEngine:
             "rooms": rooms,
             "deterministic_graph": True,
             "created_at": now_iso,
-            "generality_proof": "Storyweaver schema successfully models spatial branching puzzles without engine changes.",
+            "verification_scope": "suite_fixture_projection",
+            "storyweaver_runtime_invoked": False,
+            "generality_proof": "The suite fixture projects spatial branching puzzles into its declared Storyweaver-compatible shape.",
         }
 
     @staticmethod
     def audit_authored_game_boundary(project_name: str = "march-madness") -> dict[str, Any]:
         """Audit and formalize the authored game boundary for March Madness (G5 wave)."""
+        if not isinstance(project_name, str) or not project_name.strip():
+            raise ValueError("project_name must be a non-empty string")
         return {
             "project": project_name,
             "category": "authored_domain_simulation",

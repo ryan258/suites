@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave": "D1",
-  "status": "parity_mapped",
+  "status": "stage_matrix_verified",
   "matrix": [
     {
       "sif_phase": "phase1",

@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0.0",
   "wave": "P2",
-  "status": "formatter_executed",
+  "status": "fixture_output_projection_verified",
   "job": {
     "schema_version": "1.0.0",
     "job_id": "job-gw-ep12-formatter",
-    "domain": "groundwire-audio",
-    "task": "synthesis",
+    "domain": "groundwire-formatter-fixture-projection",
+    "task": "project-formatter-output-fixture",
     "status": "completed",
     "inputs": [
       {
@@ -24,19 +24,28 @@
     ],
     "events": [
       {
-        "time": "2026-08-22T23:06:15.850738+00:00",
+        "time": "2026-08-23T18:45:40.405252+00:00",
         "stage": "initialization",
         "status": "job_created"
       },
       {
-        "time": "2026-08-22T23:06:15.851463+00:00",
-        "stage": "elevenlabs_synthesizer",
+        "time": "2026-08-23T18:45:40.406482+00:00",
+        "stage": "formatter_fixture_preparation",
+        "status": "running",
+        "notes": "Prepared deterministic formatter adapter fixture; external formatter not invoked"
+      },
+      {
+        "time": "2026-08-23T18:45:40.406575+00:00",
+        "stage": "fixture_output_projection",
         "status": "completed",
-        "notes": "Synthesized 14 dialogue cues through ElevenLabs voice models"
+        "notes": "Projected a deterministic fixture artifact; no ElevenLabs synthesis was performed"
       }
     ],
-    "created_at": "2026-08-22T23:06:15.850738+00:00",
-    "updated_at": "2026-08-22T23:06:15.851463+00:00"
+    "created_at": "2026-08-23T18:45:40.405252+00:00",
+    "updated_at": "2026-08-23T18:45:40.406575+00:00",
+    "execution_kind": "deterministic_fixture_projection",
+    "external_runtime_invoked": false,
+    "fixture_output_only": true
   },
   "formatter_fingerprint": {
     "branch": "v3",
@@ -54,5 +63,7 @@
     "target_state": "clean_commit"
   },
   "source_verification_passed": true,
+  "external_formatter_invoked": false,
+  "fixture_output_only": true,
   "all_stages_passed": true
 }

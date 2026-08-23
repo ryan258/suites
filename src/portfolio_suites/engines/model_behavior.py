@@ -5,9 +5,43 @@ NOTE: This is a control-plane reference prototype and fixture comparator, not a 
 from __future__ import annotations
 
 import datetime
+import math
 import re
 from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
+
+
+MAX_SCENARIOS = 10_000
+MAX_COMPARISON_RUNS = 1_000
+MAX_ITERATIONS_PER_RUN = 100_000
+
+
+def _require_text(name: str, value: Any, *, max_length: int = 512) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be a non-empty string")
+    cleaned = value.strip()
+    if len(cleaned) > max_length:
+        raise ValueError(f"{name} must be at most {max_length} characters")
+    return cleaned
+
+
+def _bounded_integer(name: str, value: Any, *, minimum: int, maximum: int) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"{name} must be an integer")
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    return value
+
+
+def _finite_number(name: str, value: Any, *, minimum: float | None = None) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise ValueError(f"{name} must be a number")
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"{name} must be finite")
+    if minimum is not None and number < minimum:
+        raise ValueError(f"{name} must be at least {minimum}")
+    return number
 
 
 class ModelBehaviorEngine:
@@ -25,6 +59,15 @@ class ModelBehaviorEngine:
         scorer_version: str,
     ) -> dict[str, Any]:
         """Create a planned ExperimentRun."""
+        _require_text("run_id", run_id, max_length=128)
+        _require_text("benchmark_id", benchmark_id, max_length=128)
+        _require_text("benchmark_version", benchmark_version, max_length=64)
+        _require_text("provider", provider, max_length=256)
+        _require_text("model", model, max_length=256)
+        _require_text("scorer", scorer, max_length=128)
+        _require_text("scorer_version", scorer_version, max_length=64)
+        if not isinstance(parameters, dict):
+            raise ValueError("parameters must be a JSON object")
         run = {
             "artifact_kind": "reference_prototype_run",
             "migration_acceptance_verified": False,
@@ -52,6 +95,15 @@ class ModelBehaviorEngine:
         scenario_count: int = 10,
     ) -> dict[str, Any]:
         """Run a standard deterministic ethics scenario benchmark with reproducible scoring."""
+        _require_text("run_id", run_id, max_length=128)
+        _require_text("provider", provider, max_length=256)
+        _require_text("model", model, max_length=256)
+        _bounded_integer(
+            "scenario_count",
+            scenario_count,
+            minimum=1,
+            maximum=MAX_SCENARIOS,
+        )
         iterations = []
         for i in range(1, scenario_count + 1):
             passed = i % 10 != 0  # 90% pass rate
@@ -98,12 +150,59 @@ class ModelBehaviorEngine:
     @staticmethod
     def compare_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
         """Produce a comparative matrix across multiple ExperimentRuns."""
+        if not isinstance(runs, list):
+            raise ValueError("runs must be a list of ExperimentRun objects")
+        if len(runs) > MAX_COMPARISON_RUNS:
+            raise ValueError(f"runs must contain at most {MAX_COMPARISON_RUNS} items")
+
         comparisons = []
-        for run in runs:
-            iters = run.get("iterations", [])
+        for run_index, candidate in enumerate(runs):
+            if not isinstance(candidate, dict):
+                raise ValueError(f"runs[{run_index}] must be an ExperimentRun object")
+            run = validate_contract("ExperimentRun", candidate)
+            iters = run["iterations"]
+            if len(iters) > MAX_ITERATIONS_PER_RUN:
+                raise ValueError(
+                    f"runs[{run_index}].iterations must contain at most "
+                    f"{MAX_ITERATIONS_PER_RUN} items"
+                )
+            score_values: list[float] = []
+            passed_values: list[bool] = []
+            for iteration_index, iteration in enumerate(iters):
+                if not isinstance(iteration, dict):
+                    raise ValueError(
+                        f"runs[{run_index}].iterations[{iteration_index}] must be an object"
+                    )
+                # ExperimentRun is deliberately shared by heterogeneous deterministic labs.
+                # A benchmark may expose pass/fail, a normalized score, a statistical checkpoint,
+                # or some combination; validate fields that are present without inventing absent
+                # values for the comparison matrix.
+                if "passed" in iteration:
+                    if not isinstance(iteration["passed"], bool):
+                        raise ValueError(
+                            f"runs[{run_index}].iterations[{iteration_index}].passed must be a boolean"
+                        )
+                    passed_values.append(iteration["passed"])
+                if "score" in iteration:
+                    score = _finite_number(
+                        f"runs[{run_index}].iterations[{iteration_index}].score",
+                        iteration["score"],
+                        minimum=0.0,
+                    )
+                    if score > 1.0:
+                        raise ValueError(
+                            f"runs[{run_index}].iterations[{iteration_index}].score must be at most 1.0"
+                        )
+                    score_values.append(score)
+                if "simulated_latency_ms" in iteration:
+                    _finite_number(
+                        f"runs[{run_index}].iterations[{iteration_index}].simulated_latency_ms",
+                        iteration["simulated_latency_ms"],
+                        minimum=0.0,
+                    )
             total = len(iters)
-            passed = sum(1 for it in iters if it.get("passed", False))
-            avg_score = (sum(it.get("score", 0.0) for it in iters) / total) if total else 0.0
+            passed = sum(passed_values)
+            avg_score = sum(score_values) / len(score_values) if score_values else None
             simulated_latencies = [
                 it["simulated_latency_ms"]
                 for it in iters
@@ -121,8 +220,8 @@ class ModelBehaviorEngine:
                 "benchmark": f"{run.get('benchmark_id')}@v{run.get('benchmark_version')}",
                 "status": run.get("status"),
                 "total_iterations": total,
-                "pass_rate": round(passed / total, 3) if total else 0.0,
-                "average_score": round(avg_score, 3),
+                "pass_rate": round(passed / len(passed_values), 3) if passed_values else None,
+                "average_score": round(avg_score, 3) if avg_score is not None else None,
                 "simulated_average_latency_ms": (
                     round(simulated_avg_latency, 1)
                     if simulated_avg_latency is not None
@@ -154,12 +253,25 @@ class ModelBehaviorEngine:
 
     @staticmethod
     def parse_fen_board(fen: str) -> dict[str, Any] | None:
-        """Parse and validate a standard FEN string into an active board state representation."""
+        """Parse a valid FEN into the tuple-keyed board state used by chess evaluators.
+
+        The tuple keys are an internal evaluator contract used by the M3-M5 adapters. JSON
+        transport code must project those coordinates rather than serializing this mapping
+        directly.
+        """
+        if not isinstance(fen, str) or len(fen) > 256:
+            return None
         parts = fen.strip().split()
         if len(parts) != 6:
             return None
         placement, active_color, castling, en_passant, halfmove, fullmove = parts
         if active_color not in ("w", "b"):
+            return None
+        if not re.fullmatch(r"-|K?Q?k?q?", castling) or castling == "":
+            return None
+        if not re.fullmatch(r"-|[a-h][36]", en_passant):
+            return None
+        if not halfmove.isdigit() or not fullmove.isdigit() or int(fullmove) < 1:
             return None
         ranks = placement.split("/")
         if len(ranks) != 8:
@@ -169,8 +281,10 @@ class ModelBehaviorEngine:
         for rank_idx, rank_str in enumerate(ranks):
             file_idx = 0
             for char in rank_str:
-                if char.isdigit():
+                if char in "12345678":
                     file_idx += int(char)
+                    if file_idx > 8:
+                        return None
                 elif char in "pnbrqkPNBRQK":
                     if file_idx >= 8:
                         return None
@@ -191,8 +305,8 @@ class ModelBehaviorEngine:
             "active_color": active_color,
             "castling": castling,
             "en_passant": en_passant,
-            "halfmove": int(halfmove) if halfmove.isdigit() else 0,
-            "fullmove": int(fullmove) if fullmove.isdigit() else 1,
+            "halfmove": int(halfmove),
+            "fullmove": int(fullmove),
         }
 
     @staticmethod
@@ -257,8 +371,8 @@ class ModelBehaviorEngine:
     @staticmethod
     def _is_move_legal_on_board(state: dict[str, Any], move_uci: str) -> tuple[bool, str]:
         """Validate move geometry, attack boundaries, and king safety on parsed FEN board."""
-        if len(move_uci) < 4 or len(move_uci) > 5:
-            return False, "invalid_uci_length"
+        if not isinstance(move_uci, str) or not re.fullmatch(r"[a-h][1-8][a-h][1-8][qrbn]?", move_uci):
+            return False, "malformed_uci_syntax"
         from_file = ord(move_uci[0]) - ord('a')
         from_rank = int(move_uci[1]) - 1
         to_file = ord(move_uci[2]) - ord('a')
@@ -463,6 +577,15 @@ class ModelBehaviorEngine:
     ) -> dict[str, Any]:
         """Execute a deterministic chess legal-move & tactical benchmark over comparator kernel (M4 wave)."""
         import time
+        _require_text("run_id", run_id, max_length=128)
+        _require_text("provider", provider, max_length=256)
+        _require_text("model", model, max_length=256)
+        _bounded_integer(
+            "puzzle_count",
+            puzzle_count,
+            minimum=1,
+            maximum=len(ModelBehaviorEngine.CHESS_FIXTURES),
+        )
         iterations = []
         fixtures = ModelBehaviorEngine.CHESS_FIXTURES[:puzzle_count]
 
@@ -533,8 +656,18 @@ class ModelBehaviorEngine:
     @staticmethod
     def build_versioned_corpus(corpus_id: str, runs: list[dict[str, Any]]) -> dict[str, Any]:
         """Construct a versioned benchmark corpus manifest ensuring full run reproducibility (M5 wave)."""
+        _require_text("corpus_id", corpus_id, max_length=128)
+        if not isinstance(runs, list):
+            raise ValueError("runs must be a list of ExperimentRun objects")
+        if len(runs) > MAX_COMPARISON_RUNS:
+            raise ValueError(f"runs must contain at most {MAX_COMPARISON_RUNS} items")
+        validated_runs = []
+        for index, run in enumerate(runs):
+            if not isinstance(run, dict):
+                raise ValueError(f"runs[{index}] must be an ExperimentRun object")
+            validated_runs.append(validate_contract("ExperimentRun", run))
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        benchmarks = sorted(list({r.get("benchmark_id") for r in runs if r.get("benchmark_id")}))
+        benchmarks = sorted({r["benchmark_id"] for r in validated_runs})
 
         return {
             "artifact_kind": "reference_prototype_corpus",
@@ -556,7 +689,7 @@ class ModelBehaviorEngine:
                     "model": r.get("model"),
                     "status": r.get("status"),
                 }
-                for r in runs
+                for r in validated_runs
             ],
             "migration_status": "prototype_corpus_format_defined",
         }
