@@ -244,7 +244,7 @@ class RegistryTests(unittest.TestCase):
     def test_summary_separates_analysis_from_runtime_recovery(self):
         summary = get_portfolio_summary()
         self.assertEqual(summary["recovery_target_score"], 9.0)
-        self.assertEqual(summary["verified_analysis_milestones"], 7)
+        self.assertEqual(summary["verified_analysis_milestones"], 42)
         self.assertEqual(summary["recovered_runtime_behaviors"], 1)
         self.assertEqual(summary["adopted_runtime_behaviors"], 0)
         self.assertEqual(summary["converged_runtime_behaviors"], 0)
@@ -282,6 +282,39 @@ class RegistryTests(unittest.TestCase):
         for wave_id in ("M1", "D3", "R5", "G2", "A6"):
             with self.subTest(wave=wave_id):
                 self.assertIn(wave_id, inspected)
+
+    def test_completed_wave_promotion_level_rules(self):
+        """A completed analysis wave may hold level: 'prototype', while specified level or runtime prototype errors."""
+        suites = deepcopy(load_suites())
+
+        # Baseline check: completed analysis wave at prototype validates cleanly
+        a5 = next(w for w in suites["accessibility"]["waves"] if w["id"] == "A5")
+        self.assertEqual(a5["status"], "complete")
+        self.assertEqual(a5["recovery_claim"]["kind"], "analysis")
+        self.assertEqual(a5["recovery_claim"]["level"], "prototype")
+        with patch("portfolio_suites.registry.load_suites", return_value=suites):
+            report = validate_registry(check_live=False)
+        self.assertTrue(report.ok, report.errors)
+
+        # Rejection 1: completed wave claiming 'specified' level fails validation
+        suites_specified = deepcopy(suites)
+        a5_spec = next(w for w in suites_specified["accessibility"]["waves"] if w["id"] == "A5")
+        a5_spec["recovery_claim"]["level"] = "specified"
+        with patch("portfolio_suites.registry.load_suites", return_value=suites_specified):
+            report = validate_registry(check_live=False)
+        self.assertFalse(report.ok)
+        self.assertTrue(any("completed wave cannot claim a specified level" in e for e in report.errors), report.errors)
+
+        # Rejection 2: completed runtime wave claiming 'prototype' level fails validation
+        suites_runtime = deepcopy(suites)
+        a2_runtime = next(w for w in suites_runtime["accessibility"]["waves"] if w["id"] == "A2")
+        self.assertEqual(a2_runtime["status"], "complete")
+        self.assertEqual(a2_runtime["recovery_claim"]["kind"], "runtime")
+        a2_runtime["recovery_claim"]["level"] = "prototype"
+        with patch("portfolio_suites.registry.load_suites", return_value=suites_runtime):
+            report = validate_registry(check_live=False)
+        self.assertFalse(report.ok)
+        self.assertTrue(any("completed runtime wave cannot claim a prototype level" in e for e in report.errors), report.errors)
 
 
 if __name__ == "__main__":

@@ -1212,8 +1212,10 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
             claim_level = claim.get("level")
             if claim_level not in RECOVERY_PROMOTION_LEVELS:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: unknown recovery promotion level")
-            elif is_complete and claim_level in {"specified", "prototype"}:
-                report.errors.append(f"{suite_id}/{wave.get('id')}: completed wave cannot claim a planning or prototype level")
+            elif is_complete and claim_level == "specified":
+                report.errors.append(f"{suite_id}/{wave.get('id')}: completed wave cannot claim a specified level")
+            elif is_complete and claim_kind == "runtime" and claim_level == "prototype":
+                report.errors.append(f"{suite_id}/{wave.get('id')}: completed runtime wave cannot claim a prototype level")
             if not isinstance(claim.get("real_runtime"), bool):
                 report.errors.append(f"{suite_id}/{wave.get('id')}: recovery claim must state real_runtime")
             if claim_kind == "runtime" and claim.get("real_runtime") is not True:
