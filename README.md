@@ -18,7 +18,7 @@ migration prove parity before an older runtime can be retired.
 
 ```text
 PROJECT: Ryan Project Suites
-STATUS: Portfolio control plane and suite prototypes established
+STATUS: Functional local launchpad, control plane, and truth-bounded suite engines established
 RECOVERY STANDARD: 9.0/10 target for valuable functionality; raw wave completion is not the score
 GATE CHECK: Registry valid | 8 Suite Boundaries | 6 Shared Contracts | 70 Projects Dispositioned
 BIBLE: Done
@@ -52,7 +52,8 @@ or collaborator ownership.
 ## Use it
 
 The checkout-local control plane uses only the Python standard library and vanilla web
-technologies. Source-runtime gates retain their donors' own prerequisites: Accessibility A2
+technologies. The optional AI assistant makes HTTPS requests to OpenRouter but adds no Python
+package dependency. Source-runtime gates retain their donors' own prerequisites: Accessibility A2
 requires Node.js plus the already-installed, lockfile-pinned dependencies in `allys-tools` and
 the Playwright runtime used by the WCAG Auditor browser probe. Verification commands use
 `npx --no-install`, so a gate fails closed instead of downloading a missing package.
@@ -83,7 +84,7 @@ PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.
 
 # Ephemeral wave checks (42 analysis milestones + 1 runtime wave; all 43 verified)
 # Without --full, A2 runs a fast probe and is reported as [FAST-PROBE], not a runtime recovery.
-PYTHONPATH=src python3 -m portfolio_suites wave --all
+PYTHONPATH=src python3 -m portfolio_suites wave --all --no-record
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --full
 
@@ -97,12 +98,18 @@ PYTHONPATH=src python3 -m portfolio_suites engine accessibility          # list 
 PYTHONPATH=src python3 -m portfolio_suites engine accessibility audit_html_snippet \
   --args '{"html_content": "<img src=hero.png>"}'
 
-# Chain engine actions: one action's output becomes a later action's argument
+# Chain engine actions: one action's output becomes a later action's argument.
 # Steps reference earlier output as {"$from": <step>} with optional "path" to select part of it.
+# The browser replays only the transitive dependency closure and redacts one-time secrets from its tray.
 PYTHONPATH=src python3 -m portfolio_suites chain my-chain.json
 PYTHONPATH=src python3 -m portfolio_suites chain my-chain.json --quiet
 
-# Launch the zero-dependency local web dashboard (Toolbench tab runs and chains engine actions)
+# Credential-free AI configuration check, then explicitly provider-assisted guidance
+PYTHONPATH=src python3 -m portfolio_suites ai --status --json
+PYTHONPATH=src python3 -m portfolio_suites ai --suite accessibility --role reviewer \
+  "Review this proposed finding for evidence gaps"
+
+# Launch the local web dashboard (Toolbench runs/chains actions; AI credentials stay server-side)
 ./start.sh                                              # default port 8383 (or ./start.sh <port>)
 PYTHONPATH=src python3 -m portfolio_suites serve --port 8383
 
@@ -113,6 +120,39 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 # Needs an interpreter satisfying the requires-python floor in pyproject.toml.
 SUITES_WHEEL_SMOKE=1 python3 -m unittest tests.test_wheel_smoke
 ```
+
+### Free OpenRouter assistant
+
+The AI surface is deliberately optional and free-first. Copy [`.env.example`](.env.example) to the
+gitignored `.env`, add your own `OPENROUTER_API_KEY`, and leave
+`OPENROUTER_ALLOW_PAID_MODELS=false`. Every role then routes through `openrouter/free`; a configured
+paid slug is replaced with the free router unless the operator explicitly changes that policy.
+OpenRouter chooses among the free models available for the request, so model identity, capacity,
+and rate limits can vary. “Free” is a routing/cost policy, not an uptime guarantee. See the
+[OpenRouter free-model router documentation](https://openrouter.ai/docs/guides/routing/routers/free-router)
+and [rate-limit FAQ](https://openrouter.ai/docs/faq).
+
+The browser receives configuration status and provider output, never the API key. Project material
+is not collected automatically: only the prompt and context the operator explicitly supplies are
+sent. Local secret-pattern checks reject obvious credentials and private keys before transport.
+Every response is labeled `model_assisted`, names the resolved model, and requires human review;
+it cannot satisfy deterministic gates, create retained evidence, approve a release, or authorize a
+filesystem mutation.
+
+### Operator actions
+
+The Operator OS engine exposes four JARVIS handlers: bounded secret auditing, content-addressed ZIP
+backup, conflict-refusing additive Markdown sync, and reversible cache rotation. Every handler has
+a dry-run or read-only path. Active filesystem changes require an approval issued outside this
+repository, bound to the exact action and canonical parameter digest through
+`PORTFOLIO_OPERATOR_APPROVAL_STORE`, and consumed exactly once. The CLI, API, and dashboard cannot
+mint that authority. Successful mutation receipts include concrete recovery instructions.
+
+Toolbench exports and replays only the dependency steps required by the pending action. `$from`
+references are rebased after pruning unrelated history, invalid or forward references fail during
+preflight, and approval/API-token arguments are replaced with a redaction marker before a successful
+result enters the browser tray. A redacted secret-bearing step cannot be replayed; the operator must
+provide fresh one-time authority.
 
 `validate` checks the entire current top-level directory inventory, nested Git-marker inventory,
 suite membership, source paths, ownership, contracts, and migration waves. It re-reads the retained

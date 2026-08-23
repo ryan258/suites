@@ -52,16 +52,20 @@ only runtime recovery: the narrow WCAG 3.3.1 ARIA error-association port, verifi
 `allys-tools` runtime. The other seventeen waves in this tranche are analysis milestones, and every
 one still owes its `runtime_followup`.
 
-- **Accessibility (6/6):** parity matrix, the A2 runtime port, overlay reconciliation, 20 candidate
-  rules evaluated against live donor ASTs, `A11yFinding` round-trip through `a11y-kitchen`, and a
+- **Accessibility (6/6):** parity matrix, the A2 runtime port, overlay comparison, 20 candidate
+  rules evaluated against live donor ASTs, a suite-local `A11yFinding` teaching projection shaped
+  for (but not executed in) `a11y-kitchen`, and a
   measured overlay permission surface with a proposed consolidation. Outstanding: port the evaluated
   rules into the TypeScript runtime, verify the consolidated overlay in a real browser, and secure
   owner approval before any donor freeze.
 - **Operator OS (6/6):** dotfiles capture into real PKos CAS with fenced Observer projection, the
   Ryos/master-plan inventory and its port assignments, and a JARVIS action lifecycle modeled through
-  preview, approval, receipt, and a fail-closed unapproved-execution boundary. Outstanding: execute
-  the assigned ports in `dotfiles` backed by tests, scale live daily intake into the permanent
-  vault, and drive JARVIS against real side effects.
+  preview, approval, receipt, and a fail-closed unapproved-execution boundary. The suite-local
+  launchpad now has real, bounded handlers for secret audit, content-addressed backup, additive note
+  sync, and reversible cache rotation; active writes require exact, single-use approvals issued by
+  an authority the suite cannot mint. Outstanding: execute the assigned donor ports in `dotfiles`
+  backed by tests, scale live daily intake into the permanent vault, and accumulate authentic use
+  receipts for these handlers before claiming adoption.
 - **Brand + Publishing (6/6):** `BrandPackage` export from live `brand-maker-spec` sources, the
   nine-phase Brand Workshop mapping, the SourceRecord → draft → VCC review → publishing receipt
   path, two-consumer version-pinning and mutation-protection boundaries, the fixture intake state

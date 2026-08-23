@@ -25,6 +25,24 @@ These figures are restated from the registry and are verified against it by
 
 ---
 
+## Functional Launchpad Surface
+
+The local CLI and browser launchpad now expose all 49 reviewed engine actions, strict preflighted
+action chains, the contract workbench, manifest and evidence views, project inventory, drift and
+validation reports, ephemeral wave execution, and the optional free-first OpenRouter assistant.
+The browser never receives the provider credential, uses no remote font or script dependency, and
+labels provider output as model-assisted and human-review-required.
+
+Operator OS also has concrete local handlers for bounded secret audit, deterministic backup,
+additive note sync, and reversible cache rotation. Write paths stay locked behind independently
+issued, exact-payload, single-use approvals; the launchpad cannot mint its own authority.
+
+This completes the launchpad implementation surface. It does not change the recovery ledger below:
+provider guidance is not evidence, fixture execution is not donor-runtime recovery, and a safe
+handler existing is not adoption.
+
+---
+
 ## Immediate Promotion Queue
 
 | Suite | Verified | Next Target | Evidence Required for Promotion |
@@ -77,7 +95,7 @@ The control plane uses the promotion model in the [9/10 recovery standard](RECOV
 4. **Promotion Sequence:** Runtime promotion proceeds through `prototype` → `source_verified` → `parity_verified` → `adopted` → `converged`.
 5. **Adoption Standard:** Adoption requires at least three authentic accepted uses across distinct inputs or days.
 6. **Donor Freezes & Retirement:** Donor repositories are not frozen, retired, or redirected until verified parity exists and the owner explicitly authorizes that action.
-7. **Attribution & AI Routing:** Historical provider evidence remains attributed to the provider that actually produced it. Future hosted-AI execution routes through OpenRouter, while deterministic checks remain local.
+7. **Attribution & AI Routing:** Historical provider evidence remains attributed to the provider that actually produced it. Optional hosted-AI assistance routes through the free-only OpenRouter policy by default, stays labeled `model_assisted`, and never substitutes for deterministic or runtime evidence.
 8. **Ephemeral Execution:** Wave execution is ephemeral by default. Replacing evidence requires `--record` in the CLI or `record=true` through the dashboard API.
 9. **Receipt Truthfulness:** A receipt's status names what the gate performed, never the wave's objective. A gate that reads donor files says so; it does not report discovery, unification, parity, consolidation, or retirement it did not carry out.
 10. **Receipt Invariants:** Retained receipts are re-validated by `validate`, so a prototype receipt cannot drift out of agreement with its declared claim and still report green.
@@ -93,7 +111,8 @@ PYTHONPATH=src python3 -m portfolio_suites next
 PYTHONPATH=src python3 -m portfolio_suites validate --fast
 PYTHONPATH=src python3 -m portfolio_suites validate
 PYTHONPATH=src python3 -m portfolio_suites drift
-PYTHONPATH=src python3 -m portfolio_suites wave --all
+PYTHONPATH=src python3 -m portfolio_suites wave --all --no-record
+PYTHONPATH=src python3 -m portfolio_suites ai --status --json
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record --full
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 
@@ -103,4 +122,3 @@ SUITES_WHEEL_SMOKE=1 PYTHONPATH=src python3 -m unittest tests/test_wheel_smoke.p
 
 > [!TIP]
 > `wave --all` is a non-mutating portfolio check. Use the targeted `--record` form only after reviewing a successful source-backed result intended to replace retained evidence.
-
