@@ -60,7 +60,7 @@
       "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "parity_verified",
+        "level": "source_verified",
         "real_runtime": false,
         "evidence_basis": [
           "## Rule-by-rule decision",
@@ -123,7 +123,7 @@
       "evidence": "accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "parity_verified",
+        "level": "source_verified",
         "real_runtime": false,
         "evidence_basis": [
           "catalog_evaluation",

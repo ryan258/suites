@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import CONTRACTS, SCHEMA_VERSION, ContractError, validate_contract
-from .paths import PROJECTS_ROOT, SUITES_ROOT
+from .paths import PROJECTS_ROOT, SUITES_ROOT, durable_write_text
 from .provenance import is_meaningful_git_fingerprint
 
 RECOVERY_STANDARD_PATH = SUITES_ROOT / "portfolio" / "recovery-standard.json"
@@ -37,6 +37,9 @@ RECOVERY_RESOLUTION_OUTCOMES = [
     "historical_only", "deferred_with_trigger",
 ]
 RECOVERY_CLAIM_KINDS = ["analysis", "runtime", "adoption", "convergence", "resolution"]
+# Promotion levels whose names assert that a real runtime was executed and compared.
+# Reaching one requires runtime evidence, so a claim that declares no runtime cannot hold it.
+RUNTIME_PROMOTION_LEVELS = frozenset({"parity_verified", "adopted", "converged"})
 RECOVERY_ENFORCEMENT = {
     "completed_wave_requires_recovery_claim": True,
     "prototype_never_counts_as_recovered": True,
@@ -168,17 +171,17 @@ def _receipt_value(document: dict[str, Any], dotted_path: str) -> Any:
 
 
 ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
-    "A3": {
+    "accessibility/A3": {
         "equals": {"canonical_target": "kb-overlay"},
         "objects": ["matrix"],
         "strings": ["recommendation"],
     },
-    "A5": {
+    "accessibility/A5": {
         "equals": {"evidence_loss": False, "roundtrip_status": "verified"},
         "objects": ["canonical_finding"],
         "contracts": {"canonical_finding": "A11yFinding"},
     },
-    "O2": {
+    "operator-os/O2": {
         "equals": {"wave_id": "O2", "status": "verified"},
         "objects": ["fingerprints", "canonical_anchors_confirmed"],
         "lists": ["ryos_core_files", "master_plan_files", "inventory_catalog"],
@@ -194,7 +197,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
             "fingerprints.obsidian_observer",
         ],
     },
-    "O3": {
+    "operator-os/O3": {
         "equals": {
             "wave_id": "O3",
             "status": "preview_verified",
@@ -205,7 +208,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "strings": ["recovery_path"],
         "fingerprints": ["jarvis_runtime"],
     },
-    "O4": {
+    "operator-os/O4": {
         "equals": {
             "wave_id": "O4",
             "status": "stream_intake_verified",
@@ -216,7 +219,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "minimums": {"batch_size": 3, "observer_projections_count": 1},
         "fingerprints": ["pkos_fingerprint", "observer_fingerprint"],
     },
-    "O5": {
+    "operator-os/O5": {
         "equals": {
             "wave_id": "O5",
             "status": "disposition_reconciled",
@@ -226,7 +229,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "lists": ["proposed_ports", "source_inventory_catalog"],
         "minimums": {"port_candidates_count": 2},
     },
-    "O6": {
+    "operator-os/O6": {
         "equals": {
             "wave_id": "O6",
             "status": "checkpoint_lifecycle_verified",
@@ -236,7 +239,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["fail_closed_test", "preview_test"],
         "fingerprints": ["jarvis_fingerprint"],
     },
-    "O1": {
+    "operator-os/O1": {
         "equals": {
             "wave_id": "O1",
             "status": "cas_projection_verified",
@@ -261,7 +264,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "fingerprints": ["donor.fingerprint", "target.pkos_fingerprint", "target.observer_fingerprint"],
         "contracts": {"source_record": "SourceRecord"},
     },
-    "B1": {
+    "brand-publishing/B1": {
         "equals": {
             "wave": "B1",
             "status": "verified_candidate",
@@ -286,7 +289,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "fingerprints": ["target.fingerprint", "consumer.fingerprint"],
         "contracts": {"brand_package": "BrandPackage", "source_record": "SourceRecord"},
     },
-    "B2": {
+    "brand-publishing/B2": {
         "equals": {
             "wave": "B2",
             "status": "all_phases_mapped",
@@ -296,12 +299,12 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "lists": ["phase_mappings"],
         "fingerprints": ["donor.fingerprint", "target.fingerprint"],
     },
-    "B3": {
+    "brand-publishing/B3": {
         "equals": {"status": "dry_run_verified", "dry_run_only": True, "live_published": False},
         "strings": ["brand_package_id", "source_id", "source_sha256"],
         "minimums": {"matched_approved_claims_count": 1},
     },
-    "B4": {
+    "brand-publishing/B4": {
         "equals": {
             "status": "verified",
             "consumer_1.status": "verified",
@@ -313,7 +316,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         },
         "objects": ["consumer_1", "consumer_2"],
     },
-    "B5": {
+    "brand-publishing/B5": {
         "equals": {
             "phases_total": 9,
             "phases_completed": 9,
@@ -323,7 +326,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["resulting_package"],
         "contracts": {"resulting_package": "BrandPackage"},
     },
-    "B6": {
+    "brand-publishing/B6": {
         "equals": {
             "approved_review.status": "simulated_review_passed",
             "approved_review.simulated_gate.boundary_check": "stopped_before_live_publish",
@@ -336,7 +339,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         },
         "objects": ["approved_review"],
     },
-    "P1": {
+    "production-house/P1": {
         "equals": {"wave": "P1", "status": "fingerprinted", "all_stages_passed": True},
         "objects": ["job"],
         "fingerprints": [
@@ -346,19 +349,19 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         ],
         "contracts": {"job": "ProductionJob"},
     },
-    "P2": {
+    "production-house/P2": {
         "equals": {"wave": "P2", "status": "formatter_executed", "all_stages_passed": True},
         "objects": ["job"],
         "fingerprints": ["formatter_fingerprint"],
         "contracts": {"job": "ProductionJob"},
     },
-    "P3": {
+    "production-house/P3": {
         "equals": {"wave": "P3", "status": "handoff_verified", "all_stages_passed": True},
         "objects": ["job"],
         "fingerprints": ["writers_room_fingerprint"],
         "contracts": {"job": "ProductionJob"},
     },
-    "P4": {
+    "production-house/P4": {
         "equals": {
             "wave": "P4",
             "status": "documentary_pipeline_verified",
@@ -367,12 +370,12 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["job"],
         "contracts": {"job": "ProductionJob"},
     },
-    "P5": {
+    "production-house/P5": {
         "equals": {"wave": "P5", "status": "event_stream_unified", "all_stages_passed": True},
         "objects": ["mapping", "mapping.mapped_job"],
         "contracts": {"mapping.mapped_job": "ProductionJob"},
     },
-    "M1": {
+    "model-behavior-lab/M1": {
         "equals": {
             "wave": "M1",
             "status": "normalized",
@@ -385,7 +388,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "fingerprints": ["ethics_comparator_fingerprint"],
         "contracts": {"canonical_run": "ExperimentRun"},
     },
-    "M2": {
+    "model-behavior-lab/M2": {
         "equals": {
             "wave": "M2",
             "status": "extraction_matrix_measured",
@@ -401,7 +404,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         },
         "fingerprints": ["ethics_comparator_fingerprint", "strength_comparator_fingerprint"],
     },
-    "M3": {
+    "model-behavior-lab/M3": {
         "equals": {
             "wave": "M3",
             "status": "fixture_verified",
@@ -413,14 +416,14 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "strings": ["match_fixture.source_sha256", "match_fixture.invalid_move_behavior"],
         "fingerprints": ["ai_chess_fingerprint"],
     },
-    "M4": {
+    "model-behavior-lab/M4": {
         "equals": {"wave": "M4", "status": "benchmark_verified", "all_stages_passed": True},
         "objects": ["canonical_run", "kernel_generality"],
         "lists": ["canonical_run.iterations", "kernel_generality.domains_scored"],
         "fingerprints": ["ai_chess_fingerprint"],
         "contracts": {"canonical_run": "ExperimentRun"},
     },
-    "A4": {
+    "accessibility/A4": {
         "equals": {
             "wave": "A4",
             "status": "parity_verified",
@@ -443,7 +446,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         },
         "fingerprints": ["target.fingerprint", "donor.fingerprint"],
     },
-    "A6": {
+    "accessibility/A6": {
         "equals": {
             "wave": "A6",
             "status": "consolidation_proposed",
@@ -470,20 +473,20 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
             "reconciliation_matrix.keyboard-nav-overlay-94bf7e.git_fingerprint",
         ],
     },
-    "D1": {
+    "discovery-decision/D1": {
         "equals": {"wave": "D1", "status": "parity_mapped", "all_stages_passed": True},
         "objects": ["forge_budgets", "sif_run_sampled"],
         "lists": ["matrix", "sif_run_sampled.artifacts"],
         "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
     },
-    "D2": {
+    "discovery-decision/D2": {
         "equals": {"wave": "D2", "status": "stage_ported", "all_stages_passed": True},
         "objects": ["investigation", "donor_artifact", "budget_source"],
         "strings": ["donor_artifact.origin", "donor_artifact.sha256"],
         "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
         "contracts": {"investigation": "InvestigationRecord"},
     },
-    "D3": {
+    "discovery-decision/D3": {
         "equals": {
             "wave": "D3",
             "status": "sources_cited_with_excerpts",
@@ -497,14 +500,14 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "fingerprints": ["insight_excavator_fingerprint"],
         "contracts": {"primary_source": "SourceRecord"},
     },
-    "D4": {
+    "discovery-decision/D4": {
         "equals": {"wave": "D4", "status": "stage_ported", "all_stages_passed": True},
         "objects": ["investigation", "donor_artifact", "budget_source"],
         "strings": ["donor_artifact.origin", "donor_artifact.sha256"],
         "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
         "contracts": {"investigation": "InvestigationRecord"},
     },
-    "D5": {
+    "discovery-decision/D5": {
         "equals": {
             "wave": "D5",
             "status": "retirement_proposed",
@@ -525,14 +528,14 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "fingerprints": ["insight_excavator_fingerprint", "forge_fingerprint"],
         "contracts": {"primary_source": "SourceRecord"},
     },
-    "R1": {
+    "agent-reliability/R1": {
         "equals": {"wave": "R1", "status": "fixtures_defined", "all_stages_passed": True},
         "objects": ["canonical_run", "donor_policy", "engine_scorecard"],
         "lists": ["canonical_run.iterations"],
         "fingerprints": ["looping_box_fingerprint"],
         "contracts": {"canonical_run": "ExperimentRun"},
     },
-    "R2": {
+    "agent-reliability/R2": {
         "equals": {"wave": "R2", "status": "coverage_measured", "all_stages_passed": True},
         "objects": ["harness_coverage", "gates_covered", "fingerprints"],
         "strings": ["execution_limitation"],
@@ -543,13 +546,13 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
             "fingerprints.agentic_harness",
         ],
     },
-    "R3": {
+    "agent-reliability/R3": {
         "equals": {"wave": "R3", "status": "consumers_measured", "all_stages_passed": True},
         "objects": ["measurement"],
         "lists": ["promoted_components"],
         "fingerprints": ["components_fingerprint"],
     },
-    "R4": {
+    "agent-reliability/R4": {
         "equals": {
             "wave": "R4",
             "status": "craft_rule_enforced",
@@ -560,13 +563,13 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "lists": ["audited_components", "audit.retained"],
         "fingerprints": ["components_fingerprint"],
     },
-    "R5": {
+    "agent-reliability/R5": {
         "equals": {"wave": "R5", "status": "curriculum_mined", "all_stages_passed": True},
         "objects": ["curriculum_fixtures"],
         "lists": ["mined_modules"],
         "fingerprints": ["ai_staff_fingerprint", "agentic_harness_fingerprint"],
     },
-    "G2": {
+    "game-design/G2": {
         "equals": {
             "wave": "G2",
             "status": "pack_shape_projected",
@@ -582,7 +585,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "minimums": {"shape_projection.donor_rows_summarized": 1},
         "fingerprints": ["tucked_in_terrors_fingerprint", "storyweaver_fingerprint"],
     },
-    "G3": {
+    "game-design/G3": {
         "equals": {
             "wave": "G3",
             "status": "boundary_documented",
@@ -594,7 +597,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "lists": ["authored_inventory"],
         "fingerprints": ["oregon_dnd_fingerprint"],
     },
-    "G4": {
+    "game-design/G4": {
         "equals": {
             "wave": "G4",
             "status": "second_class_verified",
@@ -605,7 +608,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "lists": ["schema_check.observed_gds_vocabulary", "schema_check.reference_slots_written"],
         "fingerprints": ["storyweaver_fingerprint"],
     },
-    "G5": {
+    "game-design/G5": {
         "equals": {
             "wave": "G5",
             "status": "boundary_formalized",
@@ -617,7 +620,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "lists": ["donor_modules"],
         "fingerprints": ["march_madness_fingerprint"],
     },
-    "M5": {
+    "model-behavior-lab/M5": {
         "equals": {"wave": "M5", "status": "corpus_pinned", "all_stages_passed": True},
         "objects": ["corpus_manifest", "fingerprints"],
         "lists": ["corpus_sources", "corpus_manifest.benchmarks_included"],
@@ -630,12 +633,53 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
 }
 
 
-def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, Any]) -> list[str]:
-    """Validate expected values and shapes for a completed analysis receipt."""
+def _lookup_receipt_spec(
+    suite_id: str | None, wave_id: str | None
+) -> tuple[dict[str, Any] | None, str | None, str | None]:
+    """Resolve one receipt spec, or explain why no single spec applies.
+
+    A known suite selects its own entry outright. Without one, a bare wave ID is accepted
+    only while it identifies exactly one suite; once two suites declare the same wave
+    letter the fallback refuses, because guessing between them would check a receipt
+    against another suite's assertions and call that a pass.
+    """
+    if suite_id:
+        key = f"{suite_id}/{wave_id}"
+        spec = ANALYSIS_RECEIPT_SPECS.get(key)
+        if spec is None:
+            return None, (
+                f"wave {key} has no ANALYSIS_RECEIPT_SPECS definition "
+                "for JSON semantic validation"
+            ), None
+        return spec, None, key
+
+    matches = [key for key in ANALYSIS_RECEIPT_SPECS if key.split("/", 1)[1] == wave_id]
+    if not matches:
+        return None, (
+            f"wave {wave_id} has no ANALYSIS_RECEIPT_SPECS definition for JSON semantic validation"
+        ), None
+    if len(matches) > 1:
+        return None, (
+            f"wave {wave_id} matches several suites ({', '.join(sorted(matches))}); "
+            "the caller must name its suite to select a receipt spec"
+        ), None
+    return ANALYSIS_RECEIPT_SPECS[matches[0]], None, matches[0]
+
+
+def _analysis_receipt_semantic_errors(
+    wave: dict[str, Any], document: dict[str, Any], suite_id: str | None = None
+) -> list[str]:
+    """Validate expected values and shapes for a completed analysis receipt.
+
+    Specs are keyed `<suite id>/<wave id>` so two suites may use the same wave letter
+    without silently sharing one another's assertions. A caller that does not know its
+    suite falls back to a unique bare wave ID, and an ambiguous one is refused rather
+    than resolved to whichever entry happens to match.
+    """
     wave_id = wave.get("id")
-    spec = ANALYSIS_RECEIPT_SPECS.get(wave_id)
-    if not spec:
-        return [f"wave {wave_id} has no ANALYSIS_RECEIPT_SPECS definition for JSON semantic validation"]
+    spec, lookup_error, spec_key = _lookup_receipt_spec(suite_id, wave_id)
+    if lookup_error:
+        return [lookup_error]
 
     errors: list[str] = []
     for dotted_path, expected in spec.get("equals", {}).items():
@@ -671,7 +715,10 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
         if not is_meaningful_git_fingerprint(_receipt_value(document, dotted_path)):
             errors.append(f"{dotted_path} must be a meaningful source fingerprint")
 
-    if wave_id == "A3":
+    # Dispatch on the resolved spec key. These rules encode one suite's receipt shape --
+    # accessibility's three keyboard overlays, brand-publishing's nine phases -- and a
+    # different suite reusing the wave letter must not inherit them.
+    if spec_key == "accessibility/A3":
         matrix = document.get("matrix", {})
         expected_overlays = {"kb-overlay", "keyboard-nav-overlay", "keyboard-nav-overlay-94bf7e"}
         if not isinstance(matrix, dict) or set(matrix) != expected_overlays:
@@ -714,7 +761,7 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
                     and is_meaningful_git_fingerprint(overlay.get("git_fingerprint"))
                 ):
                     errors.append(f"matrix.{name} must retain verified source measurements")
-    elif wave_id == "A4":
+    elif spec_key == "accessibility/A4":
         catalog = document.get("catalog_evaluation", {})
         evaluations = catalog.get("evaluations", []) if isinstance(catalog, dict) else []
         if len(evaluations) != catalog.get("total_candidates_evaluated"):
@@ -725,23 +772,23 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
                 validate_contract("A11yFinding", finding)
             except (ContractError, TypeError) as error:
                 errors.append(f"catalog_evaluation.evaluations.{index}.finding violates A11yFinding: {error}")
-    elif wave_id == "O4":
+    elif spec_key == "operator-os/O4":
         for index, record in enumerate(document.get("processed_records", [])):
             try:
                 validate_contract("SourceRecord", record)
             except (ContractError, TypeError) as error:
                 errors.append(f"processed_records.{index} violates SourceRecord: {error}")
-    elif wave_id == "B1":
+    elif spec_key == "brand-publishing/B1":
         mutation_tests = document.get("mutation_tests", [])
         if any(not isinstance(test, dict) or test.get("passed") is not True for test in mutation_tests):
             errors.append("every B1 mutation test must retain an explicit pass")
-    elif wave_id == "B2":
+    elif spec_key == "brand-publishing/B2":
         if len(document.get("phase_mappings", [])) != 9:
             errors.append("B2 must retain exactly nine phase mappings")
-    elif wave_id == "B5":
+    elif spec_key == "brand-publishing/B5":
         if len(document.get("intake_log", [])) != 9:
             errors.append("B5 must retain exactly nine intake phases")
-    elif wave_id == "B6":
+    elif spec_key == "brand-publishing/B6":
         app_rev = document.get("approved_review", {})
         sim_gate = app_rev.get("simulated_gate") or app_rev.get("human_gate", {})
         if isinstance(sim_gate, dict):
@@ -749,7 +796,7 @@ def _analysis_receipt_semantic_errors(wave: dict[str, Any], document: dict[str, 
                 errors.append("B6 simulated review gate must declare human_confirmation_claimed as false")
             if sim_gate.get("decision_source") == "simulated_fixture" and app_rev.get("status") == "ready_for_operator_release":
                 errors.append("B6 simulated review cannot claim ready_for_operator_release without explicit operator approval")
-    elif wave_id in {"P1", "P2", "P3", "P4"}:
+    elif spec_key in {"production-house/P1", "production-house/P2", "production-house/P3", "production-house/P4"}:
         job = document.get("job", {})
         expected_collection = "inputs" if wave_id == "P3" else "outputs"
         expected_minimum = 1
@@ -834,7 +881,7 @@ def evidence_ineligibility_reason(wave: dict[str, Any]) -> str | None:
     return None
 
 
-def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
+def evidence_errors(wave: dict[str, Any], path: Path, suite_id: str | None = None) -> list[str]:
     """Errors in a wave's evidence receipt, dispatched by claim kind.
 
     Shared by registry validation and the wave recorder, so a receipt that records
@@ -856,7 +903,7 @@ def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
     if not kind:
         return [evidence_ineligibility_reason(wave) or "wave has no declared recovery evidence contract"]
     if kind == "runtime":
-        if claim.get("level") in {"parity_verified", "adopted", "converged"}:
+        if claim.get("level") in RUNTIME_PROMOTION_LEVELS:
             return _runtime_parity_receipt_errors(path, claim.get("receipt_contract", ""))
         return [_UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"runtime claim at level {claim.get('level')!r}")]
     if kind == "analysis":
@@ -870,7 +917,7 @@ def evidence_errors(wave: dict[str, Any], path: Path) -> list[str]:
             document = _load_json(path)
         except (OSError, ValueError, json.JSONDecodeError) as error:
             return [f"analysis evidence cannot be loaded for semantic validation: {error}"]
-        return _analysis_receipt_semantic_errors(wave, document)
+        return _analysis_receipt_semantic_errors(wave, document, suite_id)
     return [_UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"recovery claim kind {kind!r}")]
 
 
@@ -983,6 +1030,11 @@ def get_portfolio_summary() -> dict[str, Any]:
     suite_summaries = []
     total_waves = 0
     completed_waves = 0
+    # A completed analysis wave has left its runtime work undone and named it in
+    # `runtime_followup`. Counting those here is what keeps the aggregate from reading
+    # 100% while nearly every wave still owes a live run: `next` already listed the debt
+    # per wave, and the headline was the one place it went missing.
+    waves_owing_runtime_followup = 0
     verified_analysis_milestones = 0
     recovered_runtime_behaviors = 0
     adopted_runtime_behaviors = 0
@@ -994,6 +1046,11 @@ def get_portfolio_summary() -> dict[str, Any]:
         total_waves += len(waves)
         completed_in_suite = sum(1 for w in waves if w.get("status") == "complete")
         completed_waves += completed_in_suite
+        owing_in_suite = sum(
+            1 for w in waves
+            if w.get("status") == "complete" and str(w.get("runtime_followup") or "").strip()
+        )
+        waves_owing_runtime_followup += owing_in_suite
         for wave in waves:
             if wave.get("status") != "complete":
                 continue
@@ -1002,7 +1059,7 @@ def get_portfolio_summary() -> dict[str, Any]:
             level = claim.get("level")
             if kind == "analysis":
                 verified_analysis_milestones += 1
-            if kind == "runtime" and level in {"parity_verified", "adopted", "converged"}:
+            if kind == "runtime" and level in RUNTIME_PROMOTION_LEVELS:
                 recovered_runtime_behaviors += 1
             if kind in {"runtime", "adoption"} and level in {"adopted", "converged"}:
                 adopted_runtime_behaviors += 1
@@ -1021,6 +1078,7 @@ def get_portfolio_summary() -> dict[str, Any]:
             "project_count": len(owned),
             "waves_total": len(waves),
             "waves_complete": completed_in_suite,
+            "waves_owing_runtime_followup": owing_in_suite,
             "current_wave": current_wave.get("id") if current_wave else "complete",
             "completion_percentage": round((completed_in_suite / len(waves) * 100) if waves else 100, 1),
         })
@@ -1035,6 +1093,7 @@ def get_portfolio_summary() -> dict[str, Any]:
         "nested_repositories": nested_count,
         "total_waves": total_waves,
         "completed_waves": completed_waves,
+        "waves_owing_runtime_followup": waves_owing_runtime_followup,
         "portfolio_progress_pct": round((completed_waves / total_waves * 100) if total_waves else 0, 1),
         "recovery_standard_id": standard.get("standard_id"),
         "recovery_target_score": standard.get("target_score"),
@@ -1222,6 +1281,16 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: runtime recovery must exercise a real runtime")
             if claim_kind == "analysis" and claim.get("real_runtime") is not False:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: analysis claim cannot manufacture runtime execution")
+            # `parity_verified` and above are runtime rungs: their names assert that a donor
+            # and a destination were both executed and compared. An analysis claim states in
+            # the same breath that no runtime ran, so it may climb no higher than
+            # `source_verified`. Only the runtime branch below carries evidence that can
+            # substantiate the upper rungs, and nothing was applying it to analysis claims.
+            if claim_kind == "analysis" and claim_level in RUNTIME_PROMOTION_LEVELS:
+                report.errors.append(
+                    f"{suite_id}/{wave.get('id')}: analysis claim cannot occupy the runtime "
+                    f"promotion level {claim_level!r}; the highest analysis level is 'source_verified'"
+                )
             # A completed analysis wave has, by definition, left its runtime work undone.
             # Without a written followup that work is not deferred, it is lost: the wave
             # reads as finished and nothing in the ledger remembers what it did not do.
@@ -1241,7 +1310,7 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                 evidence_basis_set: set[str] = set()
             else:
                 evidence_basis_set = set(evidence_basis)
-            if claim_kind == "runtime" and claim_level in {"parity_verified", "adopted", "converged"}:
+            if claim_kind == "runtime" and claim_level in RUNTIME_PROMOTION_LEVELS:
                 missing_basis = sorted(RUNTIME_PARITY_EVIDENCE - evidence_basis_set)
                 if missing_basis:
                     report.errors.append(
@@ -1271,7 +1340,7 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                         f"{suite_id}/{wave.get('id')}: declared claim has no retained receipt at {evidence_path}"
                     )
             else:
-                for evidence_error in evidence_errors(wave, evidence_file):
+                for evidence_error in evidence_errors(wave, evidence_file, suite_id):
                     report.errors.append(f"{suite_id}/{wave.get('id')}: {evidence_error}")
 
     if check_live:
@@ -1417,5 +1486,7 @@ def fingerprint_baselines(dry_run: bool = False, accept: bool = False) -> list[s
     text = _LEDGER_PATH.read_text(encoding="utf-8")
     new_text, updated = apply_snapshot_updates(text, pending_snapshots(accept))
     if updated and not dry_run:
-        _LEDGER_PATH.write_text(new_text, encoding="utf-8")
+        # The ledger is the single source of truth for all 70 dispositions and cannot be
+        # rebuilt from the suites; it gets the same durable replace as the approval store.
+        durable_write_text(_LEDGER_PATH, new_text)
     return updated

@@ -286,9 +286,9 @@ class RegistryTests(unittest.TestCase):
         inspected: list[str] = []
         real_errors = registry_evidence_errors
 
-        def spy(wave, path):
+        def spy(wave, path, suite_id=None):
             inspected.append(str(wave.get("id")))
-            return real_errors(wave, path)
+            return real_errors(wave, path, suite_id)
 
         with patch("portfolio_suites.registry.evidence_errors", side_effect=spy):
             validate_registry(check_live=False)
@@ -500,3 +500,347 @@ class ReceiptSpecTableTests(unittest.TestCase):
         keys = [k.value for k in table.keys if isinstance(k, ast.Constant)]
         duplicates = sorted({k for k in keys if keys.count(k) > 1})
         self.assertEqual(duplicates, [], f"receipt specs declared more than once: {duplicates}")
+
+
+class AnalysisPromotionLevelTests(unittest.TestCase):
+    """An analysis claim states no runtime ran, so it cannot hold a runtime promotion level.
+
+    `parity_verified` and above assert a donor and a destination were both executed and
+    compared. Only the runtime branch of `validate_registry` carries evidence that can
+    substantiate that, and nothing was applying it to analysis claims -- six shipped waves
+    sat at `parity_verified` with `real_runtime: false`.
+    """
+
+    @staticmethod
+    def _suite_with_claim(level, kind="analysis"):
+        return {
+            "id": "accessibility",
+            "schema_version": "1.0.0",
+            "promise": "p",
+            "anchors": ["allys-tools"],
+            "contracts": [],
+            "members": [{"project": "allys-tools", "relationship": "anchor"}],
+            "completion_criteria": ["c"],
+            "waves": [{
+                "id": "A1",
+                "order": 1,
+                "status": "complete",
+                "objective": "o",
+                "acceptance": "a",
+                "runtime_followup": "deferred runtime work",
+                "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md",
+                "recovery_claim": {
+                    "kind": kind,
+                    "level": level,
+                    "real_runtime": kind == "runtime",
+                    "evidence_basis": ["parity_matrix"],
+                },
+            }],
+        }
+
+    def _errors_for(self, level, kind="analysis"):
+        suites = {"accessibility": self._suite_with_claim(level, kind)}
+        with patch("portfolio_suites.registry.load_suites", return_value=suites):
+            report = validate_registry(check_live=False)
+        return report.errors
+
+    def test_analysis_claim_cannot_hold_a_runtime_promotion_level(self):
+        for level in ("parity_verified", "adopted", "converged"):
+            with self.subTest(level=level):
+                errors = self._errors_for(level)
+                self.assertTrue(
+                    any("cannot occupy the runtime promotion level" in error for error in errors),
+                    f"{level} was accepted for an analysis claim: {errors}",
+                )
+
+    def test_analysis_claim_may_still_reach_source_verified(self):
+        errors = self._errors_for("source_verified")
+        self.assertFalse(
+            any("cannot occupy the runtime promotion level" in error for error in errors),
+            errors,
+        )
+
+    def test_runtime_claim_is_untouched_by_the_analysis_guard(self):
+        errors = self._errors_for("parity_verified", kind="runtime")
+        self.assertFalse(
+            any("cannot occupy the runtime promotion level" in error for error in errors),
+            errors,
+        )
+
+    def test_no_shipped_wave_claims_a_runtime_level_without_a_runtime(self):
+        """The manifests themselves, not a fixture: this is what the guard was written for."""
+        offenders = [
+            f"{suite_id}/{wave['id']}"
+            for suite_id, manifest in load_suites().items()
+            for wave in manifest.get("waves", [])
+            if (wave.get("recovery_claim") or {}).get("kind") == "analysis"
+            and (wave.get("recovery_claim") or {}).get("level") in {"parity_verified", "adopted", "converged"}
+        ]
+        self.assertEqual(offenders, [], f"analysis waves claiming a runtime level: {offenders}")
+
+
+class ReceiptSpecLookupTests(unittest.TestCase):
+    """Receipt specs are keyed by suite and wave so two suites may share a wave letter."""
+
+    def test_every_spec_key_names_a_real_suite_and_wave(self):
+        from portfolio_suites.registry import ANALYSIS_RECEIPT_SPECS
+
+        declared = {
+            f"{suite_id}/{wave['id']}"
+            for suite_id, manifest in load_suites().items()
+            for wave in manifest.get("waves", [])
+        }
+        unknown = sorted(set(ANALYSIS_RECEIPT_SPECS) - declared)
+        self.assertEqual(unknown, [], f"receipt specs for waves no manifest declares: {unknown}")
+
+    def test_suite_id_selects_that_suites_spec(self):
+        from portfolio_suites.registry import _lookup_receipt_spec, ANALYSIS_RECEIPT_SPECS
+
+        spec, error, key = _lookup_receipt_spec("accessibility", "A3")
+        self.assertIsNone(error)
+        self.assertEqual(key, "accessibility/A3")
+        self.assertIs(spec, ANALYSIS_RECEIPT_SPECS["accessibility/A3"])
+
+    def test_wrong_suite_refuses_rather_than_borrowing_another_spec(self):
+        from portfolio_suites.registry import _lookup_receipt_spec
+
+        spec, error, key = _lookup_receipt_spec("game-design", "A3")
+        self.assertIsNone(key)
+        self.assertIsNone(spec)
+        self.assertIn("no ANALYSIS_RECEIPT_SPECS definition", error)
+
+    def test_bare_wave_id_resolves_only_while_it_is_unambiguous(self):
+        from portfolio_suites.registry import _lookup_receipt_spec, ANALYSIS_RECEIPT_SPECS
+
+        spec, error, key = _lookup_receipt_spec(None, "A3")
+        self.assertIsNone(error)
+        self.assertEqual(key, "accessibility/A3")
+        self.assertIs(spec, ANALYSIS_RECEIPT_SPECS["accessibility/A3"])
+
+        collision = dict(ANALYSIS_RECEIPT_SPECS)
+        collision["game-design/A3"] = {"equals": {}}
+        with patch("portfolio_suites.registry.ANALYSIS_RECEIPT_SPECS", collision):
+            spec, error, key = _lookup_receipt_spec(None, "A3")
+        self.assertIsNone(spec, "an ambiguous wave letter must not resolve to one suite's spec")
+        self.assertIn("matches several suites", error)
+
+
+class DurableLedgerWriteTests(unittest.TestCase):
+    """The ledger cannot be rebuilt from the suites, so it is replaced atomically."""
+
+    def test_ledger_is_replaced_atomically_not_truncated_in_place(self):
+        from portfolio_suites import registry
+
+        with TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "project-ledger.json"
+            original = '{"schema_version":"1.0.0","projects":[]}'
+            ledger.write_text(original, encoding="utf-8")
+
+            seen_during_write = {}
+
+            real_replace = __import__("os").replace
+
+            def watched_replace(src, dst):
+                # Mid-write, the destination must still hold the complete old document.
+                seen_during_write["content"] = Path(dst).read_text(encoding="utf-8")
+                return real_replace(src, dst)
+
+            with patch.object(registry, "_LEDGER_PATH", ledger), \
+                 patch.object(registry, "pending_snapshots", return_value={}), \
+                 patch.object(registry, "apply_snapshot_updates", return_value=("NEW", ["proj"])), \
+                 patch("portfolio_suites.paths.os.replace", side_effect=watched_replace):
+                registry.fingerprint_baselines(dry_run=False)
+
+            self.assertEqual(seen_during_write["content"], original)
+            self.assertEqual(ledger.read_text(encoding="utf-8"), "NEW")
+
+    def test_a_failed_ledger_write_leaves_the_previous_document_intact(self):
+        from portfolio_suites import registry
+
+        with TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "project-ledger.json"
+            original = '{"schema_version":"1.0.0","projects":[]}'
+            ledger.write_text(original, encoding="utf-8")
+
+            with patch.object(registry, "_LEDGER_PATH", ledger), \
+                 patch.object(registry, "pending_snapshots", return_value={}), \
+                 patch.object(registry, "apply_snapshot_updates", return_value=("NEW", ["proj"])), \
+                 patch("portfolio_suites.paths.os.replace", side_effect=OSError("disk full")):
+                with self.assertRaises(OSError):
+                    registry.fingerprint_baselines(dry_run=False)
+
+            self.assertEqual(ledger.read_text(encoding="utf-8"), original)
+            self.assertEqual(list(Path(tmp).iterdir()), [ledger], "temporary file was left behind")
+
+
+class RuntimeDebtInAggregateTests(unittest.TestCase):
+    """Scheduling progress and recovery are different quantities.
+
+    `suites next` listed the deferred live runs wave by wave, but the aggregate reported
+    43/43 (100.0%) and stopped there -- so the headline read as done while 42 completed
+    waves still owed a real runtime. The count now travels with the summary the CLI and
+    dashboard both render.
+    """
+
+    def test_summary_counts_every_completed_wave_owing_a_live_run(self):
+        summary = get_portfolio_summary()
+        expected = sum(
+            1
+            for manifest in load_suites().values()
+            for wave in manifest.get("waves", [])
+            if wave.get("status") == "complete" and str(wave.get("runtime_followup") or "").strip()
+        )
+        self.assertEqual(summary["waves_owing_runtime_followup"], expected)
+
+    def test_per_suite_debt_sums_to_the_portfolio_total(self):
+        summary = get_portfolio_summary()
+        self.assertEqual(
+            sum(s["waves_owing_runtime_followup"] for s in summary["suites"]),
+            summary["waves_owing_runtime_followup"],
+        )
+
+    def test_debt_never_exceeds_the_completed_waves_it_is_measured_against(self):
+        summary = get_portfolio_summary()
+        self.assertLessEqual(summary["waves_owing_runtime_followup"], summary["completed_waves"])
+        for suite in summary["suites"]:
+            with self.subTest(suite=suite["id"]):
+                self.assertLessEqual(suite["waves_owing_runtime_followup"], suite["waves_complete"])
+
+    def test_a_hundred_percent_headline_is_never_printed_alone(self):
+        """The regression this guards: full scheduling progress with the debt left unsaid."""
+        import io
+        from contextlib import redirect_stdout
+        from portfolio_suites.cli import _status
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            _status()
+        output = buffer.getvalue()
+
+        summary = get_portfolio_summary()
+        if summary["waves_owing_runtime_followup"]:
+            self.assertIn("still owe a live run", output)
+            self.assertIn(str(summary["waves_owing_runtime_followup"]), output)
+
+    def test_dashboard_renders_the_same_field_the_summary_publishes(self):
+        """The tile and the CLI must read one number, not two hand-maintained ones."""
+        web = SUITES_ROOT / "src" / "portfolio_suites" / "web"
+        self.assertIn("waves_owing_runtime_followup", (web / "app.js").read_text(encoding="utf-8"))
+        self.assertIn('id="card-runtime-debt"', (web / "index.html").read_text(encoding="utf-8"))
+
+
+class DurableWriteModeTests(unittest.TestCase):
+    """A durable replace must not quietly narrow the target's permissions.
+
+    `mkstemp` creates its file 0600. Replacing the 0644 project ledger with it strips group
+    and other read access, and Git cannot report the loss because it tracks only the
+    executable bit -- both modes are `100644` to Git.
+    """
+
+    def test_existing_permissions_survive_the_replacement(self):
+        import os
+        import stat as stat_module
+        from portfolio_suites.paths import durable_write_text
+
+        with TemporaryDirectory() as tmp:
+            for mode in (0o644, 0o640, 0o600):
+                with self.subTest(mode=oct(mode)):
+                    target = Path(tmp) / f"ledger{mode:o}.json"
+                    target.write_text("{}", encoding="utf-8")
+                    os.chmod(target, mode)
+                    durable_write_text(target, '{"projects": []}')
+                    self.assertEqual(stat_module.S_IMODE(target.stat().st_mode), mode)
+                    self.assertEqual(target.read_text(encoding="utf-8"), '{"projects": []}')
+
+    def test_a_new_file_keeps_the_private_default(self):
+        import stat as stat_module
+        from portfolio_suites.paths import durable_write_text
+
+        with TemporaryDirectory() as tmp:
+            target = Path(tmp) / "brand-new.json"
+            durable_write_text(target, "{}")
+            self.assertEqual(stat_module.S_IMODE(target.stat().st_mode), 0o600)
+
+    def test_the_tracked_ledger_keeps_its_mode_through_baseline(self):
+        """The file this actually protects, at the mode it actually ships with."""
+        import os
+        import stat as stat_module
+        from portfolio_suites import registry
+
+        live_mode = stat_module.S_IMODE((SUITES_ROOT / "portfolio" / "project-ledger.json").stat().st_mode)
+        with TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "project-ledger.json"
+            ledger.write_text('{"schema_version":"1.0.0","projects":[]}', encoding="utf-8")
+            os.chmod(ledger, live_mode)
+            with patch.object(registry, "_LEDGER_PATH", ledger), \
+                 patch.object(registry, "pending_snapshots", return_value={}), \
+                 patch.object(registry, "apply_snapshot_updates", return_value=("NEW", ["proj"])):
+                registry.fingerprint_baselines(dry_run=False)
+            self.assertEqual(stat_module.S_IMODE(ledger.stat().st_mode), live_mode)
+
+
+class SuiteQualifiedSemanticRuleTests(unittest.TestCase):
+    """The extra receipt rules belong to the suite whose spec was selected.
+
+    Keying the spec table by `<suite>/<wave>` was not enough while the special branches
+    still switched on the bare letter: a future `game-design/A3` inherited accessibility's
+    keyboard-overlay matrix and receipt-version requirements.
+    """
+
+    @staticmethod
+    def _with_extra_spec():
+        from portfolio_suites.registry import ANALYSIS_RECEIPT_SPECS
+
+        specs = dict(ANALYSIS_RECEIPT_SPECS)
+        specs["game-design/A3"] = {"equals": {"ok": True}}
+        return specs
+
+    def test_another_suites_wave_letter_does_not_inherit_the_rules(self):
+        from portfolio_suites import registry
+
+        with patch.object(registry, "ANALYSIS_RECEIPT_SPECS", self._with_extra_spec()):
+            errors = registry._analysis_receipt_semantic_errors(
+                {"id": "A3", "recovery_claim": {"kind": "analysis", "level": "source_verified"}},
+                {"ok": True},
+                "game-design",
+            )
+        self.assertEqual(errors, [], f"accessibility rules leaked into game-design: {errors}")
+
+    def test_the_owning_suite_is_still_fully_enforced(self):
+        from portfolio_suites import registry
+
+        with patch.object(registry, "ANALYSIS_RECEIPT_SPECS", self._with_extra_spec()):
+            errors = registry._analysis_receipt_semantic_errors(
+                {"id": "A3", "recovery_claim": {"kind": "analysis", "level": "source_verified"}},
+                {"ok": True},
+                "accessibility",
+            )
+        self.assertTrue(any("three declared overlay sources" in e for e in errors), errors)
+        self.assertTrue(any("receipt_version must be" in e for e in errors), errors)
+
+    def test_every_special_branch_is_reachable_only_through_its_own_suite(self):
+        """Each hard-coded rule set must name a suite/wave that really declares it."""
+        import re as _re
+
+        source = (SUITES_ROOT / "src" / "portfolio_suites" / "registry.py").read_text(encoding="utf-8")
+        body = source[source.index("def _analysis_receipt_semantic_errors"):]
+        keys = set(_re.findall(r'spec_key (?:==|in) \{?"([a-z-]+/[A-Z]\d)"', body))
+        keys |= {k for k in _re.findall(r'"([a-z-]+/[A-Z]\d)"', body.split("return errors")[0])}
+        declared = {
+            f"{suite_id}/{wave['id']}"
+            for suite_id, manifest in load_suites().items()
+            for wave in manifest.get("waves", [])
+        }
+        self.assertTrue(keys, "no suite-qualified branches found; did dispatch regress to bare wave ids?")
+        self.assertEqual(sorted(keys - declared), [], "branch keys naming no declared wave")
+
+    def test_no_special_branch_switches_on_a_bare_wave_id(self):
+        import re as _re
+
+        source = (SUITES_ROOT / "src" / "portfolio_suites" / "registry.py").read_text(encoding="utf-8")
+        body = source[source.index("def _analysis_receipt_semantic_errors"):source.index("def _runtime_parity_receipt_errors")]
+        top_level = [
+            line for line in body.splitlines()
+            if _re.match(r'    (if|elif) wave_id (==|in) ', line)
+        ]
+        self.assertEqual(top_level, [], f"branches still dispatch on a bare wave id: {top_level}")
