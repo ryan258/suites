@@ -379,6 +379,9 @@ body {
   color: var(--text-dim);
 }
 
+/* Outstanding runtime work sits under the progress tile: scheduling is not recovery. */
+.subtext-warn { color: var(--badge-yellow-text); }
+
 /* Suites Overview Grid */
 .section-block {
   margin-bottom: 32px;

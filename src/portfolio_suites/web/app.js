@@ -146,6 +146,16 @@ class SuitesApp {
       document.getElementById('card-suite-projects').textContent = sum.total_projects - sum.independent_projects;
       document.getElementById('card-ind-projects').textContent = sum.independent_projects;
       document.getElementById('snapshot-timestamp').textContent = `Snapshot: ${sum.snapshot_at || 'Live'}`;
+      // Scheduling progress alone reads as done. A completed analysis wave still owes the
+      // live run it deferred, so the tile never shows a bare 100%.
+      const debtEl = document.getElementById('card-runtime-debt');
+      if (debtEl) {
+        const owing = sum.waves_owing_runtime_followup || 0;
+        debtEl.textContent = owing
+          ? `${owing} completed wave(s) still owe a live run`
+          : 'no outstanding runtime follow-up';
+        debtEl.className = owing ? 'subtext subtext-warn' : 'subtext';
+      }
     }
 
     const healthBadge = document.getElementById('stat-health');

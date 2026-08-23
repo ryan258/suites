@@ -54,9 +54,22 @@ def _status() -> int:
         f"{summary['adopted_runtime_behaviors']} adopted, "
         f"{summary['converged_runtime_behaviors']} converged"
     )
+    # Scheduling progress and recovery are different quantities, and printing only the
+    # first reads as done. `next` already lists this debt wave by wave; the headline is
+    # where it was missing, which is the one place it most needed saying.
+    owing = summary["waves_owing_runtime_followup"]
+    if owing:
+        print(
+            f"Outstanding runtime work: {owing}/{summary['completed_waves']} completed wave(s) "
+            "still owe a live run ('suites next' names each one)"
+        )
     print("-" * 65)
     for s in summary["suites"]:
-        print(f"{s['id']:<22} sources={s['project_count']:<2} next={s['current_wave']:<10} progress={s['waves_complete']}/{s['waves_total']}")
+        debt = f" owes={s['waves_owing_runtime_followup']}" if s["waves_owing_runtime_followup"] else ""
+        print(
+            f"{s['id']:<22} sources={s['project_count']:<2} next={s['current_wave']:<10} "
+            f"progress={s['waves_complete']}/{s['waves_total']}{debt}"
+        )
     print(f"independent/archive       sources={summary['independent_projects']}")
     return 0
 
