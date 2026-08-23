@@ -17,9 +17,10 @@ import hashlib
 import hmac
 import json
 import os
-import tempfile
 from pathlib import Path
 from typing import Any
+
+from .paths import durable_write_text
 
 STORE_ENV = "PORTFOLIO_OPERATOR_APPROVAL_STORE"
 TOKEN_PREFIX = "opa1"
@@ -64,34 +65,11 @@ def _read_store(path: Path) -> dict[str, Any]:
 
 
 def _durably_replace_store(path: Path, document: dict[str, Any]) -> None:
-    """Atomically replace ``path`` and persist both its contents and directory entry."""
-    temporary: str | None = None
+    """Atomically replace ``path``, reporting a write failure as an approval failure."""
     try:
-        handle, temporary = tempfile.mkstemp(dir=str(path.parent), prefix=path.name, suffix=".tmp")
-        with os.fdopen(handle, "w", encoding="utf-8") as stream:
-            stream.write(json.dumps(document, indent=2))
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-        temporary = None
-
-        directory_handle = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(directory_handle)
-        finally:
-            os.close(directory_handle)
+        durable_write_text(path, json.dumps(document, indent=2))
     except OSError as error:
         raise ApprovalError(f"approval store is not writable, cannot consume: {error}") from error
-    finally:
-        if temporary is not None:
-            try:
-                os.unlink(temporary)
-            except FileNotFoundError:
-                pass
-            except OSError:
-                # The authority has already failed closed. Cleanup failure must not
-                # replace the original consumption error or imply verification.
-                pass
 
 
 def _aware(record: dict[str, Any], field: str) -> datetime.datetime:

@@ -10,13 +10,9 @@ from typing import Any
 
 from ..contracts import compute_sha256
 from ..paths import SUITES_ROOT
-from ..provenance import is_meaningful_git_fingerprint
+from ..provenance import SENSITIVE_PATH_PATTERN, is_meaningful_git_fingerprint
 
 
-SENSITIVE_PATH_PATTERN = re.compile(
-    r"(^|/)\.env($|\.)|(^|/)\.netrc$|(^|/)id_(rsa|dsa|ecdsa|ed25519)$|\.(pem|p12|pfx|key)$|credential",
-    re.IGNORECASE,
-)
 SENSITIVE_ENV_PATTERN = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL", re.IGNORECASE)
 
 
