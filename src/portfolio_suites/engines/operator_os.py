@@ -16,21 +16,31 @@ from typing import Any
 from ..approvals import ApprovalError, canonical_digest, verify_operator_approval
 from ..contracts import SCHEMA_VERSION, validate_contract
 from ..identifiers import new_prefixed_id
+from ..provenance import is_sensitive_path
 from ..registry import SUITES_ROOT
 
 
 def _confined_path(raw_path: str | Path) -> Path | None:
-    """Validate and return resolved path if strictly confined to workspace; return None if unconfined or sensitive."""
+    """Validate and return resolved path if strictly confined to workspace; return None if unconfined or sensitive.
+
+    The boundary is the portfolio directory, which holds seventy donor checkouts, so
+    confinement alone still leaves every donor's credentials in reach. Sensitivity is
+    therefore decided by the one pattern the source adapters already use
+    (:data:`SENSITIVE_PATH_PATTERN`: dotenv files, private keys, certificates, anything
+    named credential) rather than by a second, weaker list maintained here. Two policies
+    over the same question is how the weaker one ends up guarding the read path.
+    """
     target_p = (Path(raw_path) if Path(raw_path).is_absolute() else (SUITES_ROOT / raw_path)).resolve()
     suites_resolved = SUITES_ROOT.resolve()
     projects_dir = suites_resolved.parent
     home_resolved = Path.home().resolve()
-    sensitive_markers = {".ssh", ".aws", ".gnupg", ".netrc", ".bash_history", ".zsh_history"}
+    sensitive_dirs = {".ssh", ".aws", ".gnupg"}
 
     if (
         target_p == home_resolved
         or target_p == Path("/")
-        or any(m in target_p.parts for m in sensitive_markers)
+        or any(m in target_p.parts for m in sensitive_dirs)
+        or is_sensitive_path(target_p)
         or not (target_p.is_relative_to(suites_resolved) or target_p.is_relative_to(projects_dir))
     ):
         return None
@@ -392,10 +402,17 @@ fenced_from_reingestion: true
                 }
 
             backed_up_files = []
+            skipped_sensitive = 0
             for root, _, files in sorted(os.walk(vault_src)):
                 for f in sorted(files):
                     fp = Path(root) / f
                     if fp.name.startswith("snap-"):
+                        continue
+                    # `_read_confined_file` would refuse these anyway, but a manifest that
+                    # silently omitted them would read as "these files do not exist" rather
+                    # than "these were deliberately not fingerprinted". Count them instead.
+                    if is_sensitive_path(fp):
+                        skipped_sensitive += 1
                         continue
                     data = _read_confined_file(fp)
                     if data is not None:
@@ -418,6 +435,7 @@ fenced_from_reingestion: true
                 "created_at": now_iso,
                 "dry_run": dry_run,
                 "files_count": len(backed_up_files),
+                "skipped_sensitive_count": skipped_sensitive,
                 "files": backed_up_files,
             }
 
@@ -456,6 +474,7 @@ fenced_from_reingestion: true
                 "dry_run": dry_run,
                 "manifest_file": manifest_file_path,
                 "files_backed_up": len(backed_up_files),
+                "skipped_sensitive_count": skipped_sensitive,
                 "verified": True,
             }
         elif action_name == "sync_obsidian_notes":

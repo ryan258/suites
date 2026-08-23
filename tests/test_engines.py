@@ -923,3 +923,231 @@ class DonorImportPathTests(unittest.TestCase):
                 self.assertIn(tmpdir, sys.path)
             finally:
                 sys.path.remove(tmpdir)
+
+
+class SensitivePathPolicyTests(unittest.TestCase):
+    """One sensitivity policy guards both what evidence names and what the engine opens.
+
+    The engine's boundary is the whole portfolio directory -- seventy donor checkouts --
+    so confinement alone still left every donor's `.env`, private keys and certificates
+    readable. The adapters already refused to *name* those paths in evidence; this makes
+    the engine refuse to *read* them, from the same pattern.
+    """
+
+    def test_credential_paths_are_refused_even_inside_the_workspace(self):
+        from portfolio_suites.engines.operator_os import _confined_path
+
+        for candidate in (
+            ".env",
+            ".env.local",
+            "operator-os/evidence/id_rsa",
+            "certs/server.pem",
+            "vault/client.p12",
+            "aws-credentials.json",
+            "../alias-scanner/.env",
+        ):
+            with self.subTest(path=candidate):
+                self.assertIsNone(_confined_path(candidate), f"{candidate} was treated as readable")
+
+    def test_ordinary_workspace_paths_are_still_allowed(self):
+        from portfolio_suites.engines.operator_os import _confined_path
+
+        for candidate in ("README.md", "operator-os/evidence", "contracts"):
+            with self.subTest(path=candidate):
+                self.assertIsNotNone(_confined_path(candidate), f"{candidate} was wrongly refused")
+
+    def test_the_checkouts_own_dotenv_cannot_be_read(self):
+        from portfolio_suites.engines.operator_os import _read_confined_file
+        from portfolio_suites.paths import SUITES_ROOT
+
+        self.assertIsNone(_read_confined_file(SUITES_ROOT / ".env"))
+
+    def test_engine_and_adapters_share_one_policy(self):
+        """Two policies over the same question is how the weaker one guards the read path."""
+        from portfolio_suites.adapters import common
+        from portfolio_suites import provenance
+
+        self.assertIs(common.SENSITIVE_PATH_PATTERN, provenance.SENSITIVE_PATH_PATTERN)
+
+
+class BackupSensitiveFileTests(unittest.TestCase):
+    """A backup manifest omits credential files, and says that it did."""
+
+    @staticmethod
+    def _probe_dir():
+        from portfolio_suites.paths import SUITES_ROOT
+
+        return SUITES_ROOT / "operator-os" / "_sensitive_backup_probe"
+
+    def setUp(self):
+        self.probe = self._probe_dir()
+        self.probe.mkdir(parents=True, exist_ok=True)
+        (self.probe / "notes.md").write_text("ordinary content\n", encoding="utf-8")
+        (self.probe / ".env").write_text("OPENROUTER_API_KEY=sk-live-secret\n", encoding="utf-8")
+        (self.probe / "id_rsa").write_text("-----BEGIN PRIVATE KEY-----\n", encoding="utf-8")
+
+    def tearDown(self):
+        for child in self.probe.iterdir():
+            child.unlink()
+        self.probe.rmdir()
+
+    def test_backup_fingerprints_ordinary_files_and_reports_skipped_credentials(self):
+        receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "backup_data",
+            {"path": f"operator-os/{self.probe.name}", "dry_run": True},
+            operator_approved=True,
+        )
+        result = receipt["execution_result"]
+        self.assertEqual(result["files_backed_up"], 1)
+        self.assertEqual(result["skipped_sensitive_count"], 2)
+
+    def test_no_credential_path_appears_anywhere_in_the_receipt(self):
+        import json as _json
+
+        receipt = OperatorOSEngine.execute_jarvis_action_checkpoint(
+            "backup_data",
+            {"path": f"operator-os/{self.probe.name}", "dry_run": True},
+            operator_approved=True,
+        )
+        rendered = _json.dumps(receipt)
+        self.assertNotIn("id_rsa", rendered)
+        self.assertNotIn(".env", rendered)
+        self.assertNotIn("sk-live-secret", rendered)
+
+
+class AdversarialFixtureTests(unittest.TestCase):
+    """The reliability fixtures must be able to fail.
+
+    The originals asserted Python's own semantics -- that `json.loads` rejects bad JSON,
+    that a loop with a `break` stops -- so `pass_rate: 1.0` was unreachable-to-falsify and
+    evidenced nothing. Each fixture now drives an engine method, and breaking that method
+    has to move the score.
+    """
+
+    def test_plan_recovery_repairs_bounded_damage(self):
+        result = AgentReliabilityEngine.recover_plan('{"steps": [1, 2,], "mode": "quick",}')
+        self.assertEqual(result["status"], "repaired")
+        self.assertEqual(result["plan"], {"steps": [1, 2], "mode": "quick"})
+
+    def test_plan_recovery_refuses_what_it_cannot_repair(self):
+        for raw in ("{ unquoted_key: 123", "{'incomplete': true,", "not json at all"):
+            with self.subTest(raw=raw):
+                result = AgentReliabilityEngine.recover_plan(raw)
+                self.assertEqual(result["status"], "unrecoverable")
+                self.assertIsNone(result["plan"])
+                self.assertFalse(result["recovered"])
+
+    def test_valid_plans_are_not_repaired(self):
+        result = AgentReliabilityEngine.recover_plan('{"steps": [1]}')
+        self.assertEqual(result["status"], "valid")
+        self.assertFalse(result["recovered"])
+
+    def test_budget_partition_cuts_at_the_budget_and_defers_the_remainder(self):
+        over = AgentReliabilityEngine.partition_plan_by_budget(list(range(10)), 5)
+        self.assertEqual(over["accepted_count"], 5)
+        self.assertEqual(over["deferred_count"], 5)
+        self.assertTrue(over["budget_exhausted"])
+
+    def test_budget_partition_does_not_clip_a_short_plan(self):
+        under = AgentReliabilityEngine.partition_plan_by_budget(list(range(3)), 5)
+        self.assertEqual(under["accepted_count"], 3)
+        self.assertFalse(under["budget_exhausted"])
+
+    def test_budget_partition_rejects_a_nonsensical_budget(self):
+        for budget in (-1, True, "5"):
+            with self.subTest(budget=budget):
+                with self.assertRaises(ValueError):
+                    AgentReliabilityEngine.partition_plan_by_budget([1], budget)
+
+    def test_budget_partition_never_claims_a_step_was_run(self):
+        """The defect this rename closes: admitted steps were returned as `executed`."""
+        import json as _json
+        from pathlib import Path as _Path
+
+        marker = _Path("/tmp/suites-partition-probe-never-created")
+        result = AgentReliabilityEngine.partition_plan_by_budget(
+            [{"action": "write", "path": str(marker)}], 5
+        )
+        self.assertFalse(marker.exists(), "the probe step must not actually run")
+        self.assertIs(result["executed"], False)
+        self.assertNotIn("executed_count", result)
+        self.assertIn("accepted_count", result)
+        self.assertIn("not run", result["execution_note"])
+        # No field may report a nonzero count of work performed.
+        rendered = _json.dumps(result)
+        self.assertNotIn('"executed_count"', rendered)
+
+    def test_repairs_do_not_rewrite_text_inside_json_strings(self):
+        """Comma-colon prose is ordinary text, not syntax needing repair."""
+        result = AgentReliabilityEngine.recover_plan('{"note":"coordinate, owner: Ryan",}')
+        self.assertEqual(result["status"], "repaired")
+        self.assertEqual(result["plan"], {"note": "coordinate, owner: Ryan"})
+        self.assertEqual(result["repairs"], ["dropped_trailing_comma"])
+
+    def test_a_comma_brace_sequence_inside_a_string_is_left_alone(self):
+        result = AgentReliabilityEngine.recover_plan('{"a":"x,}"}')
+        self.assertEqual(result["status"], "valid")
+        self.assertEqual(result["plan"], {"a": "x,}"})
+
+    def test_a_bare_key_is_repaired_even_beside_comma_colon_prose(self):
+        result = AgentReliabilityEngine.recover_plan('{steps: [1], "note":"a, b: c"}')
+        self.assertEqual(result["status"], "repaired")
+        self.assertEqual(result["plan"], {"steps": [1], "note": "a, b: c"})
+
+    def test_each_repair_is_tried_alone_before_being_combined(self):
+        """A document needing one repair must not be failed by the other."""
+        only_comma = AgentReliabilityEngine.recover_plan('{"a": 1,}')
+        self.assertEqual(only_comma["repairs"], ["dropped_trailing_comma"])
+        only_key = AgentReliabilityEngine.recover_plan('{a: 1}')
+        self.assertEqual(only_key["repairs"], ["quoted_bare_key"])
+
+    def test_rollback_restores_the_state_a_failed_transaction_started_from(self):
+        initial = {"doc_v": 1, "status": "clean"}
+        result = AgentReliabilityEngine.apply_with_rollback(
+            initial,
+            [{"key": "doc_v", "value": 2}, {"key": "status", "value": "dirty", "fails": True}],
+        )
+        self.assertFalse(result["committed"])
+        self.assertEqual(result["state"], initial)
+        self.assertEqual(result["failed_at_index"], 1)
+        self.assertEqual(initial, {"doc_v": 1, "status": "clean"}, "caller's dict was mutated")
+
+    def test_rollback_still_commits_a_clean_transaction(self):
+        result = AgentReliabilityEngine.apply_with_rollback({"doc_v": 1}, [{"key": "doc_v", "value": 2}])
+        self.assertTrue(result["committed"])
+        self.assertEqual(result["state"], {"doc_v": 2})
+
+    def test_breaking_any_primitive_lowers_the_harness_score(self):
+        """Without this, a green scorecard is not evidence that the gates work."""
+        from unittest.mock import patch
+
+        baseline = AgentReliabilityEngine.run_adversarial_harness()
+        self.assertEqual(baseline["evidence"][0]["pass_rate"], 1.0)
+
+        sabotage = {
+            "recover_plan": staticmethod(
+                lambda raw_plan: {"status": "repaired", "recovered": True, "plan": {}, "repairs": []}
+            ),
+            "partition_plan_by_budget": staticmethod(
+                lambda steps, max_steps: {
+                    "requested": len(steps), "budget": max_steps, "accepted_count": len(steps),
+                    "deferred_count": 0, "accepted": steps, "deferred": [],
+                    "budget_exhausted": False, "executed": False, "execution_note": "",
+                }
+            ),
+            "apply_with_rollback": staticmethod(
+                lambda initial_state, edits: {
+                    "committed": False, "state": {"doc_v": 2, "status": "clean"},
+                    "applied_before_failure": [], "failed_at_index": 1, "rolled_back": True,
+                }
+            ),
+        }
+        for name, broken in sabotage.items():
+            with self.subTest(broken=name):
+                with patch.object(AgentReliabilityEngine, name, broken):
+                    scorecard = AgentReliabilityEngine.run_adversarial_harness()
+                self.assertLess(
+                    scorecard["evidence"][0]["pass_rate"],
+                    1.0,
+                    f"breaking {name} left the scorecard green",
+                )
