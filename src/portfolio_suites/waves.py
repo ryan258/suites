@@ -9,8 +9,10 @@ import tempfile
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
+from .approvals import canonical_digest
 from .adapters.accessibility import AccessibilitySourceAdapter
 from .adapters.agent_reliability import AgentReliabilitySourceAdapter
 from .adapters.brand_publishing import BrandPublishingSourceAdapter
@@ -47,6 +49,9 @@ class WaveRunResult:
     # Why nothing was written when --record was asked for. None when not asked, or when the
     # write succeeded. "Not written" has several distinct causes and they must not be conflated.
     record_note: str | None = None
+    # Machine-readable recording outcome. Gate success and evidence persistence are separate
+    # operations: a passing gate must never make a rejected --record request look successful.
+    record_status: str = "not_requested"
 
 
 
@@ -100,7 +105,7 @@ def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, pass
         return None
 
     rel_path = wave.get("evidence")
-    if not rel_path or "/evidence/" not in rel_path:
+    if not isinstance(rel_path, str) or not rel_path:
         return None
     try:
         # Exactly one wave may own a receipt path, and it must be this one.
@@ -111,11 +116,25 @@ def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, pass
         return None
     owner_suite_id = owner[0]
 
-    suite_dir, _, filename = rel_path.partition("/evidence/")
-    if "/" in filename or not filename:
+    # A manifest is data, not authority to choose an arbitrary filesystem target. Require the
+    # canonical <suite-id>/evidence/<filename> shape before creating any directories, and then
+    # re-check the resolved directory in case a symlink would leave the suites tree.
+    rel_parts = PurePosixPath(rel_path).parts
+    if (
+        len(rel_parts) != 3
+        or rel_parts[0] != owner_suite_id
+        or rel_parts[1] != "evidence"
+        or rel_parts[2] in {"", ".", ".."}
+        or PurePosixPath(rel_path).is_absolute()
+    ):
         return None
+    suite_dir, _, filename = rel_parts
     evidence_dir = SUITES_ROOT / suite_dir / "evidence"
     evidence_file = evidence_dir / filename
+    try:
+        evidence_dir.resolve(strict=False).relative_to(SUITES_ROOT.resolve(strict=False))
+    except (OSError, ValueError):
+        return None
     try:
         payload = data if isinstance(data, str) else json.dumps(data, indent=2)
     except (TypeError, ValueError):
@@ -152,11 +171,23 @@ def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, pass
 def classify_wave_spec(wave_spec: dict[str, Any], has_runner: bool = True) -> str:
     """Classify the intended execution kind of a wave specification."""
     manifest_status = wave_spec.get("status", "specified")
-    claim_kind = wave_spec.get("recovery_claim", {}).get("kind")
-    if manifest_status == "complete" and claim_kind == "runtime":
-        return "verified_runtime_recovery"
+    claim = wave_spec.get("recovery_claim", {}) or {}
+    claim_kind = claim.get("kind")
+    claim_level = claim.get("level")
     if manifest_status == "complete":
-        return "verified_analysis"
+        if claim_kind == "runtime" and claim_level == "source_verified":
+            return "verified_source_execution"
+        if claim_kind == "runtime" and claim_level == "parity_verified":
+            return "verified_runtime_recovery"
+        if claim_kind == "adoption" or claim_level == "adopted":
+            return "verified_adoption"
+        if claim_kind == "convergence" or claim_level == "converged":
+            return "verified_convergence"
+        if claim_kind == "resolution":
+            return "verified_resolution"
+        if claim_kind == "analysis":
+            return "verified_analysis"
+        return "unintegrated_specification"
     return "prototype_check" if has_runner else "unintegrated_specification"
 
 
@@ -168,6 +199,14 @@ def format_wave_tag(execution_kind: str, passed: bool, prototype_passed: bool = 
         return "[RECOVERED]"
     if execution_kind == "verified_analysis" and passed:
         return "[ANALYSIS]"
+    if execution_kind == "verified_source_execution" and passed:
+        return "[SOURCE-RUN]"
+    if execution_kind == "verified_adoption" and passed:
+        return "[ADOPTED]"
+    if execution_kind == "verified_convergence" and passed:
+        return "[CONVERGED]"
+    if execution_kind == "verified_resolution" and passed:
+        return "[RESOLVED]"
     if execution_kind == "fast_probe" and passed:
         return "[FAST-PROBE]"
     if execution_kind == "prototype_check" and (prototype_passed or passed):
@@ -267,16 +306,25 @@ class WaveRunner:
             exec_kind = "fast_probe"
 
         # A completed analysis and a recovered runtime are distinct verified claims.
-        is_migration_verified = exec_kind in {"verified_analysis", "verified_runtime_recovery"} and raw_res.passed
+        is_migration_verified = exec_kind in {
+            "verified_analysis",
+            "verified_source_execution",
+            "verified_runtime_recovery",
+            "verified_adoption",
+            "verified_convergence",
+            "verified_resolution",
+        } and raw_res.passed
         prototype_passed = exec_kind == "prototype_check" and raw_res.passed
         gate_passed = raw_res.passed or prototype_passed
+        ineligibility_reason = evidence_ineligibility_reason(wave_spec)
 
         record_note: str | None = raw_res.record_note
         if record_note is None and write_evidence and raw_res.evidence_path is None:
             record_note = (
-                evidence_ineligibility_reason(wave_spec)
-                or ("gate did not pass, so no receipt was offered" if not gate_passed
-                    else "candidate receipt failed validation; prior receipt retained")
+                "gate did not pass, so no receipt was offered"
+                if not gate_passed
+                else ineligibility_reason
+                or "candidate receipt failed validation; prior receipt retained"
             )
 
         return WaveRunResult(
@@ -289,6 +337,19 @@ class WaveRunner:
             evidence_path=raw_res.evidence_path,
             data=raw_res.data,
             record_note=record_note,
+            record_status=(
+                "not_requested"
+                if not write_evidence
+                else "read_only"
+                if raw_res.record_note is not None and raw_res.evidence_path is not None
+                else "recorded"
+                if raw_res.evidence_path is not None and record_note is None
+                else "gate_failed"
+                if not gate_passed
+                else "ineligible"
+                if ineligibility_reason is not None
+                else "candidate_rejected"
+            ),
         )
 
     @classmethod
@@ -396,7 +457,8 @@ class WaveRunner:
             write_evidence,
             passed,
             reconciliation,
-            "Reconciled 3 keyboard overlay implementations into canonical kb-overlay anchor.",
+            "Compared 3 keyboard overlay implementations and retained the kb-overlay recommendation; "
+            "no donor freeze or runtime consolidation was performed.",
             reconciliation,
         )
 
@@ -435,7 +497,8 @@ class WaveRunner:
             write_evidence,
             passed,
             kitchen_view,
-            "Round-tripped A11yFinding contract through A11y Kitchen interactive teaching surface with zero evidence loss.",
+            "Projected A11yFinding through the suite-local teaching view with zero field loss; "
+            "the A11y Kitchen runtime was not invoked.",
             kitchen_view,
         )
 
@@ -583,7 +646,8 @@ class WaveRunner:
             write_evidence,
             passed,
             result,
-            "Exported and validated canonical BrandPackage with dry-run mutation protection and zero live publishing side-effects.",
+            "Built and validated a suite-local BrandPackage projection from inspected donor sources; "
+            "the publishing boundary remained dry-run only.",
             result.get("publishing_receipt"),
         )
 
@@ -623,7 +687,8 @@ class WaveRunner:
             write_evidence,
             passed,
             receipt,
-            "Proved SourceRecord -> BrandPackage -> VCC review -> dry-run publishing receipt.",
+            "Exercised the suite-local SourceRecord -> BrandPackage -> VCC review projection and "
+            "produced a dry-run publishing receipt.",
             receipt,
         )
 
@@ -631,8 +696,13 @@ class WaveRunner:
     def _run_brand_publishing_b4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         b1_result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
         pkg = b1_result["brand_package"]
-        v1 = BrandPublishingEngine.verify_package_consumer(pkg, "site-fixture-consumer", "1.0.0")
-        v2 = BrandPublishingEngine.verify_package_consumer(pkg, "portfolio-validator-consumer", "1.0.0")
+        package_sha256 = canonical_digest(pkg)
+        v1 = BrandPublishingEngine.verify_package_consumer(
+            pkg, "site-fixture-consumer", "1.0.0", expected_package_sha256=package_sha256
+        )
+        v2 = BrandPublishingEngine.verify_package_consumer(
+            pkg, "portfolio-validator-consumer", "1.0.0", expected_package_sha256=package_sha256
+        )
         passed = (
             b1_result.get("all_stages_passed") is True
             and v1.get("status") == "verified"
@@ -646,7 +716,8 @@ class WaveRunner:
             write_evidence,
             passed,
             {"consumer_1": v1, "consumer_2": v2, "status": "verified"},
-            "Wired second BrandPackage consumer; verified version-pinning and mutation-protection boundary.",
+            "Exercised two suite-local BrandPackage consumer projections and verified version-pinning "
+            "and mutation-protection boundaries.",
             {"consumers_verified": 2},
         )
 
@@ -735,7 +806,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Fingerprinted Groundwire episode workflow and QC outputs into ProductionJob.",
+            "Recorded three donor repository fingerprints and projected a deterministic Groundwire "
+            "fixture into ProductionJob; no episode artifacts or external runtime were invoked.",
             res.get("job"),
         )
 
@@ -749,7 +821,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Executed episode slice via formatter adapter with resumable ProductionJob state.",
+            "Projected a deterministic episode fixture into ProductionJob against a formatter "
+            "fingerprint; the formatter was not invoked.",
             res.get("job"),
         )
 
@@ -763,7 +836,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Proved Writers Room story-state handoff via validated ProductionJob lifecycle.",
+            "Projected a versioned handoff fixture into ProductionJob; Writers Room and human "
+            "signoff were not invoked.",
             res.get("job"),
         )
 
@@ -777,8 +851,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Executed a fixture investigative-documentary variant through the unchanged ProductionJob "
-            "engine. No Groundwire episode is read.",
+            "Exercised a deterministic documentary fixture model through ProductionJob; no media "
+            "runtime or Groundwire episode was invoked.",
             res.get("job"),
         )
 
@@ -792,8 +866,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Mapped fixture story revisions into ProductionJob events; unified runtime state. "
-            "Writers Room is not read.",
+            "Projected fixture story revisions into ProductionJob events; Writers Room, signoff, "
+            "and runtime consolidation were not performed.",
             res.get("mapping"),
         )
 
@@ -884,7 +958,8 @@ class WaveRunner:
             write_evidence,
             res.get("all_stages_passed", False),
             res,
-            "Ported the recorded SIF red-team phase into a budgeted Forge InvestigationRecord.",
+            "Projected the recorded SIF red-team phase into a suite-local, budgeted Forge "
+            "InvestigationRecord; the donor runtimes were not invoked.",
             res.get("investigation"),
         )
 
@@ -910,7 +985,8 @@ class WaveRunner:
             write_evidence,
             res.get("all_stages_passed", False),
             res,
-            "Ported the recorded SIF analogy phase through the same bounded Forge path.",
+            "Projected the recorded SIF analogy phase through the same bounded suite-local Forge "
+            "path; the donor runtimes were not invoked.",
             res.get("investigation"),
         )
 

@@ -43,7 +43,13 @@ def canonical_digest(payload: Any) -> str:
     Callers define the complete semantic payload before adding metadata created
     by the approval operation itself.
     """
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 

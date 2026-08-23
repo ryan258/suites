@@ -236,7 +236,7 @@ class WaveTests(unittest.TestCase):
             "job": None,
             "formatter_fingerprint": "",
             "wave": "P2",
-            "status": "formatter_executed",
+            "status": "fixture_output_projection_verified",
             "all_stages_passed": True,
         }
         with tempfile.TemporaryDirectory() as tmp:

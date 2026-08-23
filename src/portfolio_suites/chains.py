@@ -1,80 +1,223 @@
-"""Chain suite engine actions: one action's output becomes a later action's argument.
-
-A chain is the list the Toolbench result tray already keeps -- ``suite``, ``action``,
-``arguments`` -- with references between steps. A reference is ``{"$from": <step index>}``,
-optionally with ``"path"`` to select part of that step's output:
-
-    [
-      {"suite": "game-design", "action": "simulate_tucked_in_terrors", "arguments": {"trials": 100}},
-      {"suite": "game-design", "action": "generate_printable_balance_sheet",
-       "arguments": {"sim_result": {"$from": 0}}}
-    ]
-
-ponytail: compatibility is not declared anywhere. A reference either fits the receiving
-action or that action rejects it, and the chain reports which step failed and why. A
-hand-maintained compatibility table would be a second copy of every engine signature,
-free to drift out of agreement with the code it describes.
-"""
+"""Preflight and execute JSON-safe chains of reviewed suite engine actions."""
 
 from __future__ import annotations
 
+import copy
+import math
 from typing import Any
 
-from .engine_actions import EngineActionError, list_actions, run_action
+from .engine_actions import EngineActionError, get_action_spec, list_actions, run_action
 
 REFERENCE_KEY = "$from"
+REFERENCE_FIELDS = frozenset({REFERENCE_KEY, "path"})
+STEP_FIELDS = frozenset({"suite", "action", "arguments"})
 
 
 class ChainError(ValueError):
-    """A chain that cannot be resolved or run, tagged with the step that failed."""
+    """A preflight or execution failure with its exact, detached completed prefix."""
 
-    def __init__(self, message: str, step_index: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        step_index: int | None = None,
+        *,
+        completed_steps: list[dict[str, Any]] | None = None,
+        suite: str | None = None,
+        action: str | None = None,
+        phase: str = "execution",
+    ) -> None:
         super().__init__(message)
         self.step_index = step_index
+        self.completed_steps = copy.deepcopy(completed_steps or [])
+        self.suite = suite
+        self.action = action
+        self.phase = phase
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "error": str(self),
+            "phase": self.phase,
+            "step_index": self.step_index,
+            "suite": self.suite,
+            "action": self.action,
+            "completed_steps": copy.deepcopy(self.completed_steps),
+        }
 
 
-def _walk_path(value: Any, path: str, step_index: int) -> Any:
-    """Select part of a prior output: dotted keys, integer segments index into lists."""
+def _walk_path(value: Any, path: str, source_step: int, consumer_step: int) -> Any:
+    """Select dotted keys or integer list indexes from an earlier output."""
     for part in path.split("."):
         if isinstance(value, dict):
             if part not in value:
-                raise ChainError(f"path '{path}' has no key '{part}' in step {step_index} output", step_index)
+                raise ChainError(
+                    f"path '{path}' has no key '{part}' in step {source_step} output",
+                    consumer_step,
+                )
             value = value[part]
         elif isinstance(value, list):
             if not part.lstrip("-").isdigit():
-                raise ChainError(f"path '{path}' needs an integer index for a list, got '{part}'", step_index)
+                raise ChainError(
+                    f"path '{path}' needs an integer index for a list, got '{part}'",
+                    consumer_step,
+                )
             index = int(part)
             if not -len(value) <= index < len(value):
-                raise ChainError(f"path '{path}' index {index} out of range in step {step_index} output", step_index)
+                raise ChainError(
+                    f"path '{path}' index {index} out of range in step {source_step} output",
+                    consumer_step,
+                )
             value = value[index]
         else:
-            raise ChainError(f"path '{path}' cannot descend into a {type(value).__name__}", step_index)
+            raise ChainError(
+                f"path '{path}' cannot descend into a {type(value).__name__}",
+                consumer_step,
+            )
     return value
 
 
-def _is_reference(value: Any) -> bool:
-    return isinstance(value, dict) and REFERENCE_KEY in value and set(value) <= {REFERENCE_KEY, "path"}
+def _reference_shape(value: Any, step_index: int) -> bool:
+    """Validate attempted reference dictionaries and return whether this is a reference."""
+    if not isinstance(value, dict) or REFERENCE_KEY not in value:
+        return False
+    unknown = sorted(set(value) - REFERENCE_FIELDS)
+    if unknown:
+        raise ChainError(
+            f"step {step_index} reference has unknown field(s): {', '.join(unknown)}",
+            step_index,
+            phase="preflight",
+        )
+    target = value[REFERENCE_KEY]
+    if not isinstance(target, int) or isinstance(target, bool):
+        raise ChainError(
+            f"step {step_index}: '{REFERENCE_KEY}' must be a step index integer",
+            step_index,
+            phase="preflight",
+        )
+    if not 0 <= target < step_index:
+        raise ChainError(
+            f"step {step_index} references step {target}, which is not an earlier step",
+            step_index,
+            phase="preflight",
+        )
+    if "path" in value and (not isinstance(value["path"], str) or not value["path"]):
+        raise ChainError(
+            f"step {step_index}: 'path' must be a non-empty string",
+            step_index,
+            phase="preflight",
+        )
+    return True
+
+
+def _validate_argument_tree(value: Any, step_index: int, path: str = "arguments") -> None:
+    if value is None or isinstance(value, (str, bool, int)):
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ChainError(f"step {step_index} {path} contains NaN or infinity", step_index, phase="preflight")
+        return
+    if isinstance(value, list):
+        for index, child in enumerate(value):
+            _validate_argument_tree(child, step_index, f"{path}[{index}]")
+        return
+    if isinstance(value, dict):
+        if _reference_shape(value, step_index):
+            return
+        for key, child in value.items():
+            if not isinstance(key, str):
+                raise ChainError(
+                    f"step {step_index} {path} object keys must be strings",
+                    step_index,
+                    phase="preflight",
+                )
+            _validate_argument_tree(child, step_index, f"{path}.{key}")
+        return
+    raise ChainError(
+        f"step {step_index} {path} contains non-JSON value {type(value).__name__}",
+        step_index,
+        phase="preflight",
+    )
+
+
+def preflight_chain(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Validate the entire static chain before executing step zero."""
+    if not isinstance(steps, list) or not steps:
+        raise ChainError("a chain needs a non-empty list of steps", phase="preflight")
+
+    catalog = list_actions()
+    normalized: list[dict[str, Any]] = []
+    for index, step in enumerate(steps):
+        if not isinstance(step, dict):
+            raise ChainError(f"step {index} must be an object", index, phase="preflight")
+        unknown_step_fields = sorted(set(step) - STEP_FIELDS)
+        if unknown_step_fields:
+            raise ChainError(
+                f"step {index} has unknown field(s): {', '.join(unknown_step_fields)}",
+                index,
+                phase="preflight",
+            )
+        suite = step.get("suite")
+        action = step.get("action")
+        if not isinstance(suite, str) or not isinstance(action, str):
+            raise ChainError(f"step {index} needs string 'suite' and 'action'", index, phase="preflight")
+        suite_catalog = catalog.get(suite)
+        action_catalog = {
+            item["name"]: item for item in suite_catalog.get("actions", [])
+        } if suite_catalog else {}
+        if action not in action_catalog:
+            raise ChainError(
+                f"step {index} ({suite}.{action}) is not a reviewed action",
+                index,
+                suite=suite,
+                action=action,
+                phase="preflight",
+            )
+        arguments = step.get("arguments", {})
+        if not isinstance(arguments, dict) or any(not isinstance(key, str) for key in arguments):
+            raise ChainError(f"step {index} 'arguments' must be an object", index, phase="preflight")
+        _validate_argument_tree(arguments, index)
+
+        parameters = {item["name"]: item for item in action_catalog[action]["parameters"]}
+        unexpected = sorted(set(arguments) - set(parameters))
+        if unexpected:
+            raise ChainError(
+                f"step {index} ({suite}.{action}) does not accept: {', '.join(unexpected)}",
+                index,
+                suite=suite,
+                action=action,
+                phase="preflight",
+            )
+        missing = sorted(
+            name for name, metadata in parameters.items()
+            if metadata["required"] and name not in arguments
+        )
+        if missing:
+            raise ChainError(
+                f"step {index} ({suite}.{action}) is missing: {', '.join(missing)}",
+                index,
+                suite=suite,
+                action=action,
+                phase="preflight",
+            )
+        normalized.append({"suite": suite, "action": action, "arguments": copy.deepcopy(arguments)})
+    return normalized
 
 
 def resolve_references(value: Any, outputs: list[Any], step_index: int) -> Any:
-    """Replace every ``{"$from": n}`` in an argument tree with step n's output."""
-    if _is_reference(value):
+    """Replace every valid ``{"$from": n}`` in an argument tree with step n's output."""
+    if isinstance(value, dict) and REFERENCE_KEY in value:
+        # The shape and backward-only target were already checked by preflight. Recheck so this
+        # helper remains safe when called directly.
+        _reference_shape(value, step_index)
         target = value[REFERENCE_KEY]
-        if not isinstance(target, int) or isinstance(target, bool):
-            raise ChainError(f"step {step_index}: '{REFERENCE_KEY}' must be a step index integer", step_index)
-        if not 0 <= target < len(outputs):
+        if target >= len(outputs):
             raise ChainError(
-                f"step {step_index} references step {target}, which has not run "
-                f"({len(outputs)} earlier step(s) available)",
+                f"step {step_index} references step {target}, but only {len(outputs)} output(s) exist",
                 step_index,
             )
         resolved = outputs[target]
-        path = value.get("path")
-        if path is not None:
-            if not isinstance(path, str) or not path:
-                raise ChainError(f"step {step_index}: 'path' must be a non-empty string", step_index)
-            resolved = _walk_path(resolved, path, target)
-        return resolved
+        if "path" in value:
+            resolved = _walk_path(resolved, value["path"], target, step_index)
+        return copy.deepcopy(resolved)
     if isinstance(value, dict):
         return {key: resolve_references(item, outputs, step_index) for key, item in value.items()}
     if isinstance(value, list):
@@ -83,57 +226,57 @@ def resolve_references(value: Any, outputs: list[Any], step_index: int) -> Any:
 
 
 def run_chain(steps: list[dict[str, Any]]) -> dict[str, Any]:
-    """Run steps in order, feeding referenced outputs forward.
-
-    Stops at the first failing step and reports the completed prefix, so a long chain
-    shows where it broke rather than only that it did.
-    """
-    if not isinstance(steps, list) or not steps:
-        raise ChainError("a chain needs a non-empty list of steps")
-
-    catalog = list_actions()
+    """Preflight all steps, then execute in order with structured partial-failure evidence."""
+    prepared = preflight_chain(steps)
     outputs: list[Any] = []
     records: list[dict[str, Any]] = []
 
-    for index, step in enumerate(steps):
-        if not isinstance(step, dict):
-            raise ChainError(f"step {index} must be an object", index)
-        suite = step.get("suite")
-        action = step.get("action")
-        if not isinstance(suite, str) or not isinstance(action, str):
-            raise ChainError(f"step {index} needs string 'suite' and 'action'", index)
-        arguments = step.get("arguments", {})
-        if not isinstance(arguments, dict):
-            raise ChainError(f"step {index} 'arguments' must be an object", index)
-
-        resolved = resolve_references(arguments, outputs, index)
+    for index, step in enumerate(prepared):
+        suite = step["suite"]
+        action = step["action"]
         try:
+            resolved = resolve_references(step["arguments"], outputs, index)
             result = run_action(suite, action, resolved)
-        except EngineActionError as exc:
-            raise ChainError(f"step {index} ({suite}.{action}): {exc}", index) from exc
-        except Exception as exc:
-            raise ChainError(f"step {index} ({suite}.{action}) raised {type(exc).__name__}: {exc}", index) from exc
+        except (EngineActionError, ChainError) as error:
+            raise ChainError(
+                f"step {index} ({suite}.{action}): {error}",
+                index,
+                completed_steps=records,
+                suite=suite,
+                action=action,
+                phase="execution",
+            ) from error
+        except Exception as error:
+            raise ChainError(
+                f"step {index} ({suite}.{action}) raised {type(error).__name__}: {error}",
+                index,
+                completed_steps=records,
+                suite=suite,
+                action=action,
+                phase="execution",
+            ) from error
 
         outputs.append(result)
+        metadata = get_action_spec(suite, action)
         records.append({
             "step": index,
             "suite": suite,
             "action": action,
-            "emits": catalog.get(suite, {}).get("emits"),
-            "references": sorted(_referenced_steps(arguments)),
+            "output_kind": metadata["output_kind"],
+            "emits": metadata["emits"],
+            "references": sorted(_referenced_steps(step["arguments"], index)),
             "result": result,
         })
 
     return {"steps_run": len(records), "steps": records, "final": outputs[-1]}
 
 
-def _referenced_steps(value: Any) -> set[int]:
-    """Which earlier steps an argument tree depends on, for display."""
-    if _is_reference(value):
-        target = value[REFERENCE_KEY]
-        return {target} if isinstance(target, int) and not isinstance(target, bool) else set()
+def _referenced_steps(value: Any, step_index: int) -> set[int]:
+    if isinstance(value, dict) and REFERENCE_KEY in value:
+        _reference_shape(value, step_index)
+        return {value[REFERENCE_KEY]}
     if isinstance(value, dict):
-        return set().union(*(_referenced_steps(item) for item in value.values())) if value else set()
+        return set().union(*(_referenced_steps(item, step_index) for item in value.values())) if value else set()
     if isinstance(value, list):
-        return set().union(*(_referenced_steps(item) for item in value)) if value else set()
+        return set().union(*(_referenced_steps(item, step_index) for item in value)) if value else set()
     return set()

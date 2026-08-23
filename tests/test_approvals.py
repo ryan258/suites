@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import math
 import os
 import tempfile
 import threading
@@ -53,6 +54,11 @@ class ApprovalAuthorityTests(unittest.TestCase):
         os.environ.pop(STORE_ENV, None)
         with self.assertRaises(ApprovalError):
             verify_operator_approval("opa1.apr-1.s3cret", BINDINGS)
+
+    def test_approval_digest_rejects_nonfinite_json(self):
+        for value in (math.nan, math.inf, -math.inf):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                canonical_digest({"value": value})
 
     def test_concurrent_verification_consumes_the_approval_exactly_once(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -206,10 +212,10 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
 
         self.engine = OperatorOSEngine
         self.snapshots = Path(SUITES_ROOT) / "operator-os" / "evidence" / "snapshots"
-        self.before = set(self.snapshots.glob("*.json")) if self.snapshots.is_dir() else set()
+        self.before = set(self.snapshots.glob("snap-*")) if self.snapshots.is_dir() else set()
 
     def _written(self):
-        now = set(self.snapshots.glob("*.json")) if self.snapshots.is_dir() else set()
+        now = set(self.snapshots.glob("snap-*")) if self.snapshots.is_dir() else set()
         return now - self.before
 
     def _params(self):
@@ -266,8 +272,71 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
 
         self.assertEqual(first["status"], "success")
         self.assertTrue(first["execution_result"]["manifest_file"])
-        self.assertEqual(len(written), 1)
+        self.assertTrue(first["execution_result"]["archive_file"])
+        self.assertTrue(first["execution_result"]["backup_payload_created"])
+        self.assertGreater(first["execution_result"]["files_backed_up"], 0)
+        self.assertEqual(len(written), 2)
         self.assertEqual(replay["status"], "error_unverified_approval")
+
+    def test_skipped_sensitive_count_participates_in_snapshot_identity(self):
+        from portfolio_suites.registry import SUITES_ROOT
+
+        with tempfile.TemporaryDirectory(dir=SUITES_ROOT / "operator-os") as source_dir:
+            source = Path(source_dir)
+            (source / "note.md").write_text("ordinary\n", encoding="utf-8")
+            params = {
+                "vault": f"sensitive-identity-{source.name}",
+                "path": str(source),
+                "dry_run": False,
+            }
+
+            with tempfile.TemporaryDirectory() as approval_dir:
+                _, first_token = issue(
+                    approval_dir,
+                    operation="jarvis_action_execution",
+                    action_name=self.ACTION,
+                    payload_sha256=canonical_digest({
+                        "action_name": self.ACTION,
+                        "parameters": params,
+                    }),
+                )
+                first = self.engine.execute_jarvis_action_checkpoint(
+                    self.ACTION,
+                    params,
+                    operator_approved=True,
+                    operator_approval_token=first_token,
+                )
+            for path in self._written():
+                self.addCleanup(path.unlink, True)
+
+            (source / ".env").write_text("OPENROUTER_API_KEY=never-read\n", encoding="utf-8")
+            with tempfile.TemporaryDirectory() as approval_dir:
+                _, second_token = issue(
+                    approval_dir,
+                    operation="jarvis_action_execution",
+                    action_name=self.ACTION,
+                    payload_sha256=canonical_digest({
+                        "action_name": self.ACTION,
+                        "parameters": params,
+                    }),
+                )
+                second = self.engine.execute_jarvis_action_checkpoint(
+                    self.ACTION,
+                    params,
+                    operator_approved=True,
+                    operator_approval_token=second_token,
+                )
+            for path in self._written():
+                self.addCleanup(path.unlink, True)
+
+        self.assertEqual(first["status"], "success")
+        self.assertEqual(second["status"], "success")
+        self.assertNotEqual(
+            first["execution_result"]["snapshot_id"],
+            second["execution_result"]["snapshot_id"],
+        )
+        self.assertEqual(first["execution_result"]["skipped_sensitive_count"], 0)
+        self.assertEqual(second["execution_result"]["skipped_sensitive_count"], 1)
 
     def test_dry_run_still_works_without_any_authority(self):
         os.environ.pop(STORE_ENV, None)
@@ -277,3 +346,73 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
         self.assertEqual(receipt["status"], "success")
         self.assertEqual(receipt["execution_result"]["manifest_file"], "")
         self.assertEqual(self._written(), set())
+
+    def test_bound_token_permits_reversible_cache_rotation(self):
+        from portfolio_suites.registry import SUITES_ROOT
+
+        with tempfile.TemporaryDirectory(dir=SUITES_ROOT / "operator-os") as workspace:
+            cache = Path(workspace) / ".cache"
+            cache.mkdir()
+            (cache / "entry.bin").write_bytes(b"cache data")
+            params = {"cache_dir": str(cache), "dry_run": False}
+            with tempfile.TemporaryDirectory() as approval_dir:
+                _, token = issue(
+                    approval_dir,
+                    operation="jarvis_action_execution",
+                    action_name="rotate_local_cache",
+                    payload_sha256=canonical_digest({
+                        "action_name": "rotate_local_cache",
+                        "parameters": params,
+                    }),
+                )
+                receipt = self.engine.execute_jarvis_action_checkpoint(
+                    "rotate_local_cache",
+                    params,
+                    operator_approved=True,
+                    operator_approval_token=token,
+                )
+
+            rotated = Path(receipt["execution_result"]["rotated_path"])
+            self.assertEqual(receipt["status"], "success")
+            self.assertTrue(receipt["operator_approval_verified"])
+            self.assertTrue(receipt["execution_result"]["rotated"])
+            self.assertTrue(cache.is_dir())
+            self.assertEqual(list(cache.iterdir()), [])
+            self.assertEqual((rotated / "entry.bin").read_bytes(), b"cache data")
+            self.assertIn("rename", receipt["execution_result"]["recovery"])
+
+    def test_bound_token_permits_conflict_refusing_additive_note_sync(self):
+        from portfolio_suites.registry import SUITES_ROOT
+
+        with tempfile.TemporaryDirectory(dir=SUITES_ROOT / "operator-os") as workspace:
+            source = Path(workspace) / "source-notes"
+            destination = Path(workspace) / "destination-notes"
+            source.mkdir()
+            (source / "one.md").write_text("# One\n", encoding="utf-8")
+            params = {
+                "vault_path": str(source),
+                "destination_path": str(destination),
+                "dry_run": False,
+            }
+            with tempfile.TemporaryDirectory() as approval_dir:
+                _, token = issue(
+                    approval_dir,
+                    operation="jarvis_action_execution",
+                    action_name="sync_obsidian_notes",
+                    payload_sha256=canonical_digest({
+                        "action_name": "sync_obsidian_notes",
+                        "parameters": params,
+                    }),
+                )
+                receipt = self.engine.execute_jarvis_action_checkpoint(
+                    "sync_obsidian_notes",
+                    params,
+                    operator_approved=True,
+                    operator_approval_token=token,
+                )
+
+            self.assertEqual(receipt["status"], "success")
+            self.assertTrue(receipt["operator_approval_verified"])
+            self.assertTrue(receipt["execution_result"]["sync_performed"])
+            self.assertEqual(receipt["execution_result"]["files_synced"], ["one.md"])
+            self.assertEqual((destination / "one.md").read_text(encoding="utf-8"), "# One\n")

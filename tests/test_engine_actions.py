@@ -94,7 +94,8 @@ class TestChains(unittest.TestCase):
             {"suite": "accessibility", "action": "roundtrip_kitchen_learning_finding",
              "arguments": {"finding": {"$from": 0, "path": "0"}}},
         ])
-        self.assertEqual(outcome["final"]["roundtrip_status"], "verified")
+        self.assertEqual(outcome["final"]["roundtrip_status"], "suite_projection_verified")
+        self.assertFalse(outcome["final"]["external_consumer_invoked"])
         self.assertFalse(outcome["final"]["evidence_loss"])
 
     def test_provenance_survives_a_cross_suite_chain(self):
