@@ -33,11 +33,19 @@ ledger or performing any owner-controlled release action:
   conflict-refusing additive Markdown sync, and reversible cache rotation are implemented. Active
   mutations require an externally issued, exact-payload, durable, single-use approval; every
   mutation receipt carries recovery instructions.
-- **Post-review defect closure:** backup traversal now prunes ignored directories before descent,
-  skipped-file metadata participates in snapshot identity, and sensitive names are evaluated
-  relative to the selected vault. Wave recording cause/status precedence, Unicode-safe `.env`
-  parsing, empty-environment fallback, lifecycle diagnostics, and one server-owned Toolbench
-  redaction policy are covered by direct regression tests.
+- **Post-review defect closure:** backup traversal now prunes ignored directories before descent.
+  Run-varying metadata — timestamps and the counts of deliberately skipped files — is projected
+  out of the archived manifest by `_archive_manifest`, because `snap_id` identifies the vault and
+  the inventoried file set only; leaving those counts in produced different archive bytes under an
+  unchanged `snap_id` and the content-addressed guard read that as a collision, so dropping a
+  `.env` into an already-archived vault refused every later backup of it. The per-snapshot manifest
+  written alongside still records them. Sensitive names are evaluated relative to the selected
+  vault in both `backup_data` and `sync_obsidian_notes`; sync also resolves its vault root with
+  `reject_sensitive_path=False`, since an operator-named root is not a candidate file and a vault
+  under an ancestor such as `secrets-vault` was previously refused outright with
+  `error_unconfined_path`. Wave recording cause/status precedence, Unicode-safe `.env` parsing,
+  empty-environment fallback, lifecycle diagnostics, and one server-owned Toolbench redaction
+  policy are covered by direct regression tests.
 - **Contracts and evidence:** published JSON Schemas and runtime validation now agree on strict
   keywords and finite JSON values. Provenance, evidence-path ownership, atomic recording, lifecycle
   receipts, and claim-level status aggregation fail closed. A4/A5 and D1/D2/D4 retained receipts
@@ -47,8 +55,8 @@ ledger or performing any owner-controlled release action:
   retained runtime recovery (`A2`) and 42 analysis milestones, with 42 live-runtime follow-ups and
   zero adoption or convergence claims. Production House remains fixture-driven; Discovery D2/D4
   retain donor artifacts but do not claim donor-runtime ports.
-- **Verification:** the full 346-test matrix is green in a socket-permitting environment: 342
-  executed and passed, while four opt-in wheel-smoke tests were skipped. The 319-test socket-free
+- **Verification:** the full 348-test matrix is green in a socket-permitting environment: 344
+  executed and passed, while four opt-in wheel-smoke tests were skipped. The 321-test socket-free
   subset is also green; full
   `validate` reports 0 errors and 0 warnings; JavaScript and Python syntax gates pass. A fresh
   Python 3.12 sdist/wheel builds, installs in an isolated environment, retains all packaged assets,

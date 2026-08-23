@@ -51,6 +51,11 @@ or collaborator ownership.
 
 ## Use it
 
+New here, or want to kick the tyres? [**100 Demos**](docs/100-demos.md) is a hundred runnable
+step-by-step exercises, from `list` and `status` through contract validation, action chains, wave
+gates, the loopback dashboard, and a final act devoted entirely to trying to break it. Every
+command in it is checked by `tests/test_docs.py`.
+
 The checkout-local control plane uses only the Python standard library and vanilla web
 technologies. The optional AI assistant makes HTTPS requests to OpenRouter but adds no Python
 package dependency. Source-runtime gates retain their donors' own prerequisites: Accessibility A2
