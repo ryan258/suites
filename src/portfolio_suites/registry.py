@@ -1276,7 +1276,16 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
 
     if check_live:
         expected = set(projects)
-        actual = {p.name for p in PROJECTS_ROOT.iterdir() if p.is_dir() and p.name != "suites"}
+        actual = {
+            p.name
+            for p in PROJECTS_ROOT.iterdir()
+            if p.is_dir()
+            and p.name != "suites"
+            # Tool config, not portfolio projects. A leading dot at this level is never a
+            # tracked capability (.claude, .venv, .idea), and treating one as an unreviewed
+            # source turns an editor writing a settings file into a registry error.
+            and not p.name.startswith(".")
+        }
         for name in sorted(actual - expected):
             report.errors.append(f"unreviewed top-level directory: {name}")
         for name in sorted(expected - actual):

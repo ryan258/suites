@@ -40,6 +40,19 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(len(rows), 70)
         self.assertTrue(all(row["disposition"] and row["migration"] for row in rows))
 
+    def test_a_tool_config_directory_is_not_an_unreviewed_source(self):
+        """A leading dot at portfolio root is tool config, not a capability to disposition."""
+        ledger_names = {row["name"] for row in load_ledger()["projects"]}
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for name in ledger_names:
+                (root / name).mkdir()
+            (root / ".claude").mkdir()   # what an editor writes, not a portfolio source
+            with patch("portfolio_suites.registry.PROJECTS_ROOT", root):
+                report = validate_registry(check_live=True)
+        unreviewed = [e for e in report.errors if "unreviewed top-level directory" in e]
+        self.assertEqual(unreviewed, [])
+
     def test_registry_and_live_tree_are_consistent(self):
         report = validate_registry(check_live=True)
         self.assertEqual(report.errors, [], "\n".join(report.errors))
