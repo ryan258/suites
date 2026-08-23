@@ -1,11 +1,12 @@
 # Migration Program
 
-Tranche 0's control-plane foundation is complete, eight migration wave milestones are verified (one
-runtime recovery, seven analysis milestones), and the remaining 35 waves carry source-backed
-prototype receipts. Every wave gate reads donor content before making a claim. Prototype artifacts
-prove only what their runner exercised, not completed migrations. Real ports, adoption, retirement,
-and single-runtime convergence follow the [9/10 recovery standard](RECOVERY-STANDARD.md) and the
-[roadmap](ROADMAP.md).
+Tranche 0's control-plane foundation is complete and all 43 migration wave milestones are verified:
+one runtime recovery (`A2`) and 42 analysis milestones. Every wave gate reads donor content before
+making a claim, and each analysis milestone carries an undischarged `runtime_followup` obligation in
+its wave manifest. A verified milestone proves what its runner exercised, not a completed migration.
+Real ports, adoption, retirement, and single-runtime convergence follow the
+[9/10 recovery standard](RECOVERY-STANDARD.md) and the [roadmap](ROADMAP.md); the portfolio reads
+0 adopted and 0 converged.
 
 ## Destination rule
 
@@ -44,68 +45,61 @@ A scaffold, README, build, or passing narrow unit test is not completion.
 - Portfolio bible, local skill candidate, provenance boundary, and unit gates.
 - Accessibility A1 parity decision and 20 future migration fixtures.
 
-## Tranche 1 — Prove the three active bets
+## Tranche 1 — Prove the three active bets (waves verified)
 
-Seven waves in this tranche are verified (plus `A1` from Tranche 0, bringing the portfolio total to
-eight): one runtime recovery (`A2`) and seven analysis milestones (`A1`, `A3`, `A4`, `O1`, `O2`,
-`B1`, `B2`). Every verified analysis milestone still carries a `runtime_followup` obligation
-recorded in its wave manifest; the milestone is not that obligation discharged.
+Accessibility, Operator OS, and Brand + Publishing are 6/6 verified each. `A2` is the portfolio's
+only runtime recovery: the narrow WCAG 3.3.1 ARIA error-association port, verified against the real
+`allys-tools` runtime. The other seventeen waves in this tranche are analysis milestones, and every
+one still owes its `runtime_followup`.
 
-### Accessibility (4/6 verified)
+- **Accessibility (6/6):** parity matrix, the A2 runtime port, overlay reconciliation, 20 candidate
+  rules evaluated against live donor ASTs, `A11yFinding` round-trip through `a11y-kitchen`, and a
+  measured overlay permission surface with a proposed consolidation. Outstanding: port the evaluated
+  rules into the TypeScript runtime, verify the consolidated overlay in a real browser, and secure
+  owner approval before any donor freeze.
+- **Operator OS (6/6):** dotfiles capture into real PKos CAS with fenced Observer projection, the
+  Ryos/master-plan inventory and its port assignments, and a JARVIS action lifecycle modeled through
+  preview, approval, receipt, and a fail-closed unapproved-execution boundary. Outstanding: execute
+  the assigned ports in `dotfiles` backed by tests, scale live daily intake into the permanent
+  vault, and drive JARVIS against real side effects.
+- **Brand + Publishing (6/6):** `BrandPackage` export from live `brand-maker-spec` sources, the
+  nine-phase Brand Workshop mapping, the SourceRecord → draft → VCC review → publishing receipt
+  path, two-consumer version-pinning and mutation-protection boundaries, the fixture intake state
+  machine, and a simulated approval gate with verified rejection branching. Outstanding: run the
+  export from the real Brand Maker runtime into a consumer outside this repository, implement the
+  mapped gates, and replace the simulated gate with real human signoff.
 
-- **A1 — done in Tranche 0 (analysis):** WCAG Auditor to Ally rule, crawl, finding, and deliverable
-  parity matrix.
-- **A2 — done (runtime recovery):** the narrow WCAG 3.3.1 ARIA error-association port is verified
-  against the real `allys-tools` runtime.
-- **A3 — done (analysis):** the three keyboard overlays are reconciled; no archive action taken.
-- **A4 — done (analysis):** 20 candidate WCAG Auditor rules evaluated against live donor rule ASTs,
-  zero false positives on compliant markup. Porting them into the TypeScript runtime is the
-  follow-up.
-- **A5 / A6 remain:** finding round-trip through `a11y-kitchen`, then overlay consolidation and the
-  host-permission narrowing that precedes any owner-approved donor freeze.
+## Tranche 2 — Prove the next systems (waves verified)
 
-### Operator OS (2/6 verified)
+Production House (5/5), Model Behavior Lab (5/5), and Discovery + Decision (5/5) are verified as
+analysis milestones. Each still describes donor structure rather than live execution:
 
-- **O1 — done (analysis):** an authored source is captured into real PKos CAS, normalized into
-  SQLite, and projected into a fenced Observer note that refuses re-ingestion.
-- **O2 — done (analysis):** Ryos/master-plan inventory compared against current dotfiles/Observer
-  state; the assigned ports are follow-up work.
-- **O3 remains:** make one JARVIS action use a canonical service with preview, approval, receipt,
-  and recovery against real side effects. `O4`–`O6` scale the intake stream, execute the Ryos ports,
-  and generalize the JARVIS lifecycle.
+- **Production House:** the pipeline is fingerprinted and expressed as `ProductionJob` receipts and
+  event streams from fixtures. Outstanding: fingerprint real episode artifacts, invoke
+  `elevenlabs-screenplay-formatter` on a real script slice, and carry live Writers Room story state
+  through to a derived output.
+- **Model Behavior Lab:** donor results are normalized into `ExperimentRun` with field parity, the
+  duplication a shared comparator kernel would replace is measured, and the chess benchmark and
+  corpus manifest are specified. Outstanding: re-run the donor runners live, implement the shared
+  slice and delete the duplicated subsystems, and replay whole recorded matches.
+- **Discovery + Decision:** SIF↔Forge stage mapping, red-team and analogy records, and Excavator
+  discovery and citation paths are drawn from real phase nodes and budgets. Outstanding: execute
+  both runtimes on one live question and diff their stages, run red-team and analogy live with
+  budget accounting, and obtain owner approval before retiring any standalone runtime.
 
-### Brand + Publishing (2/6 verified)
+## Tranche 3 — Internal labs and real reference packs (waves verified)
 
-- **B1 — done (analysis):** an approved `BrandPackage` is exported from live `brand-maker-spec`
-  sources and consumed in a `cyborg` dry run with version pinning and mutation protection.
-- **B2 — done (analysis):** Brand Workshop's nine low-typing phases are mapped onto Brand Maker
-  workspace state and gates; implementing those gates is the follow-up.
-- **B3 remains:** prove SourceRecord → governed draft → VCC review → publishing receipt through the
-  real VCC path. `B4`–`B6` cross a repository seam, migrate the intake state machine, and replace
-  the simulated approval gate with real human signoff.
+Agent Reliability (5/5) and Game Design (5/5) are verified as analysis milestones:
 
-## Tranche 2 — Prove the next systems
-
-- **P1/P2:** fingerprint one Groundwire episode, then execute it as a ProductionJob through the
-  formatter without parallel canonical state.
-- **M1/M2:** normalize one ethics scenario into ExperimentRun, then extract the ethics app as a pack
-  over the comparator kernel. *Current state:* `M1` normalizes a recorded donor result and proves
-  field parity; `M2` measures the duplication a shared kernel would replace and states that no
-  canonical slice exists yet.
-- **D1/D2:** map SIF stages to Forge and port one bounded stage with consent, budget, failure, resume,
-  canonical Markdown, and rebuild evidence. *Current state:* the mapping is drawn from real phase
-  nodes and budgets, and the red-team stage is carried as a retained artifact, not a live run.
-
-## Tranche 3 — Internal labs and real reference packs
-
-- **R1/R2:** define and run adversarial harness fixtures for confinement, malformed output, retries,
-  budgets, rollback, and reviewer evidence. *Current state:* fixtures derive from the donor's own
-  declared action policy, and gate coverage is read from harness source; the fixtures have not been
-  executed inside the three harness runtimes.
-- **G1/G2:** fingerprint Tucked in Terrors and prove seeded statistical/artifact parity as a
-  Storyweaver pack. *Current state:* `G1` fingerprints the recorded run sample; `G2` projects it
-  into the pack vocabulary and deliberately reports no parity number, since nothing was generated
-  independently to compare against.
+- **Agent Reliability:** fixtures derive from the donors' declared action policy, gate coverage is
+  read from harness source, promoted components are inventoried, and the curriculum fixtures are
+  verified. Outstanding: execute the fixture battery inside each of the three harness runtimes
+  against live agent loops, and confirm each counted consumer imports shared components at runtime.
+- **Game Design:** the Tucked in Terrors run sample is fingerprinted and projected into the
+  Storyweaver pack vocabulary, authored-game boundaries for Oregon D&D and March Madness are
+  audited, and adventure-pack slot schemas are validated. Outstanding: re-run the donor simulator to
+  regenerate distributions, materialize packs and run them in Storyweaver, and compare independently
+  generated statistics against the donor sample.
 
 ## Retirement procedure
 

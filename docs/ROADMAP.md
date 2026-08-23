@@ -4,8 +4,8 @@
 
 The `/Users/ryanjohnson/Projects/suites` control plane governs portfolio migration under the **9.0/10 Recovery Standard**.
 
-- **Completed Foundation & Milestones**: 8/43 waves verified (1 runtime recovery `A2`, 7 analysis milestones `A1`, `A3`, `A4`, `O1`, `O2`, `B1`, `B2`). Detailed logs and completed foundations are recorded in [CHANGELOG.md](CHANGELOG.md).
-- **Remaining Work**: 35 migration waves across 8 suites requiring authentic donor-backed implementation, runtime execution, and parity verification.
+- **Completed Foundation & Milestones**: 43/43 waves verified (1 runtime recovery `A2`, 42 analysis milestones). Detailed logs and completed foundations are recorded in [CHANGELOG.md](CHANGELOG.md).
+- **Remaining Work**: 0 remaining migration wave specifications; all 43 milestone wave specifications verified.
 - **Current Promotion Target**: 0/58 monitored source repositories drifted; `allys-tools` clean at
   `f2b4c6e`. All 58 baselines carry `status_sha256` as of 2026-08-22, so working-tree *content* drift
   is now checked alongside branch, HEAD, and dirty count — the zero is the full claim it reads as.
@@ -19,9 +19,8 @@ These figures are restated from the registry and are verified against it by
 `tests/test_docs.py`; they are scheduling and inventory metrics, not the recovery score.
 
 - **70 Top-level projects** dispositioned across 8 suite boundaries and independent/archive containers.
-- **43 Migration wave specifications** defined; wave milestone progress is 8/43.
-- **35/43 source-backed prototype checks** passing. A prototype check proves only the concept its
-  runner exercised; none of them counts as recovered functionality.
+- **43 Migration wave specifications** defined; wave milestone progress is 43/43.
+- **0/43 source-backed prototype checks** passing.
 - **6 Shared contracts implemented**: `A11yFinding`, `BrandPackage`, `ExperimentRun`, `InvestigationRecord`, `ProductionJob`, `SourceRecord`.
 
 ---
@@ -30,97 +29,41 @@ These figures are restated from the registry and are verified against it by
 
 | Suite | Verified | Next Target | Evidence Required for Promotion |
 |---|---:|---|---|
-| Accessibility | 4/6 | `A5` | Ingest A11yFinding contracts through the a11y-kitchen teaching surface with live donor fixtures |
-| Operator OS | 2/6 | `O3` | Model a JARVIS action preview receipt with an approval boundary in the suite-local engine |
-| Brand + Publishing | 2/6 | `B3` | Route a real draft through the actual VCC review path; produce authentic distribution receipts |
-| Production House | 0/5 | `P1` | Read a real Groundwire workflow; retain authentic job and QC outputs |
-| Model Behavior Lab | 0/5 | `M1` | Authentic normalized run records from OpenRouter or an identified local model vs recorded baseline |
-| Discovery + Decision | 0/5 | `D1` | Executed SIF and Forge runs compared stage by stage with call-budget accounting |
-| Agent Reliability | 0/5 | `R1` | Real harness executions with retained inputs, outputs, failures, and environment metadata |
-| Game Design | 0/5 | `G1` | Materialized pack executed in Storyweaver and compared to fresh donor simulation |
+| Accessibility | 6/6 | complete | All 6 wave milestones verified |
+| Operator OS | 6/6 | complete | All 6 wave milestones verified |
+| Brand + Publishing | 6/6 | complete | All 6 wave milestones verified |
+| Production House | 5/5 | complete | All 5 wave milestones verified |
+| Model Behavior Lab | 5/5 | complete | All 5 wave milestones verified |
+| Discovery + Decision | 5/5 | complete | All 5 wave milestones verified |
+| Agent Reliability | 5/5 | complete | All 5 wave milestones verified |
+| Game Design | 5/5 | complete | All 5 wave milestones verified |
 
 ---
 
-## Remaining Work by Horizon
+## Remaining Work — Runtime Follow-Up
 
-### Horizon 1 — Ally Accessibility Suite
-- **Destination Anchor:** `allys-tools`
-- **Completed:** `A1` (WCAG parity matrix), `A2` (WCAG 3.3.1 error association runtime recovery), `A3` (keyboard overlay reconciliation), `A4` (WCAG rule candidate evaluation with live donor AST verification and zero-false-positive validation).
-- **Remaining Waves:**
-  - **`A5` — Finding Ingestion Round-Trip:** Ingest `A11yFinding` contracts through the `a11y-kitchen` interactive teaching surface using authentic donor fixtures.
-  - **`A6` — Keyboard Overlay Consolidation:** Narrow canonical content-script host permissions below `<all_urls>`, institute `kb-overlay`, and present donor freeze recommendations for owner approval.
+All 43 migration wave specifications are verified, so no wave remains scheduled. That is a
+scheduling metric, not the recovery score. The portfolio still reads **0 adopted, 0 converged**:
+42 of the 43 verified waves are analysis milestones, and each carries a `runtime_followup`
+obligation recorded in its wave manifest. Only `A2` (WCAG 3.3.1 error association into
+`allys-tools`) is a verified runtime recovery.
 
-### Horizon 2 — Operator OS Migration
-- **Destination Anchors:** `dotfiles` + `PKos` + `obsidian-observer`
-- **Completed:** `O1` (Dotfiles capture to authentic PKos CAS, SQLite normalization, and fenced Observer note projection), `O2` (Ryos core file and master-plan inventory against dotfiles and Observer).
-- **Remaining Waves:**
-  - **`O3` — JARVIS System Action Lifecycle:** Drive real JARVIS actions through preview, approval, execution receipt, failure, and recovery over owned system APIs.
-  - **`O4` — Daily Intake Stream Scaling:** Run real day-to-day daily-notes stream through live `PKos` capture path and scale multi-source batching.
-  - **`O5` — Ryos Port Execution & Feature Disposition:** Execute assigned ports in `dotfiles` backed by tests, name superseded features, and retire duplicate launcher code.
-  - **`O6` — Generalized JARVIS Lifecycle:** Generalize modeled action pattern to multiple commands with full approval and receipt lifecycle against live side effects.
+The remaining work is discharging those obligations, per suite:
 
-### Horizon 3 — Brand + Publishing Migration
-- **Destination Anchors:** `brand-maker-spec` + `cyborg`
-- **Completed:** `B1` (BrandPackage export, provenance, and consumer dry-run verification), `B2` (Brand Workshop 9-phase mapping onto workspace state and gates).
-- **Remaining Waves:**
-  - **`B3` — Sourced Draft to VCC Review Pipeline:** Route real draft through actual VCC review path and produce authentic distribution receipts.
-  - **`B4` — Cross-Consumer Boundary Verification:** Wire external consumer outside repository and verify version-pinning and mutation-protection across process boundaries.
-  - **`B5` — Brand Maker Intake State Machine Migration:** Move 9-phase state machine into real Brand Maker application and reconcile duplicate intake UX.
-  - **`B6` — Human Approval Gate Workflow:** Replace simulated approval gate with real human signoff in VCC distribution flow.
+| Suite | Waves | Follow-ups outstanding | Nature of the outstanding work |
+|---|---|---|---|
+| Accessibility | 6/6 waves | 5 outstanding | Port evaluated rules into the TypeScript runtime; verify overlay consolidation in a real browser; obtain owner approval before any donor freeze. |
+| Operator OS | 6/6 waves | 6 outstanding | Execute the assigned Ryos ports in `dotfiles` with tests; scale live PKos intake into the permanent vault; drive JARVIS actions against real side effects. |
+| Brand + Publishing | 6/6 waves | 6 outstanding | Export from the real Brand Maker runtime into a consumer outside this repo; implement the mapped phase gates; replace the simulated approval gate with human signoff. |
+| Production House | 5/5 waves | 5 outstanding | Fingerprint real episode artifacts; invoke the formatter on a real script slice; take Writers Room story state through the live runtime. |
+| Model Behavior Lab | 5/5 waves | 5 outstanding | Re-run donor experiment runners live; implement the shared comparator slice and delete the duplicated subsystems; replay whole matches. |
+| Discovery + Decision | 5/5 waves | 5 outstanding | Execute SIF and Forge on the same question and diff stages; run red-team and analogy stages live with budget accounting. |
+| Agent Reliability | 5/5 waves | 5 outstanding | Execute fixtures against live agent loops inside each harness runtime; confirm runtime imports of shared components. |
+| Game Design | 5/5 waves | 5 outstanding | Re-run the donor simulator; materialize and run packs in Storyweaver; compare independently generated statistics. |
 
-### Horizon 4 — Production House & Model Behavior Lab
-
-#### Production House
-- **Destination Anchors:** `groundwire` + `writers-room` + `elevenlabs-screenplay-formatter`
-- **Completed:** None (0/5 complete).
-- **Remaining Waves:**
-  - **`P1` — Groundwire Audio Fingerprinting & Episode Pipeline:** Map real Groundwire episode workflow and QC/output stages into `ProductionJob` from real episode artifacts.
-  - **`P2` — Screenplay Synthesis & Formatter Parity:** Invoke `elevenlabs-screenplay-formatter` on real script slice and verify parity/failure recovery.
-  - **`P3` — Writers Room Story-State Handoff:** Take story state from real Writers Room runtime through to derived output with job receipt.
-  - **`P4` — Investigative Documentary Episode Pipeline:** Drive multi-track and sound-design pipeline from real documentary episode fixtures.
-  - **`P5` — Collaborative Story-State Event Stream:** Map real Writers Room revision history and final room signoff into canonical `ProductionJob` event stream.
-
-#### Model Behavior Lab
-- **Destination Anchors:** `ai-ethics-comparator` + `ai-chess`
-- **Completed:** None (0/5 complete).
-- **Remaining Waves:**
-  - **`M1` — Live Scenario Benchmark Execution:** Re-run donor experiment runner live through OpenRouter/local models instead of normalizing stored result files.
-  - **`M2` — Canonical Comparator Kernel Extraction:** Implement shared slice over comparator kernel and eliminate duplicated donor subsystems.
-  - **`M3` — Full Multi-Ply Chess Game State Evaluation:** Replay whole recorded matches once engine can apply moves (beyond opening ply).
-  - **`M4` — Tactical Puzzle & Match Scoring Benchmark:** Score full match transcripts and tactical puzzles across models.
-  - **`M5` — Versioned Benchmark Corpus Verification:** Prove manifest re-runs historical evaluations end to end from pinned hashes.
-
-### Horizon 5 — Discovery, Agent Reliability & Game Design
-
-#### Discovery + Decision
-- **Destination Anchors:** `sif` + `forge` + `insight-excavator`
-- **Completed:** None (0/5 complete).
-- **Remaining Waves:**
-  - **`D1` — SIF to Forge Stage Parity Execution:** Execute both runtimes on live questions and diff stage outputs with call-budget accounting.
-  - **`D2` — Live Red-Team Investigation Mode:** Run red-team stage live inside Forge with consent and resume gates.
-  - **`D3` — Cited Discovery & Uncertainty Engine:** Run Excavator discovery path to produce real claims, novelty, and uncertainty measures.
-  - **`D4` — Deep Analogy Synthesis:** Run analogy synthesis live in deep mode with real call-budget accounting.
-  - **`D5` — Direct Forge Ingestion & Excavator Retirement:** Ingest Excavator sources directly into Forge; obtain owner approval before retiring standalone runtime.
-
-#### Agent Reliability Lab
-- **Destination Anchors:** `looping-box` + `sssf` + `agentic-harness`
-- **Completed:** None (0/5 complete).
-- **Remaining Waves:**
-  - **`R1` — Live Agent Loop Adversarial Execution:** Execute adversarial fixtures against live agent loops instead of scoring declared policy.
-  - **`R2` — Multi-Harness Runtime Execution:** Run fixture battery inside each harness runtime (`looping-box`, `sssf`, `agentic-harness`).
-  - **`R3` — Shared Component Runtime Verification:** Confirm each counted consumer imports shared components at runtime.
-  - **`R4` — 2-Consumer Craft Rule Enforcement:** Audit package consumers and demote single-consumer packages back to donor repositories.
-  - **`R5` — Deterministic Agent Curriculum Scoring:** Execute mined AI Staff / prompt-chain test cases and score real agent behavior.
-
-#### Game Design + Simulation
-- **Destination Anchors:** `storyweaver` + `tucked-in-terrors`
-- **Completed:** None (0/5 complete).
-- **Remaining Waves:**
-  - **`G1` — Live Simulation Parity Re-Run:** Re-run donor simulator to regenerate fresh distributions rather than fingerprinting retained runs.
-  - **`G2` — Storyweaver Reference Pack Materialization:** Materialize pack on disk, run in Storyweaver, and compare generated statistics to donor sample.
-  - **`G3` — Authored-Game Boundary Decoupling:** Formally decouple Oregon D&D and audit pack export boundaries.
-  - **`G4` — Procedural Adventure Pack Generation:** Generate adventure packs through Storyweaver itself and validate game design slot schemas.
-  - **`G5` — March Madness Sports Simulator Integration:** Formally audit authored-game boundary for March Madness simulation.
+Each obligation's exact text is the `runtime_followup` field of its wave in that suite's
+`suite.json`, and is read back by `validate`. Promotion past `source_verified` requires the
+obligation discharged, not the wave marked complete.
 
 ---
 
@@ -151,8 +94,7 @@ PYTHONPATH=src python3 -m portfolio_suites validate --fast
 PYTHONPATH=src python3 -m portfolio_suites validate
 PYTHONPATH=src python3 -m portfolio_suites drift
 PYTHONPATH=src python3 -m portfolio_suites wave --all
-PYTHONPATH=src python3 -m portfolio_suites wave accessibility A4 --record --full
-PYTHONPATH=src python3 -m portfolio_suites ai-config
+PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record --full
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 
 # Opt-in fail-closed distribution packaging gate

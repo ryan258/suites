@@ -20,19 +20,82 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 - **8/8 Suite Boundaries**: Defined with explicit user promises and canonical anchors ([Accessibility](file:///Users/ryanjohnson/Projects/suites/accessibility), [Operator OS](file:///Users/ryanjohnson/Projects/suites/operator-os), [Brand + Publishing](file:///Users/ryanjohnson/Projects/suites/brand-publishing), [Production House](file:///Users/ryanjohnson/Projects/suites/production-house), [Model Behavior Lab](file:///Users/ryanjohnson/Projects/suites/model-behavior-lab), [Discovery + Decision](file:///Users/ryanjohnson/Projects/suites/discovery-decision), [Agent Reliability Lab](file:///Users/ryanjohnson/Projects/suites/agent-reliability), [Game Design](file:///Users/ryanjohnson/Projects/suites/game-design)).
 - **6 Shared Contracts**: Implemented schemas with bidirectional validation (`A11yFinding`, `SourceRecord`, `BrandPackage`, `InvestigationRecord`, `ProductionJob`, `ExperimentRun`).
 - **70 Top-Level Projects**: Dispositioned across suites and independent containers in [project-ledger.json](file:///Users/ryanjohnson/Projects/suites/portfolio/project-ledger.json).
-- **Zero-Dependency CLI & Web Dashboard**: Operational CLI commands (`status`, `next`, `validate`, `drift`, `wave`, `ai-config`) and local web dashboard on port 8383.
+- **Zero-Dependency CLI & Web Dashboard**: Operational CLI commands (`status`, `list`, `next`, `drift`, `export`, `baseline`, `validate`, `inspect`, `contract`, `engine`, `chain`, `wave`, `serve`) and local web dashboard on port 8383.
 - **43 Migration Wave Specifications**: Defined across 8 source adapters; every wave runner reads donor content, declares a recovery claim, and specifies runtime follow-up obligations.
 - **9/10 Recovery Standard Adopted**: Weighted rubrics, strict promotion gates (`prototype` → `source_verified` → `parity_verified` → `adopted` → `converged`), and fail-closed validation.
 
-### Verified Wave Milestones Completed (8/43)
+### Verified Wave Milestones Completed (43/43)
 1. **`A1` — Accessibility (Analysis Milestone)**: WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md)).
 2. **`A2` — Accessibility (Runtime Recovery)**: WCAG 3.3.1 Error Association rule port into destination runtime [`allys-tools`](file:///Users/ryanjohnson/Projects/allys-tools) (`f2b4c6e`) with 127/127 tests passing and four-stage adapter verification ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A2-WCAG-331-EVIDENCE.json)).
 3. **`A3` — Accessibility (Analysis Milestone)**: Keyboard overlay reconciliation across `kb-overlay`, `keyboard-nav-overlay`, and `keyboard-nav-overlay-94bf7e` ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.json)).
 4. **`A4` — Accessibility (Analysis Milestone)**: Batch evaluation of 20 candidate WCAG Auditor rules with live donor rule AST parsing, zero contract drift on `A11yFinding`, and zero false positives on compliant markup ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json)).
-5. **`O1` — Operator OS (Analysis Milestone)**: Authentic `dotfiles` capture into `PKos` Content-Addressed Storage (`pkos.storage.Workspace`), SQLite normalization, and fenced `obsidian-observer` vault projection ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json)).
-6. **`O2` — Operator OS (Analysis Milestone)**: Full feature inventory and spec mapping of `ryos` and `master-upgrade-plan` against `dotfiles` and `obsidian-observer` ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O2-RYOS-INVENTORY.json)).
-7. **`B1` — Brand + Publishing (Analysis Milestone)**: Canonical `BrandPackage` export from live `brand-maker-spec` with AST-parsed donor assertions, multi-case mutation protection, and authentic dry-run consumer boundary verification against downstream `cyborg` ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json)).
-8. **`B2` — Brand + Publishing (Analysis Milestone)**: Live source mapping of Brand Workshop's nine phases onto `brand-maker-spec` workspace state and gates ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B2-BRAND-WORKSHOP-PHASES.json)).
+5. **`A5` — Accessibility (Analysis Milestone)**: Round-trip `A11yFinding` contract through `a11y-kitchen` interactive teaching surface with zero evidence loss ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A5-A11Y-KITCHEN-ROUNDTRIP.json)).
+6. **`A6` — Accessibility (Analysis Milestone)**: Measured full overlay permission surface and proposed `kb-overlay` consolidation ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A6-KEYBOARD-OVERLAY-PROTOTYPE.json)).
+7. **`O1` — Operator OS (Analysis Milestone)**: Authentic `dotfiles` capture into `PKos` Content-Addressed Storage (`pkos.storage.Workspace`), SQLite normalization, and fenced `obsidian-observer` vault projection ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json)).
+8. **`O2` — Operator OS (Analysis Milestone)**: Full feature inventory and spec mapping of `ryos` and `master-upgrade-plan` against `dotfiles` and `obsidian-observer` ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O2-RYOS-INVENTORY.json)).
+9. **`O3` — Operator OS (Analysis Milestone)**: Verified JARVIS action preview receipt with human approval boundary and zero duplicate state ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O3-JARVIS-ACTION-RECEIPT.json)).
+10. **`O4` — Operator OS (Analysis Milestone)**: Widened PKOS intake stream across 3 sources with verified Observer projection fences ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O4-PKOS-DAILY-INTAKE-STREAM.json)).
+11. **`O5` — Operator OS (Analysis Milestone)**: Reconciled Ryos and master-plan inventory with port targets assigned to dotfiles and PKos anchors ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O5-RYOS-DISPOSITION-REPORT.json)).
+12. **`O6` — Operator OS (Analysis Milestone)**: Verified multi-action JARVIS checkpoint lifecycle with strict fail-closed boundary on unapproved execution ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O6-JARVIS-CHECKPOINT-RECEIPT.json)).
+13. **`B1` — Brand + Publishing (Analysis Milestone)**: Canonical `BrandPackage` export from live `brand-maker-spec` with AST-parsed donor assertions, multi-case mutation protection, and authentic dry-run consumer boundary verification against downstream `cyborg` ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json)).
+14. **`B2` — Brand + Publishing (Analysis Milestone)**: Live source mapping of Brand Workshop's nine phases onto `brand-maker-spec` workspace state and gates ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B2-BRAND-WORKSHOP-PHASES.json)).
+15. **`B3` — Brand + Publishing (Analysis Milestone)**: Proved `SourceRecord` -> `BrandPackage` -> VCC review -> dry-run publishing receipt ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B3-VCC-PUBLISHING-RECEIPT.json)).
+16. **`B4` — Brand + Publishing (Analysis Milestone)**: Verified version-pinning and mutation-protection boundaries across two independent `BrandPackage` consumers ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B4-MULTI-CONSUMER-VERIFICATION.json)).
+17. **`B5` — Brand + Publishing (Analysis Milestone)**: Drove 9 fixture intake phases through the suite-local Brand Maker state machine ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B5-BRAND-MAKER-INTAKE-STATE.json)).
+18. **`B6` — Brand + Publishing (Analysis Milestone)**: Simulated VCC editorial review with human approval gate and verified rejection branching ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B6-VCC-HUMAN-GATE-APPROVAL.json)).
+19. **`P1` — Production House (Analysis Milestone)**: Fingerprinted Groundwire episode workflow and QC outputs into `ProductionJob` ([evidence](file:///Users/ryanjohnson/Projects/suites/production-house/evidence/P1-GROUNDWIRE-FINGERPRINT.json)).
+20. **`P2` — Production House (Analysis Milestone)**: Executed episode slice via formatter adapter with resumable `ProductionJob` state ([evidence](file:///Users/ryanjohnson/Projects/suites/production-house/evidence/P2-FORMATTER-JOB-RECEIPT.json)).
+21. **`P3` — Production House (Analysis Milestone)**: Proved Writers Room story-state handoff via validated `ProductionJob` lifecycle ([evidence](file:///Users/ryanjohnson/Projects/suites/production-house/evidence/P3-WRITERS-ROOM-HANDOFF.json)).
+22. **`P4` — Production House (Analysis Milestone)**: Executed fixture investigative-documentary variant through the unchanged `ProductionJob` engine ([evidence](file:///Users/ryanjohnson/Projects/suites/production-house/evidence/P4-DOCUMENTARY-PIPELINE-JOB.json)).
+23. **`P5` — Production House (Analysis Milestone)**: Mapped story revisions into `ProductionJob` event stream ([evidence](file:///Users/ryanjohnson/Projects/suites/production-house/evidence/P5-WRITERS-ROOM-EVENT-STREAM.json)).
+24. **`M1` — Model Behavior Lab (Analysis Milestone)**: Normalized recorded `ai-ethics-comparator` result into `ExperimentRun` with field parity ([evidence](file:///Users/ryanjohnson/Projects/suites/model-behavior-lab/evidence/M1-ETHICS-EXPERIMENT-RUN.json)).
+25. **`M2` — Model Behavior Lab (Analysis Milestone)**: Measured donor subsystem duplication for comparator kernel extraction ([evidence](file:///Users/ryanjohnson/Projects/suites/model-behavior-lab/evidence/M2-COMPARATOR-KERNEL-MATRIX.json)).
+26. **`M3` — Model Behavior Lab (Analysis Milestone)**: Built legal-move chess adapter fixture from recorded `ai-chess` match ([evidence](file:///Users/ryanjohnson/Projects/suites/model-behavior-lab/evidence/M3-CHESS-ADAPTER-FIXTURE.json)).
+27. **`M4` — Model Behavior Lab (Analysis Milestone)**: Scored recorded chess openings through the comparator kernel ([evidence](file:///Users/ryanjohnson/Projects/suites/model-behavior-lab/evidence/M4-CHESS-BENCHMARK-RUN.json)).
+28. **`M5` — Model Behavior Lab (Analysis Milestone)**: Pinned every donor benchmark corpus by content hash for reproducible re-runs ([evidence](file:///Users/ryanjohnson/Projects/suites/model-behavior-lab/evidence/M5-BENCHMARK-CORPUS-MANIFEST.json)).
+29. **`D1` — Discovery + Decision (Analysis Milestone)**: Mapped SIF phase nodes to Forge stages with donor budgets and artifacts ([evidence](file:///Users/ryanjohnson/Projects/suites/discovery-decision/evidence/D1-SIF-FORGE-STAGE-MATRIX.json)).
+30. **`D2` — Discovery + Decision (Analysis Milestone)**: Ported recorded SIF red-team phase into budgeted Forge `InvestigationRecord` ([evidence](file:///Users/ryanjohnson/Projects/suites/discovery-decision/evidence/D2-FORGE-REDTEAM-RECORD.json)).
+31. **`D3` — Discovery + Decision (Analysis Milestone)**: Cited two real Excavator documents by content with re-verifiable byte anchors ([evidence](file:///Users/ryanjohnson/Projects/suites/discovery-decision/evidence/D3-INSIGHT-EXCAVATOR-DISCOVERY.json)).
+32. **`D4` — Discovery + Decision (Analysis Milestone)**: Ported recorded SIF analogy phase through bounded Forge path ([evidence](file:///Users/ryanjohnson/Projects/suites/discovery-decision/evidence/D4-SIF-ANALOGY-FORGE-RECORD.json)).
+33. **`D5` — Discovery + Decision (Analysis Milestone)**: Projected Excavator citation into recorded Forge investigation ([evidence](file:///Users/ryanjohnson/Projects/suites/discovery-decision/evidence/D5-INSIGHT-EXCAVATOR-CITATION.json)).
+34. **`R1` — Agent Reliability Lab (Analysis Milestone)**: Derived adversarial fixtures from looping-box action policy and probed confinement ([evidence](file:///Users/ryanjohnson/Projects/suites/agent-reliability/evidence/R1-ADVERSARIAL-HARNESS-SCORECARD.json)).
+35. **`R2` — Agent Reliability Lab (Analysis Milestone)**: Measured reliability-gate coverage across Looping Box, SSSF, and Agentic Harness ([evidence](file:///Users/ryanjohnson/Projects/suites/agent-reliability/evidence/R2-CROSS-HARNESS-EVAL.json)).
+36. **`R3` — Agent Reliability Lab (Analysis Milestone)**: Counted real sibling-repo consumers of promoted shared components ([evidence](file:///Users/ryanjohnson/Projects/suites/agent-reliability/evidence/R3-PROMOTED-COMPONENTS.json)).
+37. **`R4` — Agent Reliability Lab (Analysis Milestone)**: Applied two-consumer craft rule to measured component inventory ([evidence](file:///Users/ryanjohnson/Projects/suites/agent-reliability/evidence/R4-PROMOTED-COMPONENTS-AUDIT.json)).
+38. **`R5` — Agent Reliability Lab (Analysis Milestone)**: Mined AI Staff and harness eval cases into deterministic curriculum fixtures ([evidence](file:///Users/ryanjohnson/Projects/suites/agent-reliability/evidence/R5-CURRICULUM-FIXTURES-VERIFIED.json)).
+39. **`G1` — Game Design (Analysis Milestone)**: Fingerprinted Tucked in Terrors rules data and 1000 recorded runs into parity fixture ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.md)).
+40. **`G2` — Game Design (Analysis Milestone)**: Projected donor game into Storyweaver pack vocabulary ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G2-STORYWEAVER-PACK-PARITY.json)).
+41. **`G3` — Game Design (Analysis Milestone)**: Inventoried authored Oregon D&D corpus and measured zero engine coupling ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G3-AUTHORED-GAME-BOUNDARY.json)).
+42. **`G4` — Game Design (Analysis Milestone)**: Checked second game class against Storyweaver pack vocabulary ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G4-STORYWEAVER-ADVENTURE-PACK.json)).
+43. **`G5` — Game Design (Analysis Milestone)**: Audited March Madness for mandatory engine coupling ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G5-MARCH-MADNESS-BOUNDARY.json)).
+
+---
+
+## 2026-08-22 — All 43 Migration Waves Verified; Docs Realigned to Follow-Up Work
+
+Completed the remaining wave milestones across all eight suites and realigned the current-state
+documents to what the registry now reports.
+
+- **Wave milestone progress 43/43**: the last outstanding waves (`A5`–`A6`, `O3`–`O6`, `B3`–`B6`,
+  `P1`–`P5`, `M1`–`M5`, `D1`–`D5`, `R1`–`R5`, `G1`–`G5`) were executed and recorded, each with a
+  structured JSON receipt whose declared claim, evidence basis, and receipt spec are re-checked by
+  `validate`.
+- **Claim mix unchanged**: 1 runtime recovery (`A2`), 42 analysis milestones, **0 adopted,
+  0 converged**. Completing a wave specification is a scheduling metric, not the recovery score.
+- **`ROADMAP.md` — "Remaining Work by Horizon" replaced**: every wave that section listed as
+  remaining is now verified, so it was rewritten as *Remaining Work — Runtime Follow-Up*, which
+  states the 42 outstanding `runtime_followup` obligations per suite. The stale
+  `portfolio_suites ai-config` invocation was removed from the verification block (the subcommand was
+  deleted in `4322040`; `tests/test_docs.py` only guarded the README's usage block, not the roadmap's).
+- **`MIGRATION-PROGRAM.md` realigned**: the intro no longer claims eight verified milestones and 35
+  prototype-only waves; Tranches 1–3 now record what each suite's waves proved and what each still
+  owes at runtime.
+- **`CHANGELOG.md` foundation list corrected**: the CLI command list now names the shipped
+  subcommands rather than the removed `ai-config`.
+- **Gates**: `validate --fast` reports `0 error(s), 0 warning(s)`; the full test suite reports
+  187 passed, 4 skipped (wheel-smoke gates skipped without `SUITES_WHEEL_SMOKE=1`).
+
+Nothing was staged, committed, published, or deployed, and no donor repository was modified.
 
 ---
 

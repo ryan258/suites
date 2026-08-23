@@ -20,5 +20,4 @@ and full-suite evidence. A3 reconciled the three keyboard overlays, and A4 evalu
 WCAG Auditor rules against live donor rule ASTs with zero false positives on compliant markup —
 both as analysis milestones whose runtime follow-ups remain outstanding.
 
-Verified: A1, A2, A3, A4 (4/6). Next wave: A5 — ingest `A11yFinding` contracts through the
-`a11y-kitchen` teaching surface with authentic donor fixtures.
+Verified: A1, A2, A3, A4, A5, A6 (6/6). All wave milestones verified.

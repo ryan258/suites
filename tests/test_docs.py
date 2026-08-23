@@ -40,15 +40,20 @@ class ArtifactTests(unittest.TestCase):
             f"roadmap contract list is stale: {contract_line}",
         )
         prototypes = summary["total_waves"] - summary["completed_waves"]
-        queue = {
-            m.group(3)[0]: (int(m.group(1)), int(m.group(2)), m.group(3))
-            for m in (
-                re.search(r"\|\s*(\d+)/(\d+)\s*\|\s*`(\w+)`", line)
-                for line in roadmap.splitlines()
-                if line.startswith("|")
-            )
-            if m
-        }
+        queue = {}
+        for line in roadmap.splitlines():
+            if not line.startswith("|") or "---" in line or "Verified" in line:
+                continue
+            m = re.search(r"\|\s*([A-Za-z0-9 +]+?)\s*\|\s*(\d+)/(\d+)\s*\|\s*(?:`([A-Z]\d+)`|(\w+))\s*\|", line)
+            if m:
+                completed_count = int(m.group(2))
+                total_count = int(m.group(3))
+                target = m.group(4) if m.group(4) else None
+                s_name = m.group(1).lower().replace("+", "").split()[0]
+                for s_id, s_manifest in load_suites().items():
+                    if s_id.startswith(s_name) or s_manifest["name"].lower().startswith(s_name):
+                        prefix = s_manifest["waves"][0]["id"][0]
+                        queue[prefix] = (completed_count, total_count, target)
         for suite_id, manifest in load_suites().items():
             waves = manifest.get("waves", [])
             completed = sum(1 for w in waves if w.get("status") == "complete")
@@ -159,14 +164,18 @@ class DocumentedCommandTests(unittest.TestCase):
         )
         self.assertIn("validate", available, "subcommand discovery found nothing; the regex is stale")
 
-        documented = set(self.INVOCATION.findall((ROOT / "README.md").read_text(encoding="utf-8")))
-        self.assertTrue(documented, "README no longer shows any CLI invocation")
-
-        self.assertEqual(
-            documented - available,
-            set(),
-            "README documents commands the CLI does not define",
-        )
+        doc_paths = [ROOT / "README.md", ROOT / "SKILL.md", ROOT / "AGENTS.md"] + [
+            p for p in (ROOT / "docs").glob("*.md")
+            if not p.name.startswith("PORTFOLIO-REVIEW-")
+        ]
+        for path in doc_paths:
+            with self.subTest(doc=path.name):
+                documented = set(self.INVOCATION.findall(path.read_text(encoding="utf-8")))
+                self.assertEqual(
+                    documented - available,
+                    set(),
+                    f"{path.name} documents commands the CLI does not define",
+                )
 
 
 if __name__ == "__main__":

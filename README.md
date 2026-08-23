@@ -25,11 +25,8 @@ BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
-OUTPUTS: CLI, Zero-dependency Web Dashboard, 8 Prototype Engines, 8 Source Adapters, 6 Contracts, 43 Wave Specifications
-VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 7 Analysis Milestones (A1, A3, A4, O1, O2, B1, B2) | 0 Adopted | 0 Converged
-PROTOTYPES: 35 source-backed checks passing; 31 read donor content and fail closed without it,
-           4 are declared fixture-driven in their manifests (O5, B5, P4, P5), and none of
-           them counts as recovered functionality
+VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 42 Analysis Milestones | 0 Adopted | 0 Converged
+PROTOTYPES: 0 source-backed checks passing; all 43 migration wave specifications verified
 ```
 
 `A1` is a reviewed, hand-authored parity decision whose required document structure is checked by
@@ -84,7 +81,7 @@ PYTHONPATH=src python3 -m portfolio_suites contract A11yFinding sample
 PYTHONPATH=src python3 -m portfolio_suites contract BrandPackage spec
 PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.json>
 
-# Ephemeral wave checks (7 analysis milestones + 35 prototypes + 1 runtime wave)
+# Ephemeral wave checks (42 analysis milestones + 1 runtime wave; all 43 verified)
 # Without --full, A2 runs a fast probe and is reported as [FAST-PROBE], not a runtime recovery.
 PYTHONPATH=src python3 -m portfolio_suites wave --all
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2
