@@ -16,7 +16,7 @@ suites = "portfolio_suites.cli:main"
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-portfolio_suites = ["web/*", "adapters/*.mjs", "adapters/*.py"]
+portfolio_suites = ["web/*", "adapters/*.mjs"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

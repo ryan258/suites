@@ -7,7 +7,10 @@ the checkout. `test_source_root.py` cannot catch any of those -- it imports from
 Opt-in, because building and installing a wheel is a Level 4 cost under the repo's test
 economy and has no business running on every `unittest discover`:
 
-    SUITES_WHEEL_SMOKE=1 PYTHONPATH=src python3 -m unittest tests.test_wheel_smoke
+    SUITES_WHEEL_SMOKE=1 python3 -m unittest tests.test_wheel_smoke
+
+The interpreter must satisfy the `requires-python` floor in pyproject.toml -- the gate
+builds and installs a real wheel, and pip refuses to install one below its own floor.
 
 Asking for the gate and not getting an answer is a failure, not a skip. Once
 SUITES_WHEEL_SMOKE is set, a build or install that does not complete raises rather than
@@ -59,13 +62,22 @@ class WheelSmokeTests(unittest.TestCase):
     def setUpClass(cls):
         cls._tmp = tempfile.mkdtemp(prefix="suites-wheel-smoke-")
         tmp = Path(cls._tmp)
+
+        # The venv comes first and does the building. pip is itself a PEP 517 build
+        # frontend, so the gate needs no `build` distribution installed anywhere -- the
+        # previous `python -m build` step made an uninstalled helper a hard prerequisite,
+        # and the gate had never run on a machine that lacked it.
+        venv = tmp / "venv"
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv)], check=True, timeout=300, env=_clean_env()
+        )
+        cls.bin = venv / ("Scripts" if os.name == "nt" else "bin")
+
         build = subprocess.run(
-            [sys.executable, "-m", "build", "--wheel", "--outdir", str(tmp / "dist"), str(ROOT)],
+            [str(cls.bin / "pip"), "wheel", "--no-deps", "--wheel-dir", str(tmp / "dist"), str(ROOT)],
             capture_output=True, text=True, timeout=600, env=_clean_env(),
-            # Never run from ROOT. Python puts the working directory on sys.path, and a
-            # stale ROOT/build/ artifact directory then shadows the `build` distribution:
-            # "'build' is a package and cannot be directly executed", which reads like a
-            # broken gate rather than a missing tool. ROOT is passed as an argument.
+            # Never run from ROOT: a stale ROOT/build/ artifact directory on sys.path has
+            # shadowed real distributions here before. ROOT is passed as an argument.
             cwd=str(tmp),
         )
         # Not SkipTest. Once the operator asks for this gate, "could not build" is the gate
@@ -74,10 +86,11 @@ class WheelSmokeTests(unittest.TestCase):
         # place where not running is a legitimate outcome.
         if build.returncode != 0:
             hint = (
-                "\nhint: `python -m build` is not installed for this interpreter; "
-                "`pip install build`. Per this module's docstring an unavailable builder "
-                "is reported as failure, not a skip."
-                if "No module named build" in build.stderr
+                f"\nhint: this gate ran on {sys.executable} ({sys.version_info.major}."
+                f"{sys.version_info.minor}), which is below the requires-python floor in "
+                "pyproject.toml. Re-run it with a conforming interpreter; the wheel cannot "
+                "install on this one."
+                if "requires a different Python" in build.stdout + build.stderr
                 else ""
             )
             raise AssertionError(
@@ -85,11 +98,6 @@ class WheelSmokeTests(unittest.TestCase):
             )
         cls.wheel = next((tmp / "dist").glob("*.whl"))
 
-        venv = tmp / "venv"
-        subprocess.run(
-            [sys.executable, "-m", "venv", str(venv)], check=True, timeout=300, env=_clean_env()
-        )
-        cls.bin = venv / ("Scripts" if os.name == "nt" else "bin")
         install = subprocess.run(
             [str(cls.bin / "pip"), "install", "--no-input", str(cls.wheel)],
             capture_output=True, text=True, timeout=600, env=_clean_env(),

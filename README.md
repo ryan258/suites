@@ -108,6 +108,10 @@ PYTHONPATH=src python3 -m portfolio_suites serve --port 8383
 
 # Run complete test suite
 PYTHONPATH=src python3 -m unittest discover -s tests -v
+
+# Opt-in packaging gate: builds a real wheel, installs it, drives the console script.
+# Needs an interpreter satisfying the requires-python floor in pyproject.toml.
+SUITES_WHEEL_SMOKE=1 python3 -m unittest tests.test_wheel_smoke
 ```
 
 `validate` checks the entire current top-level directory inventory, nested Git-marker inventory,
