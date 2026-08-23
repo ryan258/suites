@@ -235,6 +235,59 @@ class AccessibilityAdapterTests(unittest.TestCase):
         self.assertFalse(cons["migration_acceptance_verified"])
         self.assertTrue(all(not donor["retirement_performed"] for donor in cons["donor_retirement"].values()))
 
+    def test_a_product_failure_is_reported_as_failed_not_unverifiable(self):
+        receipt = self._run_with(
+            {
+                "invalid_input_missing_error_ref": True,
+                "invalid_input_with_valid_errormessage": False,
+                "invalid_input_with_valid_describedby": False,
+            },
+            _completed(
+                1,
+                stdout="TAP version 13\nok 1 - renders\nnot ok 2 - associates\n",
+                stderr="AssertionError while checking the browser: permission denied on fixture",
+            ),
+        )
+        self.assertFalse(receipt["all_stages_passed"])
+        self.assertFalse(
+            receipt["environment_blocked"],
+            "a suite that produced verdicts was masked as an environment blocker",
+        )
+class EnvironmentBlockClassificationTests(unittest.TestCase):
+    """An environment blocker is neither a pass nor a product failure, so misreading one costs a regression.
+
+    The old rule fired on stderr prose alone: any output mentioning a denied permission and
+    a browser became "unverifiable", exit 2, claiming nothing was wrong. The discriminator
+    is now whether the runner reached any verdicts at all.
+    """
+
+    def test_a_suite_that_reached_verdicts_is_a_product_failure_not_a_blocker(self):
+        from portfolio_suites.adapters.accessibility import _is_environment_blocked
+
+        stdout = "TAP version 13\nok 1 - renders\nnot ok 2 - associates error message\n"
+        stderr = "AssertionError: expected browser permission denied banner to be absent"
+        self.assertFalse(_is_environment_blocked(stderr, stdout))
+
+    def test_a_runner_that_reached_no_verdicts_is_still_a_blocker(self):
+        from portfolio_suites.adapters.accessibility import _is_environment_blocked
+
+        stderr = "Error: browser launch failed: listen EPERM operation not permitted"
+        self.assertTrue(_is_environment_blocked(stderr, ""))
+
+    def test_a_missing_runtime_is_unambiguous_at_any_output(self):
+        from portfolio_suites.adapters.accessibility import _is_environment_blocked
+
+        stdout = "TAP version 13\nnot ok 1 - anything\n"
+        self.assertTrue(
+            _is_environment_blocked("Please run the following command to download new browsers", stdout)
+        )
+        self.assertTrue(_is_environment_blocked("browserType.launch: Executable doesn't exist", stdout))
+
+    def test_ordinary_assertion_failures_are_never_blockers(self):
+        from portfolio_suites.adapters.accessibility import _is_environment_blocked
+
+        self.assertFalse(_is_environment_blocked("AssertionError: expected 3 findings, got 2", ""))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,17 +47,22 @@ def parse_tap_output(stdout: str) -> tuple[int, int]:
     return passed, failed
 
 
-def _is_environment_blocked(output: str) -> bool:
-    """Recognize execution-environment failures without converting product failures to blockers."""
+def _is_environment_blocked(output: str, stdout: str = "") -> bool:
+    """Recognize execution-environment failures without converting product failures to blockers.
+
+    An environment blocker is neither a pass nor a product failure, so misreading one costs
+    a real regression: a failing gate reported as "unverifiable" exits 2 and claims nothing
+    is wrong. The permission markers alone cannot carry that decision -- a suite whose own
+    assertion output happens to mention a browser and a denied permission would relabel its
+    own failures.
+
+    So the discriminator is whether the runner produced test results at all. TAP lines mean
+    the gate ran and reached verdicts; whatever failed then is a product failure, however
+    the stderr reads. No verdicts plus a permission signal means the runner never got far
+    enough to judge anything, which is the actual blocker. A missing runtime is unambiguous
+    on its own -- there is no interpretation of "playwright install" that is a product bug.
+    """
     normalized = output.casefold()
-    permission_signal = any(
-        marker in normalized
-        for marker in ("eperm", "operation not permitted", "permission denied")
-    )
-    execution_context = any(
-        marker in normalized
-        for marker in ("listen", "socket", ".pipe", "playwright", "browser", "chromium")
-    )
     missing_runtime = any(
         marker in normalized
         for marker in (
@@ -66,7 +71,22 @@ def _is_environment_blocked(output: str) -> bool:
             "please run the following command to download new browsers",
         )
     )
-    return (permission_signal and execution_context) or missing_runtime
+    if missing_runtime:
+        return True
+
+    permission_signal = any(
+        marker in normalized
+        for marker in ("eperm", "operation not permitted", "permission denied")
+    )
+    execution_context = any(
+        marker in normalized
+        for marker in ("listen", "socket", ".pipe", "playwright", "browser", "chromium")
+    )
+    if not (permission_signal and execution_context):
+        return False
+
+    passed_tests, failed_tests = parse_tap_output(stdout)
+    return (passed_tests + failed_tests) == 0
 
 
 def _process_error(stage: str, command: list[str], process: subprocess.CompletedProcess[str]) -> dict[str, Any]:
@@ -77,7 +97,8 @@ def _process_error(stage: str, command: list[str], process: subprocess.Completed
         "error_kind": "non_zero_exit",
         "exit_code": process.returncode,
         "stderr": full_stderr[:500],
-        "environment_blocked": _is_environment_blocked(full_stderr),
+        # stdout carries the TAP verdicts that decide whether this run judged anything.
+        "environment_blocked": _is_environment_blocked(full_stderr, process.stdout or ""),
     }
 
 
@@ -422,7 +443,7 @@ console.log(JSON.stringify(result));
                     "error_kind": "empty_output",
                     "exit_code": eval_proc.returncode,
                     "stderr": eval_proc.stderr[:500],
-                    "environment_blocked": _is_environment_blocked(eval_proc.stderr),
+                    "environment_blocked": _is_environment_blocked(eval_proc.stderr, eval_proc.stdout or ""),
                 })
         except Exception as exc:
             operational_errors.append(
