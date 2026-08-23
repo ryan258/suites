@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ryan Project Suites — Portfolio Control Plane</title>
   <meta name="description" content="Local-first, evidence-bound portfolio control plane for Ryan's 8 interoperable product suites.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dark-theme">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="app-status-strip" id="app-status" role="status" aria-live="polite">
+    Loading the local portfolio state…
+  </div>
   <!-- Top Navigation & Status Bar -->
   <header class="app-header">
     <div class="header-left">
@@ -44,10 +45,10 @@
     </div>
 
     <div class="header-actions">
-      <button class="btn btn-secondary" id="btn-refresh" title="Refresh portfolio state">
+      <button type="button" class="btn btn-secondary" id="btn-refresh" title="Refresh portfolio state">
         <span class="btn-icon">⟳</span> Refresh
       </button>
-      <button class="btn btn-primary" id="btn-run-all-waves" title="Run all wave verification gates">
+      <button type="button" class="btn btn-primary" id="btn-run-all-waves" title="Run all wave verification gates without changing retained evidence">
         <span class="btn-icon">▶</span> Verify All Waves
       </button>
     </div>
@@ -62,6 +63,9 @@
         <button class="nav-item" data-tab="toolbench">
           <span class="nav-icon">▶</span> Toolbench
         </button>
+        <button class="nav-item" data-tab="ai">
+          <span class="nav-icon">✦</span> Free AI Assistant
+        </button>
 
         <div class="nav-section-title">CONTROL PLANE</div>
         <button class="nav-item active" data-tab="overview">
@@ -71,7 +75,7 @@
           <span class="nav-icon">❖</span> Eight Product Suites
         </button>
         <button class="nav-item" data-tab="projects">
-          <span class="nav-icon">☰</span> Project Ledger (70)
+          <span class="nav-icon">☰</span> Project Ledger (<span id="nav-project-count">—</span>)
         </button>
         <button class="nav-item" data-tab="contracts">
           <span class="nav-icon">⚖</span> Contracts Studio
@@ -83,27 +87,27 @@
           <span class="nav-icon">⚲</span> Live Drift Inspector
         </button>
         <button class="nav-item" data-tab="nested">
-          <span class="nav-icon">⌥</span> Nested Repos (35)
+          <span class="nav-icon">⌥</span> Nested Repos (<span id="nav-nested-count">—</span>)
         </button>
 
         <div class="nav-section-title">DOCUMENTATION</div>
-        <a href="#doc-bible" class="nav-link-item" id="link-bible">
+        <button type="button" class="nav-link-item" id="link-bible" data-app-action="view-doc" data-doc-id="project-bible">
           <span class="nav-icon">📖</span> Project Bible
-        </a>
-        <a href="#doc-migration" class="nav-link-item" id="link-migration">
+        </button>
+        <button type="button" class="nav-link-item" id="link-migration" data-app-action="view-doc" data-doc-id="migration-program">
           <span class="nav-icon">📋</span> Migration Program
-        </a>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
         <div class="local-badge">
-          <span class="dot live-dot"></span> Local-first & Zero Dependencies
+          <span class="dot live-dot"></span> Local-first · stdlib runtime
         </div>
       </div>
     </aside>
 
     <!-- Main Content Area -->
-    <main class="app-main">
+    <main class="app-main" id="main-content" tabindex="-1">
       <!-- TAB 1: OVERVIEW & COMMAND CENTER -->
       <section id="tab-toolbench" class="tab-pane">
         <div class="pane-header">
@@ -136,12 +140,12 @@
                 <h3 class="card-title">Result Tray</h3>
                 <button class="btn btn-sm btn-secondary" id="tb-clear-tray">Clear</button>
               </div>
-              <div id="tb-tray" class="validation-result-box"></div>
+              <div id="tb-tray" class="validation-result-box" aria-live="polite"></div>
               <div class="action-row">
                 <button class="btn btn-secondary btn-block" id="tb-compare">Compare ExperimentRuns in Tray</button>
                 <button class="btn btn-secondary btn-block" id="tb-copy-chain">Copy Chain JSON</button>
               </div>
-              <p class="subtext">Click <strong>use</strong> on a tray row to reference that step&rsquo;s output as an argument. Running with a reference replays the whole chain server-side, so it stays reproducible.</p>
+              <p class="subtext">Click <strong>use</strong> on a tray row to reference that step&rsquo;s output as an argument. Running replays only the transitive dependency steps, remaps their references, and never retains one-time approval or API tokens in the tray.</p>
             </div>
           </div>
 
@@ -152,12 +156,90 @@
                 <button class="btn btn-sm btn-primary" id="tb-run">Run Tool</button>
               </div>
               <div class="editor-container">
+                <label class="sr-only" for="tb-args">Tool arguments as JSON</label>
                 <textarea id="tb-args" class="code-editor" spellcheck="false">{}</textarea>
               </div>
-              <div class="validation-result-box" id="tb-status"></div>
+              <div class="validation-result-box" id="tb-status" role="status" aria-live="polite"></div>
               <div class="editor-container">
                 <pre id="tb-output" class="code-editor" style="white-space:pre-wrap;overflow:auto;"></pre>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-ai" class="tab-pane">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Free OpenRouter Assistant</h1>
+            <p class="pane-desc">Provider-assisted drafting, analysis, and review for a named suite. Deterministic engines and retained receipts remain authoritative.</p>
+          </div>
+          <span class="pill-badge badge-yellow" id="ai-provider-status">CHECKING</span>
+        </div>
+
+        <div class="ai-boundary" id="ai-evidence-boundary">
+          Model output requires human review and never becomes migration, parity, accessibility-conformance, adoption, or publication evidence.
+        </div>
+
+        <div class="split-pane ai-workspace">
+          <div class="pane-col col-left">
+            <div class="card">
+              <h2 class="card-title">Assistance settings</h2>
+              <div class="form-row">
+                <label class="form-label" for="ai-suite">Suite context</label>
+                <select id="ai-suite" class="form-select">
+                  <option value="accessibility">Accessibility</option>
+                  <option value="operator-os" selected>Operator OS</option>
+                  <option value="brand-publishing">Brand &amp; Publishing</option>
+                  <option value="production-house">Production House</option>
+                  <option value="model-behavior-lab">Model Behavior Lab</option>
+                  <option value="discovery-decision">Discovery &amp; Decision</option>
+                  <option value="agent-reliability">Agent Reliability</option>
+                  <option value="game-design">Game Design</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label class="form-label" for="ai-role">Role</label>
+                <select id="ai-role" class="form-select">
+                  <option value="orchestrator" selected>Orchestrator</option>
+                  <option value="analyst">Analyst</option>
+                  <option value="reviewer">Reviewer</option>
+                  <option value="creative">Creative</option>
+                  <option value="accessibility">Accessibility</option>
+                </select>
+              </div>
+              <div class="ai-model-card">
+                <span class="subtext">Effective route</span>
+                <strong id="ai-model">openrouter/free</strong>
+                <span class="subtext" id="ai-policy">Free-only policy · credential stays server-side</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <label class="form-label" for="ai-context">Optional reference context</label>
+              <textarea id="ai-context" class="context-editor" maxlength="75000" spellcheck="false" placeholder="Paste only the material you intend to send. Never paste credentials or private keys."></textarea>
+              <p class="subtext">Context is sent to OpenRouter as untrusted reference data. Nothing is collected automatically from your projects.</p>
+            </div>
+          </div>
+
+          <div class="pane-col col-right">
+            <div class="card ai-response-card">
+              <div class="card-header-row">
+                <h2 class="card-title">Ask the suite</h2>
+                <div class="action-row compact-actions">
+                  <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-clear">Clear</button>
+                  <button type="button" class="btn btn-sm btn-primary" id="btn-ai-run">Ask free AI</button>
+                </div>
+              </div>
+              <label class="form-label" for="ai-prompt">Prompt</label>
+              <textarea id="ai-prompt" class="prompt-editor" maxlength="50000" placeholder="Ask for a plan, analysis, explanation, review, or creative draft…"></textarea>
+              <div class="validation-result-box" id="ai-request-status" role="status" aria-live="polite">
+                <span class="result-placeholder">Choose a suite and role, then ask a question.</span>
+              </div>
+              <div class="ai-answer" id="ai-answer" tabindex="0" aria-label="AI response">
+                <p class="result-placeholder">Provider-assisted output will appear here.</p>
+              </div>
+              <div class="ai-answer-meta" id="ai-answer-meta"></div>
             </div>
           </div>
         </div>
@@ -198,7 +280,7 @@
 
           <div class="stat-card">
             <div class="stat-header">
-              <span class="stat-title">Wave Milestones</span>
+              <span class="stat-title">Validated Retained Claims</span>
               <span class="stat-icon">📈</span>
             </div>
             <div class="stat-number" id="card-progress-pct">0%</div>
@@ -250,7 +332,7 @@
       <section id="tab-projects" class="tab-pane">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Project Ledger (70 Repositories)</h1>
+            <h1 class="pane-title">Project Ledger (<span id="project-heading-count">—</span> Repositories)</h1>
             <p class="pane-desc">Comprehensive inventory of all top-level checkouts with suite ownership and dispositions.</p>
           </div>
         </div>
@@ -259,9 +341,11 @@
         <div class="toolbar">
           <div class="search-box">
             <span class="search-icon">🔍</span>
+            <label class="sr-only" for="project-search-input">Search projects</label>
             <input type="text" id="project-search-input" placeholder="Search project name, suite, disposition...">
           </div>
           <div class="filter-group">
+            <label class="sr-only" for="project-suite-filter">Filter projects by suite</label>
             <select id="project-suite-filter" class="select-input">
               <option value="all">All Suites</option>
               <option value="accessibility">Accessibility</option>
@@ -275,6 +359,7 @@
               <option value="none">Independent / Archive</option>
             </select>
 
+            <label class="sr-only" for="project-disposition-filter">Filter projects by disposition</label>
             <select id="project-disposition-filter" class="select-input">
               <option value="all">All Dispositions</option>
               <option value="anchor">Anchor</option>
@@ -289,6 +374,7 @@
         <!-- Projects Table -->
         <div class="table-container">
           <table class="data-table" id="projects-table">
+            <caption class="sr-only">Project ownership, disposition, migration, and Git snapshot ledger</caption>
             <thead>
               <tr>
                 <th>Project Name</th>
@@ -348,10 +434,11 @@
               </div>
 
               <div class="editor-container">
+                <label class="sr-only" for="contract-json-editor">Contract JSON payload</label>
                 <textarea id="contract-json-editor" class="code-editor" spellcheck="false"></textarea>
               </div>
 
-              <div class="validation-result-box" id="contract-validation-result">
+              <div class="validation-result-box" id="contract-validation-result" role="status" aria-live="polite">
                 <div class="result-placeholder">Click "Validate Payload" or "Load Sample" to inspect.</div>
               </div>
             </div>
@@ -364,11 +451,15 @@
         <div class="pane-header">
           <div>
             <h1 class="pane-title">Wave Runner & Migration Gates</h1>
-            <p class="pane-desc">Execute deterministic verification gates and generate structured evidence records across all 24 waves.</p>
+            <p class="pane-desc">Execute all 43 deterministic checks without changing retained evidence. Recording remains an explicit CLI-only operation.</p>
           </div>
           <div>
-            <button class="btn btn-primary" id="btn-run-all-waves-tab">Run & Record All Waves</button>
+            <button type="button" class="btn btn-primary" id="btn-run-all-waves-tab">Run All Checks</button>
           </div>
+        </div>
+
+        <div class="validation-result-box wave-run-status" id="wave-run-status" role="status" aria-live="polite">
+          <span class="result-placeholder">Ready. Checks run ephemerally and do not rewrite retained receipts.</span>
         </div>
 
         <div class="waves-grid" id="waves-container">
@@ -392,6 +483,7 @@
 
         <div class="table-container">
           <table class="data-table" id="drift-table">
+            <caption class="sr-only">Live Git state compared with the recorded portfolio snapshot</caption>
             <thead>
               <tr>
                 <th>Project</th>
@@ -413,13 +505,14 @@
       <section id="tab-nested" class="tab-pane">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Nested Repositories Ledger (35 Markers)</h1>
+            <h1 class="pane-title">Nested Repositories Ledger (<span id="nested-heading-count">—</span> Markers)</h1>
             <p class="pane-desc">Classification of submodules, embedded checkouts, and auxiliary Git repositories.</p>
           </div>
         </div>
 
         <div class="table-container">
           <table class="data-table" id="nested-table">
+            <caption class="sr-only">Nested Git repository and submodule classifications</caption>
             <thead>
               <tr>
                 <th>Path</th>
@@ -438,11 +531,11 @@
   </div>
 
   <!-- Evidence Modal -->
-  <div class="modal-backdrop" id="evidence-modal" style="display: none;">
-    <div class="modal-dialog">
+  <div class="modal-backdrop" id="evidence-modal" hidden>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="evidence-modal-title" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title" id="evidence-modal-title">Evidence Viewer</h3>
-        <button class="modal-close" id="btn-close-modal">&times;</button>
+        <button type="button" class="modal-close" id="btn-close-modal" aria-label="Close evidence viewer">&times;</button>
       </div>
       <div class="modal-body">
         <pre class="evidence-content" id="evidence-modal-content"></pre>

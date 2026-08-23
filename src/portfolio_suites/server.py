@@ -10,16 +10,27 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
+from .ai import AIError, get_ai_status, request_assistance
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_contract
 from .chains import ChainError, run_chain
-from .engine_actions import EngineActionError, list_actions, run_action
+from .engine_actions import (
+    EngineActionError,
+    argument_redaction_policy,
+    get_action_spec,
+    list_actions,
+    redact_sensitive_arguments,
+    run_action,
+)
 from .registry import (
     SUITES_ROOT,
+    build_evidence_ownership_index,
+    declared_evidence_owner,
     get_dependency_graph,
     get_live_drift_report,
     get_portfolio_summary,
     get_project,
     get_suite,
+    get_wave_evidence_status,
     load_ledger,
     load_nested_ledger,
     load_suites,
@@ -30,6 +41,12 @@ from .waves import WaveRunner, classify_wave_spec
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_JSON_BODY_BYTES = 1_048_576
 LOOPBACK_HOSTNAMES = frozenset({"localhost", "127.0.0.1", "::1"})
+DOCUMENTS = {
+    "project-bible": SUITES_ROOT / "docs" / "PROJECT-BIBLE.md",
+    "migration-program": SUITES_ROOT / "docs" / "MIGRATION-PROGRAM.md",
+    "recovery-standard": SUITES_ROOT / "docs" / "RECOVERY-STANDARD.md",
+    "roadmap": SUITES_ROOT / "docs" / "ROADMAP.md",
+}
 
 
 class RequestBodyError(ValueError):
@@ -38,6 +55,28 @@ class RequestBodyError(ValueError):
     def __init__(self, status: int, message: str) -> None:
         super().__init__(message)
         self.status = status
+
+
+def _is_loopback_host_header(value: str | None) -> bool:
+    """Validate the HTTP Host grammar subset accepted by this loopback-only server."""
+    if not isinstance(value, str) or not value or any(
+        ord(character) < 33 or ord(character) == 127 for character in value
+    ):
+        return False
+    try:
+        parsed = urllib.parse.urlsplit(f"//{value}")
+        # Accessing port is itself validation: malformed and out-of-range values raise.
+        parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.hostname in LOOPBACK_HOSTNAMES
+        and parsed.username is None
+        and parsed.password is None
+        and not parsed.path
+        and not parsed.query
+        and not parsed.fragment
+    )
 
 
 class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
@@ -50,11 +89,33 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         # Suppress noisy standard request logging in test/daemon mode
         pass
 
+    def end_headers(self) -> None:
+        """Apply a browser-safe local policy to API and static responses alike."""
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+        )
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; connect-src 'self'; img-src 'self' data:; "
+            "object-src 'none'; frame-ancestors 'none'; base-uri 'none'; "
+            "form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+        )
+        super().end_headers()
+
     def _send_json(self, status: int, data: Any) -> None:
-        body = json.dumps(data, indent=2).encode("utf-8")
+        try:
+            body = json.dumps(data, indent=2, allow_nan=False).encode("utf-8")
+        except (TypeError, ValueError):
+            status = 500
+            body = b'{"error":"Response could not be encoded as strict JSON"}'
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -79,11 +140,16 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         if len(raw) != length:
             raise RequestBodyError(400, "Request body ended before Content-Length bytes were received")
         try:
-            return json.loads(raw.decode("utf-8"))
+            return json.loads(
+                raw.decode("utf-8"),
+                parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)),
+            )
         except UnicodeDecodeError:
             raise RequestBodyError(400, "Request body must be UTF-8 JSON") from None
         except json.JSONDecodeError as error:
             raise RequestBodyError(400, f"Invalid JSON syntax: {error.msg}") from None
+        except ValueError:
+            raise RequestBodyError(400, "Invalid JSON syntax: non-finite numbers are not allowed") from None
 
     def _execution_request_is_trusted(self) -> bool:
         """Reject browser cross-origin execution while retaining headerless API clients."""
@@ -98,8 +164,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
 
     def _request_host_is_loopback(self) -> bool:
         """Reject DNS-rebinding: a non-loopback Host means the request was aimed here by name."""
-        hostname = urllib.parse.urlsplit(f"//{self.headers.get('Host') or ''}").hostname
-        return hostname in LOOPBACK_HOSTNAMES
+        return _is_loopback_host_header(self.headers.get("Host"))
 
     def _reject_non_loopback_host(self) -> bool:
         if self._request_host_is_loopback():
@@ -149,7 +214,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 ledger = load_ledger()
                 self._send_json(200, ledger.get("projects", []))
             elif path.startswith("/api/projects/"):
-                proj_name = path.removeprefix("/api/projects/")
+                proj_name = urllib.parse.unquote(path.removeprefix("/api/projects/"))
                 if not proj_name or "/" in proj_name:
                     self._send_json(404, {"error": f"Unknown endpoint: {path}"})
                     return
@@ -169,6 +234,29 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 fast = query.get("fast", ["false"])[0].lower() in ("true", "1")
                 report = validate_registry(check_live=not fast)
                 self._send_json(200, {"ok": report.ok, "errors": report.errors, "warnings": report.warnings})
+            elif path == "/api/ai/status":
+                try:
+                    self._send_json(200, get_ai_status())
+                except AIError as error:
+                    self._send_json(error.http_status, {"ok": False, "error": error.as_dict()})
+            elif path == "/api/security-policy":
+                self._send_json(200, {"argument_redaction": argument_redaction_policy()})
+            elif path == "/api/docs":
+                self._send_json(200, [
+                    {"id": document_id, "name": document_path.stem.replace("-", " ").title()}
+                    for document_id, document_path in sorted(DOCUMENTS.items())
+                ])
+            elif path.startswith("/api/docs/"):
+                document_id = urllib.parse.unquote(path.removeprefix("/api/docs/"))
+                document_path = DOCUMENTS.get(document_id)
+                if not document_path or not document_path.is_file():
+                    self._send_json(404, {"error": "Document not found"})
+                    return
+                self._send_json(200, {
+                    "id": document_id,
+                    "name": document_path.name,
+                    "content": document_path.read_text(encoding="utf-8"),
+                })
             elif path == "/api/engines":
                 self._send_json(200, list_actions())
             elif path.startswith("/api/engines/"):
@@ -206,33 +294,45 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 if run_live:
                     self._send_json(405, {"error": "Live wave execution requires the POST run endpoint"})
                     return
-                # Return instant manifest-backed wave definitions and cached status (<2ms response)
+                # Return manifest-backed definitions with current receipt validation, without
+                # launching any live wave runner from a GET request.
                 suites = load_suites()
+                ownership_index = build_evidence_ownership_index(suites)
                 payload = []
                 for s in suites.values():
                     s_id = s.get("id", "")
                     for w in s.get("waves", []):
                         w_id = w.get("id", "")
                         w_status = w.get("status", "specified")
-                        ev_rel = w.get("evidence", "")
-                        ev_file = SUITES_ROOT / ev_rel if ev_rel else None
-                        has_ev = bool(ev_file and ev_file.is_file())
-                        is_passed = (w_status == "complete")
+                        evidence_status = get_wave_evidence_status(s_id, w, ownership_index)
+                        manifest_complete = w_status == "complete"
+                        is_passed = manifest_complete and evidence_status["evidence_valid"]
                         method_name = f"_run_{s_id.replace('-', '_')}_{w_id.lower()}"
                         has_runner = hasattr(WaveRunner, method_name)
-                        exec_kind = classify_wave_spec(w, has_runner=has_runner)
+                        exec_kind = (
+                            classify_wave_spec(w, has_runner=has_runner)
+                            if evidence_status["evidence_valid"] or not manifest_complete
+                            else "unverifiable_evidence"
+                        )
+                        claim = w.get("recovery_claim", {}) or {}
                         payload.append({
                             "suite_id": s_id,
                             "wave_id": w_id,
                             "order": w.get("order", 0),
                             "status": w_status,
+                            "manifest_complete": manifest_complete,
                             "objective": w.get("objective", ""),
                             "acceptance": w.get("acceptance", ""),
                             "passed": is_passed,
+                            "evidence_valid": evidence_status["evidence_valid"],
+                            "evidence_errors": evidence_status["evidence_errors"],
+                            "claim_kind": claim.get("kind"),
+                            "claim_level": claim.get("level"),
+                            "verification_depth": "retained_receipt" if is_passed else "none",
                             "runner_available": has_runner,
                             "execution_kind": exec_kind,
                             "message": f"Wave {w_id}: {w.get('objective', '')}",
-                            "evidence_path": str(ev_file) if has_ev else None,
+                            "evidence_path": evidence_status["evidence_path"],
                         })
                 self._send_json(200, payload)
             elif path.startswith("/api/evidence"):
@@ -241,19 +341,10 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 if not file_param:
                     self._send_json(400, {"error": "Missing 'file' query parameter"})
                     return
-                # Sanitize file path
-                clean_path = Path(file_param)
-                if not clean_path.is_absolute():
-                    target_file = (SUITES_ROOT / clean_path).resolve()
-                else:
-                    target_file = clean_path.resolve()
-
-                root_resolved = SUITES_ROOT.resolve()
-                if (
-                    not target_file.is_file()
-                    or not target_file.is_relative_to(root_resolved)
-                    or "evidence" not in target_file.relative_to(root_resolved).parts
-                ):
+                requested = Path(file_param)
+                target_file = requested.resolve() if requested.is_absolute() else (SUITES_ROOT / requested).resolve()
+                owner = declared_evidence_owner(target_file)
+                if not target_file.is_file() or owner is None:
                     self._send_json(404, {"error": "Evidence file not found or outside evidence scope"})
                     return
                 content = target_file.read_text(encoding="utf-8")
@@ -283,6 +374,26 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     self._send_json(200, {"ok": True, "validated": validated})
                 except ContractError as exc:
                     self._send_json(400, {"ok": False, "error": str(exc)})
+            elif path == "/api/ai/assist":
+                if not self._execution_request_is_trusted():
+                    self._send_json(403, {"error": "cross-origin AI execution is refused"})
+                    return
+                body = self._read_json_body()
+                if not isinstance(body, dict):
+                    self._send_json(400, {"error": "AI request body must be a JSON object"})
+                    return
+                try:
+                    result = request_assistance(
+                        body.get("prompt"),
+                        suite_id=body.get("suite_id"),
+                        role=body.get("role", "orchestrator"),
+                        context=body.get("context"),
+                        history=body.get("history"),
+                    )
+                except AIError as error:
+                    self._send_json(error.http_status, {"ok": False, "error": error.as_dict()})
+                    return
+                self._send_json(200, result)
             elif path == "/api/chains/run":
                 if not self._execution_request_is_trusted():
                     self._send_json(403, {"error": "cross-origin chain execution is refused"})
@@ -292,7 +403,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 try:
                     self._send_json(200, run_chain(steps))
                 except ChainError as exc:
-                    self._send_json(400, {"error": str(exc), "step": exc.step_index})
+                    self._send_json(400, exc.as_dict())
             elif path.startswith("/api/engines/") and path.endswith("/run"):
                 if not self._execution_request_is_trusted():
                     self._send_json(403, {"error": "cross-origin engine execution is refused"})
@@ -302,7 +413,9 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     self._send_json(404, {"error": "expected /api/engines/<suite>/<action>/run"})
                     return
                 suite_id, action = parts
-                arguments = self._read_json_body() or {}
+                arguments = self._read_json_body()
+                if arguments is None:
+                    arguments = {}
                 try:
                     result = run_action(suite_id, action, arguments)
                 except EngineActionError as exc:
@@ -311,11 +424,13 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 except Exception as exc:  # engine raised on its own inputs
                     self._send_json(422, {"error": f"{type(exc).__name__}: {exc}", "suite": suite_id, "action": action})
                     return
+                action_spec = get_action_spec(suite_id, action)
                 self._send_json(200, {
                     "suite": suite_id,
                     "action": action,
-                    "arguments": arguments,
-                    "emits": list_actions(suite_id)[suite_id]["emits"],
+                    "arguments": redact_sensitive_arguments(arguments),
+                    "emits": action_spec["emits"],
+                    "output_kind": action_spec["output_kind"],
                     "result": result,
                 })
             elif path.startswith("/api/waves/") and path.endswith("/run"):
@@ -344,7 +459,9 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                     "execution_kind": res.execution_kind,
                     "message": res.message,
                     "record_requested": record_param,
-                    "recorded": record_param and res.evidence_path is not None and res.record_note is None,
+                    "recorded": res.record_status == "recorded",
+                    "record_status": res.record_status,
+                    "record_request_succeeded": not record_param or res.record_status == "recorded",
                     "record_note": res.record_note,
                     "evidence_path": res.evidence_path,
                     "data": res.data,
@@ -360,6 +477,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
 
 class ThreadedPortfolioServer(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
+    daemon_threads = True
 
 
 def create_server(port: int = 8383) -> socketserver.TCPServer:

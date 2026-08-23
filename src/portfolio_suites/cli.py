@@ -8,8 +8,18 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from .ai import (
+    AIError,
+    MAX_CONTEXT_CHARS,
+    ROLE_DEFAULTS,
+    SUITE_CONTEXT,
+    get_ai_status,
+    request_assistance,
+)
 from .chains import ChainError, run_chain
 from .engine_actions import EngineActionError, list_actions, run_action
+from .paths import PROJECTS_ROOT
+from .provenance import is_sensitive_path
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
 from .registry import (
     fingerprint_baselines,
@@ -54,6 +64,17 @@ def _status() -> int:
         f"{summary['adopted_runtime_behaviors']} adopted, "
         f"{summary['converged_runtime_behaviors']} converged"
     )
+    print(
+        f"Retained evidence: {summary['validated_completed_claims']}/{summary['completed_waves']} "
+        f"completed claims valid ({summary['evidence_health_pct']}%)"
+    )
+    if summary["recovery_score"] is None:
+        print(
+            "Recovery score: not yet computable from dimension evidence "
+            f"(target remains {summary['recovery_target_score']:.1f}/10)"
+        )
+    if summary["invalid_completed_claims"]:
+        print(f"Invalid completed claims: {len(summary['invalid_completed_claims'])}")
     # Scheduling progress and recovery are different quantities, and printing only the
     # first reads as done. `next` already lists this debt wave by wave; the headline is
     # where it was missing, which is the one place it most needed saying.
@@ -193,6 +214,10 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         results = WaveRunner.run_all(write_evidence=write_evidence, full=full)
         runtime_count = sum(1 for r in results if r.execution_kind == "verified_runtime_recovery" and r.passed)
         analysis_count = sum(1 for r in results if r.execution_kind == "verified_analysis" and r.passed)
+        source_count = sum(1 for r in results if r.execution_kind == "verified_source_execution" and r.passed)
+        adoption_count = sum(1 for r in results if r.execution_kind == "verified_adoption" and r.passed)
+        convergence_count = sum(1 for r in results if r.execution_kind == "verified_convergence" and r.passed)
+        resolution_count = sum(1 for r in results if r.execution_kind == "verified_resolution" and r.passed)
         prototype_count = sum(1 for r in results if r.execution_kind == "prototype_check" and r.prototype_passed)
         # Every kind that actually ran a gate: if one of these did not pass, the run found a
         # product failure. `fast_probe` belongs here too -- it is a wave that executed and
@@ -200,13 +225,25 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         failed_count = sum(
             1
             for r in results
-            if r.execution_kind in {"verified_analysis", "verified_runtime_recovery", "prototype_check", "fast_probe"}
+            if r.execution_kind in {
+                "verified_analysis", "verified_source_execution", "verified_runtime_recovery",
+                "verified_adoption", "verified_convergence", "verified_resolution",
+                "prototype_check", "fast_probe",
+            }
             and not (r.passed or r.prototype_passed)
         )
         unintegrated_count = sum(1 for r in results if r.execution_kind == "unintegrated_specification")
         error_count = sum(1 for r in results if r.execution_kind == "error")
         unverifiable_count = sum(1 for r in results if r.execution_kind == "unverifiable_environment")
         fast_probe_count = sum(1 for r in results if r.execution_kind == "fast_probe" and r.passed)
+        record_rejected_count = sum(
+            1 for r in results if write_evidence and r.record_status == "candidate_rejected"
+        )
+        record_incomplete_count = sum(
+            1
+            for r in results
+            if write_evidence and r.record_status in {"read_only", "ineligible"}
+        )
 
         for r in results:
             tag = format_wave_tag(r.execution_kind, r.passed, r.prototype_passed)
@@ -214,14 +251,21 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         print("-" * 65)
         print(
             f"Results: {runtime_count} runtime recoveries, {analysis_count} verified analyses, "
+            f"{source_count} source executions, {adoption_count} adopted, "
+            f"{convergence_count} converged, {resolution_count} resolved, "
             f"{prototype_count} prototype checks passed, {fast_probe_count} fast probes, "
             f"{failed_count} checks failed, "
             f"{unverifiable_count} environment-unverifiable, {unintegrated_count} unintegrated, "
             f"{error_count} errors."
         )
-        if failed_count or unintegrated_count or error_count:
+        if write_evidence:
+            print(
+                f"Recording: {sum(1 for r in results if r.record_status == 'recorded')} written, "
+                f"{record_rejected_count} rejected, {record_incomplete_count} unsupported/ineligible."
+            )
+        if failed_count or unintegrated_count or error_count or record_rejected_count:
             return EXIT_FAILED
-        return EXIT_INCOMPLETE if unverifiable_count else EXIT_OK
+        return EXIT_INCOMPLETE if unverifiable_count or record_incomplete_count else EXIT_OK
 
     if not suite_id or not wave_id:
         print("Error: Specify suite and wave (e.g. 'suites wave accessibility A2') or '--all'", file=sys.stderr)
@@ -235,6 +279,10 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
     elif result.evidence_path and write_evidence:
         print(f"Evidence recorded at: {result.evidence_path}")
     if result.execution_kind == "unverifiable_environment":
+        return EXIT_INCOMPLETE
+    if write_evidence and result.record_status == "candidate_rejected":
+        return EXIT_FAILED
+    if write_evidence and result.record_status in {"read_only", "ineligible"}:
         return EXIT_INCOMPLETE
     return EXIT_OK if result.passed or result.prototype_passed else EXIT_FAILED
 
@@ -305,7 +353,8 @@ def _engine_cmd(suite: str | None, action: str | None, raw_args: str | None) -> 
                         param["name"] if param["required"] else f"{param['name']}={param['default']!r}"
                         for param in entry["parameters"]
                     )
-                    print(f"    {entry['name']}({params})")
+                    output = entry["emits"] or entry["output_kind"]
+                    print(f"    {entry['name']}({params}) -> {output}")
                     if entry["summary"]:
                         print(f"        {entry['summary']}")
             return 0
@@ -319,7 +368,7 @@ def _engine_cmd(suite: str | None, action: str | None, raw_args: str | None) -> 
     except EngineActionError as exc:
         print(f"ERROR: {exc}")
         return 2
-    print(json.dumps(result, indent=2, default=str))
+    print(json.dumps(result, indent=2))
     return 0
 
 
@@ -341,14 +390,96 @@ def _chain_cmd(spec_path: str, quiet: bool) -> int:
     except ChainError as exc:
         location = "" if exc.step_index is None else f" [step {exc.step_index}]"
         print(f"CHAIN FAILED{location}: {exc}")
+        if exc.completed_steps:
+            print(json.dumps({"completed_steps": exc.completed_steps}, indent=2))
         return 1
 
     for record in outcome["steps"]:
         refs = f" <- step {', '.join(str(r) for r in record['references'])}" if record["references"] else ""
         print(f"[{record['step']}] {record['suite']}.{record['action']} -> {record['emits']}{refs}")
     if not quiet:
-        print(json.dumps(outcome["final"], indent=2, default=str))
+        print(json.dumps(outcome["final"], indent=2))
     return 0
+
+
+def _ai_cmd(
+    prompt_parts: list[str],
+    suite_id: str,
+    role: str,
+    context_path: str | None,
+    status_only: bool,
+    as_json: bool,
+) -> int:
+    """Inspect provider state or request explicitly model-assisted suite guidance."""
+    try:
+        if status_only:
+            status = get_ai_status()
+            if as_json:
+                print(json.dumps(status, indent=2))
+            else:
+                state = "configured" if status["configured"] else "not configured"
+                print(
+                    f"OpenRouter: {state}; free_only={status['free_only']}; "
+                    f"credential_source={status['credential_source']}"
+                )
+                for name, policy in status["roles"].items():
+                    print(
+                        f"  {name:<14} model={policy['model']} "
+                        f"temperature={policy['temperature']} max_tokens={policy['max_tokens']}"
+                    )
+                for warning in status["warnings"]:
+                    print(f"WARN {warning}")
+                print(status["evidence_boundary"])
+            return EXIT_OK if status["configured"] else EXIT_INCOMPLETE
+
+        prompt = " ".join(prompt_parts).strip()
+        if not prompt:
+            print("ERROR: provide a prompt or use --status", file=sys.stderr)
+            return EXIT_INCOMPLETE
+        context: str | None = None
+        if context_path:
+            target = Path(context_path).expanduser().resolve()
+            if not target.is_relative_to(PROJECTS_ROOT.resolve()):
+                print("ERROR: AI context files must stay inside the Projects workspace", file=sys.stderr)
+                return EXIT_INCOMPLETE
+            if is_sensitive_path(target):
+                print("ERROR: refusing to send a sensitive context path to OpenRouter", file=sys.stderr)
+                return EXIT_INCOMPLETE
+            try:
+                with target.open(encoding="utf-8") as stream:
+                    context = stream.read(MAX_CONTEXT_CHARS + 1)
+            except (OSError, UnicodeError) as error:
+                print(f"ERROR: cannot read AI context file: {error}", file=sys.stderr)
+                return EXIT_INCOMPLETE
+            if len(context) > MAX_CONTEXT_CHARS:
+                print(
+                    f"ERROR: AI context file exceeds the {MAX_CONTEXT_CHARS}-character limit",
+                    file=sys.stderr,
+                )
+                return EXIT_INCOMPLETE
+        result = request_assistance(
+            prompt,
+            suite_id=suite_id,
+            role=role,
+            context=context,
+        )
+    except AIError as error:
+        if as_json:
+            print(json.dumps({"ok": False, "error": error.as_dict()}, indent=2))
+        else:
+            print(f"AI {error.code}: {error}", file=sys.stderr)
+        return EXIT_INCOMPLETE if error.code in {"not_configured", "invalid_input"} else EXIT_FAILED
+
+    if as_json:
+        print(json.dumps(result, indent=2))
+    else:
+        print(result["content"])
+        print(
+            "\n---\n"
+            f"Model-assisted via OpenRouter: {result['resolved_model']} | "
+            f"suite={result['suite_id']} | role={result['role']} | human review required"
+        )
+    return EXIT_OK
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -390,6 +521,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     chain_p = sub.add_parser("chain", help="run a chain of engine actions, feeding each output forward")
     chain_p.add_argument("spec", help="path to a JSON chain spec (list of steps, or {\"steps\": [...]})")
     chain_p.add_argument("--quiet", action="store_true", help="print the step trace without the final payload")
+
+    ai_p = sub.add_parser("ai", help="use free-only OpenRouter assistance over a named suite")
+    ai_p.add_argument("prompt", nargs="*", help="prompt text; omit only with --status")
+    ai_p.add_argument("--suite", choices=sorted(SUITE_CONTEXT), default="operator-os")
+    ai_p.add_argument("--role", choices=sorted(ROLE_DEFAULTS), default="orchestrator")
+    ai_p.add_argument(
+        "--context",
+        default=None,
+        help="explicit UTF-8 context file to send to OpenRouter; review it for sensitive data first",
+    )
+    ai_p.add_argument("--status", action="store_true", help="show credential-free provider configuration")
+    ai_p.add_argument("--json", action="store_true", help="emit the status or response as JSON")
 
     wave_p = sub.add_parser("wave", help="run and verify migration wave gates and generate evidence")
     wave_p.add_argument("suite", nargs="?", default=None, help="suite ID (e.g. accessibility)")
@@ -434,6 +577,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _engine_cmd(args.suite, args.action, args.args)
     if args.command == "chain":
         return _chain_cmd(args.spec, args.quiet)
+    if args.command == "ai":
+        return _ai_cmd(args.prompt, args.suite, args.role, args.context, args.status, args.json)
     if args.command == "wave":
         return _wave_cmd(args.suite, args.wave_id, args.all, args.record, args.full)
     if args.command == "serve":

@@ -61,6 +61,76 @@ class ServerTests(unittest.TestCase):
         data = self._get_json("/api/contracts/A11yFinding/sample")
         self.assertEqual(data["schema_version"], "1.0.0")
 
+    def test_document_endpoint_uses_the_explicit_allowlist(self):
+        documents = self._get_json("/api/docs")
+        self.assertEqual(
+            {item["id"] for item in documents},
+            {"project-bible", "migration-program", "recovery-standard", "roadmap"},
+        )
+        bible = self._get_json("/api/docs/project-bible")
+        self.assertEqual(bible["name"], "PROJECT-BIBLE.md")
+        self.assertIn("# Project Bible", bible["content"])
+
+        with self.assertRaises(urllib.error.HTTPError) as context:
+            urllib.request.urlopen("http://127.0.0.1:8399/api/docs/..%2F.env")
+        self.assertEqual(context.exception.code, 404)
+
+    def test_ai_status_endpoint_never_exposes_credentials(self):
+        safe_status = {
+            "provider": "openrouter",
+            "configured": True,
+            "credential_source": ".env",
+            "free_only": True,
+            "roles": {"orchestrator": {"model": "openrouter/free"}},
+            "warnings": [],
+        }
+        with patch("portfolio_suites.server.get_ai_status", return_value=safe_status):
+            data = self._get_json("/api/ai/status")
+        self.assertTrue(data["configured"])
+        self.assertNotIn("api_key", json.dumps(data).lower())
+
+    def test_security_policy_endpoint_is_the_toolbench_redaction_source(self):
+        data = self._get_json("/api/security-policy")
+        policy = data["argument_redaction"]
+        self.assertEqual(policy["flags"], "i")
+        self.assertIn("credentials?", policy["pattern"])
+        self.assertIn("bearer", policy["pattern"])
+        self.assertIn("token", policy["pattern"])
+        self.assertIn("REDACTED", policy["redacted_value"])
+
+    def test_ai_assist_endpoint_is_provider_and_review_labelled(self):
+        result = {
+            "ok": True,
+            "mode": "provider_assisted",
+            "provider": "openrouter",
+            "resolved_model": "vendor/model:free",
+            "evidence_type": "model_assisted",
+            "human_review_required": True,
+            "content": "A safe next move.",
+        }
+        request = urllib.request.Request(
+            "http://127.0.0.1:8399/api/ai/assist",
+            data=json.dumps({
+                "prompt": "Help",
+                "suite_id": "operator-os",
+                "role": "orchestrator",
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with patch("portfolio_suites.server.request_assistance", return_value=result) as assist:
+            with urllib.request.urlopen(request) as response:
+                data = json.loads(response.read().decode("utf-8"))
+        self.assertEqual(data["evidence_type"], "model_assisted")
+        self.assertTrue(data["human_review_required"])
+        assist.assert_called_once_with(
+            "Help",
+            suite_id="operator-os",
+            role="orchestrator",
+            context=None,
+            history=None,
+        )
+
     def test_waves_endpoint(self):
         data = self._get_json("/api/waves")
         self.assertEqual(len(data), 43)
@@ -118,6 +188,18 @@ class ServerTests(unittest.TestCase):
             self.assertIsNone(response.headers.get("Access-Control-Allow-Origin"))
             self.assertIsNone(response.headers.get("Access-Control-Allow-Methods"))
 
+    def test_browser_security_headers_cover_api_and_static_assets(self):
+        for path in ("/api/summary", "/", "/app.js"):
+            with self.subTest(path=path):
+                with urllib.request.urlopen(f"http://127.0.0.1:8399{path}") as response:
+                    self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+                    self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+                    self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
+                    csp = response.headers["Content-Security-Policy"]
+                    self.assertIn("default-src 'self'", csp)
+                    self.assertIn("object-src 'none'", csp)
+                    self.assertIn("frame-ancestors 'none'", csp)
+
     def test_validate_post_endpoint(self):
         url = "http://127.0.0.1:8399/api/contracts/SourceRecord/validate"
         sample = self._get_json("/api/contracts/SourceRecord/sample")
@@ -172,6 +254,19 @@ class ServerTrustBoundaryTests(unittest.TestCase):
             connection.close()
         self.assertEqual(response.status, 413)
         self.assertIn("exceeds", payload["error"])
+
+    def test_nonfinite_json_number_is_rejected(self):
+        request = urllib.request.Request(
+            "http://127.0.0.1:8400/api/ai/assist",
+            data=b'{"prompt":"Help","suite_id":"operator-os","temperature":NaN}',
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with self.assertRaises(urllib.error.HTTPError) as context:
+            urllib.request.urlopen(request)
+        self.assertEqual(context.exception.code, 400)
+        payload = json.loads(context.exception.read().decode("utf-8"))
+        self.assertIn("non-finite", payload["error"])
 
     def test_unhashable_enum_payload_is_a_contract_error(self):
         with urllib.request.urlopen(
@@ -241,6 +336,23 @@ class ServerTrustBoundaryTests(unittest.TestCase):
                 urllib.request.urlopen(request)
         self.assertEqual(context.exception.code, 403)
         run_chain.assert_not_called()
+
+    def test_cross_origin_ai_execution_is_rejected_before_dispatch(self):
+        request = urllib.request.Request(
+            "http://127.0.0.1:8400/api/ai/assist",
+            data=json.dumps({"prompt": "steal data", "suite_id": "operator-os"}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "https://attacker.example",
+                "Sec-Fetch-Site": "cross-site",
+            },
+            method="POST",
+        )
+        with patch("portfolio_suites.server.request_assistance") as assist:
+            with self.assertRaises(urllib.error.HTTPError) as context:
+                urllib.request.urlopen(request)
+        self.assertEqual(context.exception.code, 403)
+        assist.assert_not_called()
 
     def test_get_cannot_trigger_live_wave_execution(self):
         with patch("portfolio_suites.server.WaveRunner.run_all") as run_all:

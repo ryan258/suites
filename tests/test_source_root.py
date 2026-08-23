@@ -51,7 +51,19 @@ class InstalledRootTests(unittest.TestCase):
     def test_the_console_entry_point_is_declared(self):
         """Declaration only -- that it *works* installed is test_wheel_smoke.py's job."""
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('suites = "portfolio_suites.cli:main"', pyproject)
+        self.assertIn('suites = "portfolio_suites.entrypoint:main"', pyproject)
+
+    def test_console_boundary_names_a_missing_root_without_a_traceback(self):
+        with tempfile.TemporaryDirectory() as empty:
+            result = _run(
+                "from portfolio_suites.entrypoint import main; raise SystemExit(main(['validate', '--fast']))",
+                cwd=empty,
+                env_root=empty,
+            )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("SUITES_ROOT", result.stderr)
+        self.assertIn("project-ledger.json", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
 
 
 if __name__ == "__main__":
