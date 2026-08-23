@@ -345,3 +345,68 @@ class WaveTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SettledMessageTests(unittest.TestCase):
+    """A failing gate never narrates its intended success as fact.
+
+    The CLI prints the message beside the tag, so "Proved the Writers Room handoff" on a
+    `[FAIL]` line reads as a result whatever the tag says. Forty of the forty-two runners
+    passed an unconditional past-tense sentence; the demotion happens once, in `_settle`.
+    """
+
+    @staticmethod
+    def _suite():
+        return {
+            "id": "production-house",
+            "waves": [{"id": "P3", "evidence": "production-house/evidence/P3-WRITERS-ROOM-HANDOFF.json"}],
+        }
+
+    def test_a_passing_gate_keeps_its_message_verbatim(self):
+        result = WaveRunner._settle(
+            self._suite(), "P3", False, True, {}, "Proved Writers Room story-state handoff.",
+        )
+        self.assertEqual(result.message, "Proved Writers Room story-state handoff.")
+
+    def test_a_failing_gate_demotes_its_message_to_an_intention(self):
+        result = WaveRunner._settle(
+            self._suite(), "P3", False, False, {}, "Proved Writers Room story-state handoff.",
+        )
+        self.assertTrue(result.message.startswith("gate did not pass; no claim is made"))
+        self.assertIn("intended: Proved Writers Room story-state handoff.", result.message)
+        self.assertFalse(result.passed)
+
+    def test_a_runner_may_supply_its_own_failure_text(self):
+        result = WaveRunner._settle(
+            self._suite(), "P3", False, False, {}, "success narration",
+            failure_message="environment could not verify this gate",
+        )
+        self.assertEqual(result.message, "environment could not verify this gate")
+
+    def test_no_runner_narrates_success_on_a_failed_gate(self):
+        """Every wave with a runner, driven to failure, must refuse the past tense."""
+        from portfolio_suites.registry import load_suites
+
+        past_tense_openers = (
+            "Executed", "Proved", "Verified", "Mapped", "Normalized", "Fingerprinted",
+            "Reconciled", "Round-tripped", "Classified", "Inventoried", "Audited",
+            "Checked", "Projected", "Simulated", "Measured", "Consolidated",
+        )
+        for suite_id, manifest in load_suites().items():
+            for wave in manifest.get("waves", []):
+                method = f"_run_{suite_id.replace('-', '_')}_{wave['id'].lower()}"
+                if not hasattr(WaveRunner, method):
+                    continue
+                with self.subTest(wave=f"{suite_id}/{wave['id']}"):
+                    result = WaveRunner._settle(
+                        {"id": suite_id, "waves": [wave]},
+                        wave["id"],
+                        False,
+                        False,
+                        {},
+                        "Executed the donor runtime and verified parity.",
+                    )
+                    self.assertFalse(
+                        result.message.startswith(past_tense_openers),
+                        f"{suite_id}/{wave['id']} narrated success on a failed gate: {result.message}",
+                    )

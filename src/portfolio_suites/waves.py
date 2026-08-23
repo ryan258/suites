@@ -54,13 +54,18 @@ _RECORD_LOCKS: dict[Path, threading.Lock] = {}
 _RECORD_LOCKS_GUARD = threading.Lock()
 
 
-def _wave_for_evidence(rel_path: str) -> dict[str, Any] | None:
-    """Return the one wave declaring an evidence path; fail closed on zero or duplicates."""
-    matches: list[dict[str, Any]] = []
-    for manifest in load_suites().values():
+def _wave_for_evidence(rel_path: str) -> tuple[str, dict[str, Any]] | None:
+    """Return the one suite/wave pair declaring an evidence path; fail closed on zero or duplicates.
+
+    The suite ID comes back with the wave because the receipt spec is keyed by both, and
+    deriving the suite from the evidence path instead would assume the directory name and
+    the manifest ID never diverge.
+    """
+    matches: list[tuple[str, dict[str, Any]]] = []
+    for suite_id, manifest in load_suites().items():
         for wave in manifest.get("waves", []):
             if wave.get("evidence") == rel_path:
-                matches.append(wave)
+                matches.append((suite_id, wave))
     return matches[0] if len(matches) == 1 else None
 
 
@@ -102,8 +107,9 @@ def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, pass
         owner = _wave_for_evidence(rel_path)
     except (OSError, ValueError, KeyError):
         return None
-    if owner is None or owner.get("id") != wave.get("id"):
+    if owner is None or owner[1].get("id") != wave.get("id"):
         return None
+    owner_suite_id = owner[0]
 
     suite_dir, _, filename = rel_path.partition("/evidence/")
     if "/" in filename or not filename:
@@ -131,7 +137,7 @@ def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, pass
                 ) as handle:
                     handle.write(payload)
                     candidate = Path(handle.name)
-                if evidence_errors(wave, candidate):
+                if evidence_errors(wave, candidate, owner_suite_id):
                     return None
                 os.replace(candidate, evidence_file)
                 candidate = None
@@ -186,18 +192,35 @@ class WaveRunner:
         receipt: Any,
         message: str,
         data: Any = None,
+        failure_message: str | None = None,
     ) -> WaveRunResult:
         """Record `receipt` against the wave's declared evidence path and build its result.
 
         Every runner ends this way: offer the receipt, keep whatever the recorder actually
         returned, and report `data` (often a narrower slice of the receipt) to the caller.
+
+        `message` is what the wave achieves *when its gate passes*, so a runner may state it
+        in the past tense without checking. A failing gate never narrates that sentence as
+        fact: the caller prints the message next to a `[FAIL]` tag, and "Proved the Writers
+        Room handoff" on that line reads as a result no matter what the tag says. Demoting it
+        to a stated intention happens here, once, instead of in each of the forty runners.
+
+        A runner that can say something more precise about its own failure passes
+        `failure_message` and is used verbatim -- A2 needs this to keep an unverifiable
+        environment distinct from a product failure, which the generic demotion would flatten.
         """
         wave = next((w for w in suite.get("waves", []) if w.get("id") == wave_id), None) or {}
+        if passed:
+            settled_message = message
+        elif failure_message is not None:
+            settled_message = failure_message
+        else:
+            settled_message = f"gate did not pass; no claim is made (intended: {message})"
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
-            message,
+            settled_message,
             _record_evidence(wave, receipt, write_evidence, passed),
             data,
         )
@@ -295,7 +318,7 @@ class WaveRunner:
         if evidence_file.is_file():
             try:
                 content = evidence_file.read_text(encoding="utf-8")
-                valid = len(content) > 100 and not evidence_errors(wave, evidence_file)
+                valid = len(content) > 100 and not evidence_errors(wave, evidence_file, suite["id"])
             except OSError:
                 valid = False
         record_note = "A1 is a hand-authored analysis document and is read-only; recording is not supported" if write_evidence else None
@@ -329,20 +352,19 @@ class WaveRunner:
             if full_stage.get("skipped")
             else f"{focused_tests} focused tests, {full_stage.get('total_tests_passed', 0)} full suite tests passed"
         )
+        # A2 states its own failure text because only it can tell an unverifiable
+        # environment apart from a product failure; `_settle` would flatten both.
         if receipt.get("environment_blocked"):
-            message = (
+            failure_message = (
                 "A2 donor/destination runtime gate is unverifiable in this environment; "
                 "no product failure or recovery pass is claimed."
             )
-        elif not passed:
-            # A gate that did not pass never narrates a pass. The depth branches below
-            # describe what a successful run achieved, and reusing them here printed
-            # "FAST PROBE PASSED" on the same line as [FAIL].
-            message = (
+        else:
+            failure_message = (
                 f"A2 gate did not pass ({depth_note}); generated {len(findings)} valid "
                 "A11yFindings. No parity is claimed and the retained receipt is unchanged."
             )
-        elif full_stage.get("skipped"):
+        if full_stage.get("skipped"):
             message = (
                 "FAST PROBE PASSED; HISTORICAL PARITY RECEIPT RETAINED. Executed WCAG Auditor donor "
                 f"and Ally destination runtimes ({depth_note}); generated {len(findings)} valid "
@@ -361,6 +383,7 @@ class WaveRunner:
             receipt,
             message,
             receipt,
+            failure_message=failure_message,
         )
 
     @classmethod
@@ -391,11 +414,7 @@ class WaveRunner:
             f"{catalog.get('port_narrow_count', 0)} port-narrow, "
             f"{catalog.get('port_options_count', 0)} port-options)"
         )
-        message = (
-            f"Classified {counts} and ran one suite-local compliant-markup smoke probe."
-            if passed
-            else f"A4 gate did not pass; classified {counts}. No classification claim is made."
-        )
+        message = f"Classified {counts} and ran one suite-local compliant-markup smoke probe."
         return cls._settle(
             suite,
             wave_id,
