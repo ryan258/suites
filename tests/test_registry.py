@@ -137,7 +137,7 @@ class RegistryTests(unittest.TestCase):
             {"id": "P2"},
             {
                 "wave": "P2",
-                "status": "formatter_executed",
+                "status": "fixture_output_projection_verified",
                 "all_stages_passed": True,
                 "job": None,
                 "formatter_fingerprint": "",
@@ -343,7 +343,7 @@ class UnsupportedEvidenceContractTests(unittest.TestCase):
             "recovery_claim": {"kind": kind, "level": level, "evidence_basis": ["something"]},
         }
 
-    def test_claim_kinds_without_a_receipt_contract_are_refused(self):
+    def test_lifecycle_claims_without_their_receipt_contract_are_refused(self):
         from portfolio_suites.registry import evidence_errors
 
         missing = Path("/nonexistent/receipt.json")
@@ -351,21 +351,32 @@ class UnsupportedEvidenceContractTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 errors = evidence_errors(self._wave(kind), missing)
                 self.assertTrue(errors)
-                self.assertIn("no versioned evidence receipt contract", errors[0])
+                self.assertIn("requires receipt_contract", errors[0])
 
-    def test_runtime_below_parity_is_refused(self):
+    def test_runtime_source_verification_requires_its_versioned_contract(self):
         from portfolio_suites.registry import evidence_errors
 
         errors = evidence_errors(self._wave("runtime", "source_verified"), Path("/nonexistent/receipt.json"))
         self.assertTrue(errors)
-        self.assertIn("no versioned evidence receipt contract", errors[0])
+        self.assertIn("requires receipt_contract", errors[0])
 
     def test_contracted_claim_kinds_are_still_evaluated(self):
         from portfolio_suites.registry import evidence_errors
 
         errors = evidence_errors(self._wave("runtime", "parity_verified"), Path("/nonexistent/receipt.json"))
         self.assertTrue(errors)
-        self.assertNotIn("no versioned evidence receipt contract", errors[0])
+        self.assertIn("requires receipt_contract", errors[0])
+
+    def test_unknown_runtime_level_names_the_level_as_the_unsupported_dimension(self):
+        from portfolio_suites.registry import evidence_errors
+
+        errors = evidence_errors(
+            self._wave("runtime", "imaginary_level"),
+            Path("/nonexistent/receipt.json"),
+        )
+        self.assertTrue(errors)
+        self.assertIn("runtime claim level 'imaginary_level'", errors[0])
+        self.assertNotIn("recovery claim kind", errors[0])
 
 
 class ApplySnapshotUpdatesTest(unittest.TestCase):

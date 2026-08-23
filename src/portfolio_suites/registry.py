@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import datetime
 import json
 import os
 import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 from .contracts import CONTRACTS, SCHEMA_VERSION, ContractError, validate_contract
@@ -73,7 +75,20 @@ RUNTIME_PARITY_EVIDENCE = {
     "dependency_fingerprints",
     "reproducible_commands",
 }
-RECOVERY_RECEIPT_CONTRACTS = {"accessibility-wcag-331-v1"}
+RECOVERY_RECEIPT_CONTRACTS = {
+    "accessibility-wcag-331-v1",
+    "portfolio-runtime-source-v1",
+    "portfolio-runtime-parity-v1",
+    "portfolio-adoption-v1",
+    "portfolio-convergence-v1",
+    "portfolio-resolution-v1",
+}
+SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+RECEIPT_CONTRACT_FOR_KIND = {
+    "adoption": "portfolio-adoption-v1",
+    "convergence": "portfolio-convergence-v1",
+    "resolution": "portfolio-resolution-v1",
+}
 
 
 @dataclass
@@ -100,6 +115,95 @@ def load_suites() -> dict[str, dict[str, Any]]:
         manifest = _load_json(SUITES_ROOT / directory / "suite.json")
         suites[manifest["id"]] = manifest
     return suites
+
+
+def resolve_declared_evidence_path(rel_path: Any, suite_id: str | None = None) -> Path | None:
+    """Resolve the canonical ``<suite>/evidence/<file>`` shape inside the suites tree.
+
+    Manifest content is untrusted control data. This helper performs no filesystem writes and
+    fails closed on absolute paths, traversal, backslash ambiguity, unexpected nesting, suite
+    mismatch, or a symlink that resolves outside ``SUITES_ROOT``.
+    """
+    if not isinstance(rel_path, str) or not rel_path or "\\" in rel_path or "\x00" in rel_path:
+        return None
+    pure = PurePosixPath(rel_path)
+    parts = pure.parts
+    if (
+        pure.is_absolute()
+        or len(parts) != 3
+        or parts[0] not in SUITE_DIRS
+        or (suite_id is not None and parts[0] != suite_id)
+        or parts[1] != "evidence"
+        or parts[2] in {"", ".", ".."}
+        or ".." in parts
+    ):
+        return None
+    candidate = SUITES_ROOT.joinpath(*parts)
+    try:
+        resolved_root = SUITES_ROOT.resolve(strict=False)
+        resolved = candidate.resolve(strict=False)
+        resolved.relative_to(resolved_root)
+        expected_parent = (SUITES_ROOT / parts[0] / "evidence").resolve(strict=False)
+        if resolved.parent != expected_parent:
+            return None
+    except (OSError, ValueError, RuntimeError):
+        return None
+    return candidate
+
+
+def declared_evidence_owner(target: Path) -> tuple[str, dict[str, Any]] | None:
+    """Return the unique manifest owner for an exact evidence file, if one exists."""
+    try:
+        resolved_target = target.resolve(strict=False)
+    except (OSError, RuntimeError):
+        return None
+    matches: list[tuple[str, dict[str, Any]]] = []
+    for suite_id, manifest in load_suites().items():
+        for wave in manifest.get("waves", []):
+            candidate = resolve_declared_evidence_path(wave.get("evidence"), suite_id)
+            if candidate is not None and candidate.resolve(strict=False) == resolved_target:
+                matches.append((suite_id, wave))
+    return matches[0] if len(matches) == 1 else None
+
+
+def build_evidence_ownership_index(
+    suites: dict[str, dict[str, Any]],
+) -> dict[Path, list[tuple[str, dict[str, Any]]]]:
+    index: dict[Path, list[tuple[str, dict[str, Any]]]] = {}
+    for owner_suite_id, manifest in suites.items():
+        for owner_wave in manifest.get("waves", []):
+            candidate = resolve_declared_evidence_path(owner_wave.get("evidence"), owner_suite_id)
+            if candidate is not None:
+                index.setdefault(candidate.resolve(strict=False), []).append((owner_suite_id, owner_wave))
+    return index
+
+
+def get_wave_evidence_status(
+    suite_id: str,
+    wave: dict[str, Any],
+    ownership_index: dict[Path, list[tuple[str, dict[str, Any]]]] | None = None,
+) -> dict[str, Any]:
+    """Evidence-backed status for a manifest wave without executing its runtime."""
+    candidate = resolve_declared_evidence_path(wave.get("evidence"), suite_id)
+    if candidate is None:
+        errors = ["declared evidence path is invalid or outside the canonical suite evidence directory"]
+    elif not candidate.is_file():
+        errors = ["declared evidence file is missing"]
+    else:
+        if ownership_index is None:
+            owner = declared_evidence_owner(candidate)
+        else:
+            owners = ownership_index.get(candidate.resolve(strict=False), [])
+            owner = owners[0] if len(owners) == 1 else None
+        if owner is None or owner[0] != suite_id or owner[1].get("id") != wave.get("id"):
+            errors = ["declared evidence path does not have one canonical suite/wave owner"]
+        else:
+            errors = evidence_errors(wave, candidate, suite_id)
+    return {
+        "evidence_path": str(candidate) if candidate is not None and candidate.is_file() else None,
+        "evidence_valid": not errors,
+        "evidence_errors": errors,
+    }
 
 
 def get_suite(suite_id: str) -> dict[str, Any] | None:
@@ -177,7 +281,13 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "strings": ["recommendation"],
     },
     "accessibility/A5": {
-        "equals": {"evidence_loss": False, "roundtrip_status": "verified"},
+        "equals": {
+            "all_stages_passed": True,
+            "evidence_loss": False,
+            "roundtrip_status": "suite_projection_verified",
+            "a11y_kitchen_runtime_invoked": False,
+            "external_roundtrip_verified": False,
+        },
         "objects": ["canonical_finding"],
         "contracts": {"canonical_finding": "A11yFinding"},
     },
@@ -340,7 +450,15 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["approved_review"],
     },
     "production-house/P1": {
-        "equals": {"wave": "P1", "status": "fingerprinted", "all_stages_passed": True},
+        "equals": {
+            "wave": "P1",
+            "status": "source_fingerprints_with_fixture_projection_verified",
+            "episode_artifacts_read": False,
+            "external_runtime_invoked": False,
+            "fixture_output_only": True,
+            "job.external_runtime_invoked": False,
+            "all_stages_passed": True,
+        },
         "objects": ["job"],
         "fingerprints": [
             "production_house_fingerprint",
@@ -350,13 +468,27 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "contracts": {"job": "ProductionJob"},
     },
     "production-house/P2": {
-        "equals": {"wave": "P2", "status": "formatter_executed", "all_stages_passed": True},
+        "equals": {
+            "wave": "P2",
+            "status": "fixture_output_projection_verified",
+            "external_formatter_invoked": False,
+            "fixture_output_only": True,
+            "job.external_runtime_invoked": False,
+            "all_stages_passed": True,
+        },
         "objects": ["job"],
         "fingerprints": ["formatter_fingerprint"],
         "contracts": {"job": "ProductionJob"},
     },
     "production-house/P3": {
-        "equals": {"wave": "P3", "status": "handoff_verified", "all_stages_passed": True},
+        "equals": {
+            "wave": "P3",
+            "status": "fixture_handoff_projection_verified",
+            "writers_room_runtime_invoked": False,
+            "signoff_observed": False,
+            "job.external_runtime_invoked": False,
+            "all_stages_passed": True,
+        },
         "objects": ["job"],
         "fingerprints": ["writers_room_fingerprint"],
         "contracts": {"job": "ProductionJob"},
@@ -364,14 +496,26 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
     "production-house/P4": {
         "equals": {
             "wave": "P4",
-            "status": "documentary_pipeline_verified",
+            "status": "documentary_fixture_model_verified",
+            "external_runtime_invoked": False,
+            "fixture_output_only": True,
+            "job.external_runtime_invoked": False,
             "all_stages_passed": True,
         },
         "objects": ["job"],
         "contracts": {"job": "ProductionJob"},
     },
     "production-house/P5": {
-        "equals": {"wave": "P5", "status": "event_stream_unified", "all_stages_passed": True},
+        "equals": {
+            "wave": "P5",
+            "status": "fixture_event_projection_verified",
+            "writers_room_runtime_invoked": False,
+            "runtime_consolidation_performed": False,
+            "mapping.writers_room_runtime_invoked": False,
+            "mapping.signoff_observed": False,
+            "mapping.runtime_consolidation": "not_performed",
+            "all_stages_passed": True,
+        },
         "objects": ["mapping", "mapping.mapped_job"],
         "contracts": {"mapping.mapped_job": "ProductionJob"},
     },
@@ -426,8 +570,12 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
     "accessibility/A4": {
         "equals": {
             "wave": "A4",
-            "status": "parity_verified",
+            "status": "catalog_analysis_verified",
             "all_stages_passed": True,
+            "parity_verified": False,
+            "donor_runtime_invoked": False,
+            "target_runtime_invoked": False,
+            "verification_scope": "source_catalog_and_suite_projection_only",
             "false_positive_probe_passed": True,
             "source_derived_assertions.sensitivity_test_passed": True,
         },
@@ -474,14 +622,24 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "discovery-decision/D1": {
-        "equals": {"wave": "D1", "status": "parity_mapped", "all_stages_passed": True},
+        "equals": {"wave": "D1", "status": "stage_matrix_verified", "all_stages_passed": True},
         "objects": ["forge_budgets", "sif_run_sampled"],
         "lists": ["matrix", "sif_run_sampled.artifacts"],
         "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
     },
     "discovery-decision/D2": {
-        "equals": {"wave": "D2", "status": "stage_ported", "all_stages_passed": True},
-        "objects": ["investigation", "donor_artifact", "budget_source"],
+        "equals": {
+            "wave": "D2",
+            "status": "artifact_projection_verified",
+            "all_stages_passed": True,
+            "execution_scope.suite_projection_invoked": True,
+            "execution_scope.sif_runtime_invoked": False,
+            "execution_scope.forge_runtime_invoked": False,
+            "execution_scope.consent_gate_executed": False,
+            "execution_scope.resume_gate_executed": False,
+            "execution_scope.sqlite_rebuild_executed": False,
+        },
+        "objects": ["investigation", "donor_artifact", "budget_source", "execution_scope"],
         "strings": ["donor_artifact.origin", "donor_artifact.sha256"],
         "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
         "contracts": {"investigation": "InvestigationRecord"},
@@ -501,8 +659,18 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "contracts": {"primary_source": "SourceRecord"},
     },
     "discovery-decision/D4": {
-        "equals": {"wave": "D4", "status": "stage_ported", "all_stages_passed": True},
-        "objects": ["investigation", "donor_artifact", "budget_source"],
+        "equals": {
+            "wave": "D4",
+            "status": "artifact_projection_verified",
+            "all_stages_passed": True,
+            "execution_scope.suite_projection_invoked": True,
+            "execution_scope.sif_runtime_invoked": False,
+            "execution_scope.forge_runtime_invoked": False,
+            "execution_scope.consent_gate_executed": False,
+            "execution_scope.resume_gate_executed": False,
+            "execution_scope.sqlite_rebuild_executed": False,
+        },
+        "objects": ["investigation", "donor_artifact", "budget_source", "execution_scope"],
         "strings": ["donor_artifact.origin", "donor_artifact.sha256"],
         "fingerprints": ["sif_fingerprint", "forge_fingerprint"],
         "contracts": {"investigation": "InvestigationRecord"},
@@ -803,7 +971,7 @@ def _analysis_receipt_semantic_errors(
         expected_exact = 3 if wave_id in {"P1", "P4"} else None
         collection = job.get(expected_collection, []) if isinstance(job, dict) else []
         if not isinstance(collection, list) or len(collection) < expected_minimum:
-            errors.append(f"job.{expected_collection} must retain executed job evidence")
+            errors.append(f"job.{expected_collection} must retain the declared job evidence")
         elif expected_exact is not None and len(collection) != expected_exact:
             errors.append(f"job.{expected_collection} must contain exactly {expected_exact} items")
 
@@ -814,6 +982,10 @@ def _runtime_parity_receipt_errors(path: Path, contract_id: str) -> list[str]:
     """Validate a retained runtime receipt through an explicitly versioned contract."""
     if contract_id not in RECOVERY_RECEIPT_CONTRACTS:
         return [f"unsupported runtime parity receipt contract: {contract_id!r}"]
+    if contract_id == "portfolio-runtime-parity-v1":
+        return _portfolio_runtime_receipt_errors(path, contract_id, "parity_verified")
+    if contract_id != "accessibility-wcag-331-v1":
+        return [f"receipt contract {contract_id!r} is not a runtime parity contract"]
     try:
         receipt = _load_json(path)
     except (OSError, ValueError, json.JSONDecodeError) as error:
@@ -868,6 +1040,177 @@ def _runtime_parity_receipt_errors(path: Path, contract_id: str) -> list[str]:
     return errors
 
 
+def _receipt_document(path: Path, contract_id: str) -> tuple[dict[str, Any] | None, list[str]]:
+    try:
+        document = _load_json(path)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return None, [f"{contract_id} receipt cannot be loaded: {error}"]
+    errors = []
+    if document.get("receipt_version") != contract_id:
+        errors.append(f"receipt_version must equal {contract_id!r}")
+    if document.get("operational_errors") != []:
+        errors.append("operational_errors must be an empty list")
+    return document, errors
+
+
+def _meaningful_fingerprint_collection(value: Any) -> bool:
+    if isinstance(value, dict):
+        values = list(value.values())
+    elif isinstance(value, list):
+        values = value
+    else:
+        return False
+    return bool(values) and all(is_meaningful_git_fingerprint(item) for item in values)
+
+
+def _portfolio_runtime_receipt_errors(path: Path, contract_id: str, level: str) -> list[str]:
+    document, errors = _receipt_document(path, contract_id)
+    if document is None:
+        return errors
+    expected_status = "source_verified" if level == "source_verified" else "parity_verified"
+    if document.get("status") != expected_status or document.get("all_stages_passed") is not True:
+        errors.append(f"runtime receipt must retain status {expected_status!r} and all_stages_passed true")
+    source = document.get("source_invocation")
+    if not (
+        isinstance(source, dict)
+        and isinstance(source.get("command"), list)
+        and source.get("command")
+        and source.get("exit_code") == 0
+    ):
+        errors.append("source_invocation must retain an argv command and zero exit code")
+    if not _meaningful_fingerprint_collection(document.get("source_fingerprints")):
+        errors.append("source_fingerprints must contain meaningful Git and content fingerprints")
+    commands = document.get("reproducible_commands")
+    if not isinstance(commands, list) or not commands or any(not isinstance(item, list) or not item for item in commands):
+        errors.append("reproducible_commands must retain at least one argv command")
+    if level != "source_verified":
+        destination = document.get("destination_invocation")
+        if not (
+            isinstance(destination, dict)
+            and isinstance(destination.get("command"), list)
+            and destination.get("command")
+            and destination.get("exit_code") == 0
+        ):
+            errors.append("destination_invocation must retain an argv command and zero exit code")
+        if document.get("output_parity") is not True or document.get("failure_parity") is not True:
+            errors.append("runtime parity requires explicit output_parity and failure_parity passes")
+        if not isinstance(document.get("representative_inputs"), list) or not document["representative_inputs"]:
+            errors.append("runtime parity requires representative_inputs")
+        recovery = document.get("recovery_behavior")
+        if not isinstance(recovery, dict) or recovery.get("rerun_safe") is not True:
+            errors.append("runtime parity requires rerun-safe recovery behavior")
+    return errors
+
+
+def _adoption_receipt_errors(path: Path, contract_id: str) -> list[str]:
+    document, errors = _receipt_document(path, contract_id)
+    if document is None:
+        return errors
+    if document.get("status") != "adopted":
+        errors.append("adoption receipt status must be 'adopted'")
+    uses = document.get("accepted_uses")
+    if not isinstance(uses, list) or len(uses) < RECOVERY_ENFORCEMENT["minimum_authentic_uses_for_adoption"]:
+        return errors + ["adoption receipt requires at least three accepted authentic uses"]
+    use_ids: set[str] = set()
+    input_hashes: set[str] = set()
+    for index, use in enumerate(uses):
+        if not isinstance(use, dict):
+            errors.append(f"accepted_uses.{index} must be an object")
+            continue
+        use_id = use.get("use_id")
+        digest = use.get("input_sha256")
+        if not isinstance(use_id, str) or not use_id.strip() or use_id in use_ids:
+            errors.append(f"accepted_uses.{index}.use_id must be unique and non-empty")
+        else:
+            use_ids.add(use_id)
+        if not isinstance(digest, str) or not SHA256_HEX.fullmatch(digest) or digest in input_hashes:
+            errors.append(f"accepted_uses.{index}.input_sha256 must be a unique SHA-256")
+        else:
+            input_hashes.add(digest)
+        if use.get("accepted") is not True:
+            errors.append(f"accepted_uses.{index}.accepted must be true")
+        if not isinstance(use.get("evidence_ref"), str) or not use["evidence_ref"].strip():
+            errors.append(f"accepted_uses.{index}.evidence_ref must be non-empty")
+        try:
+            occurred = str(use.get("occurred_at", ""))
+            if "T" not in occurred or datetime.datetime.fromisoformat(occurred.replace("Z", "+00:00")).tzinfo is None:
+                raise ValueError
+        except ValueError:
+            errors.append(f"accepted_uses.{index}.occurred_at must be a timezone-aware date-time")
+    parity_hash = document.get("parity_receipt_sha256")
+    if not isinstance(parity_hash, str) or not SHA256_HEX.fullmatch(parity_hash):
+        errors.append("parity_receipt_sha256 must bind adoption to validated parity evidence")
+    return errors
+
+
+def _convergence_receipt_errors(path: Path, contract_id: str) -> list[str]:
+    document, errors = _receipt_document(path, contract_id)
+    if document is None:
+        return errors
+    if document.get("status") != "converged":
+        errors.append("convergence receipt status must be 'converged'")
+    if not isinstance(document.get("canonical_runtime"), str) or not document["canonical_runtime"].strip():
+        errors.append("canonical_runtime must name the surviving runtime")
+    duplicate_writers = document.get("duplicate_writers")
+    if not isinstance(duplicate_writers, list):
+        errors.append("duplicate_writers must be a list, including an empty list when none exist")
+    else:
+        for index, writer in enumerate(duplicate_writers):
+            if not (
+                isinstance(writer, dict)
+                and isinstance(writer.get("runtime"), str)
+                and writer.get("runtime")
+                and writer.get("disposition") in {"retired", "read_only", "adapter", "retained_independent"}
+            ):
+                errors.append(f"duplicate_writers.{index} needs a runtime and final non-writer disposition")
+    approval = document.get("owner_approval")
+    if not (
+        isinstance(approval, dict)
+        and approval.get("approved") is True
+        and isinstance(approval.get("approved_by"), str)
+        and approval.get("approved_by").strip()
+        and isinstance(approval.get("authority_record_sha256"), str)
+        and SHA256_HEX.fullmatch(approval.get("authority_record_sha256", ""))
+    ):
+        errors.append("owner_approval must bind explicit approval to an authority record SHA-256")
+    adoption_hash = document.get("adoption_receipt_sha256")
+    if not isinstance(adoption_hash, str) or not SHA256_HEX.fullmatch(adoption_hash):
+        errors.append("adoption_receipt_sha256 must bind convergence to accepted use evidence")
+    return errors
+
+
+def _resolution_receipt_errors(path: Path, contract_id: str, claim: dict[str, Any]) -> list[str]:
+    document, errors = _receipt_document(path, contract_id)
+    if document is None:
+        return errors
+    outcome = document.get("outcome")
+    if document.get("status") != "resolved" or outcome not in RECOVERY_RESOLUTION_OUTCOMES:
+        errors.append("resolution receipt must have status 'resolved' and a supported outcome")
+    if claim.get("outcome") and outcome != claim.get("outcome"):
+        errors.append("resolution receipt outcome must match the manifest claim")
+    for field in ("capability_id", "rationale"):
+        if not isinstance(document.get(field), str) or not document[field].strip():
+            errors.append(f"resolution receipt {field} must be non-empty")
+    if not _meaningful_fingerprint_collection(document.get("source_fingerprints")):
+        errors.append("resolution receipt must retain meaningful source_fingerprints")
+    if outcome in {"ported", "already_covered"}:
+        digest = document.get("destination_evidence_sha256")
+        if not isinstance(digest, str) or not SHA256_HEX.fullmatch(digest):
+            errors.append(f"{outcome} resolution requires destination_evidence_sha256")
+    elif outcome == "retained_independent":
+        if not isinstance(document.get("retained_owner"), str) or not document["retained_owner"].strip():
+            errors.append("retained_independent resolution requires retained_owner")
+    elif outcome == "deferred_with_trigger":
+        trigger = document.get("resume_trigger")
+        if not (
+            isinstance(trigger, dict)
+            and isinstance(trigger.get("condition"), str)
+            and trigger.get("condition").strip()
+        ):
+            errors.append("deferred_with_trigger resolution requires a structured resume_trigger condition")
+    return errors
+
+
 def evidence_ineligibility_reason(wave: dict[str, Any]) -> str | None:
     """Why this wave may not write a receipt at all, or None when it may.
 
@@ -876,8 +1219,31 @@ def evidence_ineligibility_reason(wave: dict[str, Any]) -> str | None:
     different outcome from "the gate failed" and from "the candidate was rejected", and
     callers must be able to tell the three apart.
     """
-    if not (wave.get("recovery_claim") or {}).get("kind"):
+    claim = wave.get("recovery_claim") or {}
+    kind = claim.get("kind")
+    if not kind:
         return "wave declares no recovery evidence contract, so --record cannot write a verifiable receipt"
+    if kind == "analysis":
+        return None
+    level = claim.get("level")
+    contract = claim.get("receipt_contract")
+    expected: set[str]
+    if kind == "runtime" and level == "source_verified":
+        expected = {"portfolio-runtime-source-v1"}
+    elif kind == "runtime" and level == "parity_verified":
+        expected = {"accessibility-wcag-331-v1", "portfolio-runtime-parity-v1"}
+    elif kind in {"runtime", "adoption"} and level == "adopted":
+        expected = {"portfolio-adoption-v1"}
+    elif kind in {"runtime", "convergence"} and level == "converged":
+        expected = {"portfolio-convergence-v1"}
+    elif kind == "runtime":
+        return _UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"runtime claim level {level!r}")
+    elif kind in RECEIPT_CONTRACT_FOR_KIND:
+        expected = {RECEIPT_CONTRACT_FOR_KIND[kind]}
+    else:
+        return _UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"{kind!r} claim at level {level!r}")
+    if contract not in expected:
+        return f"claim requires receipt_contract {', '.join(sorted(expected))}; got {contract!r}"
     return None
 
 
@@ -889,23 +1255,32 @@ def evidence_errors(wave: dict[str, Any], path: Path, suite_id: str | None = Non
     two: `validate` only inspects completed waves, while a wave with no declared claim
     can never record at all (see `evidence_ineligibility_reason`).
 
-    Which claims have a receipt contract:
+    Supported receipt contracts:
     - `analysis` is checked against its declared basis and `ANALYSIS_RECEIPT_SPECS`.
-    - `runtime` at `parity_verified`, `adopted`, or `converged` is checked against a
-      versioned parity receipt contract from `RECOVERY_RECEIPT_CONTRACTS`.
-    - `adoption`, `convergence`, `resolution`, and `runtime` below `parity_verified` have
-      no contract yet and are *refused*, not waved through. `RECOVERY_CLAIM_KINDS` says
-      those kinds are declarable; this says their receipts are not yet verifiable. Writing
-      the contract is what makes them recordable.
+    - `runtime` supports `source_verified`, `parity_verified`, `adopted`, and `converged`
+      through their corresponding versioned lifecycle validators.
+    - `adoption`, `convergence`, and `resolution` dispatch to their own receipt validators.
+    Any other claim kind or runtime level is refused rather than waved through.
     """
     claim = wave.get("recovery_claim", {}) or {}
     kind = claim.get("kind")
     if not kind:
         return [evidence_ineligibility_reason(wave) or "wave has no declared recovery evidence contract"]
+    ineligible = evidence_ineligibility_reason(wave)
+    if ineligible:
+        return [ineligible]
     if kind == "runtime":
-        if claim.get("level") in RUNTIME_PROMOTION_LEVELS:
-            return _runtime_parity_receipt_errors(path, claim.get("receipt_contract", ""))
-        return [_UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"runtime claim at level {claim.get('level')!r}")]
+        level = claim.get("level")
+        contract_id = claim.get("receipt_contract", "")
+        if level == "source_verified":
+            return _portfolio_runtime_receipt_errors(path, contract_id, level)
+        if level == "parity_verified":
+            return _runtime_parity_receipt_errors(path, contract_id)
+        if level == "adopted":
+            return _adoption_receipt_errors(path, contract_id)
+        if level == "converged":
+            return _convergence_receipt_errors(path, contract_id)
+        return [_UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"runtime claim level {level!r}")]
     if kind == "analysis":
         basis = {b for b in (claim.get("evidence_basis") or []) if isinstance(b, str) and b}
         if not basis:
@@ -918,6 +1293,13 @@ def evidence_errors(wave: dict[str, Any], path: Path, suite_id: str | None = Non
         except (OSError, ValueError, json.JSONDecodeError) as error:
             return [f"analysis evidence cannot be loaded for semantic validation: {error}"]
         return _analysis_receipt_semantic_errors(wave, document, suite_id)
+    contract_id = claim.get("receipt_contract", "")
+    if kind == "adoption":
+        return _adoption_receipt_errors(path, contract_id)
+    if kind == "convergence":
+        return _convergence_receipt_errors(path, contract_id)
+    if kind == "resolution":
+        return _resolution_receipt_errors(path, contract_id, claim)
     return [_UNSUPPORTED_EVIDENCE_CONTRACT.format(what=f"recovery claim kind {kind!r}")]
 
 
@@ -1039,6 +1421,10 @@ def get_portfolio_summary() -> dict[str, Any]:
     recovered_runtime_behaviors = 0
     adopted_runtime_behaviors = 0
     converged_runtime_behaviors = 0
+    resolved_capabilities = 0
+    validated_completed_claims = 0
+    invalid_completed_claims: list[dict[str, Any]] = []
+    ownership_index = build_evidence_ownership_index(suites)
 
     for suite_id, manifest in suites.items():
         owned = [p for p in projects if p.get("primary_suite") == suite_id]
@@ -1051,9 +1437,22 @@ def get_portfolio_summary() -> dict[str, Any]:
             if w.get("status") == "complete" and str(w.get("runtime_followup") or "").strip()
         )
         waves_owing_runtime_followup += owing_in_suite
+        valid_in_suite = 0
+        invalid_in_suite = 0
         for wave in waves:
             if wave.get("status") != "complete":
                 continue
+            evidence_status = get_wave_evidence_status(suite_id, wave, ownership_index)
+            if not evidence_status["evidence_valid"]:
+                invalid_in_suite += 1
+                invalid_completed_claims.append({
+                    "suite_id": suite_id,
+                    "wave_id": wave.get("id"),
+                    "errors": evidence_status["evidence_errors"],
+                })
+                continue
+            valid_in_suite += 1
+            validated_completed_claims += 1
             claim = wave.get("recovery_claim", {})
             kind = claim.get("kind")
             level = claim.get("level")
@@ -1065,6 +1464,8 @@ def get_portfolio_summary() -> dict[str, Any]:
                 adopted_runtime_behaviors += 1
             if level == "converged":
                 converged_runtime_behaviors += 1
+            if kind == "resolution":
+                resolved_capabilities += 1
         current_wave = next((w for w in waves if w.get("status") != "complete"), None)
 
         suite_summaries.append({
@@ -1078,6 +1479,8 @@ def get_portfolio_summary() -> dict[str, Any]:
             "project_count": len(owned),
             "waves_total": len(waves),
             "waves_complete": completed_in_suite,
+            "validated_completed_claims": valid_in_suite,
+            "invalid_completed_claims": invalid_in_suite,
             "waves_owing_runtime_followup": owing_in_suite,
             "current_wave": current_wave.get("id") if current_wave else "complete",
             "completion_percentage": round((completed_in_suite / len(waves) * 100) if waves else 100, 1),
@@ -1093,6 +1496,8 @@ def get_portfolio_summary() -> dict[str, Any]:
         "nested_repositories": nested_count,
         "total_waves": total_waves,
         "completed_waves": completed_waves,
+        "validated_completed_claims": validated_completed_claims,
+        "invalid_completed_claims": invalid_completed_claims,
         "waves_owing_runtime_followup": waves_owing_runtime_followup,
         "portfolio_progress_pct": round((completed_waves / total_waves * 100) if total_waves else 0, 1),
         "recovery_standard_id": standard.get("standard_id"),
@@ -1101,6 +1506,16 @@ def get_portfolio_summary() -> dict[str, Any]:
         "recovered_runtime_behaviors": recovered_runtime_behaviors,
         "adopted_runtime_behaviors": adopted_runtime_behaviors,
         "converged_runtime_behaviors": converged_runtime_behaviors,
+        "resolved_capabilities": resolved_capabilities,
+        # The adopted 9/10 rubric is dimension-weighted. Existing receipts do not yet carry
+        # per-dimension scores, so manufacturing a numeric recovery score from milestone count
+        # would be false precision. The status is explicit until those receipts exist.
+        "recovery_score": None,
+        "recovery_score_status": "insufficient_dimension_evidence",
+        "evidence_health_pct": round(
+            (validated_completed_claims / completed_waves * 100) if completed_waves else 0,
+            1,
+        ),
         "suites": suite_summaries,
     }
 
@@ -1234,9 +1649,19 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
         if not row.get("disposition") or not row.get("migration"):
             report.errors.append(f"{name}: disposition and migration are required")
 
+    declared_evidence_paths: dict[Path, str] = {}
+    allowed_suite_states = {"specified", "prototype", "migrating", "operational", "converged", "retired"}
+    allowed_wave_statuses = {"specified", "prototype", "complete", "blocked", "deferred"}
+
     for suite_id, manifest in suites.items():
+        if manifest.get("id") != suite_id:
+            report.errors.append(f"{suite_id}: manifest id does not match its registry key")
         if manifest.get("schema_version") != SCHEMA_VERSION:
             report.errors.append(f"{suite_id}: invalid schema version")
+        if not isinstance(manifest.get("name"), str) or not manifest["name"].strip():
+            report.errors.append(f"{suite_id}: suite name is required")
+        if manifest.get("state") not in allowed_suite_states:
+            report.errors.append(f"{suite_id}: suite state is invalid")
         if not manifest.get("promise") or not manifest.get("anchors"):
             report.errors.append(f"{suite_id}: promise and anchors are required")
         for contract in manifest.get("contracts", []):
@@ -1255,7 +1680,39 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                 report.errors.append(f"{suite_id}: anchor is not a member: {anchor}")
         if not manifest.get("completion_criteria") or not manifest.get("waves"):
             report.errors.append(f"{suite_id}: completion criteria and waves are required")
+        wave_ids: set[str] = set()
+        wave_orders: set[int] = set()
         for wave in manifest.get("waves", []):
+            if not isinstance(wave, dict):
+                report.errors.append(f"{suite_id}: every wave must be an object")
+                continue
+            wave_id = wave.get("id")
+            if not isinstance(wave_id, str) or not wave_id or wave_id in wave_ids:
+                report.errors.append(f"{suite_id}: wave ID is missing or duplicated: {wave_id!r}")
+            else:
+                wave_ids.add(wave_id)
+            wave_order = wave.get("order")
+            if not isinstance(wave_order, int) or isinstance(wave_order, bool) or wave_order in wave_orders:
+                report.errors.append(f"{suite_id}/{wave_id}: wave order is missing, invalid, or duplicated")
+            else:
+                wave_orders.add(wave_order)
+            if wave.get("status") not in allowed_wave_statuses:
+                report.errors.append(f"{suite_id}/{wave_id}: wave status is invalid")
+            for required_text in ("objective", "acceptance"):
+                if not isinstance(wave.get(required_text), str) or not wave[required_text].strip():
+                    report.errors.append(f"{suite_id}/{wave_id}: wave {required_text} is required")
+            declared_path = resolve_declared_evidence_path(wave.get("evidence"), suite_id)
+            if declared_path is None:
+                report.errors.append(f"{suite_id}/{wave_id}: declared evidence path is invalid or escapes its suite")
+            else:
+                resolved_declared = declared_path.resolve(strict=False)
+                prior_owner = declared_evidence_paths.get(resolved_declared)
+                if prior_owner is not None:
+                    report.errors.append(
+                        f"{suite_id}/{wave_id}: evidence path is already owned by {prior_owner}"
+                    )
+                else:
+                    declared_evidence_paths[resolved_declared] = f"{suite_id}/{wave_id}"
             # Every declared claim is checked, at whatever level it claims. Only the
             # promotion rules below are reserved for waves that claim completion: a
             # prototype receipt that later goes malformed must still fail this gate.
@@ -1310,14 +1767,33 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                 evidence_basis_set: set[str] = set()
             else:
                 evidence_basis_set = set(evidence_basis)
-            if claim_kind == "runtime" and claim_level in RUNTIME_PROMOTION_LEVELS:
+            if claim_kind == "runtime" and claim_level == "parity_verified":
                 missing_basis = sorted(RUNTIME_PARITY_EVIDENCE - evidence_basis_set)
                 if missing_basis:
                     report.errors.append(
                         f"{suite_id}/{wave.get('id')}: runtime parity evidence is missing {', '.join(missing_basis)}"
                     )
-                if claim.get("receipt_contract") not in RECOVERY_RECEIPT_CONTRACTS:
+                if claim.get("receipt_contract") not in {
+                    "accessibility-wcag-331-v1", "portfolio-runtime-parity-v1"
+                }:
                     report.errors.append(f"{suite_id}/{wave.get('id')}: runtime parity receipt contract is missing or unsupported")
+            if claim_kind == "runtime" and claim_level == "source_verified" and claim.get("receipt_contract") != "portfolio-runtime-source-v1":
+                report.errors.append(
+                    f"{suite_id}/{wave.get('id')}: source-verified runtime requires portfolio-runtime-source-v1"
+                )
+            if claim_kind == "runtime" and claim_level in {"adopted", "converged"}:
+                expected_runtime_contract = (
+                    "portfolio-adoption-v1" if claim_level == "adopted" else "portfolio-convergence-v1"
+                )
+                if claim.get("receipt_contract") != expected_runtime_contract:
+                    report.errors.append(
+                        f"{suite_id}/{wave.get('id')}: runtime at {claim_level} requires {expected_runtime_contract}"
+                    )
+            expected_lifecycle_contract = RECEIPT_CONTRACT_FOR_KIND.get(claim_kind)
+            if expected_lifecycle_contract and claim.get("receipt_contract") != expected_lifecycle_contract:
+                report.errors.append(
+                    f"{suite_id}/{wave.get('id')}: {claim_kind} requires {expected_lifecycle_contract}"
+                )
             if claim_level in {"adopted", "converged"}:
                 authentic_uses = claim.get("authentic_uses")
                 if not isinstance(authentic_uses, int) or authentic_uses < RECOVERY_ENFORCEMENT["minimum_authentic_uses_for_adoption"]:
@@ -1330,8 +1806,7 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                     report.errors.append(f"{suite_id}/{wave.get('id')}: resolution outcome is invalid")
                 if outcome == "deferred_with_trigger" and not claim.get("resume_trigger"):
                     report.errors.append(f"{suite_id}/{wave.get('id')}: deferred resolution needs a resume trigger")
-            evidence_path = wave.get("evidence")
-            evidence_file = SUITES_ROOT / evidence_path if evidence_path else None
+            evidence_file = declared_path
             if not evidence_file or not evidence_file.is_file():
                 if is_complete:
                     report.errors.append(f"{suite_id}/{wave.get('id')}: completed claim evidence is missing")

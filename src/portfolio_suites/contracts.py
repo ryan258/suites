@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -109,6 +110,10 @@ JSON_TYPES: dict[str, tuple[type, ...]] = {
     "object": (dict,),
 }
 
+RFC3339_DATE_TIME = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
+
 
 @lru_cache(maxsize=1)
 def _published_schemas() -> dict[str, dict[str, Any]]:
@@ -149,21 +154,71 @@ def _published_schemas() -> dict[str, dict[str, Any]]:
     return schemas
 
 
+def _check_rfc3339(name: str, field: str, value: Any) -> None:
+    if not isinstance(value, str) or not RFC3339_DATE_TIME.fullmatch(value):
+        raise ContractError(f"{name}.{field} must be an RFC 3339 date-time with timezone")
+    try:
+        parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise ContractError(f"{name}.{field} must be a valid RFC 3339 date-time") from None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ContractError(f"{name}.{field} must include a timezone")
+
+
 def _check_published_types(name: str, payload: Mapping[str, Any]) -> None:
-    """Reject any present field whose type contradicts the published schema."""
+    """Enforce the supported keywords in the published schema for each present field."""
     for field, definition in _published_schemas().get(name, {}).items():
         if field not in payload:
             continue
         value = payload[field]
+        if "const" in definition and value != definition["const"]:
+            raise ContractError(f"{name}.{field} must equal {definition['const']!r}")
+        if "enum" in definition and value not in definition["enum"]:
+            options = ", ".join(str(option) for option in definition["enum"])
+            raise ContractError(f"{name}.{field} must be one of {options}")
         expected = definition.get("type")
         allowed = JSON_TYPES.get(expected) if isinstance(expected, str) else None
-        if allowed and (not isinstance(value, allowed) or (expected == "integer" and isinstance(value, bool))):
+        if allowed and (
+            not isinstance(value, allowed)
+            or (expected in {"integer", "number"} and isinstance(value, bool))
+        ):
             raise ContractError(f"{name}.{field} must be a JSON {expected}")
         if definition.get("format") == "date-time":
-            try:
-                datetime.datetime.fromisoformat(str(value))
-            except ValueError:
-                raise ContractError(f"{name}.{field} must be an ISO-8601 timestamp") from None
+            _check_rfc3339(name, field, value)
+        minimum = definition.get("minimum")
+        if minimum is not None:
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or value < minimum:
+                raise ContractError(f"{name}.{field} must be at least {minimum}")
+        min_length = definition.get("minLength")
+        if min_length is not None and (not isinstance(value, str) or len(value) < min_length):
+            raise ContractError(f"{name}.{field} must contain at least {min_length} character(s)")
+        min_items = definition.get("minItems")
+        if min_items is not None and (not isinstance(value, list) or len(value) < min_items):
+            raise ContractError(f"{name}.{field} must contain at least {min_items} item(s)")
+        pattern = definition.get("pattern")
+        if isinstance(pattern, str) and (not isinstance(value, str) or re.search(pattern, value) is None):
+            raise ContractError(f"{name}.{field} does not match its published pattern")
+
+
+def _check_strict_json(value: Any, path: str) -> None:
+    """Reject values Python's permissive encoder would coerce into non-strict JSON."""
+    if value is None or isinstance(value, (str, bool, int)):
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ContractError(f"{path} must not contain NaN or infinity")
+        return
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            if not isinstance(key, str):
+                raise ContractError(f"{path} object keys must be strings")
+            _check_strict_json(child, f"{path}.{key}")
+        return
+    if isinstance(value, list):
+        for index, child in enumerate(value):
+            _check_strict_json(child, f"{path}[{index}]")
+        return
+    raise ContractError(f"{path} contains non-JSON value {type(value).__name__}")
 
 
 def _require_identifier(field: str, value: Any) -> None:
@@ -178,12 +233,27 @@ def validate_contract(name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, Mapping):
         raise ContractError(f"{name} must be a JSON object")
 
+    _check_strict_json(payload, name)
+
     spec = CONTRACTS[name]
     missing = sorted(spec.required - payload.keys())
     if missing:
         raise ContractError(f"{name} missing required fields: {', '.join(missing)}")
     if payload.get("schema_version") != SCHEMA_VERSION:
         raise ContractError(f"{name} schema_version must be {SCHEMA_VERSION}")
+
+    # Keep the stable, domain-specific diagnostics for constraints that predate the generic
+    # published-keyword validator; callers use these messages to explain remediation.
+    if name == "BrandPackage" and (
+        not isinstance(payload.get("version"), str)
+        or not SEMVER.fullmatch(payload.get("version", ""))
+    ):
+        raise ContractError("BrandPackage.version must be semantic x.y.z")
+    if name == "ExperimentRun":
+        if not isinstance(payload.get("benchmark_version"), str) or not payload.get("benchmark_version"):
+            raise ContractError("ExperimentRun.benchmark_version is required")
+        if not isinstance(payload.get("scorer_version"), str) or not payload.get("scorer_version"):
+            raise ContractError("ExperimentRun.scorer_version is required")
 
     _check_published_types(name, payload)
 
@@ -230,7 +300,7 @@ def validate_contract(name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
             raise ContractError("ExperimentRun.scorer_version is required")
 
     try:
-        return json.loads(json.dumps(dict(payload)))
+        return json.loads(json.dumps(dict(payload), allow_nan=False))
     except (TypeError, ValueError) as error:
         raise ContractError(f"{name} must be JSON serializable: {error}") from error
 
