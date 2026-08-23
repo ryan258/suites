@@ -125,6 +125,26 @@ class ApprovalAuthorityTests(unittest.TestCase):
                 self.assertIsInstance(record[field], str)
             self.assertTrue(record["reviewer"].strip())
 
+    def test_consumption_records_when_and_against_what_it_was_spent(self):
+        """A spent approval must stay auditable: `consumed: true` alone loses the why."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = issue(tmpdir)
+            before = datetime.datetime.now(datetime.timezone.utc)
+            record = verify_operator_approval(token, BINDINGS)
+
+            with open(store, encoding="utf-8") as handle:
+                stored = json.load(handle)["approvals"][0]
+            self.assertTrue(stored["consumed"])
+            consumed_at = datetime.datetime.fromisoformat(stored["consumed_at"])
+            self.assertIsNotNone(consumed_at.tzinfo)
+            self.assertGreaterEqual(consumed_at, before)
+            self.assertEqual(
+                stored["consumed_bindings"], {k: str(v) for k, v in sorted(BINDINGS.items())}
+            )
+            # The returned copy carries the same stamp the store kept.
+            self.assertEqual(record["consumed_at"], stored["consumed_at"])
+            self.assertEqual(record["consumed_bindings"], stored["consumed_bindings"])
+
     def test_unbound_or_mismatched_bindings_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             store, token = issue(tmpdir)

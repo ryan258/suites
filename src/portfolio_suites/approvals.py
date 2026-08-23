@@ -136,7 +136,9 @@ def verify_operator_approval(token: str | None, bindings: dict[str, Any]) -> dic
     """Resolve ``token`` against the configured authority, bound to ``bindings``.
 
     Every key in ``bindings`` must be present on the stored record and equal.
-    Returns a copy of the verified record; raises ApprovalError on any failure.
+    Returns a copy of the verified record, including the ``consumed_at`` and
+    ``consumed_bindings`` audit fields this consumption stamped onto the store.
+    Raises ApprovalError on any failure.
     """
     if not isinstance(token, str) or token.count(".") != 2 or not token.startswith(f"{TOKEN_PREFIX}."):
         raise ApprovalError(f"token must look like {TOKEN_PREFIX}.<approval_id>.<secret>")
@@ -162,7 +164,11 @@ def verify_operator_approval(token: str | None, bindings: dict[str, Any]) -> dic
         if not hmac.compare_digest(str(record.get("token_sha256") or ""), token_sha256(token)):
             raise ApprovalError(f"approval '{approval_id}' secret does not match the issued digest")
 
-        verified = _validated(record, bindings)
+        _validated(record, bindings)  # raises before anything is consumed
         record["consumed"] = True
+        # A consumed approval that does not say when, or against what, cannot be audited
+        # after the fact -- the store would show only that the single use was spent.
+        record["consumed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        record["consumed_bindings"] = {key: str(value) for key, value in sorted(bindings.items())}
         _durably_replace_store(path, document)
-    return dict(verified)
+    return dict(record)
