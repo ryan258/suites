@@ -146,7 +146,7 @@ class ServerTests(unittest.TestCase):
         self.assertTrue(data["passed"])
         self.assertEqual(data["execution_kind"], "verified_analysis")
         self.assertEqual(data["claim_kind"], "analysis")
-        self.assertEqual(data["claim_level"], "prototype")
+        self.assertEqual(data["claim_level"], "source_inspected")
         self.assertIsNone(data["evidence_path"])
         self.assertIsNotNone(data["data"])
 

@@ -31,7 +31,7 @@ class CLITests(unittest.TestCase):
         self.assertIn("Wave milestone progress: 43/43", output)
         self.assertIn("Completed analysis milestones: 42", output)
         self.assertIn(
-            "Evidence promotion: 34 prototype, 1 reviewed historical, 7 source inspected, "
+            "Evidence promotion: 4 prototype, 1 reviewed historical, 37 source inspected, "
             "0 source executed, 1 parity verified, 0 adopted, 0 converged, 0 resolved",
             output,
         )
@@ -103,10 +103,11 @@ class CLITests(unittest.TestCase):
     def test_wave_run_no_record(self):
         f = io.StringIO()
         with redirect_stdout(f):
-            code = main(["wave", "model-behavior-lab", "M1", "--no-record"])
+            code = main(["wave", "accessibility", "A5", "--no-record"])
         self.assertEqual(code, 0)
         output = f.getvalue()
         self.assertIn("[PROTOTYPE]", output)
+        self.assertIn("claim=prototype", output)
 
     def test_wave_run_is_ephemeral_by_default(self):
         evidence = Path("accessibility/evidence/A2-WCAG-331-EVIDENCE.json")
@@ -134,8 +135,8 @@ class CLITests(unittest.TestCase):
             code = main(["wave", "--all", "--no-record"])
         output = f.getvalue()
         self.assertIn(code, {0, 2})
-        self.assertIn("8 verified analyses", output)
-        self.assertIn("34 prototype checks passed", output)
+        self.assertIn("38 verified analyses", output)
+        self.assertIn("4 prototype checks passed", output)
         self.assertIn("0 runtime recoveries", output)
         if code == 0:
             self.assertIn("1 fast probes", output)

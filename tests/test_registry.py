@@ -278,9 +278,9 @@ class RegistryTests(unittest.TestCase):
         summary = get_portfolio_summary()
         levels = summary["promotion_counts"]
         self.assertEqual(summary["completed_waves"], summary["total_waves"])
-        self.assertEqual(levels["prototype"], 34)
+        self.assertEqual(levels["prototype"], 4)
         self.assertEqual(levels["reviewed_historical_analysis"], 1)
-        self.assertEqual(levels["source_inspected"], 7)
+        self.assertEqual(levels["source_inspected"], 37)
         self.assertEqual(levels["source_executed"], 0)
         self.assertEqual(levels["parity_verified"], 1)
         self.assertEqual(levels["adopted"], 0)

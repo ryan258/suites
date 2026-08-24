@@ -81,6 +81,17 @@ class EngineTests(unittest.TestCase):
         table_no_th_findings = AccessibilityEngine.audit_rule_families(table_no_th)
         self.assertTrue(any(f["rule_id"] == "wcag-1.3.1-info-and-relationships-table-header" and f["needs_review"] is True for f in table_no_th_findings))
 
+        lang_findings = AccessibilityEngine.audit_rule_families("<html><body><h1></h1><input type='text'></body></html>")
+        self.assertTrue(any(f["rule_id"] == "wcag-3.1.1-language-of-page" for f in lang_findings))
+        self.assertTrue(any(f["rule_id"] == "wcag-2.4.6-headings-and-labels" for f in lang_findings))
+        self.assertTrue(any(f["rule_id"] == "wcag-3.3.2-labels-or-instructions" for f in lang_findings))
+        self.assertFalse(
+            any(
+                f["rule_id"] == "wcag-3.1.1-language-of-page"
+                for f in AccessibilityEngine.audit_rule_families('<html lang="en"><body></body></html>')
+            )
+        )
+
         ai_finding = AccessibilityEngine.create_ai_assisted_finding(
             "find-ai-1", "wcag-alt-quality", "Generic alt", "img.logo", "Hypothesis: Alt text too vague"
         )
@@ -116,7 +127,7 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(rule('<input class="error" data-aria-describedby="x">'), ["wcag-3.3.1-error-identification"])
         self.assertEqual(rule("<button data-title=\"x\"></button>"), ["wcag-4.1.2-name-role-value"])
         self.assertEqual(
-            [f["rule_id"] for f in AccessibilityEngine.audit_rule_families('<input name="email" data-autocomplete="x">')],
+            [f["rule_id"] for f in AccessibilityEngine.audit_rule_families('<input id="email" name="email" data-autocomplete="x">')],
             ["wcag-1.3.5-identify-input-purpose"],
         )
 
@@ -126,7 +137,7 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(rule('<input class="error" aria-invalid>'), [])
         self.assertEqual(rule("<button title=\"x\"></button>"), [])
         self.assertEqual(
-            AccessibilityEngine.audit_rule_families('<input name="email" autocomplete="email">'), []
+            AccessibilityEngine.audit_rule_families('<input id="email" name="email" autocomplete="email">'), []
         )
 
         # A hyphenated class that merely contains "error" is not an error state.
@@ -252,7 +263,7 @@ class EngineTests(unittest.TestCase):
         self.assertFalse(o5["duplicate_decisions_closed"])
         self.assertEqual(o5["duplicate_decision_disposition"], "close_on_verification")
         self.assertFalse(o5["migration_acceptance_verified"])
-        self.assertFalse(o5["donor_read"])
+        self.assertTrue(o5["donor_read"])
         self.assertFalse(o5["external_runtime_invoked"])
         self.assertGreaterEqual(o5["port_candidates_count"], 2)
 
@@ -666,6 +677,17 @@ class EngineTests(unittest.TestCase):
 
         wr_map = ProductionHouseEngine.map_writers_room_events("story-1", [{"scene_number": 1, "revision_id": "v1"}])
         self.assertEqual(wr_map["mapped_job"]["status"], "completed")
+
+        parsed = ProductionHouseEngine.parse_episode_script(
+            "# Echoes\n\n**NARRATOR** (calm)\nTonight the ovens stay warm.\n\n**ANCHOR_JACK** (cautious)\nWelcome to GROUNDWIRE.\n",
+            source_name="episodes/0000_echoes/script.md",
+        )
+        self.assertGreaterEqual(parsed["character_count"], 2)
+        self.assertIn("NARRATOR", parsed["characters"])
+        self.assertEqual(parsed["sha256"], parsed["sha256"].lower())
+        self.assertFalse(parsed["external_runtime_invoked"])
+        with self.assertRaises(ValueError):
+            ProductionHouseEngine.parse_episode_script("   ")
 
     def test_model_behavior_engine(self):
         run = ModelBehaviorEngine.execute_ethics_scenario_run("run-test-01", "anthropic", "claude-3-5-sonnet", 5)

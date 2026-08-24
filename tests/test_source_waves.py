@@ -7,15 +7,22 @@ from unittest.mock import patch
 from portfolio_suites.registry import load_suites
 from portfolio_suites.waves import WaveRunner
 
-# Waves promoted from specification to source-backed prototype checks.
-# M3 is deliberately absent: its runner reads and parses real donor match logs, which is the
-# definition of `source_inspected`, so it is asserted below at the rung it actually earns.
-PROMOTED = {
-    "model-behavior-lab": ["M1", "M2", "M4", "M5"],
+# Waves that parse authentic donor artifacts and must declare `source_inspected`.
+SOURCE_INSPECTED = {
+    "accessibility": ["A3", "A4", "A6"],
+    "operator-os": ["O1", "O2", "O3", "O4", "O5", "O6"],
+    "brand-publishing": ["B1", "B2", "B5"],
+    "production-house": ["P1", "P2", "P3", "P4", "P5"],
+    "model-behavior-lab": ["M1", "M2", "M3", "M4", "M5"],
     "discovery-decision": ["D1", "D2", "D3", "D4", "D5"],
     "agent-reliability": ["R1", "R2", "R3", "R4", "R5"],
     "game-design": ["G1", "G2", "G3", "G4", "G5"],
-    "accessibility": ["A6"],
+}
+
+# Remaining suite-local engines that do not read donor artifacts.
+PROTOTYPE_ONLY = {
+    "accessibility": ["A5"],
+    "brand-publishing": ["B3", "B4", "B6"],
 }
 
 # One wave per new adapter, and the donor paths it must have to make any claim at all.
@@ -28,13 +35,31 @@ FAIL_CLOSED_CASES = [
     ("agent-reliability", "R5", "agent_reliability", ["AI_STAFF_DIR", "AGENTIC_HARNESS_DIR"]),
     ("game-design", "G1", "game_design", ["TUCKED_IN_TERRORS_DIR"]),
     ("game-design", "G4", "game_design", ["STORYWEAVER_DIR"]),
+    ("production-house", "P1", "production_house", ["GROUNDWIRE_DIR"]),
+    ("production-house", "P4", "production_house", ["GROUNDWIRE_DIR", "PRODUCTION_HOUSE_DIR"]),
+    ("brand-publishing", "B5", "brand_publishing", ["BRAND_WORKSHOP_DIR"]),
+    ("operator-os", "O4", "operator_os", ["PKOS_DIR", "DOTFILES_DIR", "OBSERVER_DIR"]),
+    ("operator-os", "O5", "operator_os", ["RYOS_DIR"]),
 ]
 
 
 class SourceBackedWaveTests(unittest.TestCase):
-    def test_promoted_waves_declare_a_prototype_analysis_claim(self):
+    def test_source_inspected_waves_declare_the_rung_they_earned(self):
         suites = load_suites()
-        for suite_id, wave_ids in PROMOTED.items():
+        for suite_id, wave_ids in SOURCE_INSPECTED.items():
+            waves = {wave["id"]: wave for wave in suites[suite_id]["waves"]}
+            for wave_id in wave_ids:
+                with self.subTest(wave=f"{suite_id}/{wave_id}"):
+                    claim = waves[wave_id].get("recovery_claim", {})
+                    self.assertEqual(claim.get("kind"), "analysis")
+                    self.assertEqual(claim.get("level"), "source_inspected")
+                    self.assertIs(claim.get("real_runtime"), False)
+                    self.assertTrue(claim.get("evidence_basis"))
+                    self.assertTrue(waves[wave_id].get("runtime_followup"))
+
+    def test_remaining_prototype_waves_stay_suite_local(self):
+        suites = load_suites()
+        for suite_id, wave_ids in PROTOTYPE_ONLY.items():
             waves = {wave["id"]: wave for wave in suites[suite_id]["waves"]}
             for wave_id in wave_ids:
                 with self.subTest(wave=f"{suite_id}/{wave_id}"):
@@ -42,30 +67,15 @@ class SourceBackedWaveTests(unittest.TestCase):
                     self.assertEqual(claim.get("kind"), "analysis")
                     self.assertEqual(claim.get("level"), "prototype")
                     self.assertIs(claim.get("real_runtime"), False)
-                    self.assertTrue(claim.get("evidence_basis"))
-                    self.assertTrue(waves[wave_id].get("runtime_followup"))
 
-    def test_donor_reading_wave_declares_source_inspected(self):
-        """A runner that parses authentic donor artifacts may not report as a fixture check.
-
-        M3's objective says it builds from real donor match logs and its receipt asserts
-        `donor_match_logs_read`. `prototype` means the runner read nothing donor-side, so
-        that pairing published one more prototype and one fewer inspection than was true.
-        """
-        wave = {w["id"]: w for w in load_suites()["model-behavior-lab"]["waves"]}["M3"]
-        claim = wave.get("recovery_claim", {})
-        self.assertEqual(claim.get("kind"), "analysis")
-        self.assertEqual(claim.get("level"), "source_inspected")
-        self.assertIs(claim.get("real_runtime"), False)
-        self.assertTrue(wave.get("runtime_followup"))
-
-    def test_promoted_waves_pass_against_their_real_donors(self):
-        for suite_id, wave_ids in PROMOTED.items():
+    def test_source_inspected_waves_pass_against_their_real_donors(self):
+        for suite_id, wave_ids in SOURCE_INSPECTED.items():
             for wave_id in wave_ids:
                 with self.subTest(wave=f"{suite_id}/{wave_id}"):
                     result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
                     self.assertEqual(result.execution_kind, "verified_analysis")
                     self.assertTrue(result.passed, result.message)
+                    self.assertEqual(result.claim_level, "source_inspected")
 
     def test_source_backed_waves_fail_closed_without_donors(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -120,10 +130,6 @@ class SourceBackedWaveTests(unittest.TestCase):
 # silently, and so a wave that is supposed to read a donor cannot quietly stop.
 DONOR_INDEPENDENT = {
     ("accessibility", "A1"),      # hand-authored parity document, structure-checked only
-    ("operator-os", "O5"),        # "closed on paper"; no code ported, no donor read
-    ("brand-publishing", "B5"),   # intake state machine "in the suite-local engine"
-    ("production-house", "P4"),   # "Fixture-driven; no external documentary runtime"
-    ("production-house", "P5"),   # "Revisions are fixtures; Writers Room is not read"
 }
 
 
