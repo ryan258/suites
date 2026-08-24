@@ -67,6 +67,55 @@ class ProvenanceTests(unittest.TestCase):
         self.assertNotIn("AWS_SECRET_ACCESS_KEY", env)
         self.assertIn("PATH", env)
 
+    def test_donor_environment_withholds_capabilities_that_are_not_named_like_secrets(self):
+        """The inherited capability is rarely spelled out in the variable's name.
+
+        Every value here is credential-bearing or credential-reaching, and not one of them
+        matches KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL.
+        """
+        capabilities = {
+            "SSH_AUTH_SOCK": "/private/tmp/ssh-agent.sock",       # a live agent socket
+            "GPG_AGENT_INFO": "/private/tmp/gpg:0:1",
+            "DOCKER_CONFIG": "/home/example/.docker",             # holds registry auth
+            "KUBECONFIG": "/home/example/.kube/config",           # holds cluster certs
+            "AWS_PROFILE": "production",
+            "PIP_INDEX_URL": "https://user:hunter2@pypi.example.com/simple",
+            "HTTPS_PROXY": "http://user:hunter2@proxy.example.com:8080",
+            "PORTFOLIO_OPERATOR_APPROVAL_STORE": "/private/tmp/approvals.json",
+            "HOME": "/home/example",                              # reaches all of the above
+        }
+        with patch.dict(os.environ, capabilities):
+            env = common.donor_env()
+
+        for name, value in capabilities.items():
+            with self.subTest(variable=name):
+                self.assertNotIn(name, env)
+                self.assertNotIn(value, env.values())
+        self.assertNotIn("hunter2", " ".join(env.values()))
+        # Git must not be able to reach a credential helper or block on a prompt.
+        self.assertEqual(env["GIT_CONFIG_GLOBAL"], "/dev/null")
+        self.assertEqual(env["GIT_CONFIG_NOSYSTEM"], "1")
+        self.assertEqual(env["GIT_TERMINAL_PROMPT"], "0")
+
+    def test_withholding_home_does_not_change_what_git_considers_untracked(self):
+        """Security hardening must not silently reclassify every donor's working tree.
+
+        Git's global excludes live under HOME, which donors no longer get. Losing them would
+        flip clean donors to dirty across the whole ledger -- a change to the migration
+        record wearing a security fix's clothes.
+        """
+        env = common.donor_env()
+        self.assertNotIn("HOME", env)
+        if common._global_excludes_file() is None:
+            self.skipTest("no global gitignore configured on this machine")
+        self.assertEqual(env["GIT_CONFIG_KEY_0"], "core.excludesFile")
+        self.assertEqual(env["GIT_CONFIG_VALUE_0"], common._global_excludes_file())
+        self.assertEqual(env["GIT_CONFIG_COUNT"], "1")
+
+    def test_a_gate_cannot_pass_a_credential_through_the_explicit_addition(self):
+        with self.assertRaises(ValueError):
+            common.donor_env({"DONOR_API_KEY": "sk-live"})
+
 
 if __name__ == "__main__":
     unittest.main()

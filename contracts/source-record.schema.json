@@ -4,6 +4,69 @@
   "title": "SourceRecord",
   "type": "object",
   "required": ["schema_version", "source_id", "acquired_at", "sha256", "size_bytes", "media_type", "origin", "provenance"],
+  "$defs": {
+    "SourceProvenance": {
+      "type": "object",
+      "minProperties": 1,
+      "anyOf": [
+        {
+          "required": ["author"],
+          "properties": {
+            "author": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["source"],
+          "properties": {
+            "source": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["collector"],
+          "properties": {
+            "collector": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["actor"],
+          "properties": {
+            "actor": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["operator"],
+          "properties": {
+            "operator": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["intake_method"],
+          "properties": {
+            "intake_method": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["method"],
+          "properties": {
+            "method": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["captured_by"],
+          "properties": {
+            "captured_by": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["donor_repo"],
+          "properties": {
+            "donor_repo": {"type": "string", "minLength": 1}
+          }
+        }
+      ],
+      "additionalProperties": true
+    }
+  },
   "properties": {
     "schema_version": {"const": "1.0.0"},
     "source_id": {"type": "string", "minLength": 3},
@@ -12,7 +75,7 @@
     "size_bytes": {"type": "integer", "minimum": 0},
     "media_type": {"type": "string", "minLength": 1},
     "origin": {"type": "string", "minLength": 1},
-    "provenance": {"type": "object"}
+    "provenance": {"$ref": "#/$defs/SourceProvenance"}
   },
   "additionalProperties": true
 }

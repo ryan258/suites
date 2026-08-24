@@ -84,13 +84,13 @@
       "id": "M3",
       "order": 61,
       "status": "complete",
-      "objective": "Build a recorded-opening chess fixture and exercise the donor legality checker.",
-      "acceptance": "The first recorded ply receives a stable legality verdict and the receipt states that a whole match was not replayed or advanced.",
+      "objective": "Build a recorded-opening chess fixture from real donor match logs and exercise the suite-local legality checker against it.",
+      "acceptance": "The first recorded ply receives a stable legality verdict from the suite-local checker, and the receipt states that the donor legality checker was not invoked and that a whole match was not replayed or advanced.",
       "evidence": "model-behavior-lab/evidence/M3-CHESS-ADAPTER-FIXTURE.json",
       "runtime_followup": "Replay a whole recorded match once the engine can apply moves, rather than validating opening ply.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "match_fixture",

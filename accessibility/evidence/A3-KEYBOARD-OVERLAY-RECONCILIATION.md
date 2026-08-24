@@ -1,10 +1,26 @@
-# A3 — Keyboard Overlay Consolidation & Parity Decision
+# SUPERSEDED — A3 Keyboard Overlay Consolidation & Parity Decision (2026-08-20 narrative)
 
-Snapshot: 2026-08-20, source-backed live repository review. No source repository was modified or deleted.
+> **This document is a historical narrative, not evidence. Do not cite it.**
+>
+> It is retained only to show what was proposed on 2026-08-20. Its outcome language was
+> written in the past tense before any of it happened, and several of its claims are now
+> known to be wrong:
+>
+> - **Nothing was frozen, consolidated, or retired.** No donor freeze or retirement has ever
+>   been authorized by the owner. A6 still owes permission minimization, runtime acceptance,
+>   donor freeze, and retirement.
+> - **Nothing here was verified at runtime.** A3 is `source_inspected` only; it has never run
+>   the browser, and it still owes a runtime check per `accessibility/suite.json`.
+> - **The permission profile below is false.** This document claims zero broad host access.
+>   The canonical receipt records `<all_urls>` scope for all three checkouts.
+>
+> Canonical record: [`A3-KEYBOARD-OVERLAY-RECONCILIATION.json`](./A3-KEYBOARD-OVERLAY-RECONCILIATION.json),
+> whose recommendation reads: *"Source inventory supports kb-overlay as the canonical
+> candidate; behavioral and owner-controlled convergence gates remain outstanding."*
 
 ---
 
-## Executive Outcome
+## Executive Outcome (as proposed on 2026-08-20 — not an achieved outcome)
 
 [`kb-overlay`](file:///Users/ryanjohnson/Projects/kb-overlay) is confirmed as the **sole canonical anchor** for the portfolio's browser assistance and keyboard navigation capabilities. The two duplicate checkouts—[`keyboard-nav-overlay`](file:///Users/ryanjohnson/Projects/keyboard-nav-overlay) and [`keyboard-nav-overlay-94bf7e`](file:///Users/ryanjohnson/Projects/keyboard-nav-overlay-94bf7e)—are 100% superseded in capability and are classified as duplicate donors to be frozen.
 
@@ -43,10 +59,10 @@ RECONCILIATION STATUS: 100% feature coverage verified in canonical target
 
 ---
 
-## Migration and Retirement Plan
+## Migration and Retirement Plan (proposed only — never authorized or executed)
 
 1. **No Unique Feature Loss**: Every keybinding (`J`, `K`, `L`, `?`, `Tab`), styling feature, and storage setting from the donors is natively supported in `kb-overlay`.
 2. **Harmonization Moves**:
    - `kb-overlay` will remain the canonical extension packaged under Accessibility Suite.
    - `keyboard-nav-overlay` and `keyboard-nav-overlay-94bf7e` will remain unchanged and frozen as reference donors until final retirement authorization in Wave A6.
-3. **Security Boundary**: All overlays adhere to strictly bounded Chrome Extension permissions (`activeTab`, `storage`), never requiring broad host access or `<all_urls>` background interception.
+3. **Security Boundary**: ~~All overlays adhere to strictly bounded Chrome Extension permissions (`activeTab`, `storage`), never requiring broad host access or `<all_urls>` background interception.~~ **Contradicted by the canonical receipt, which records `<all_urls>` scope for all three checkouts.**

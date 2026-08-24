@@ -49,6 +49,23 @@
     "One keyboard overlay remains after file, feature, permission, and runtime parity review.",
     "Automated, AI-assisted, and manual assistive-technology evidence remain visibly distinct."
   ],
+  "supporting_evidence": [
+    {
+      "path": "accessibility/evidence/A1-parity-cases.json",
+      "role": "fixture",
+      "reason": "Input case table read by the A1 parity adapter at adapters/accessibility.py; not a receipt."
+    },
+    {
+      "path": "accessibility/evidence/A2-IMPLEMENTATION-CANDIDATE.md",
+      "role": "ancillary",
+      "reason": "Human-readable projection of the canonical A2-WCAG-331-EVIDENCE.json receipt."
+    },
+    {
+      "path": "accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.md",
+      "role": "historical",
+      "reason": "Superseded 2026-08-20 narrative. Its consolidation and permission claims were never executed; A3-KEYBOARD-OVERLAY-RECONCILIATION.json is canonical."
+    }
+  ],
   "waves": [
     {
       "id": "A1",
@@ -60,7 +77,7 @@
       "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "source_verified",
+        "level": "reviewed_historical_analysis",
         "real_runtime": false,
         "evidence_basis": [
           "## Rule-by-rule decision",
@@ -104,7 +121,7 @@
       "evidence": "accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.json",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "source_verified",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "canonical_target",
@@ -123,7 +140,7 @@
       "evidence": "accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "source_verified",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "catalog_evaluation",

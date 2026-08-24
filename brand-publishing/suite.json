@@ -70,7 +70,7 @@
       "acceptance": "Schema validation, version pinning, provenance, and mutation protection are evidenced, and the receipt is dry-run only with no live publishing side-effect.",
       "runtime_followup": "Export the package from the real Brand Maker runtime and consume it in a downstream consumer outside this repository.",
       "evidence": "brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json",
-      "recovery_claim": {"kind": "analysis", "level": "source_verified", "real_runtime": false, "evidence_basis": ["target", "consumer", "brand_package", "source_record", "publishing_receipt", "mutation_tests"]}
+      "recovery_claim": {"kind": "analysis", "level": "source_inspected", "real_runtime": false, "evidence_basis": ["target", "consumer", "brand_package", "source_record", "publishing_receipt", "mutation_tests"]}
     },
     {
       "id": "B2",
@@ -80,7 +80,7 @@
       "acceptance": "All nine phases are read from source and each is mapped, rejected, or retained with a named Maker gate and port action. No phase is implemented in Brand Maker.",
       "runtime_followup": "Implement the mapped gates in the real Brand Maker workspace with behavior and recovery evidence per phase.",
       "evidence": "brand-publishing/evidence/B2-BRAND-WORKSHOP-PHASES.json",
-      "recovery_claim": {"kind": "analysis", "level": "source_verified", "real_runtime": false, "evidence_basis": ["donor", "target", "total_phases_mapped", "phase_mappings"]}
+      "recovery_claim": {"kind": "analysis", "level": "source_inspected", "real_runtime": false, "evidence_basis": ["donor", "target", "total_phases_mapped", "phase_mappings"]}
     },
     {
       "id": "B3",

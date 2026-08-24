@@ -11,7 +11,13 @@
     "severity": {"enum": ["info", "minor", "moderate", "serious", "critical"]},
     "summary": {"type": "string", "minLength": 1},
     "target": {"type": "string", "minLength": 1},
-    "evidence": {"type": "array"},
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "minProperties": 1
+      }
+    },
     "evidence_kind": {"enum": ["deterministic", "ai-assisted", "manual"]},
     "needs_review": {"type": "boolean"},
     "status": {"enum": ["open", "accepted", "fixed", "false-positive", "deferred"]}

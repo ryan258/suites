@@ -43,7 +43,9 @@
   "promotion_levels": [
     "specified",
     "prototype",
-    "source_verified",
+    "reviewed_historical_analysis",
+    "source_inspected",
+    "source_executed",
     "parity_verified",
     "adopted",
     "converged"

@@ -182,5 +182,7 @@
       }
     ]
   },
-  "reconciliation_status": "brand_workshop_intake_ported_to_brand_maker"
+  "reconciliation_status": "suite_local_intake_phases_validated",
+  "brand_workshop_read": false,
+  "external_runtime_invoked": false
 }

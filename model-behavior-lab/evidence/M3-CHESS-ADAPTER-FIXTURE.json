@@ -44,5 +44,9 @@
     "target_state": "clean_commit"
   },
   "source_verification_passed": true,
-  "all_stages_passed": true
+  "all_stages_passed": true,
+  "legality_evaluator": "suite_local",
+  "donor_legality_checker_invoked": false,
+  "donor_match_logs_read": true,
+  "whole_match_replayed": false
 }

@@ -22,18 +22,18 @@ def write_receipt(root: str, payload: dict) -> Path:
 
 
 class RecoveryLifecycleReceiptTests(unittest.TestCase):
-    def test_source_verified_runtime_has_a_real_receipt_contract(self):
+    def test_source_executed_runtime_has_a_real_receipt_contract(self):
         wave = {
             "id": "X1",
             "recovery_claim": {
                 "kind": "runtime",
-                "level": "source_verified",
+                "level": "source_executed",
                 "receipt_contract": "portfolio-runtime-source-v1",
             },
         }
         payload = {
             "receipt_version": "portfolio-runtime-source-v1",
-            "status": "source_verified",
+            "status": "source_executed",
             "all_stages_passed": True,
             "operational_errors": [],
             "source_invocation": {"command": ["tool", "verify"], "exit_code": 0},
@@ -103,7 +103,7 @@ class RecoveryLifecycleReceiptTests(unittest.TestCase):
             "id": "X4",
             "recovery_claim": {
                 "kind": "resolution",
-                "level": "source_verified",
+                "level": "source_executed",
                 "outcome": "deferred_with_trigger",
                 "receipt_contract": "portfolio-resolution-v1",
             },
@@ -123,11 +123,11 @@ class RecoveryLifecycleReceiptTests(unittest.TestCase):
 
     def test_classification_keeps_lifecycle_states_distinct(self):
         cases = {
-            ("runtime", "source_verified"): "verified_source_execution",
+            ("runtime", "source_executed"): "verified_source_execution",
             ("runtime", "parity_verified"): "verified_runtime_recovery",
             ("adoption", "adopted"): "verified_adoption",
             ("convergence", "converged"): "verified_convergence",
-            ("resolution", "source_verified"): "verified_resolution",
+            ("resolution", "source_executed"): "verified_resolution",
         }
         for (kind, level), expected in cases.items():
             with self.subTest(kind=kind, level=level):

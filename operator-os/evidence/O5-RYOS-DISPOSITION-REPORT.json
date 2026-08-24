@@ -94,8 +94,12 @@
       "canonical_anchor": "PKos"
     }
   ],
-  "duplicate_decisions_closed": true,
-  "donor_freeze_status": "formalized_donor_freeze_candidate",
+  "duplicate_decisions_closed": false,
+  "donor_freeze_status": "unverified_prototype",
   "all_stages_passed": true,
-  "status": "disposition_reconciled"
+  "status": "disposition_proposal_recorded",
+  "duplicate_decision_disposition": "close_on_verification",
+  "migration_acceptance_verified": false,
+  "donor_read": false,
+  "external_runtime_invoked": false
 }

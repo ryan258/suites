@@ -10,7 +10,6 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
 from .paths import SUITES_ROOT
@@ -116,12 +115,8 @@ RFC3339_DATE_TIME = re.compile(
 
 
 @lru_cache(maxsize=1)
-def _published_schemas() -> dict[str, dict[str, Any]]:
-    """Property definitions from the published JSON Schemas, keyed by contract title.
-
-    The schema files are the single source of truth for field types, so an artifact the
-    Python validator accepts is also accepted by an external consumer reading the schema.
-    """
+def _published_schema_documents() -> dict[str, dict[str, Any]]:
+    """Full published JSON Schema documents, keyed by contract title."""
     paths = sorted(SCHEMA_DIR.glob("*.schema.json"))
     if not paths:
         raise ContractError(f"published contract schemas are missing from {SCHEMA_DIR}")
@@ -135,12 +130,11 @@ def _published_schemas() -> dict[str, dict[str, Any]]:
         if not isinstance(document, dict):
             raise ContractError(f"published contract schema must be an object: {path}")
         title = document.get("title")
-        properties = document.get("properties")
-        if not isinstance(title, str) or not isinstance(properties, dict):
-            raise ContractError(f"published contract schema needs string title and object properties: {path}")
+        if not isinstance(title, str):
+            raise ContractError(f"published contract schema needs string title: {path}")
         if title in schemas:
             raise ContractError(f"duplicate published contract schema title: {title}")
-        schemas[title] = properties
+        schemas[title] = document
 
     missing = sorted(set(CONTRACTS) - set(schemas))
     unknown = sorted(set(schemas) - set(CONTRACTS))
@@ -154,50 +148,131 @@ def _published_schemas() -> dict[str, dict[str, Any]]:
     return schemas
 
 
-def _check_rfc3339(name: str, field: str, value: Any) -> None:
-    if not isinstance(value, str) or not RFC3339_DATE_TIME.fullmatch(value):
-        raise ContractError(f"{name}.{field} must be an RFC 3339 date-time with timezone")
-    try:
-        parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        raise ContractError(f"{name}.{field} must be a valid RFC 3339 date-time") from None
-    if parsed.tzinfo is None or parsed.utcoffset() is None:
-        raise ContractError(f"{name}.{field} must include a timezone")
+def _resolve_ref(schema_doc: dict[str, Any], ref: str) -> dict[str, Any]:
+    if ref.startswith("#/$defs/"):
+        def_name = ref[len("#/$defs/"):]
+        defs = schema_doc.get("$defs", {})
+        if isinstance(defs, dict) and def_name in defs and isinstance(defs[def_name], dict):
+            return defs[def_name]
+    raise ContractError(f"unresolvable schema ref: {ref}")
 
 
-def _check_published_types(name: str, payload: Mapping[str, Any]) -> None:
-    """Enforce the supported keywords in the published schema for each present field."""
-    for field, definition in _published_schemas().get(name, {}).items():
-        if field not in payload:
-            continue
-        value = payload[field]
-        if "const" in definition and value != definition["const"]:
-            raise ContractError(f"{name}.{field} must equal {definition['const']!r}")
-        if "enum" in definition and value not in definition["enum"]:
-            options = ", ".join(str(option) for option in definition["enum"])
-            raise ContractError(f"{name}.{field} must be one of {options}")
-        expected = definition.get("type")
-        allowed = JSON_TYPES.get(expected) if isinstance(expected, str) else None
+def _validate_schema_node(
+    schema_doc: dict[str, Any],
+    node_schema: dict[str, Any],
+    value: Any,
+    path: str,
+) -> None:
+    if "$ref" in node_schema:
+        target = _resolve_ref(schema_doc, node_schema["$ref"])
+        _validate_schema_node(schema_doc, target, value, path)
+        return
+
+    if "const" in node_schema and value != node_schema["const"]:
+        raise ContractError(f"{path} must equal {node_schema['const']!r}")
+
+    if "enum" in node_schema:
+        if value not in node_schema["enum"]:
+            options = ", ".join(str(opt) for opt in node_schema["enum"])
+            raise ContractError(f"{path} must be one of {options}")
+
+    expected = node_schema.get("type")
+    if isinstance(expected, str):
+        allowed = JSON_TYPES.get(expected)
         if allowed and (
             not isinstance(value, allowed)
             or (expected in {"integer", "number"} and isinstance(value, bool))
         ):
-            raise ContractError(f"{name}.{field} must be a JSON {expected}")
-        if definition.get("format") == "date-time":
-            _check_rfc3339(name, field, value)
-        minimum = definition.get("minimum")
-        if minimum is not None:
-            if not isinstance(value, (int, float)) or isinstance(value, bool) or value < minimum:
-                raise ContractError(f"{name}.{field} must be at least {minimum}")
-        min_length = definition.get("minLength")
-        if min_length is not None and (not isinstance(value, str) or len(value) < min_length):
-            raise ContractError(f"{name}.{field} must contain at least {min_length} character(s)")
-        min_items = definition.get("minItems")
-        if min_items is not None and (not isinstance(value, list) or len(value) < min_items):
-            raise ContractError(f"{name}.{field} must contain at least {min_items} item(s)")
-        pattern = definition.get("pattern")
-        if isinstance(pattern, str) and (not isinstance(value, str) or re.search(pattern, value) is None):
-            raise ContractError(f"{name}.{field} does not match its published pattern")
+            raise ContractError(f"{path} must be a JSON {expected}")
+    elif isinstance(expected, (list, tuple, set)):
+        types_allowed = tuple(t for exp in expected if exp in JSON_TYPES for t in JSON_TYPES[exp])
+        if not isinstance(value, types_allowed):
+            raise ContractError(f"{path} must be one of JSON types {list(expected)}")
+
+    if node_schema.get("format") == "date-time":
+        if not isinstance(value, str) or not RFC3339_DATE_TIME.fullmatch(value):
+            raise ContractError(f"{path} must be an RFC 3339 date-time with timezone")
+        try:
+            parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            raise ContractError(f"{path} must be a valid RFC 3339 date-time") from None
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ContractError(f"{path} must include a timezone")
+
+    minimum = node_schema.get("minimum")
+    if minimum is not None:
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or value < minimum:
+            raise ContractError(f"{path} must be at least {minimum}")
+
+    min_length = node_schema.get("minLength")
+    if min_length is not None and (not isinstance(value, str) or len(value) < min_length):
+        raise ContractError(f"{path} must contain at least {min_length} character(s)")
+
+    pattern = node_schema.get("pattern")
+    if isinstance(pattern, str) and (not isinstance(value, str) or re.search(pattern, value) is None):
+        raise ContractError(f"{path} does not match its published pattern")
+
+    if isinstance(value, list):
+        min_items = node_schema.get("minItems")
+        if min_items is not None and len(value) < min_items:
+            raise ContractError(f"{path} must contain at least {min_items} item(s)")
+        items_schema = node_schema.get("items")
+        if isinstance(items_schema, dict):
+            for i, item in enumerate(value):
+                _validate_schema_node(schema_doc, items_schema, item, f"{path}[{i}]")
+
+    if isinstance(value, dict):
+        min_properties = node_schema.get("minProperties")
+        if min_properties is not None and len(value) < min_properties:
+            raise ContractError(f"{path} must contain at least {min_properties} propert(y/ies)")
+
+        required_props = node_schema.get("required")
+        if isinstance(required_props, (list, set, tuple)):
+            missing_props = [k for k in required_props if k not in value]
+            if missing_props:
+                raise ContractError(f"{path} missing required fields: {', '.join(missing_props)}")
+
+    if "anyOf" in node_schema:
+        variants = node_schema["anyOf"]
+        if isinstance(variants, list):
+            passed_any = False
+            for variant in variants:
+                try:
+                    _validate_schema_node(schema_doc, variant, value, path)
+                    passed_any = True
+                    break
+                except ContractError:
+                    continue
+            if not passed_any:
+                raise ContractError(f"{path} does not match any allowed schema variant in anyOf")
+
+    if "oneOf" in node_schema:
+        variants = node_schema["oneOf"]
+        if isinstance(variants, list):
+            match_count = 0
+            for variant in variants:
+                try:
+                    _validate_schema_node(schema_doc, variant, value, path)
+                    match_count += 1
+                except ContractError:
+                    continue
+            if match_count != 1:
+                raise ContractError(f"{path} must match exactly one schema variant in oneOf (matched {match_count})")
+
+    if isinstance(value, dict):
+        properties = node_schema.get("properties")
+        if isinstance(properties, dict):
+            for prop_name, prop_schema in properties.items():
+                if prop_name in value and isinstance(prop_schema, dict):
+                    _validate_schema_node(schema_doc, prop_schema, value[prop_name], f"{path}.{prop_name}")
+
+
+def _check_published_types(name: str, payload: Mapping[str, Any]) -> None:
+    """Enforce the published JSON schema recursively for the payload."""
+    doc = _published_schema_documents().get(name)
+    if not doc:
+        return
+    _validate_schema_node(doc, doc, payload, name)
 
 
 def _check_strict_json(value: Any, path: str) -> None:

@@ -160,7 +160,7 @@ class ContractTests(unittest.TestCase):
             "acquired_at": "2026-08-20T00:00:00+00:00",
             "media_type": "text/html",
             "license": "cc-by-4.0",
-            "provenance": {},
+            "provenance": {"source": "https://example.test/a"},
             "provenance_chain": [],
             "sha256": "a" * 64,
             "size_bytes": 1,
@@ -178,11 +178,11 @@ class ContractTests(unittest.TestCase):
     def test_validator_fails_closed_when_published_schemas_are_missing(self):
         sample = generate_sample("SourceRecord")
         with tempfile.TemporaryDirectory() as tmp:
-            contracts_module._published_schemas.cache_clear()
+            contracts_module._published_schema_documents.cache_clear()
             with patch.object(contracts_module, "SCHEMA_DIR", Path(tmp)):
                 with self.assertRaisesRegex(ContractError, "published contract schemas are missing"):
                     validate_contract("SourceRecord", sample)
-        contracts_module._published_schemas.cache_clear()
+        contracts_module._published_schema_documents.cache_clear()
 
 
 if __name__ == "__main__":
