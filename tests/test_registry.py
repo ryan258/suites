@@ -665,7 +665,7 @@ class ReceiptSpecTableTests(unittest.TestCase):
     def test_receipt_spec_keys_are_declared_once(self):
         import ast
 
-        source = (SUITES_ROOT / "src" / "portfolio_suites" / "registry.py").read_text(encoding="utf-8")
+        source = (SUITES_ROOT / "src" / "portfolio_suites" / "receipts.py").read_text(encoding="utf-8")
         table = next(
             node.value
             for node in ast.parse(source).body
@@ -812,7 +812,7 @@ class ReceiptSpecLookupTests(unittest.TestCase):
 
         collision = dict(ANALYSIS_RECEIPT_SPECS)
         collision["game-design/A3"] = {"equals": {}}
-        with patch("portfolio_suites.registry.ANALYSIS_RECEIPT_SPECS", collision):
+        with patch("portfolio_suites.receipts.ANALYSIS_RECEIPT_SPECS", collision):
             spec, error, key = _lookup_receipt_spec(None, "A3")
         self.assertIsNone(spec, "an ambiguous wave letter must not resolve to one suite's spec")
         self.assertIn("matches several suites", error)
@@ -999,10 +999,10 @@ class SuiteQualifiedSemanticRuleTests(unittest.TestCase):
         return specs
 
     def test_another_suites_wave_letter_does_not_inherit_the_rules(self):
-        from portfolio_suites import registry
+        from portfolio_suites import receipts
 
-        with patch.object(registry, "ANALYSIS_RECEIPT_SPECS", self._with_extra_spec()):
-            errors = registry._analysis_receipt_semantic_errors(
+        with patch.object(receipts, "ANALYSIS_RECEIPT_SPECS", self._with_extra_spec()):
+            errors = receipts._analysis_receipt_semantic_errors(
                 {"id": "A3", "recovery_claim": {"kind": "analysis", "level": "source_executed"}},
                 {"ok": True},
                 "game-design",
@@ -1010,10 +1010,10 @@ class SuiteQualifiedSemanticRuleTests(unittest.TestCase):
         self.assertEqual(errors, [], f"accessibility rules leaked into game-design: {errors}")
 
     def test_the_owning_suite_is_still_fully_enforced(self):
-        from portfolio_suites import registry
+        from portfolio_suites import receipts
 
-        with patch.object(registry, "ANALYSIS_RECEIPT_SPECS", self._with_extra_spec()):
-            errors = registry._analysis_receipt_semantic_errors(
+        with patch.object(receipts, "ANALYSIS_RECEIPT_SPECS", self._with_extra_spec()):
+            errors = receipts._analysis_receipt_semantic_errors(
                 {"id": "A3", "recovery_claim": {"kind": "analysis", "level": "source_executed"}},
                 {"ok": True},
                 "accessibility",
@@ -1025,7 +1025,7 @@ class SuiteQualifiedSemanticRuleTests(unittest.TestCase):
         """Each hard-coded rule set must name a suite/wave that really declares it."""
         import re as _re
 
-        source = (SUITES_ROOT / "src" / "portfolio_suites" / "registry.py").read_text(encoding="utf-8")
+        source = (SUITES_ROOT / "src" / "portfolio_suites" / "receipts.py").read_text(encoding="utf-8")
         body = source[source.index("def _analysis_receipt_semantic_errors"):]
         keys = set(_re.findall(r'spec_key (?:==|in) \{?"([a-z-]+/[A-Z]\d)"', body))
         keys |= {k for k in _re.findall(r'"([a-z-]+/[A-Z]\d)"', body.split("return errors")[0])}
@@ -1040,7 +1040,7 @@ class SuiteQualifiedSemanticRuleTests(unittest.TestCase):
     def test_no_special_branch_switches_on_a_bare_wave_id(self):
         import re as _re
 
-        source = (SUITES_ROOT / "src" / "portfolio_suites" / "registry.py").read_text(encoding="utf-8")
+        source = (SUITES_ROOT / "src" / "portfolio_suites" / "receipts.py").read_text(encoding="utf-8")
         body = source[source.index("def _analysis_receipt_semantic_errors"):source.index("def _runtime_parity_receipt_errors")]
         top_level = [
             line for line in body.splitlines()
