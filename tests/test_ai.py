@@ -108,6 +108,102 @@ class OpenRouterConfigurationTests(unittest.TestCase):
                     environ={"OPENROUTER_BASE_URL": "http://provider.example/api/v1"},
                 )
 
+    def test_exported_key_cannot_be_redirected_by_a_checkout_local_base_url(self):
+        """The confirmed exfiltration path: process-owned key, checkout-owned destination."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".env").write_text(
+                "OPENROUTER_BASE_URL=https://attacker.example/api/v1\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(AIConfigurationError) as context:
+                OpenRouterConfig.from_environment(
+                    root=root,
+                    environ={"OPENROUTER_API_KEY": "operator-exported-secret"},
+                )
+            self.assertIn("attacker.example", str(context.exception))
+
+    def test_custom_endpoint_opt_in_uses_its_own_credential_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            environ = {
+                "OPENROUTER_API_KEY": "operator-exported-secret",
+                "OPENROUTER_BASE_URL": "https://compatible.example/api/v1",
+                "OPENROUTER_ALLOW_CUSTOM_ENDPOINT": "true",
+            }
+            # Opted in, but with no separately named credential the OpenRouter key still
+            # does not travel: absence is "not configured", never a fallback.
+            config = OpenRouterConfig.from_environment(root=Path(tmp), environ=environ)
+            self.assertFalse(config.configured)
+            self.assertNotEqual(config.api_key, "operator-exported-secret")
+
+            environ["OPENROUTER_CUSTOM_ENDPOINT_API_KEY"] = "endpoint-owned-secret"
+            config = OpenRouterConfig.from_environment(root=Path(tmp), environ=environ)
+            self.assertEqual(config.api_key, "endpoint-owned-secret")
+            self.assertTrue(
+                any("compatible.example" in w for w in config.warnings),
+                f"a nonstandard credential destination must be visible: {config.warnings}",
+            )
+
+    def test_exported_custom_credential_cannot_be_aimed_by_a_checkout(self):
+        """One generic custom credential just moves the redirectable secret.
+
+        The destination, the opt-in, and the credential are each resolved independently, so
+        an exported `OPENROUTER_CUSTOM_ENDPOINT_API_KEY` meant for one endpoint was still
+        sent wherever a checkout-local `.env` pointed. A process-sourced credential now
+        requires a process-sourced destination and opt-in.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".env").write_text(
+                "OPENROUTER_BASE_URL=https://attacker.example/api/v1\n"
+                "OPENROUTER_ALLOW_CUSTOM_ENDPOINT=true\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(AIConfigurationError) as context:
+                OpenRouterConfig.from_environment(
+                    root=root,
+                    environ={"OPENROUTER_CUSTOM_ENDPOINT_API_KEY": "endpoint-owned-secret"},
+                )
+            self.assertIn("attacker.example", str(context.exception))
+
+            # A checkout that supplies all three is still free to use its own credential.
+            (root / ".env").write_text(
+                "OPENROUTER_BASE_URL=https://compatible.example/api/v1\n"
+                "OPENROUTER_ALLOW_CUSTOM_ENDPOINT=true\n"
+                "OPENROUTER_CUSTOM_ENDPOINT_API_KEY=checkout-owned-secret\n",
+                encoding="utf-8",
+            )
+            config = OpenRouterConfig.from_environment(root=root, environ={})
+            self.assertEqual(config.api_key, "checkout-owned-secret")
+
+    def test_status_names_the_host_that_actually_receives_the_request(self):
+        """The consent surface has to agree with the credential pin.
+
+        `provider` was the constant "openrouter" no matter where the request went, so an
+        operator could opt a custom endpoint in and send sensitive context to it while every
+        status line, receipt, and browser label still named OpenRouter.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            official = OpenRouterConfig.from_environment(
+                root=Path(tmp), environ={"OPENROUTER_API_KEY": "official-secret"}
+            ).public_status()
+            self.assertEqual(official["provider"], "openrouter")
+            self.assertTrue(official["provider_is_openrouter"])
+            self.assertEqual(official["destination_host"], "openrouter.ai")
+
+            custom = OpenRouterConfig.from_environment(
+                root=Path(tmp),
+                environ={
+                    "OPENROUTER_BASE_URL": "https://compatible.example/api/v1",
+                    "OPENROUTER_ALLOW_CUSTOM_ENDPOINT": "true",
+                    "OPENROUTER_CUSTOM_ENDPOINT_API_KEY": "endpoint-owned-secret",
+                },
+            ).public_status()
+            self.assertEqual(custom["provider"], "custom:compatible.example")
+            self.assertFalse(custom["provider_is_openrouter"])
+            self.assertEqual(custom["destination_host"], "compatible.example")
+            self.assertNotIn("endpoint-owned-secret", json.dumps(custom))
+
     def test_app_url_cannot_embed_credentials_or_tracking_query(self):
         with tempfile.TemporaryDirectory() as tmp:
             for value in (
@@ -150,7 +246,10 @@ class OpenRouterConfigurationTests(unittest.TestCase):
 class OpenRouterClientTests(unittest.TestCase):
     def _config(self, **environment: str) -> OpenRouterConfig:
         defaults = {
-            "OPENROUTER_API_KEY": "test-secret",
+            # A loopback test transport is a custom endpoint like any other, so it carries the
+            # opt-in and its own credential name rather than borrowing OPENROUTER_API_KEY.
+            "OPENROUTER_CUSTOM_ENDPOINT_API_KEY": "test-secret",
+            "OPENROUTER_ALLOW_CUSTOM_ENDPOINT": "true",
             "OPENROUTER_BASE_URL": "http://127.0.0.1:9999/api/v1",
             "OPENROUTER_DEFAULT_MODEL": OPENROUTER_FREE_MODEL,
         }
@@ -193,6 +292,56 @@ class OpenRouterClientTests(unittest.TestCase):
         self.assertEqual(result["evidence_type"], "model_assisted")
         self.assertTrue(result["human_review_required"])
         self.assertNotIn("secret", result["usage"])
+        # Routing policy and observed cost are different facts and travel separately.
+        self.assertTrue(result["free_only_requested"])
+        self.assertEqual(
+            result["zero_cost_confirmed"], "unknown",
+            "no provider cost was reported, so zero cost must not be claimed",
+        )
+
+    def test_a_paid_completion_is_rejected_under_free_only_policy(self):
+        """Ryan's probe: the provider resolves a paid model and reports a positive cost,
+        while the client kept claiming `free_only: true`. Under the strict policy that
+        response is refused instead of being presented as free-route output."""
+
+        def transport(request, timeout):
+            return 200, {}, json.dumps({
+                "model": "provider/paid-model",
+                "choices": [{
+                    "message": {"role": "assistant", "content": "billed output"},
+                    "finish_reason": "stop",
+                }],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 4, "total_tokens": 14, "cost": 1.25},
+            }).encode("utf-8")
+
+        with self.assertRaises(AIProviderError) as context:
+            OpenRouterClient(self._config(), transport=transport).complete(
+                "Help",
+                suite_id="operator-os",
+            )
+        self.assertEqual(context.exception.code, "paid_model_on_free_route")
+        self.assertFalse(context.exception.retryable)
+
+    def test_zero_reported_cost_is_confirmed_and_positive_cost_flagged(self):
+        def make_transport(cost):
+            usage = {"cost": cost} if cost is not None else {}
+            return lambda request, timeout: (
+                200,
+                {},
+                json.dumps({
+                    "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+                    "usage": usage,
+                }).encode("utf-8"),
+            )
+
+        result_free = OpenRouterClient(self._config(), transport=make_transport(0)).complete(
+            "Help", suite_id="operator-os"
+        )
+        self.assertTrue(result_free["zero_cost_confirmed"])
+        with self.assertRaises(AIProviderError):
+            OpenRouterClient(self._config(), transport=make_transport(0.01)).complete(
+                "Help", suite_id="operator-os"
+            )
 
     def test_structured_text_parts_are_joined(self):
         def transport(request, timeout):
@@ -211,7 +360,7 @@ class OpenRouterClientTests(unittest.TestCase):
         self.assertEqual(result["content"], "First\nSecond")
 
     def test_missing_key_fails_without_fabricating_output(self):
-        config = self._config(OPENROUTER_API_KEY="")
+        config = self._config(OPENROUTER_CUSTOM_ENDPOINT_API_KEY="")
         with self.assertRaises(AIConfigurationError) as context:
             OpenRouterClient(config).complete("Help", suite_id="accessibility")
         self.assertEqual(context.exception.code, "not_configured")
@@ -239,6 +388,13 @@ class OpenRouterClientTests(unittest.TestCase):
             {"prompt": "OPENROUTER_API_KEY=sk-or-v1-abcdefghijklmnopqrstuvwxyz", "context": None},
             {"prompt": "Review this", "context": "-----BEGIN OPENSSH PRIVATE KEY-----"},
             {"prompt": "Review this", "context": "ghp_abcdefghijklmnopqrstuvwxyz1234567890"},
+            # `_` is a word character, so `\bAPI_KEY` never matched inside the newly
+            # documented variable: a user could paste the exact `.env` line and send it.
+            {"prompt": "OPENROUTER_CUSTOM_ENDPOINT_API_KEY=endpoint-owned-secret", "context": None},
+            {
+                "prompt": "Review this",
+                "context": "OPENROUTER_CUSTOM_ENDPOINT_API_KEY=endpoint-owned-secret",
+            },
         )
         for case in cases:
             with self.subTest(case=case), self.assertRaises(AIInputError):
@@ -247,6 +403,17 @@ class OpenRouterClientTests(unittest.TestCase):
                     suite_id="operator-os",
                     context=case["context"],
                 )
+        with self.assertRaises(AIInputError):
+            client.complete(
+                "Review this",
+                suite_id="operator-os",
+                history=[
+                    {
+                        "role": "user",
+                        "content": "OPENROUTER_CUSTOM_ENDPOINT_API_KEY=endpoint-owned-secret",
+                    }
+                ],
+            )
 
     def test_http_rate_limit_is_classified_and_key_is_not_leaked(self):
         secret = "very-secret-key"
@@ -261,7 +428,7 @@ class OpenRouterClientTests(unittest.TestCase):
             )
 
         client = OpenRouterClient(
-            self._config(OPENROUTER_API_KEY=secret),
+            self._config(OPENROUTER_CUSTOM_ENDPOINT_API_KEY=secret),
             transport=transport,
         )
         with self.assertRaises(AIProviderError) as context:
@@ -279,7 +446,7 @@ class OpenRouterClientTests(unittest.TestCase):
             }).encode("utf-8")
 
         client = OpenRouterClient(
-            self._config(OPENROUTER_API_KEY=secret),
+            self._config(OPENROUTER_CUSTOM_ENDPOINT_API_KEY=secret),
             transport=transport,
         )
         with self.assertRaises(AIProviderError) as context:

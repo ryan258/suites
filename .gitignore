@@ -9,4 +9,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-operator-os/evidence/snapshots/*.zip
+# Runtime backup payloads are regenerable state, not evidence: they live outside the
+# ownership-checked `evidence/` namespace (see Operator OS backup_data).
+operator-os/state/
+portfolio/project-ledger.json.lock

@@ -29,6 +29,12 @@ from .paths import SUITES_ROOT
 
 OPENROUTER_PROVIDER = "openrouter"
 OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
+# The one origin `OPENROUTER_API_KEY` is allowed to reach. The key and the URL are resolved
+# independently -- one can come from the process environment while the other comes from the
+# checkout `.env` -- so without this pin a checkout-local `OPENROUTER_BASE_URL` is enough to
+# aim an operator's exported key at any host. A different destination is a different secret.
+OPENROUTER_OFFICIAL_HOSTS = frozenset({"openrouter.ai"})
+OPENROUTER_CUSTOM_ENDPOINT_KEY_VAR = "OPENROUTER_CUSTOM_ENDPOINT_API_KEY"
 OPENROUTER_FREE_MODEL = "openrouter/free"
 MAX_PROMPT_CHARS = 50_000
 MAX_CONTEXT_CHARS = 75_000
@@ -43,7 +49,18 @@ _LIKELY_SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "credential assignment",
         re.compile(
-            r"\b(?:OPENROUTER_API_KEY|API_KEY|SECRET_KEY|ACCESS_TOKEN|PASSWORD)\s*[:=]\s*"
+            # `_` is a word character, so `\bAPI_KEY` cannot match inside
+            # OPENROUTER_CUSTOM_ENDPOINT_API_KEY -- there is no boundary in front of the
+            # `API_KEY` it would have to start at. The optional prefix is what makes the
+            # generic names cover every vendor-qualified spelling of them.
+            # The `["\']?` before the separator is what catches a JSON-quoted key. Context
+            # is serialized with json.dumps before scanning, so a credential arrives as
+            # `"..._API_KEY": "secret"` -- the closing quote sits between the name and the
+            # colon, and a pattern that jumped straight from the name to `[:=]` never matched
+            # the one shape structured context actually produces.
+            r"\b[A-Z0-9]+(?:_[A-Z0-9]+)*_(?:API_KEY|SECRET_KEY|ACCESS_TOKEN|PASSWORD)[\"']?\s*[:=]\s*"
+            r"[\"']?[^\s\"']{12,}"
+            r"|\b(?:API_KEY|SECRET_KEY|ACCESS_TOKEN|PASSWORD)[\"']?\s*[:=]\s*"
             r"[\"']?[^\s\"']{12,}",
             re.IGNORECASE,
         ),
@@ -307,19 +324,62 @@ class OpenRouterConfig:
                 return process_values[name]
             return file_values.get(name, default)
 
+        base_url = _validate_base_url(value("OPENROUTER_BASE_URL", OPENROUTER_DEFAULT_BASE_URL))
+        destination_host = urllib.parse.urlsplit(base_url).hostname or ""
+        official_destination = destination_host in OPENROUTER_OFFICIAL_HOSTS
+        warnings: list[str] = []
+
+        if official_destination:
+            credential_var = "OPENROUTER_API_KEY"
+        else:
+            # A non-OpenRouter destination has to be asked for, and it is asked for with its
+            # own credential. Falling back to `OPENROUTER_API_KEY` here is exactly the
+            # redirection this pin exists to refuse, so the fallback is not offered.
+            credential_var = OPENROUTER_CUSTOM_ENDPOINT_KEY_VAR
+
+            def process_sourced(name: str) -> bool:
+                return bool(process_values.get(name, "").strip())
+
+            # Introducing one generic custom-credential variable only moves the redirectable
+            # secret: an exported key meant for one endpoint is still sent wherever a
+            # checkout-local `.env` points, because destination, opt-in, and credential are
+            # each resolved independently. So an exported custom credential requires the
+            # destination and the opt-in to come from that same trusted source. A checkout
+            # that supplies all three is still free to use its own credential.
+            if process_sourced(credential_var) and not (
+                process_sourced("OPENROUTER_BASE_URL")
+                and process_sourced("OPENROUTER_ALLOW_CUSTOM_ENDPOINT")
+            ):
+                raise AIConfigurationError(
+                    f"{OPENROUTER_CUSTOM_ENDPOINT_KEY_VAR} is set in the process environment "
+                    f"but the custom destination {destination_host!r} is not. Export "
+                    "OPENROUTER_BASE_URL and OPENROUTER_ALLOW_CUSTOM_ENDPOINT alongside it, "
+                    "or keep the credential in the same .env that selects the endpoint; a "
+                    "process-sourced credential is never aimed by a checkout-local file."
+                )
+            if not _bool_value(value("OPENROUTER_ALLOW_CUSTOM_ENDPOINT", "false"), default=False):
+                raise AIConfigurationError(
+                    f"OPENROUTER_BASE_URL points at {destination_host!r}, which is not OpenRouter. "
+                    "Set OPENROUTER_ALLOW_CUSTOM_ENDPOINT=true and supply "
+                    f"{OPENROUTER_CUSTOM_ENDPOINT_KEY_VAR} to authorize a custom endpoint; "
+                    "OPENROUTER_API_KEY is never sent to another origin."
+                )
+            warnings.append(
+                f"credential {OPENROUTER_CUSTOM_ENDPOINT_KEY_VAR} is being sent to the "
+                f"non-OpenRouter host {destination_host!r} by explicit opt-in"
+            )
+
         credential = _validate_header_value(
-            "OPENROUTER_API_KEY",
-            value("OPENROUTER_API_KEY").strip(),
+            credential_var,
+            value(credential_var).strip(),
             maximum=4_096,
         )
-        if process_values.get("OPENROUTER_API_KEY", "").strip():
+        if process_values.get(credential_var, "").strip():
             credential_source = "environment"
-        elif file_values.get("OPENROUTER_API_KEY", "").strip():
+        elif file_values.get(credential_var, "").strip():
             credential_source = ".env"
         else:
             credential_source = "missing"
-
-        base_url = _validate_base_url(value("OPENROUTER_BASE_URL", OPENROUTER_DEFAULT_BASE_URL))
         app_url = _validate_header_value(
             "OPENROUTER_APP_URL",
             value("OPENROUTER_APP_URL", "http://localhost").strip(),
@@ -352,7 +412,6 @@ class OpenRouterConfig:
 
         configured_default = value("OPENROUTER_DEFAULT_MODEL", OPENROUTER_FREE_MODEL).strip()
         default_model = configured_default or OPENROUTER_FREE_MODEL
-        warnings: list[str] = []
         if free_only and not _is_free_model(default_model):
             warnings.append(
                 f"OPENROUTER_DEFAULT_MODEL={default_model!r} was replaced with {OPENROUTER_FREE_MODEL!r} "
@@ -407,10 +466,30 @@ class OpenRouterConfig:
     def configured(self) -> bool:
         return bool(self.api_key)
 
+    @property
+    def destination_host(self) -> str:
+        return urllib.parse.urlsplit(self.base_url).hostname or ""
+
+    @property
+    def provider(self) -> str:
+        """The name of the host that actually receives the request.
+
+        Hardcoding `openrouter` here made the consent surface name a recipient the traffic
+        was not going to: an operator opted a custom endpoint in, and every status line,
+        completion receipt, and browser warning still said OpenRouter. The credential pin
+        already treats a different destination as a different secret; the disclosure has to
+        agree with it.
+        """
+        if self.destination_host in OPENROUTER_OFFICIAL_HOSTS:
+            return OPENROUTER_PROVIDER
+        return f"custom:{self.destination_host}" if self.destination_host else "custom"
+
     def public_status(self) -> dict[str, Any]:
         """Browser-safe configuration summary; never includes credential bytes."""
         return {
-            "provider": OPENROUTER_PROVIDER,
+            "provider": self.provider,
+            "provider_is_openrouter": self.provider == OPENROUTER_PROVIDER,
+            "destination_host": self.destination_host,
             "configured": self.configured,
             "credential_source": self.credential_source,
             "base_url": self.base_url,
@@ -475,7 +554,8 @@ def _redact_value(message: str, secret: str) -> str:
 
 def _decode_json(raw: bytes, *, failure_message: str) -> dict[str, Any]:
     if len(raw) > MAX_RESPONSE_BYTES:
-        raise AIProviderError("OpenRouter response exceeded the local safety limit")
+        prefix = failure_message.split(" returned ")[0] if " returned " in failure_message else "Provider"
+        raise AIProviderError(f"{prefix} response exceeded the local safety limit")
     try:
         payload = json.loads(
             raw.decode("utf-8"),
@@ -554,9 +634,16 @@ class OpenRouterClient:
         context: str | Mapping[str, Any] | Sequence[Any] | None = None,
         history: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
+        provider_name = "OpenRouter" if self.config.provider == OPENROUTER_PROVIDER else f"Custom endpoint ({self.config.destination_host})"
         if not self.config.configured:
+            if self.config.provider == OPENROUTER_PROVIDER:
+                raise AIConfigurationError(
+                    "OpenRouter is not configured. Add OPENROUTER_API_KEY to the gitignored .env "
+                    "or the process environment."
+                )
             raise AIConfigurationError(
-                "OpenRouter is not configured. Add OPENROUTER_API_KEY to the gitignored .env "
+                f"Custom endpoint '{self.config.destination_host}' is not configured. "
+                "Add OPENROUTER_CUSTOM_ENDPOINT_API_KEY to the gitignored .env "
                 "or the process environment."
             )
         if suite_id not in SUITE_CONTEXT:
@@ -634,10 +721,10 @@ class OpenRouterClient:
         except urllib.error.HTTPError as error:
             raw = error.read(MAX_RESPONSE_BYTES + 1)
             try:
-                payload = _decode_json(raw, failure_message="OpenRouter returned an unreadable error")
+                payload = _decode_json(raw, failure_message=f"{provider_name} returned an unreadable error")
             except AIProviderError:
                 payload = {}
-            message = _safe_provider_message(payload, f"OpenRouter request failed with HTTP {error.code}")
+            message = _safe_provider_message(payload, f"{provider_name} request failed with HTTP {error.code}")
             message = _redact_value(message, self.config.api_key)
             code = "rate_limited" if error.code == 429 else "authentication_failed" if error.code in {401, 403} else "provider_error"
             raise AIProviderError(
@@ -650,19 +737,19 @@ class OpenRouterClient:
             reason = getattr(error, "reason", error)
             message = _redact_value(str(reason)[:300], self.config.api_key)
             raise AIProviderError(
-                f"OpenRouter is unreachable: {message}",
+                f"{provider_name} is unreachable: {message}",
                 code="network_unavailable",
                 retryable=True,
             ) from None
 
-        payload = _decode_json(raw, failure_message="OpenRouter returned invalid JSON")
+        payload = _decode_json(raw, failure_message=f"{provider_name} returned invalid JSON")
         if status < 200 or status >= 300 or payload.get("error"):
             provider_status = status if status >= 400 else None
             embedded = payload.get("error") if isinstance(payload.get("error"), dict) else {}
             embedded_code = str(embedded.get("code") or "provider_error")
             raise AIProviderError(
                 _redact_value(
-                    _safe_provider_message(payload, "OpenRouter rejected the request"),
+                    _safe_provider_message(payload, f"{provider_name} rejected the request"),
                     self.config.api_key,
                 ),
                 provider_status=provider_status,
@@ -672,10 +759,10 @@ class OpenRouterClient:
 
         choices = payload.get("choices")
         if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
-            raise AIProviderError("OpenRouter response did not contain a completion choice")
+            raise AIProviderError(f"{provider_name} response did not contain a completion choice")
         content = _message_content(choices[0].get("message"))
         if not content:
-            raise AIProviderError("OpenRouter returned an empty completion")
+            raise AIProviderError(f"{provider_name} returned an empty completion")
 
         usage_payload = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
         usage: dict[str, int | float] = {}
@@ -689,15 +776,40 @@ class OpenRouterClient:
             ):
                 usage[name] = number
         resolved_model = payload.get("model") if isinstance(payload.get("model"), str) else policy.model
+
+        # `free_only` describes the *requested routing policy*, never the observed
+        # outcome: a custom OpenAI-compatible endpoint can resolve any model name at any
+        # price, and an OpenRouter ":free" convention guarantees nothing there. The only
+        # thing that says anything about cost is what the provider itself reports.
+        reported_cost = usage.get("cost")
+        if reported_cost is None:
+            zero_cost_confirmed: bool | str = "unknown"
+        elif isinstance(reported_cost, (int, float)) and not isinstance(reported_cost, bool):
+            zero_cost_confirmed = reported_cost == 0
+        else:
+            zero_cost_confirmed = "unknown"
+        if self.config.free_only and zero_cost_confirmed is False:
+            raise AIProviderError(
+                f"{provider_name} resolved {resolved_model!r} for a free-only request and "
+                f"reported a positive cost ({reported_cost}); refusing to present a billed "
+                "completion as free-route output",
+                code="paid_model_on_free_route",
+                retryable=False,
+            )
+
         return {
             "ok": True,
             "mode": "provider_assisted",
-            "provider": OPENROUTER_PROVIDER,
+            "provider": self.config.provider,
+            "provider_is_openrouter": self.config.provider == OPENROUTER_PROVIDER,
+            "destination_host": self.config.destination_host,
             "suite_id": suite_id,
             "role": role,
             "requested_model": policy.model,
             "resolved_model": resolved_model,
-            "free_only": self.config.free_only,
+            # Routing policy versus observed cost, kept apart on purpose.
+            "free_only_requested": self.config.free_only,
+            "zero_cost_confirmed": zero_cost_confirmed,
             "content": content,
             "finish_reason": (
                 choices[0].get("finish_reason")
