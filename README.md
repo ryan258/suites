@@ -25,12 +25,29 @@ BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
-VERIFIED CLAIMS: 1 Runtime Recovery (A2) | 42 Analysis Milestones | 0 Adopted | 0 Converged
-PROTOTYPES: 0 source-backed checks passing; all 43 migration wave specifications verified
+WORK STATE: 43/43 waves complete (42 analysis milestones + 1 runtime wave)
+EVIDENCE PROMOTION: 34 prototype | 1 reviewed historical | 7 source inspected | 0 source executed
+                    1 parity verified | 0 adopted | 0 converged | 0 resolved
+OUTSTANDING: 42/43 completed waves still owe a live run
 ```
 
+Those are two independent axes and both are load-bearing. The first says every scheduled analysis
+milestone is finished. The second says what those milestones demonstrated, and most of them
+demonstrated a suite-owned fixture rather than a recovered product. A completed wave at
+`prototype` is a finished piece of work and is not a recovery; nothing here has reached adoption,
+convergence, or retirement approval.
+
 `A1` is a reviewed, hand-authored parity decision whose required document structure is checked by
-the runner. It is an analysis milestone, not an executed donor or runtime gate.
+the runner — `reviewed_historical_analysis`, not an executed donor or runtime gate. `A2` is the
+single `parity_verified` runtime recovery.
+
+`source_executed` and above are runtime-only rungs, and the count is `0` for a specific reason.
+`O1`'s gate does import and run authentic donor PKos code, but its retained analysis receipt
+records what that code produced, never the invocation itself — no argv, no exit code, no source
+fingerprint of the module that ran. An analysis receipt has no field that can carry that proof, so
+the claim is capped at `source_inspected` and the gap is written down in `O1`'s `runtime_followup`.
+Reaching the rung means re-declaring `O1` as a runtime claim behind a `portfolio-runtime-source-v1`
+receipt, not raising a boolean in its manifest.
 
 ## The eight suites
 
@@ -130,7 +147,12 @@ SUITES_WHEEL_SMOKE=1 python3 -m unittest tests.test_wheel_smoke
 
 The AI surface is deliberately optional and free-first. Copy [`.env.example`](.env.example) to the
 gitignored `.env`, add your own `OPENROUTER_API_KEY`, and leave
-`OPENROUTER_ALLOW_PAID_MODELS=false`. Every role then routes through `openrouter/free`; a configured
+`OPENROUTER_ALLOW_PAID_MODELS=false`. `OPENROUTER_API_KEY` is pinned to `openrouter.ai`. A local
+proxy or other OpenAI-compatible host needs all three of `OPENROUTER_BASE_URL`,
+`OPENROUTER_ALLOW_CUSTOM_ENDPOINT=true`, and a separately named `OPENROUTER_CUSTOM_ENDPOINT_API_KEY`;
+if the custom key is exported in the process environment, export the destination and opt-in
+alongside it. The official OpenRouter key is never sent to another origin. Every role then routes
+through `openrouter/free`; a configured
 paid slug is replaced with the free router unless the operator explicitly changes that policy.
 OpenRouter chooses among the free models available for the request, so model identity, capacity,
 and rate limits can vary. “Free” is a routing/cost policy, not an uptime guarantee. See the

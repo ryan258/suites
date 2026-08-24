@@ -20,8 +20,23 @@ These figures are restated from the registry and are verified against it by
 
 - **70 Top-level projects** dispositioned across 8 suite boundaries and independent/archive containers.
 - **43 Migration wave specifications** defined; wave milestone progress is 43/43.
-- **0/43 source-backed prototype checks** passing.
 - **6 Shared contracts implemented**: `A11yFinding`, `BrandPackage`, `ExperimentRun`, `InvestigationRecord`, `ProductionJob`, `SourceRecord`.
+
+Milestone progress above is the scheduling axis. What those milestones demonstrated is the
+promotion axis, and it is reported separately because the two move independently — 43/43 complete
+coexists with 34 claims that have only exercised a suite-owned fixture:
+
+- **34/43 prototype-level claims** — suite-owned fixture or reference logic only.
+- **1/43 reviewed historical analysis** — `A1`, a hand-authored decision whose structure is checked.
+- **7/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
+- **0/43 source-executed claims** — `source_executed` and above are runtime-only rungs. `O1`'s
+  gate does import and run authentic donor PKos code, but its retained analysis receipt records
+  what that code produced rather than the invocation itself, so the claim is capped at
+  `source_inspected` until `O1` is re-declared as a runtime claim carrying a
+  `portfolio-runtime-source-v1` receipt.
+- **1/43 parity-verified runtime recoveries** — `A2`.
+- **0 adopted, 0 converged, 0 resolved.**
+- **42/43 completed waves still owe a live run** recorded in `runtime_followup`.
 
 ---
 
@@ -80,7 +95,7 @@ The remaining work is discharging those obligations, per suite:
 | Game Design | 5/5 waves | 5 outstanding | Re-run the donor simulator; materialize and run packs in Storyweaver; compare independently generated statistics. |
 
 Each obligation's exact text is the `runtime_followup` field of its wave in that suite's
-`suite.json`, and is read back by `validate`. Promotion past `source_verified` requires the
+`suite.json`, and is read back by `validate`. Promotion past `source_inspected` requires the
 obligation discharged, not the wave marked complete.
 
 ---
@@ -92,7 +107,7 @@ The control plane uses the promotion model in the [9/10 recovery standard](RECOV
 1. **Intended Work vs Evidence:** A wave specification records intended work; it is not evidence that the migration exists.
 2. **Prototype Boundary:** A passing reference prototype proves only the suite-local contract or fixture behavior exercised by that runner.
 3. **Claim Separation:** Analysis milestones and runtime recoveries are reported separately.
-4. **Promotion Sequence:** Runtime promotion proceeds through `prototype` → `source_verified` → `parity_verified` → `adopted` → `converged`.
+4. **Promotion Sequence:** Runtime promotion proceeds through `prototype` → `source_inspected` → `source_executed` → `parity_verified` → `adopted` → `converged`. `source_verified` is retired: one name for three depths of evidence is how a report stays internally consistent while overstating what was demonstrated, and the staged registry rejects it.
 5. **Adoption Standard:** Adoption requires at least three authentic accepted uses across distinct inputs or days.
 6. **Donor Freezes & Retirement:** Donor repositories are not frozen, retired, or redirected until verified parity exists and the owner explicitly authorizes that action.
 7. **Attribution & AI Routing:** Historical provider evidence remains attributed to the provider that actually produced it. Optional hosted-AI assistance routes through the free-only OpenRouter policy by default, stays labeled `model_assisted`, and never substitutes for deterministic or runtime evidence.

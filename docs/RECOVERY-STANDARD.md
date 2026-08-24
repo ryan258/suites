@@ -23,7 +23,17 @@ A wave milestone and a recovered runtime are different claims:
 
 - `specified`: intended work with an acceptance boundary.
 - `prototype`: suite-owned fixture or reference logic proves only the exercised concept.
-- `source_verified`: authentic source behavior has been executed and fingerprinted.
+- `reviewed_historical_analysis`: a hand-authored decision document about real donor behavior is
+  retained and its required structure is checked. No donor code was read or run.
+- `source_inspected`: authentic donor source, retained artifacts, or fingerprints were read and
+  parsed. Nothing donor-side was executed.
+- `source_executed`: authentic donor code was invoked and its behavior fingerprinted. This rung
+  and every rung above it are `runtime` claims only. An analysis receipt is validated for what
+  it *contains*, and no field in one can establish an argv, an exit code, or a source
+  fingerprint proving the donor ran — so an analysis claim is refused here rather than allowed
+  to buy the ladder's strongest statement with a `real_runtime: true` boolean. `source_inspected`
+  is the highest analysis rung; an analysis wave whose runner really does execute the donor
+  earns this one by re-declaring as `runtime` behind a `portfolio-runtime-source-v1` receipt.
 - `parity_verified`: authentic source and canonical destination behavior match on accepted output
   and failure cases.
 - `adopted`: the canonical path produced accepted work in at least three authentic uses across
@@ -39,14 +49,32 @@ Every completed wave must carry a `recovery_claim` naming its claim kind, promot
 it exercised a real runtime, and the evidence basis. Analysis can be a completed milestone without
 being counted as recovered functionality.
 
+Milestone status and promotion level are two independent axes and must be reported as two. A wave
+is `specified`, in progress, or analysis-complete on the first; it sits at one of the levels above
+on the second. A completed analysis wave may hold `prototype` — finishing scheduled work is not a
+claim about what that work demonstrated — but no report may present the first axis alone, because
+"43/43 complete" and "35 of those exercised only a fixture" are both true and only one of them is
+reassuring. Only `runtime` claims are barred from completing at `prototype`.
+
+The three levels between `prototype` and `parity_verified` exist because one name for all of them
+let a runner that reads a Markdown document, a runner that parses donor source, and a runner that
+imports and executes donor modules all report the same word.
+
 Validation is not reserved for completed waves. Registry validation checks every declared claim and
 re-reads its retained receipt against the claim's declared evidence basis and, where one exists, its
-receipt spec. Only the promotion rules — that a completed wave cannot claim a planning or prototype
-level, and that completed evidence must exist — are conditional on completion. A prototype receipt
+receipt spec. Only the promotion rules — that a completed wave cannot claim a
+planning level, that a completed *runtime* wave cannot claim a prototype level, and that completed
+evidence must exist — are conditional on completion. A completed *analysis* wave may hold
+`prototype`, as stated above; the rule is not "no completed wave may claim prototype". A prototype receipt
 that later becomes malformed, hand-edited, or self-contradictory therefore fails the canonical gate
 rather than coexisting with a green report.
 
-A receipt's status names what its gate performed, not what its wave intends to achieve. A gate that
+A receipt's status names what its gate performed, not what its wave intends to achieve. Where a
+gate stopped short of the wave's boundary, the receipt states the boundary as an explicit negative
+field — `external_runtime_invoked`, `donor_read`, `duplicate_decisions_closed`,
+`donor_legality_checker_invoked`, `whole_match_replayed` set to false — and the receipt validator
+requires those fields rather than accepting a status word like "ported" or "closed" that the gate
+never established. Silence about a boundary reads as having crossed it. A gate that
 reads donor files reports reading them; it does not report discovery, unification, parity,
 consolidation, or retirement it did not carry out. Where the performed work falls short of the
 wave's acceptance boundary, the receipt says so in its own fields — for example

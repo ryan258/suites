@@ -12,6 +12,17 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-24 — OpenRouter custom-endpoint credential pin
+
+`OPENROUTER_API_KEY` is refused at any non-`openrouter.ai` `OPENROUTER_BASE_URL`. A custom
+endpoint must set `OPENROUTER_ALLOW_CUSTOM_ENDPOINT=true` and supply
+`OPENROUTER_CUSTOM_ENDPOINT_API_KEY`. If that custom key is exported in the process environment,
+export `OPENROUTER_BASE_URL` and the opt-in from the same process environment; a checkout-local
+`.env` cannot aim a process-sourced custom credential. Existing local-proxy setups that reused
+`OPENROUTER_API_KEY` fail closed until those three variables are set together.
+
+---
+
 ## 2026-08-23 — Functional Launchpad Completion and Truth-Boundary Hardening
 
 Completed the local launchpad implementation surface without changing the portfolio recovery
@@ -55,14 +66,14 @@ ledger or performing any owner-controlled release action:
   retained runtime recovery (`A2`) and 42 analysis milestones, with 42 live-runtime follow-ups and
   zero adoption or convergence claims. Production House remains fixture-driven; Discovery D2/D4
   retain donor artifacts but do not claim donor-runtime ports.
-- **Verification:** the full 348-test matrix is green in a socket-permitting environment: 344
-  executed and passed, while four opt-in wheel-smoke tests were skipped. The 321-test socket-free
+- **Verification:** the full 392-test matrix is green in a socket-permitting environment: 388
+  executed and passed, while four opt-in wheel-smoke tests were skipped. The 365-test socket-free
   subset is also green; full
   `validate` reports 0 errors and 0 warnings; JavaScript and Python syntax gates pass. A fresh
   Python 3.12 sdist/wheel builds, installs in an isolated environment, retains all packaged assets,
   validates successfully with explicit `SUITES_ROOT`, and fails cleanly without it. The all-wave
-  ephemeral run reports 42 verified analyses, zero product failures, and one A2
-  environment-unverifiable result because this sandbox cannot create the browser/socket runtime.
+  ephemeral run reports 34 prototype checks passed, 8 verified analyses, zero product failures, and one A2
+  fast-probe result (or environment-unverifiable when sandbox cannot create the browser/socket runtime).
 
 Nothing was staged, committed, pushed, published, or deployed, and no donor repository was
 modified.
@@ -78,8 +89,8 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 - **6 Shared Contracts**: Implemented schemas with bidirectional validation (`A11yFinding`, `SourceRecord`, `BrandPackage`, `InvestigationRecord`, `ProductionJob`, `ExperimentRun`).
 - **70 Top-Level Projects**: Dispositioned across suites and independent containers in [project-ledger.json](file:///Users/ryanjohnson/Projects/suites/portfolio/project-ledger.json).
 - **Standard-Library CLI & Web Dashboard**: Operational CLI commands (`status`, `list`, `next`, `drift`, `export`, `baseline`, `validate`, `inspect`, `contract`, `engine`, `chain`, `ai`, `wave`, `serve`) and local web dashboard on port 8383. The optional AI route uses outbound HTTPS without adding a Python package dependency.
-- **43 Migration Wave Specifications**: Defined across 8 source adapters; every wave runner reads donor content, declares a recovery claim, and specifies runtime follow-up obligations.
-- **9/10 Recovery Standard Adopted**: Weighted rubrics, strict promotion gates (`prototype` → `source_verified` → `parity_verified` → `adopted` → `converged`), and fail-closed validation.
+- **43 Migration Wave Specifications**: Defined across 8 source adapters; every wave runner declares a recovery claim and specifies runtime follow-up obligations. Reading donor content begins at `source_inspected`; a `prototype` runner exercises a suite-owned fixture and reads nothing donor-side.
+- **9/10 Recovery Standard Adopted**: Weighted rubrics, strict promotion gates (`prototype` → `reviewed_historical_analysis` → `source_inspected` → `source_executed` → `parity_verified` → `adopted` → `converged`), and fail-closed validation. The former single `source_verified` rung is retired: it named three different depths of evidence at once.
 
 ### Verified Wave Milestones Completed (43/43)
 1. **`A1` — Accessibility (Analysis Milestone)**: WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md)).

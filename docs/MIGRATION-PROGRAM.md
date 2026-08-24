@@ -1,9 +1,10 @@
 # Migration Program
 
 Tranche 0's control-plane foundation is complete and all 43 migration wave milestones are verified:
-one runtime recovery (`A2`) and 42 analysis milestones. Every wave gate reads donor content before
-making a claim, and each analysis milestone carries an undischarged `runtime_followup` obligation in
-its wave manifest. A verified milestone proves what its runner exercised, not a completed migration.
+one runtime recovery (`A2`) and 42 analysis milestones. Not every wave gate reads donor content:
+34 claims sit at `prototype`, meaning their runner exercised a suite-owned fixture or reference
+logic and read nothing donor-side. Donor content is read from `source_inspected` upward. Each
+analysis milestone carries an undischarged `runtime_followup` obligation in its wave manifest. A verified milestone proves what its runner exercised, not a completed migration.
 Real ports, adoption, retirement, and single-runtime convergence follow the
 [9/10 recovery standard](RECOVERY-STANDARD.md) and the [roadmap](ROADMAP.md); the portfolio reads
 0 adopted and 0 converged.
@@ -63,7 +64,11 @@ one still owes its `runtime_followup`.
   preview, approval, receipt, and a fail-closed unapproved-execution boundary. The suite-local
   launchpad now has real, bounded handlers for secret audit, content-addressed backup, additive note
   sync, and reversible cache rotation; active writes require exact, single-use approvals issued by
-  an authority the suite cannot mint. Outstanding: execute the assigned donor ports in `dotfiles`
+  an authority the suite cannot mint. Those approvals bind the artifact, not the path: the
+  `operator-action-binding-v2` envelope covers the content digest of every byte the run will write
+  and the destination state it observed, so editing a source note after a token is issued invalidates
+  the token. Note sync installs through descriptor-anchored, no-clobber writes that refuse a symlink
+  at every path component, so a destination exchanged mid-approval is a refusal rather than an escape. Outstanding: execute the assigned donor ports in `dotfiles`
   backed by tests, scale live daily intake into the permanent vault, and accumulate authentic use
   receipts for these handlers before claiming adoption.
 - **Brand + Publishing (6/6):** `BrandPackage` export from live `brand-maker-spec` sources, the

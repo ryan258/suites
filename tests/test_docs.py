@@ -39,7 +39,6 @@ class ArtifactTests(unittest.TestCase):
             sorted(CONTRACTS),
             f"roadmap contract list is stale: {contract_line}",
         )
-        prototypes = summary["total_waves"] - summary["completed_waves"]
         queue = {}
         for line in roadmap.splitlines():
             if not line.startswith("|") or "---" in line or "Verified" in line:
@@ -70,20 +69,53 @@ class ArtifactTests(unittest.TestCase):
             f"{summary['completed_waves']}/{summary['total_waves']}",
             f"{summary['total_waves']} Migration wave specifications",
             f"{summary['total_projects']} Top-level projects",
-            f"{prototypes}/{summary['total_waves']} source-backed prototype checks",
+            # The promotion axis, read off `recovery_claim.level` rather than inferred from
+            # incompleteness. Deriving prototypes as `total - completed` is what let 35
+            # prototype-level claims be reported as zero while every wave was complete.
+            f"{summary['promotion_counts']['prototype']}/{summary['total_waves']} prototype-level claims",
+            f"{summary['promotion_counts']['reviewed_historical_analysis']}/{summary['total_waves']} reviewed historical analysis",
+            f"{summary['promotion_counts']['source_inspected']}/{summary['total_waves']} source-inspected claims",
+            f"{summary['promotion_counts']['source_executed']}/{summary['total_waves']} source-executed claims",
+            f"{summary['promotion_counts']['parity_verified']}/{summary['total_waves']} parity-verified runtime recoveries",
+            f"{summary['waves_owing_runtime_followup']}/{summary['total_waves']} completed waves still owe a live run",
         ):
             self.assertIn(token, roadmap, f"roadmap does not state current {token!r}")
 
-    def test_readme_states_the_current_prototype_count(self):
+    def test_readme_states_both_axes_not_only_milestone_progress(self):
         """The README kickstart block restates the same counts; drift there is a reporting defect."""
         from portfolio_suites.engine_actions import list_actions
         from portfolio_suites.registry import get_portfolio_summary
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         summary = get_portfolio_summary()
-        prototypes = summary["total_waves"] - summary["completed_waves"]
+        levels = summary["promotion_counts"]
         total_actions = sum(len(c["actions"]) for c in list_actions().values())
-        self.assertIn(f"PROTOTYPES: {prototypes} source-backed checks passing", readme)
+        # Both halves of the split, not `completed_waves` relabelled: 43 completed waves are
+        # 42 analysis milestones plus one runtime wave, and calling all 43 "analysis
+        # milestones" is the same overstatement the promotion axis exists to prevent.
+        self.assertIn(
+            f"WORK STATE: {summary['completed_waves']}/{summary['total_waves']} waves complete "
+            f"({summary['completed_analysis_milestones']} analysis milestones "
+            f"+ {summary['recovered_runtime_behaviors']} runtime wave)",
+            readme,
+        )
+        self.assertIn(
+            f"EVIDENCE PROMOTION: {levels['prototype']} prototype "
+            f"| {levels['reviewed_historical_analysis']} reviewed historical "
+            f"| {levels['source_inspected']} source inspected "
+            f"| {levels['source_executed']} source executed",
+            readme,
+        )
+        self.assertIn(
+            f"{levels['parity_verified']} parity verified | {levels['adopted']} adopted "
+            f"| {levels['converged']} converged | {summary['resolved_capabilities']} resolved",
+            readme,
+        )
+        self.assertIn(
+            f"OUTSTANDING: {summary['waves_owing_runtime_followup']}/{summary['total_waves']} "
+            "completed waves still owe a live run",
+            readme,
+        )
         self.assertIn(f"{summary['total_projects']} Projects Dispositioned", readme)
         self.assertIn(f"list all {total_actions} actions", readme)
 

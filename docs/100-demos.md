@@ -16,7 +16,8 @@ cd ~/Projects/suites
 ```
 
 **Safety.** Demos leave your working tree alone unless they carry a **[WRITES]** tag. There are
-five of those — 63, 67, 70, 71, and 94 — and each says exactly what it touches and how to undo it.
+six of those — 63, 67, 70, 71, 94, and 96 — and each says exactly what it touches and how to undo it.
+Demo 96 only removes the `mktemp -d` directory demo 94 created, and refuses to remove anything else.
 Scratch files under `/tmp` are used freely and are not tagged. Nothing here stages, commits,
 pushes, or publishes anything, and nothing reaches the network except the AI demos in Act VII.
 
@@ -611,7 +612,7 @@ throws it away, leaving the retained receipt untouched.
 PYTHONPATH=src python3 -m portfolio_suites wave game-design G1
 ```
 
-Look for: an `[ANALYSIS]` tag and a one-line result. Nothing was written.
+Look for: a `[PROTOTYPE]` tag and a one-line result. Nothing was written.
 
 ### 58. Run every wave in the portfolio
 
@@ -620,7 +621,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave --all
 ```
 
 Look for: 43 results in about ten seconds, ending in a summary line that counts each outcome kind
-separately. Without `--full` you should see 42 verified analyses and one fast probe — the fast
+separately. Without `--full` you should see 34 prototype checks passed, 8 verified analyses, and one fast probe — the fast
 probe is `A2`, which is the only wave with a runtime claim and declines to assert it from a
 shallow run. If your machine cannot open the browser runtime `A2` needs, that line instead reports
 an unverifiable environment, which is an honest "cannot check" rather than a failure.
@@ -631,7 +632,7 @@ an unverifiable environment, which is an honest "cannot check" rather than a fai
 PYTHONPATH=src python3 -m portfolio_suites wave --all | grep -oE '^\[[A-Z-]+\]' | sort | uniq -c
 ```
 
-Look for: `42 [ANALYSIS]` and `1 [FAST-PROBE]`. Each tag is a different strength of claim and they
+Look for: `34 [PROTOTYPE]`, `7 [INSPECTED]`, `1 [HISTORICAL]`, and `1 [FAST-PROBE]`. Each tag is a different strength of claim and they
 are deliberately not interchangeable — `[RECOVERED]` does not appear here at all, because earning
 it requires the full-depth run in demo 61.
 
@@ -973,10 +974,18 @@ First give the rotation something real to aim at, so it reaches the approval gat
 stopping at "that directory does not exist":
 
 ```bash
-mkdir -p .cache && touch .cache/tmpfile && \
+DEMO_PARENT="$(mktemp -d "$PWD/.demo-rotate-XXXXXX")" && DEMO_CACHE="$DEMO_PARENT/.cache" && \
+mkdir "$DEMO_CACHE" && touch "$DEMO_CACHE/tmpfile" && \
 PYTHONPATH=src python3 -m portfolio_suites engine operator-os execute_jarvis_action_checkpoint \
-  --args '{"action_name":"rotate_local_cache","parameters":{"cache_dir":".cache","dry_run":false}}'
+  --args "{\"action_name\":\"rotate_local_cache\",\"parameters\":{\"cache_dir\":\"$DEMO_CACHE\",\"dry_run\":false}}"
 ```
+
+The randomized part is the *parent*: rotation only accepts a directory explicitly named `cache`,
+`.cache`, or `*-cache`, so a randomized `.demo-cache-XXXXXX` name is refused as an invalid target
+before any approval question is reached, and demos 95 and 96 would never get to the failures they
+exist to show. `mktemp -d` still keeps this off a `.cache` you already had: the tree is created
+fresh, its absolute path is held in `$DEMO_PARENT`, and demo 96 removes that exact path and nothing
+else. Keep the same shell open through demo 96.
 
 Look for: `"status": "blocked_missing_approval"` and `operator_approval_verified: false`. This is
 the outer gate; the request never even gets as far as asking about a token.
@@ -985,7 +994,7 @@ the outer gate; the request never even gets as far as asking about a token.
 
 ```bash
 PYTHONPATH=src python3 -m portfolio_suites engine operator-os execute_jarvis_action_checkpoint \
-  --args '{"action_name":"rotate_local_cache","parameters":{"cache_dir":".cache","dry_run":false},"operator_approved":true}'
+  --args "{\"action_name\":\"rotate_local_cache\",\"parameters\":{\"cache_dir\":\"$DEMO_CACHE\",\"dry_run\":false},\"operator_approved\":true}"
 ```
 
 Look for: `"status": "error_unverified_approval"`. This is the demo that matters. Claiming approval
@@ -993,16 +1002,23 @@ gets you *past* the outer gate and straight into the real one, where an actual v
 demanded and you do not have one. `operator_approved` is caller confirmation; authority is
 something else entirely, and the engine will not confuse the two or mint one for itself.
 
-### 96. Present a forged approval token
+### 96. **[WRITES]** Present a forged approval token, then clean up demo 94
 
 ```bash
 PYTHONPATH=src python3 -m portfolio_suites engine operator-os execute_jarvis_action_checkpoint \
-  --args '{"action_name":"rotate_local_cache","parameters":{"cache_dir":".cache","dry_run":false},"operator_approved":true,"operator_approval_token":"approval.fake.deadbeef"}' \
-  ; ls .cache/ ; rm -rf .cache
+  --args "{\"action_name\":\"rotate_local_cache\",\"parameters\":{\"cache_dir\":\"$DEMO_CACHE\",\"dry_run\":false},\"operator_approved\":true,\"operator_approval_token\":\"approval.fake.deadbeef\"}" \
+  ; ls "$DEMO_CACHE/" \
+  ; case "$DEMO_PARENT" in "$PWD"/.demo-rotate-??????) rm -rf "$DEMO_PARENT";; *) echo "refusing to remove $DEMO_PARENT";; esac
 ```
 
+An approval for `backup_data` or `sync_obsidian_notes` binds more than the arguments above: its
+digest covers the content hash of every byte the run will write. Run the command once without a
+token and the refusal reports the `approval_payload_sha256` to have approved — editing a source
+file afterwards changes that digest and the token stops verifying.
+
 Look for: the token is rejected on its shape before any digest lookup happens, `tmpfile` is still
-sitting in `.cache`, and the last command cleans up after you. Real tokens are `opa1`-prefixed,
+sitting in `$DEMO_CACHE`, and the last command removes only the tree demo 94 created — the
+`case` guard refuses any `$DEMO_PARENT` that is not the `mktemp -d` path under this checkout. Real tokens are `opa1`-prefixed,
 compared with a constant-time digest check, bound to the exact payload, and single-use.
 
 ### 97. Feed the JSON boundary something JSON cannot hold
