@@ -57,51 +57,98 @@
       "id": "P1",
       "order": 40,
       "status": "complete",
-      "objective": "Record production-house, Groundwire, and formatter repository fingerprints and project a deterministic episode fixture into the ProductionJob contract.",
-      "acceptance": "The three donor repositories have meaningful Git fingerprints and the fixture projects inputs, steps, QC targets, and outputs without claiming that episode artifacts or an external runtime were executed.",
-      "runtime_followup": "Fingerprint from real episode artifacts rather than a fixture script hash.",
+      "objective": "Parse a real Groundwire episode script and project it into ProductionJob against fingerprinted production-house, Groundwire, and formatter donors.",
+      "acceptance": "The three donors have meaningful Git fingerprints, the episode script is hashed and parsed, and ProductionJob inputs match that digest. Outputs remain modeled; no audio runtime is invoked.",
+      "runtime_followup": "Render that episode through Groundwire and compare stems, captions, QC, failures, and recovery against this job.",
       "evidence": "production-house/evidence/P1-GROUNDWIRE-FINGERPRINT.json",
-      "recovery_claim": {"kind": "analysis", "level": "prototype", "real_runtime": false, "evidence_basis": ["job", "production_house_fingerprint", "groundwire_fingerprint", "formatter_fingerprint"]}
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "source_inspected",
+        "real_runtime": false,
+        "evidence_basis": [
+          "job",
+          "script",
+          "production_house_fingerprint",
+          "groundwire_fingerprint",
+          "formatter_fingerprint"
+        ]
+      }
     },
     {
       "id": "P2",
       "order": 50,
       "status": "complete",
-      "objective": "Model that episode slice as a ProductionJob advancing through a synthesis stage, against a fingerprinted formatter source.",
-      "acceptance": "The job advances from queued to completed with at least one content-addressed output, without parallel canonical state. The formatter repository is fingerprinted, not invoked.",
-      "runtime_followup": "Invoke elevenlabs-screenplay-formatter on a real script slice and compare its output against this job for parity and failure recovery.",
+      "objective": "Hash a real formatter play and advance it through ProductionJob without invoking the formatter runtime.",
+      "acceptance": "The job completes with a content-addressed output whose input digest matches the inspected play. The formatter is not invoked.",
+      "runtime_followup": "Invoke elevenlabs-screenplay-formatter on that play and compare output, failure, and recovery against this job.",
       "evidence": "production-house/evidence/P2-FORMATTER-JOB-RECEIPT.json",
-      "recovery_claim": {"kind": "analysis", "level": "prototype", "real_runtime": false, "evidence_basis": ["job", "formatter_fingerprint"]}
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "source_inspected",
+        "real_runtime": false,
+        "evidence_basis": [
+          "job",
+          "script",
+          "formatter_fingerprint"
+        ]
+      }
     },
     {
       "id": "P3",
       "order": 60,
       "status": "complete",
-      "objective": "Model a Writers Room story-state handoff as a ProductionJob input, against a fingerprinted writers-room source.",
-      "acceptance": "The handoff projects a versioned fixture input into a queued job and stays traceable to its source without claiming approval or signoff. Writers Room is fingerprinted, not read.",
+      "objective": "Project a real Writers Room final as a ProductionJob input without invoking Writers Room or observing signoff.",
+      "acceptance": "The queued job input digest matches the inspected Writers Room final. Signoff is not observed and the runtime is not invoked.",
       "runtime_followup": "Take the story state from the real Writers Room runtime through to a derived output with its job receipt.",
       "evidence": "production-house/evidence/P3-WRITERS-ROOM-HANDOFF.json",
-      "recovery_claim": {"kind": "analysis", "level": "prototype", "real_runtime": false, "evidence_basis": ["job", "writers_room_fingerprint"]}
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "source_inspected",
+        "real_runtime": false,
+        "evidence_basis": [
+          "job",
+          "script",
+          "writers_room_fingerprint"
+        ]
+      }
     },
     {
       "id": "P4",
       "order": 70,
       "status": "complete",
-      "objective": "Run a structurally distinct investigative documentary episode fixture through the generic ProductionJob engine.",
-      "acceptance": "The variant completes with its full output set using the unchanged generic engine. Fixture-driven; no external documentary runtime is involved.",
-      "runtime_followup": "Drive the multi-track and sound-design pipeline from a real documentary episode.",
+      "objective": "Project a structurally distinct Groundwire episode plus production-house domain docs through ProductionJob.",
+      "acceptance": "The documentary variant completes with its full output set. Inputs are hashed donor artifacts; no media runtime is invoked.",
+      "runtime_followup": "Drive the multi-track and sound-design pipeline from a real documentary episode render.",
       "evidence": "production-house/evidence/P4-DOCUMENTARY-PIPELINE-JOB.json",
-      "recovery_claim": {"kind": "analysis", "level": "prototype", "real_runtime": false, "evidence_basis": ["job", "all_stages_passed"]}
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "source_inspected",
+        "real_runtime": false,
+        "evidence_basis": [
+          "job",
+          "script",
+          "production_house_fingerprint",
+          "groundwire_fingerprint"
+        ]
+      }
     },
     {
       "id": "P5",
       "order": 80,
       "status": "complete",
-      "objective": "Map Writers Room collaborative story state transitions into a canonical ProductionJob event stream.",
-      "acceptance": "Multi-scene revisions with author provenance unify into a single completed job event stream. Revisions are fixtures; Writers Room is not read.",
+      "objective": "Map real Writers Room pipeline status files into a canonical ProductionJob event stream.",
+      "acceptance": "At least two donor pipeline revisions unify into a single completed job event stream. Signoff and runtime consolidation are not performed.",
       "runtime_followup": "Map real Writers Room revision history, including final room signoff, from that runtime.",
       "evidence": "production-house/evidence/P5-WRITERS-ROOM-EVENT-STREAM.json",
-      "recovery_claim": {"kind": "analysis", "level": "prototype", "real_runtime": false, "evidence_basis": ["mapping", "all_stages_passed"]}
+      "recovery_claim": {
+        "kind": "analysis",
+        "level": "source_inspected",
+        "real_runtime": false,
+        "evidence_basis": [
+          "mapping",
+          "writers_room_fingerprint"
+        ]
+      }
     }
   ]
 }

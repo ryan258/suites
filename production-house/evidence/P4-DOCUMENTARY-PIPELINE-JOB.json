@@ -1,79 +1,141 @@
 {
   "schema_version": "1.0.0",
   "wave": "P4",
-  "status": "documentary_fixture_model_verified",
+  "status": "source_documentary_script_projected",
   "job": {
     "schema_version": "1.0.0",
-    "job_id": "job-gw-doc-episode-14-shadow-grid",
+    "job_id": "job-gw-doc-0016_The-Quiet-Grid",
     "domain": "groundwire-documentary",
-    "task": "project-investigative-documentary-fixture",
+    "task": "project-documentary-from-hashed-script",
     "status": "completed",
     "inputs": [
       {
-        "name": "episode-14-shadow-grid.fountain",
-        "sha256": "30641b3deabba43d1aa409d45cc47666ce45947f14b1c5b6ef9d6a0589d69e76",
+        "name": "0016_The-Quiet-Grid.fountain",
+        "sha256": "821cffea277839c30a02bdfb633196d6e4397f0e9517f13b699e45a90a931b39",
         "type": "script"
       },
       {
         "name": "archival-tape-01.wav",
-        "sha256": "30641b3deabba43d1aa409d45cc47666ce45947f14b1c5b6ef9d6a0589d69e76",
+        "sha256": "821cffea277839c30a02bdfb633196d6e4397f0e9517f13b699e45a90a931b39",
         "type": "field_audio"
       },
       {
         "name": "interview-lead-researcher.flac",
-        "sha256": "30641b3deabba43d1aa409d45cc47666ce45947f14b1c5b6ef9d6a0589d69e76",
+        "sha256": "821cffea277839c30a02bdfb633196d6e4397f0e9517f13b699e45a90a931b39",
         "type": "dialogue"
       }
     ],
     "outputs": [
       {
-        "name": "episode-14-shadow-grid-broadcast-master.wav",
-        "sha256": "30641b3deabba43d1aa409d45cc47666ce45947f14b1c5b6ef9d6a0589d69e76",
+        "name": "0016_The-Quiet-Grid-broadcast-master.wav",
+        "sha256": "821cffea277839c30a02bdfb633196d6e4397f0e9517f13b699e45a90a931b39",
         "duration_sec": 1420.5
       },
       {
-        "name": "episode-14-shadow-grid-transcript.vtt",
-        "sha256": "30641b3deabba43d1aa409d45cc47666ce45947f14b1c5b6ef9d6a0589d69e76",
+        "name": "0016_The-Quiet-Grid-transcript.vtt",
+        "sha256": "821cffea277839c30a02bdfb633196d6e4397f0e9517f13b699e45a90a931b39",
         "cues": 310
       },
       {
-        "name": "episode-14-shadow-grid-provenance-manifest.json",
-        "sha256": "30641b3deabba43d1aa409d45cc47666ce45947f14b1c5b6ef9d6a0589d69e76",
+        "name": "0016_The-Quiet-Grid-provenance-manifest.json",
+        "sha256": "821cffea277839c30a02bdfb633196d6e4397f0e9517f13b699e45a90a931b39",
         "lufs": -16.0,
         "sources": 3
       }
     ],
     "events": [
       {
-        "time": "2026-08-23T18:44:03.350480+00:00",
-        "stage": "fixture_multi_source_intake",
+        "time": "2026-08-24T20:37:32.643006+00:00",
+        "stage": "multi_source_intake",
         "status": "modeled",
-        "notes": "Projected archival-tape and multi-mic fixture inputs; no media was ingested"
+        "notes": "Projected archival-tape and multi-mic inputs from the hashed script; no media was ingested"
       },
       {
-        "time": "2026-08-23T18:44:03.350480+00:00",
-        "stage": "fixture_dialogue_cleanup",
+        "time": "2026-08-24T20:37:32.643006+00:00",
+        "stage": "dialogue_cleanup",
         "status": "modeled",
         "notes": "Projected a dereverb step; no noise-reduction runtime was invoked"
       },
       {
-        "time": "2026-08-23T18:44:03.350480+00:00",
-        "stage": "fixture_ducking_mix",
+        "time": "2026-08-24T20:37:32.643006+00:00",
+        "stage": "ducking_mix",
         "status": "modeled",
         "notes": "Projected a -18 dB ducking target; no audio was mixed"
       },
       {
-        "time": "2026-08-23T18:44:03.350480+00:00",
-        "stage": "fixture_broadcast_qc",
+        "time": "2026-08-24T20:37:32.643006+00:00",
+        "stage": "broadcast_qc",
         "status": "modeled",
         "notes": "Projected an EBU R128 target; compliance was not measured"
       }
     ],
-    "created_at": "2026-08-23T18:44:03.350480+00:00",
-    "updated_at": "2026-08-23T18:44:03.350480+00:00",
+    "created_at": "2026-08-24T20:37:32.643006+00:00",
+    "updated_at": "2026-08-24T20:37:32.643006+00:00",
     "execution_kind": "deterministic_fixture_model",
     "external_runtime_invoked": false,
-    "fixture_input_sha256": "30641b3deabba43d1aa409d45cc47666ce45947f14b1c5b6ef9d6a0589d69e76"
+    "fixture_input_sha256": "821cffea277839c30a02bdfb633196d6e4397f0e9517f13b699e45a90a931b39"
+  },
+  "script": {
+    "source_name": "episodes/0016_The-Quiet-Grid/script.md",
+    "sha256": "821cffea277839c30a02bdfb633196d6e4397f0e9517f13b699e45a90a931b39",
+    "bytes": 4580,
+    "word_count": 679,
+    "characters": [
+      "ANCHOR_DIANE",
+      "ANCHOR_JACK",
+      "AUTO_SYSTEM",
+      "CALLER_WITNESS",
+      "EXPERT_PROF",
+      "NARRATOR",
+      "REPORTER_MIKE",
+      "REPORTER_SARAH"
+    ],
+    "character_count": 8,
+    "headings": [
+      "Silent Waters"
+    ],
+    "heading_count": 1,
+    "fountain_scene_count": 0,
+    "parser": "suite_local_episode_script_v1",
+    "external_runtime_invoked": false
+  },
+  "domain_template": {
+    "path": "docs/DOMAIN_TEMPLATES.md",
+    "sha256": "c339c01c064f7564a95869acdd2dc5a24e1c1d8019b92c6b3a381438636fb0c4",
+    "bytes": 10468
+  },
+  "production_house_fingerprint": {
+    "branch": "main",
+    "head": "bb145520744709f23d09ff719227f96fb2766819",
+    "short": "main@bb14552",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "c8e4ae238e1902884d42f75780fc50aa4f5a97a06c4ecd0077661cf7f9b51fc2",
+    "tested_files_fingerprint": {
+      "README.md": "a4ecf9437fdc9f9ae84c8f6cfaae419b78c6b08eb5f433e0e9a77312b6f1deb4",
+      "pyproject.toml": "f79100b7da5bd03e4e58a55385654df7a0528ccde7ce633574cb4701c23ad535",
+      "docs/DOMAIN_TEMPLATES.md": "c339c01c064f7564a95869acdd2dc5a24e1c1d8019b92c6b3a381438636fb0c4"
+    },
+    "target_state": "clean_commit"
+  },
+  "groundwire_fingerprint": {
+    "branch": "groundwire--v2-staff-update",
+    "head": "c72969bdb4dde5c0209315fe337978d97e5332a8",
+    "short": "groundwire--v2-staff-update@c72969b",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "16cdebc568c3e64f35f92dbfc558fa42538554bd477a16cf597dd67002acf513",
+    "tested_files_fingerprint": {
+      "config.toml": "21377e7df2d21ed291fc15981fe98ded39053dc46591ec84a739067c826adc34",
+      "voices.json": "98606b64da646f90bc60de9bb32b838b273cbb8dac253038d3b8c258cf675461",
+      "README.md": "0fe6fadf47256abeb9634427af97e805acecc535ced58d466633efdb0d095f2c",
+      "MANUAL.md": "2b5437842ecf1fb8ba846902cc31bf89616858b7c4d58b00788c12c864bf6ffe"
+    },
+    "target_state": "clean_commit"
   },
   "external_runtime_invoked": false,
   "fixture_output_only": true,

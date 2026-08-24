@@ -70,7 +70,7 @@
       "runtime_followup": "Execute the fixtures against a live agent loop instead of scoring declared policy expectations.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "canonical_run",
@@ -90,7 +90,7 @@
       "runtime_followup": "Run the fixture battery inside each harness runtime; source markers are not execution.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "harness_coverage",
@@ -110,7 +110,7 @@
       "runtime_followup": "Confirm each counted consumer imports the component at runtime, not only by text reference.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "promoted_components",
@@ -129,7 +129,7 @@
       "runtime_followup": "Re-audit after any demotion actually moves code back to its home repository.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "audit",
@@ -148,7 +148,7 @@
       "runtime_followup": "Execute the mined cases and score real agent behavior against them.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "curriculum_fixtures",

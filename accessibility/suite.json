@@ -179,7 +179,7 @@
       "runtime_followup": "Narrow the canonical content-script host scope below <all_urls>, then the owner freezes the two superseded donor repositories; this gate performs neither.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "permission_analysis",

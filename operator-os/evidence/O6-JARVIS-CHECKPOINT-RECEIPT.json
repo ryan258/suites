@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave_id": "O6",
-  "executed_at": "2026-08-22T23:41:18.069361+00:00",
+  "executed_at": "2026-08-24T20:37:33.918740+00:00",
   "jarvis_fingerprint": {
     "branch": "main",
     "head": "9ea2d889d823b79441a0d6d8805a69805b9124a4",
@@ -18,18 +18,32 @@
     },
     "target_state": "clean_commit"
   },
+  "jarvis_source": {
+    "schemas": {
+      "path": "backend/app/schemas.py",
+      "sha256": "ac00f2e787f8a9a3cd19b5f1936ba50a556489755b2fdd8db338da092f1df3e0",
+      "bytes": 7061
+    },
+    "main": {
+      "path": "backend/app/main.py",
+      "sha256": "847aa87c9b5949951e9c61c8028da5c85c0ff74bd53bbcd15bc2524dd510be6f",
+      "bytes": 11440
+    }
+  },
   "fail_closed_test": {
     "action": "audit_secrets",
     "operator_approved": false,
     "result": {
-      "action_id": "act-jarvis-f26ee5841bfc4e5a85dd41c28b3df07a",
+      "action_id": "act-jarvis-b970241594c7428aa858dc9c0c75bae9",
       "action_name": "audit_secrets",
       "parameters": {
         "path": "/Users/ryanjohnson/Projects/suites"
       },
       "state": "blocked_missing_approval",
-      "preview_at": "2026-08-22T23:41:18.183224+00:00",
+      "preview_at": "2026-08-24T20:37:33.960043+00:00",
       "requires_human_approval": true,
+      "requires_verified_operator_token": false,
+      "mutation_requested": false,
       "destructive": false,
       "recovery_path": "undo_via_backup_or_clean_revert",
       "status": "blocked_missing_approval",
@@ -41,7 +55,7 @@
   "preview_test": {
     "action": "backup_data",
     "preview": {
-      "action_id": "act-jarvis-c2530f3645f64f6bb77087d3e2119bfd",
+      "action_id": "act-jarvis-983bae08b0d14df6a68f1a0010fcead7",
       "action_name": "backup_data",
       "parameters": {
         "vault": "operator-os-vault",
@@ -49,10 +63,43 @@
         "dry_run": true
       },
       "state": "preview_ready",
-      "preview_at": "2026-08-22T23:41:18.183276+00:00",
+      "preview_at": "2026-08-24T20:37:33.960095+00:00",
       "requires_human_approval": true,
+      "requires_verified_operator_token": false,
+      "mutation_requested": false,
       "destructive": false,
       "recovery_path": "undo_via_backup_or_clean_revert"
+    },
+    "verified": true
+  },
+  "execution_test": {
+    "action": "audit_secrets",
+    "mutation_mode": "read_only",
+    "result": {
+      "action_id": "act-jarvis-778459b5631f466fbde52d59939d41d6",
+      "action_name": "audit_secrets",
+      "parameters": {
+        "path": "/Users/ryanjohnson/Projects/suites/src"
+      },
+      "state": "executed_with_receipt",
+      "executed_at": "2026-08-24T20:37:33.960112+00:00",
+      "requires_human_approval": true,
+      "operator_approval_verified": false,
+      "execution_authority": "caller_confirmed_read_only_or_dry_run",
+      "execution_result": {
+        "scanned_target": "/Users/ryanjohnson/Projects/suites/src",
+        "scanned_files_count": 42,
+        "scanned_bytes": 804493,
+        "findings_count": 0,
+        "clean": true,
+        "findings": []
+      },
+      "audit_trail": {
+        "preview_hash": "57e8f5ddb5061a2c2ae601c8601104b1243060250c9d1d02656ad350780f573f",
+        "recovery_snapshot": "snapshot://pre-action-act-jarvis-778459b5631f466fbde52d59939d41d6",
+        "credential_boundary_preserved": true
+      },
+      "status": "success"
     },
     "verified": true
   },

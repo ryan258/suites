@@ -182,7 +182,35 @@
       }
     ]
   },
-  "reconciliation_status": "suite_local_intake_phases_validated",
-  "brand_workshop_read": false,
-  "external_runtime_invoked": false
+  "reconciliation_status": "workshop_aligned_intake_validated",
+  "brand_workshop_read": true,
+  "external_runtime_invoked": false,
+  "workshop_phases": [
+    "00-spark",
+    "01-discovery",
+    "02-strategy",
+    "03-identity",
+    "04-language",
+    "05-expression",
+    "06-system",
+    "07-launch",
+    "08-living-brand"
+  ],
+  "workshop_fingerprint": {
+    "branch": "main",
+    "head": "a49af8115691113c1eea77e9949ed95ea4cb5174",
+    "short": "main@a49af81",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "f26c653f90f543ceb46c1af36d27c3ad101046b3d88a0e7c642bb83c3a08411c",
+    "tested_files_fingerprint": {
+      "pyproject.toml": "a6ebbee7c6bffed12b822354b3fd8ca118bccab3d3e5acd4e7d709b47b2bef78",
+      "README.md": "c9bcacb15a78ac32307b34d98b0b02b28661b5bc220ad29b6af5b2a828e450db",
+      "brand_workshop/phases.py": "54afb7a9df121613cc1ca642331721e8cd914595e5da3dd44bf698457057eecd"
+    },
+    "target_state": "clean_commit"
+  },
+  "all_stages_passed": true
 }

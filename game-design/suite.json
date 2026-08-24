@@ -42,7 +42,7 @@
       "runtime_followup": "Re-run the donor simulator to regenerate the sample instead of fingerprinting its retained run.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "game_version_fingerprint",
@@ -64,7 +64,7 @@
       "runtime_followup": "Materialize the pack, run it in Storyweaver, and compare independently generated statistics to the donor sample.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "pack",
@@ -84,7 +84,7 @@
       "runtime_followup": "Re-audit if authored content ever gains a pack export path.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "authored_inventory",
@@ -104,7 +104,7 @@
       "runtime_followup": "Generate the adventure pack through Storyweaver itself and diff the written gds slots.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "pack",
@@ -123,7 +123,7 @@
       "runtime_followup": "Re-audit if the simulation is ever scheduled for a port into the suite.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "boundary",

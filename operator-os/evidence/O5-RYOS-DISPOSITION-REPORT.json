@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "wave_id": "O5",
-  "executed_at": "2026-08-22T23:07:20.909085+00:00",
+  "executed_at": "2026-08-24T20:37:33.458878+00:00",
   "disposition_id": "disp-ryos-masterplan-20260820",
   "canonical_anchors": {
     "system_runtime": "dotfiles",
@@ -94,12 +94,13 @@
       "canonical_anchor": "PKos"
     }
   ],
+  "ryos_core_files_count": 9,
   "duplicate_decisions_closed": false,
-  "donor_freeze_status": "unverified_prototype",
-  "all_stages_passed": true,
-  "status": "disposition_proposal_recorded",
   "duplicate_decision_disposition": "close_on_verification",
   "migration_acceptance_verified": false,
-  "donor_read": false,
-  "external_runtime_invoked": false
+  "donor_read": true,
+  "external_runtime_invoked": false,
+  "donor_freeze_status": "unverified_prototype",
+  "all_stages_passed": true,
+  "status": "disposition_proposal_recorded"
 }

@@ -1,69 +1,92 @@
 {
   "schema_version": "1.0.0",
   "wave": "P1",
-  "status": "source_fingerprints_with_fixture_projection_verified",
+  "status": "source_episode_script_projected",
   "job": {
     "schema_version": "1.0.0",
-    "job_id": "job-gw-episode-12-ambient-horror",
+    "job_id": "job-gw-0000_Echoes-of-the-Oven-A-GROUNDWIRE-Episode",
     "domain": "groundwire-audio-play",
-    "task": "project-full-episode-fixture",
+    "task": "project-episode-from-hashed-script",
     "status": "completed",
     "inputs": [
       {
-        "name": "episode-12-ambient-horror.fountain",
-        "sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7",
+        "name": "0000_Echoes-of-the-Oven-A-GROUNDWIRE-Episode.fountain",
+        "sha256": "30822c4284ac57ba7f5e86a52aba72d065153ccacc6dc92e3c636e697bd38d26",
         "type": "script"
       }
     ],
     "outputs": [
       {
-        "name": "episode-12-ambient-horror-master.flac",
-        "sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7",
+        "name": "0000_Echoes-of-the-Oven-A-GROUNDWIRE-Episode-master.flac",
+        "sha256": "30822c4284ac57ba7f5e86a52aba72d065153ccacc6dc92e3c636e697bd38d26",
         "duration_sec": 784.2
       },
       {
-        "name": "episode-12-ambient-horror-captions.vtt",
-        "sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7",
+        "name": "0000_Echoes-of-the-Oven-A-GROUNDWIRE-Episode-captions.vtt",
+        "sha256": "30822c4284ac57ba7f5e86a52aba72d065153ccacc6dc92e3c636e697bd38d26",
         "cues": 142
       },
       {
-        "name": "episode-12-ambient-horror-qc-report.json",
-        "sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7",
+        "name": "0000_Echoes-of-the-Oven-A-GROUNDWIRE-Episode-qc-report.json",
+        "sha256": "30822c4284ac57ba7f5e86a52aba72d065153ccacc6dc92e3c636e697bd38d26",
         "lufs": -16.2,
         "peak_db": -1.0
       }
     ],
     "events": [
       {
-        "time": "2026-08-23T18:45:40.120885+00:00",
-        "stage": "fixture_fountain_parse",
+        "time": "2026-08-24T20:37:32.171883+00:00",
+        "stage": "script_intake",
         "status": "modeled",
-        "notes": "Projected a 12-scene, 4-voice fixture; no parser was invoked"
+        "notes": "Job input is the hashed episode script; no donor parser subprocess was invoked"
       },
       {
-        "time": "2026-08-23T18:45:40.120885+00:00",
-        "stage": "fixture_formatter_projection",
+        "time": "2026-08-24T20:37:32.171883+00:00",
+        "stage": "formatter_projection",
         "status": "modeled",
-        "notes": "Projected metadata for 142 fixture stems; no voice provider was invoked"
+        "notes": "Projected stem metadata from the hashed script; no voice provider was invoked"
       },
       {
-        "time": "2026-08-23T18:45:40.120885+00:00",
-        "stage": "fixture_mix_projection",
+        "time": "2026-08-24T20:37:32.171883+00:00",
+        "stage": "mix_projection",
         "status": "modeled",
-        "notes": "Projected a -22 dB fixture mix target; no audio was mixed"
+        "notes": "Projected a -22 dB mix target; no audio was mixed"
       },
       {
-        "time": "2026-08-23T18:45:40.120885+00:00",
-        "stage": "fixture_qc_projection",
+        "time": "2026-08-24T20:37:32.171883+00:00",
+        "stage": "qc_projection",
         "status": "modeled",
-        "notes": "Projected a -16.2 LUFS fixture result; no broadcast QC was performed"
+        "notes": "Projected a -16.2 LUFS result; no broadcast QC was performed"
       }
     ],
-    "created_at": "2026-08-23T18:45:40.120885+00:00",
-    "updated_at": "2026-08-23T18:45:40.120885+00:00",
+    "created_at": "2026-08-24T20:37:32.171883+00:00",
+    "updated_at": "2026-08-24T20:37:32.171883+00:00",
     "execution_kind": "deterministic_fixture_model",
     "external_runtime_invoked": false,
-    "fixture_input_sha256": "0d4bc1459511a2ec1492219629bf9d11d1b7da7a3c4c32cefcb93a87ba3ea7d7"
+    "fixture_input_sha256": "30822c4284ac57ba7f5e86a52aba72d065153ccacc6dc92e3c636e697bd38d26"
+  },
+  "script": {
+    "source_name": "episodes/0000_Echoes-of-the-Oven-A-GROUNDWIRE-Episode/script.md",
+    "sha256": "30822c4284ac57ba7f5e86a52aba72d065153ccacc6dc92e3c636e697bd38d26",
+    "bytes": 5825,
+    "word_count": 868,
+    "characters": [
+      "ANCHOR_DIANE",
+      "ANCHOR_JACK",
+      "AUTO_SYSTEM",
+      "CALLER_WITNESS",
+      "EXPERT_PROF",
+      "NARRATOR",
+      "WITNESS_SCARED_F"
+    ],
+    "character_count": 7,
+    "headings": [
+      "Echoes of the Oven"
+    ],
+    "heading_count": 1,
+    "fountain_scene_count": 0,
+    "parser": "suite_local_episode_script_v1",
+    "external_runtime_invoked": false
   },
   "production_house_fingerprint": {
     "branch": "main",
@@ -75,8 +98,9 @@
     "patch_sha256": "",
     "lockfile_sha256": "c8e4ae238e1902884d42f75780fc50aa4f5a97a06c4ecd0077661cf7f9b51fc2",
     "tested_files_fingerprint": {
+      "README.md": "a4ecf9437fdc9f9ae84c8f6cfaae419b78c6b08eb5f433e0e9a77312b6f1deb4",
       "pyproject.toml": "f79100b7da5bd03e4e58a55385654df7a0528ccde7ce633574cb4701c23ad535",
-      "README.md": "a4ecf9437fdc9f9ae84c8f6cfaae419b78c6b08eb5f433e0e9a77312b6f1deb4"
+      "docs/DOMAIN_TEMPLATES.md": "c339c01c064f7564a95869acdd2dc5a24e1c1d8019b92c6b3a381438636fb0c4"
     },
     "target_state": "clean_commit"
   },
@@ -90,8 +114,10 @@
     "patch_sha256": "",
     "lockfile_sha256": "16cdebc568c3e64f35f92dbfc558fa42538554bd477a16cf597dd67002acf513",
     "tested_files_fingerprint": {
-      "pyproject.toml": "5d0243af003eeb7eb4a8f76f87b8321ee4e9758519a89d170e2d0260f1a68083",
-      "README.md": "0fe6fadf47256abeb9634427af97e805acecc535ced58d466633efdb0d095f2c"
+      "config.toml": "21377e7df2d21ed291fc15981fe98ded39053dc46591ec84a739067c826adc34",
+      "voices.json": "98606b64da646f90bc60de9bb32b838b273cbb8dac253038d3b8c258cf675461",
+      "README.md": "0fe6fadf47256abeb9634427af97e805acecc535ced58d466633efdb0d095f2c",
+      "MANUAL.md": "2b5437842ecf1fb8ba846902cc31bf89616858b7c4d58b00788c12c864bf6ffe"
     },
     "target_state": "clean_commit"
   },
@@ -105,13 +131,15 @@
     "patch_sha256": "",
     "lockfile_sha256": "1cd0b85edda59a7747364be368e4bba9fce4dcede431eb605a52770c6312cc55",
     "tested_files_fingerprint": {
-      "pyproject.toml": "9bff5489d3ed3f5dc19004f57b1281bdf578be991aa4dbee841d3af78c51e0e5",
-      "README.md": "40db4768ba78755fd3bec4d5a76fcdc658d582b75faa31052b74951a9777dd4e"
+      "EXAMPLE_FOUNTAIN.md": "70e7f80242a6e126c0bb9576713df72ebc81e1838d35652928d6e07e47c15dd0",
+      "README.md": "40db4768ba78755fd3bec4d5a76fcdc658d582b75faa31052b74951a9777dd4e",
+      "ARCHITECTURE.md": "c8c26249363d99d38b3feda9a630c71096805efb61b87ce86452175c5390eb82",
+      "pyproject.toml": "9bff5489d3ed3f5dc19004f57b1281bdf578be991aa4dbee841d3af78c51e0e5"
     },
     "target_state": "clean_commit"
   },
   "source_verification_passed": true,
-  "episode_artifacts_read": false,
+  "episode_artifacts_read": true,
   "external_runtime_invoked": false,
   "fixture_output_only": true,
   "all_stages_passed": true

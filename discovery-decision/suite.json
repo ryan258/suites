@@ -46,7 +46,7 @@
       "runtime_followup": "Execute both runtimes on one question and diff their stage outputs, rather than mapping retained artifacts.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "matrix",
@@ -67,7 +67,7 @@
       "runtime_followup": "Run the red-team stage live inside Forge with consent and resume gates, not a carried artifact.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "investigation",
@@ -88,7 +88,7 @@
       "runtime_followup": "Run the Excavator discovery path to produce the real claims, novelty, and uncertainty measures.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "document_excerpts",
@@ -110,7 +110,7 @@
       "runtime_followup": "Run analogy synthesis live in deep mode with real call-budget accounting.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "investigation",
@@ -131,7 +131,7 @@
       "runtime_followup": "Forge ingests Excavator sources directly and the owner approves the disposition; only then is the standalone runtime retired.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "folded_investigation",

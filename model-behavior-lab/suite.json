@@ -50,7 +50,7 @@
       "runtime_followup": "Re-run the donor experiment runner live instead of normalizing a stored result file.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "canonical_run",
@@ -70,7 +70,7 @@
       "runtime_followup": "Implement the shared slice and delete the duplicated donor subsystems; this gate only measures them.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "packs",
@@ -109,7 +109,7 @@
       "runtime_followup": "Score full match transcripts and tactical puzzles, not the first ply of each match.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "canonical_run",
@@ -128,7 +128,7 @@
       "runtime_followup": "Prove the manifest re-runs a historical evaluation end to end from its pinned hashes.",
       "recovery_claim": {
         "kind": "analysis",
-        "level": "prototype",
+        "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
           "corpus_manifest",

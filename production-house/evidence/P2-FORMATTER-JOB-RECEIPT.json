@@ -1,51 +1,69 @@
 {
   "schema_version": "1.0.0",
   "wave": "P2",
-  "status": "fixture_output_projection_verified",
+  "status": "source_play_projected",
   "job": {
     "schema_version": "1.0.0",
-    "job_id": "job-gw-ep12-formatter",
-    "domain": "groundwire-formatter-fixture-projection",
-    "task": "project-formatter-output-fixture",
+    "job_id": "job-gw-formatter-play",
+    "domain": "groundwire-formatter-source-projection",
+    "task": "project-hashed-formatter-play",
     "status": "completed",
     "inputs": [
       {
-        "name": "script.fountain",
+        "name": "plays/the-echo.md",
         "type": "script",
-        "sha256": "8a2f2f71c5966d4323f4ea20e3e4a3e8df3d3ee181bac0ab07034d1b0d33db24"
+        "sha256": "12c0b30b34973725b87a25d22e5c50a7dbbc809b620a16a153a8a6cd4303c617"
       }
     ],
     "outputs": [
       {
-        "name": "stems.zip",
+        "name": "the-echo-stems.zip",
         "type": "audio_stems",
-        "sha256": "18fc84960df3aced78524ce6d7a9b1c9b1a0e9118e7d21f440bf61413d986eed"
+        "sha256": "16f118b0f83f2c5d4ef7e07d63cb31f8f67bdfc8ef7eea2d143cb6f618feaecd"
       }
     ],
     "events": [
       {
-        "time": "2026-08-23T18:45:40.405252+00:00",
+        "time": "2026-08-24T20:37:32.315805+00:00",
         "stage": "initialization",
         "status": "job_created"
       },
       {
-        "time": "2026-08-23T18:45:40.406482+00:00",
-        "stage": "formatter_fixture_preparation",
+        "time": "2026-08-24T20:37:32.316694+00:00",
+        "stage": "formatter_source_intake",
         "status": "running",
-        "notes": "Prepared deterministic formatter adapter fixture; external formatter not invoked"
+        "notes": "Hashed plays/the-echo.md; external formatter not invoked"
       },
       {
-        "time": "2026-08-23T18:45:40.406575+00:00",
-        "stage": "fixture_output_projection",
+        "time": "2026-08-24T20:37:32.316779+00:00",
+        "stage": "formatter_output_projection",
         "status": "completed",
-        "notes": "Projected a deterministic fixture artifact; no ElevenLabs synthesis was performed"
+        "notes": "Projected a content-addressed output from the hashed play; no ElevenLabs synthesis was performed"
       }
     ],
-    "created_at": "2026-08-23T18:45:40.405252+00:00",
-    "updated_at": "2026-08-23T18:45:40.406575+00:00",
-    "execution_kind": "deterministic_fixture_projection",
+    "created_at": "2026-08-24T20:37:32.315805+00:00",
+    "updated_at": "2026-08-24T20:37:32.316779+00:00",
+    "execution_kind": "source_script_projection",
     "external_runtime_invoked": false,
     "fixture_output_only": true
+  },
+  "script": {
+    "source_name": "plays/the-echo.md",
+    "sha256": "12c0b30b34973725b87a25d22e5c50a7dbbc809b620a16a153a8a6cd4303c617",
+    "bytes": 18926,
+    "word_count": 3444,
+    "characters": [
+      "ANNA",
+      "MEMO",
+      "NARRATOR",
+      "THEO"
+    ],
+    "character_count": 4,
+    "headings": [],
+    "heading_count": 0,
+    "fountain_scene_count": 3,
+    "parser": "suite_local_episode_script_v1",
+    "external_runtime_invoked": false
   },
   "formatter_fingerprint": {
     "branch": "v3",
@@ -57,8 +75,10 @@
     "patch_sha256": "",
     "lockfile_sha256": "1cd0b85edda59a7747364be368e4bba9fce4dcede431eb605a52770c6312cc55",
     "tested_files_fingerprint": {
-      "pyproject.toml": "9bff5489d3ed3f5dc19004f57b1281bdf578be991aa4dbee841d3af78c51e0e5",
-      "README.md": "40db4768ba78755fd3bec4d5a76fcdc658d582b75faa31052b74951a9777dd4e"
+      "EXAMPLE_FOUNTAIN.md": "70e7f80242a6e126c0bb9576713df72ebc81e1838d35652928d6e07e47c15dd0",
+      "README.md": "40db4768ba78755fd3bec4d5a76fcdc658d582b75faa31052b74951a9777dd4e",
+      "ARCHITECTURE.md": "c8c26249363d99d38b3feda9a630c71096805efb61b87ce86452175c5390eb82",
+      "pyproject.toml": "9bff5489d3ed3f5dc19004f57b1281bdf578be991aa4dbee841d3af78c51e0e5"
     },
     "target_state": "clean_commit"
   },

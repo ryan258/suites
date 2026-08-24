@@ -1,71 +1,117 @@
 {
   "schema_version": "1.0.0",
   "wave": "P5",
-  "status": "fixture_event_projection_verified",
+  "status": "source_event_stream_projected",
   "mapping": {
-    "story_id": "arc-season-3",
+    "story_id": "writers-room-pipelines",
     "mapped_job": {
       "schema_version": "1.0.0",
-      "job_id": "job-wr-arc-season-3",
+      "job_id": "job-wr-writers-room-pipelines",
       "domain": "writers-room-fixture-projection",
       "task": "project-collaborative-scene-fixtures",
       "status": "completed",
       "inputs": [
         {
-          "name": "arc-season-3-manifest.json",
+          "name": "writers-room-pipelines-manifest.json",
           "type": "writers_room_manifest",
-          "sha256": "c9fa389b8454a4b8a6feefdbd5a308ec22984676ff15fef8a30982aff2846e64"
+          "sha256": "0851bf39d344226163b519eec03d3e74d5c1c662ea38180aa0a99d4928a89080"
         }
       ],
       "outputs": [
         {
-          "name": "scene-1-rev-1.fountain",
-          "author": "Ryan",
-          "sha256": "802ba013c67a41a16858e768b27eb38681781e45b6f958d3b50bdd224f8831cf"
+          "name": "scene-1-260409_the-obituary-that-came-too-soon.fountain",
+          "author": "writers-room-donor",
+          "sha256": "a9bb510d0eeadc1694135a494aee401511bdb31f69fe9d83fc7819d8a69e6873"
         },
         {
-          "name": "scene-2-rev-2.fountain",
-          "author": "Ryan",
-          "sha256": "f4af61f46cf2d586b8a2ae8e24496283a9233c5e60604a50288cdd70bd098470"
+          "name": "scene-2-260512_a-private-investigator-takes-a-missing_14.fountain",
+          "author": "writers-room-donor",
+          "sha256": "dad4d264253b910afbf1d4625eba519237623a1ef502c2c76df72506c9001974"
         },
         {
-          "name": "arc-season-3-final-screenplay.fountain",
+          "name": "scene-3-260512_the-ballroom-s-breath_161803779286.fountain",
+          "author": "writers-room-donor",
+          "sha256": "5f6f38b4c53d923c156e93ec820a4621ab3496f18b45a094770edf2e4c3911e5"
+        },
+        {
+          "name": "scene-4-260512_the-night-janitor-finds-fresh-muddy_14173.fountain",
+          "author": "writers-room-donor",
+          "sha256": "bb9013d405943bdc90c4889cd2737058a1133ccc5f39c91848fa5d1322416367"
+        },
+        {
+          "name": "writers-room-pipelines-final-screenplay.fountain",
           "type": "modeled_production_ready_script",
-          "sha256": "4b792346e387e41bb53a645be8a6a2d191f2578f7919f8d9c64ec3ed3af7658b"
+          "sha256": "9afd746b79bd78ba927463b73e2a028fe830cbdea7549320e0a758bc1ef1e294"
         }
       ],
       "events": [
         {
-          "time": "2026-08-23T18:45:40.952242+00:00",
+          "time": "2026-08-24T20:37:32.784322+00:00",
           "stage": "initialization",
           "status": "job_created"
         },
         {
-          "time": "2026-08-23T18:45:40.952704+00:00",
-          "stage": "scene_1_revision_rev-1",
+          "time": "2026-08-24T20:37:32.784928+00:00",
+          "stage": "scene_1_revision_260409_the-obituary-that-came-too-soon",
           "status": "running",
-          "notes": "Initial intro dialogue"
+          "notes": "The Obituary That Came Too Soon \u2014 Status"
         },
         {
-          "time": "2026-08-23T18:45:40.952787+00:00",
-          "stage": "scene_2_revision_rev-2",
+          "time": "2026-08-24T20:37:32.785016+00:00",
+          "stage": "scene_2_revision_260512_a-private-investigator-takes-a-missing_14",
           "status": "running",
-          "notes": "Added ambient sound cue"
+          "notes": "260512 a-private-investigator-takes-a-missing 143324604595 final \u2014 Status"
         },
         {
-          "time": "2026-08-23T18:45:40.952878+00:00",
+          "time": "2026-08-24T20:37:32.785105+00:00",
+          "stage": "scene_3_revision_260512_the-ballroom-s-breath_161803779286",
+          "status": "running",
+          "notes": "The Ballroom's Breath \u2014 Status"
+        },
+        {
+          "time": "2026-08-24T20:37:32.785200+00:00",
+          "stage": "scene_4_revision_260512_the-night-janitor-finds-fresh-muddy_14173",
+          "status": "running",
+          "notes": "260512 the-night-janitor-finds-fresh-muddy 141736038519 final \u2014 Status"
+        },
+        {
+          "time": "2026-08-24T20:37:32.785312+00:00",
           "stage": "fixture_assembly_complete",
           "status": "completed",
           "notes": "Fixture revisions were assembled; no Writers Room signoff or synthesis was performed."
         }
       ],
-      "created_at": "2026-08-23T18:45:40.952242+00:00",
-      "updated_at": "2026-08-23T18:45:40.952878+00:00"
+      "created_at": "2026-08-24T20:37:32.784322+00:00",
+      "updated_at": "2026-08-24T20:37:32.785312+00:00"
     },
     "reconciliation": "suite_fixture_events_projected_into_production_job",
     "runtime_consolidation": "not_performed",
     "writers_room_runtime_invoked": false,
-    "signoff_observed": false
+    "signoff_observed": false,
+    "source_revision_count": 4,
+    "source_paths": [
+      "pipelines/260409_the-obituary-that-came-too-soon/status.md",
+      "pipelines/260512_a-private-investigator-takes-a-missing_143324604595/status.md",
+      "pipelines/260512_the-ballroom-s-breath_161803779286/status.md",
+      "pipelines/260512_the-night-janitor-finds-fresh-muddy_141736038519/status.md"
+    ]
+  },
+  "writers_room_fingerprint": {
+    "branch": "v3.0",
+    "head": "6d315c5296aad81c85b622f389e11ad10a799d8e",
+    "short": "v3.0@6d315c5",
+    "is_dirty": false,
+    "dirty_files_count": 0,
+    "dirty_files": [],
+    "patch_sha256": "",
+    "lockfile_sha256": "fbd4dad136428c8a3ef7829f1968ce868d1a6a308fd66968bf0035c1f38fa7ed",
+    "tested_files_fingerprint": {
+      "PIPELINE.md": "18e75d41f090f722fa88db5d7301b166e8822dd40c009aff485a5d68729bca19",
+      "README.md": "af930f5dd5a286cc70ad3d0f51859de04691da674a7161aea299e4010b08cf63",
+      "main.py": "d7fc43355eaa0e21ee6e476ce6bee48d27e962ab4f84005d833ff5ef81894dc7",
+      "pyproject.toml": "6079cd537e53e2424a1684c4c8cb540c581998053337eb96c5a6d785a3d919b1"
+    },
+    "target_state": "clean_commit"
   },
   "writers_room_runtime_invoked": false,
   "runtime_consolidation_performed": false,

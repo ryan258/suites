@@ -1,34 +1,52 @@
 {
   "schema_version": "1.0.0",
   "wave": "P3",
-  "status": "fixture_handoff_projection_verified",
+  "status": "source_handoff_projected",
   "job": {
     "schema_version": "1.0.0",
-    "job_id": "job-gw-ep12-handoff",
-    "domain": "writers-room-handoff-fixture-projection",
-    "task": "validate-fixture-story-state-shape",
+    "job_id": "job-wr-handoff-source",
+    "domain": "writers-room-handoff-source-projection",
+    "task": "validate-hashed-story-state-shape",
     "status": "queued",
     "inputs": [
       {
-        "name": "arc-season-2.fountain",
-        "version": "1.2.0",
-        "status": "fixture_input_not_observed_signoff",
-        "sha256": "501dab7a7149502177d4eaf3f2112640af754b24865fb5f0b65e7a6bf37acf78"
+        "name": "final/260409_the-desert-ridge-herald-a-mockumentary_final.md",
+        "version": "source",
+        "status": "source_input_signoff_not_observed",
+        "sha256": "2ffc6b5b79721a56368324a5bb37b8819ccf9aefafa1eb5c81c4f51a02bc85f4"
       }
     ],
     "outputs": [],
     "events": [
       {
-        "time": "2026-08-23T18:45:40.780703+00:00",
+        "time": "2026-08-24T20:37:32.462407+00:00",
         "stage": "initialization",
         "status": "job_created"
       }
     ],
-    "created_at": "2026-08-23T18:45:40.780703+00:00",
-    "updated_at": "2026-08-23T18:45:40.780703+00:00",
-    "execution_kind": "deterministic_fixture_projection",
+    "created_at": "2026-08-24T20:37:32.462407+00:00",
+    "updated_at": "2026-08-24T20:37:32.462407+00:00",
+    "execution_kind": "source_script_projection",
     "external_runtime_invoked": false,
     "signoff_observed": false
+  },
+  "script": {
+    "source_name": "final/260409_the-desert-ridge-herald-a-mockumentary_final.md",
+    "sha256": "2ffc6b5b79721a56368324a5bb37b8819ccf9aefafa1eb5c81c4f51a02bc85f4",
+    "bytes": 5233,
+    "word_count": 802,
+    "characters": [],
+    "character_count": 0,
+    "headings": [
+      "The Desert Ridge Herald: A Mockumentary",
+      "Scene 1: The Gnome That Wasn\u2019t Gone",
+      "Scene 2: The Meeting That Scheduled Itself",
+      "Scene 3: The Sanity That Was Found"
+    ],
+    "heading_count": 4,
+    "fountain_scene_count": 0,
+    "parser": "suite_local_episode_script_v1",
+    "external_runtime_invoked": false
   },
   "writers_room_fingerprint": {
     "branch": "v3.0",
@@ -40,8 +58,10 @@
     "patch_sha256": "",
     "lockfile_sha256": "fbd4dad136428c8a3ef7829f1968ce868d1a6a308fd66968bf0035c1f38fa7ed",
     "tested_files_fingerprint": {
-      "pyproject.toml": "6079cd537e53e2424a1684c4c8cb540c581998053337eb96c5a6d785a3d919b1",
-      "README.md": "af930f5dd5a286cc70ad3d0f51859de04691da674a7161aea299e4010b08cf63"
+      "PIPELINE.md": "18e75d41f090f722fa88db5d7301b166e8822dd40c009aff485a5d68729bca19",
+      "README.md": "af930f5dd5a286cc70ad3d0f51859de04691da674a7161aea299e4010b08cf63",
+      "main.py": "d7fc43355eaa0e21ee6e476ce6bee48d27e962ab4f84005d833ff5ef81894dc7",
+      "pyproject.toml": "6079cd537e53e2424a1684c4c8cb540c581998053337eb96c5a6d785a3d919b1"
     },
     "target_state": "clean_commit"
   },
