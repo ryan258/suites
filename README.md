@@ -26,14 +26,15 @@ CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
 WORK STATE: 43/43 waves complete (42 analysis milestones + 1 runtime wave)
-EVIDENCE PROMOTION: 34 prototype | 1 reviewed historical | 7 source inspected | 0 source executed
+EVIDENCE PROMOTION: 4 prototype | 1 reviewed historical | 37 source inspected | 0 source executed
                     1 parity verified | 0 adopted | 0 converged | 0 resolved
 OUTSTANDING: 42/43 completed waves still owe a live run
 ```
 
 Those are two independent axes and both are load-bearing. The first says every scheduled analysis
-milestone is finished. The second says what those milestones demonstrated, and most of them
-demonstrated a suite-owned fixture rather than a recovered product. A completed wave at
+milestone is finished. The second says what those milestones demonstrated: most waves now parse
+authentic donor artifacts (`source_inspected`), four remain suite-local fixtures (`A5`, `B3`,
+`B4`, `B6`), and one runtime recovery (`A2`) is at `parity_verified`. A completed wave at
 `prototype` is a finished piece of work and is not a recovery; nothing here has reached adoption,
 convergence, or retirement approval.
 
@@ -115,7 +116,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --full
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --record --full
 
 # Run the suite engines directly (Toolbench surface)
-PYTHONPATH=src python3 -m portfolio_suites engine                       # list all 49 actions
+PYTHONPATH=src python3 -m portfolio_suites engine                       # list all 50 actions
 PYTHONPATH=src python3 -m portfolio_suites engine accessibility          # list one suite's actions
 PYTHONPATH=src python3 -m portfolio_suites engine accessibility audit_html_snippet \
   --args '{"html_content": "<img src=hero.png>"}'

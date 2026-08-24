@@ -231,7 +231,7 @@ are shaped.
 
 ## Act III — Meet the Engines
 
-49 reviewed actions across eight suites. `engine` with no arguments prints the whole catalog with
+50 reviewed actions across eight suites. `engine` with no arguments prints the whole catalog with
 signatures; every action below came from that list.
 
 ### 21. Print the entire action catalog
@@ -240,7 +240,7 @@ signatures; every action below came from that list.
 PYTHONPATH=src python3 -m portfolio_suites engine
 ```
 
-Look for: eight suites, 49 actions, each with its parameters and what it emits. Adding a method to
+Look for: eight suites, 50 actions, each with its parameters and what it emits. Adding a method to
 an engine class does *not* add it here — the registry is explicit, so nothing becomes remotely
 invocable by accident.
 
@@ -621,7 +621,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave --all
 ```
 
 Look for: 43 results in about ten seconds, ending in a summary line that counts each outcome kind
-separately. Without `--full` you should see 34 prototype checks passed, 8 verified analyses, and one fast probe — the fast
+separately. Without `--full` you should see 4 prototype checks passed, 38 verified analyses, and one fast probe — the fast
 probe is `A2`, which is the only wave with a runtime claim and declines to assert it from a
 shallow run. If your machine cannot open the browser runtime `A2` needs, that line instead reports
 an unverifiable environment, which is an honest "cannot check" rather than a failure.

@@ -24,11 +24,11 @@ These figures are restated from the registry and are verified against it by
 
 Milestone progress above is the scheduling axis. What those milestones demonstrated is the
 promotion axis, and it is reported separately because the two move independently — 43/43 complete
-coexists with 34 claims that have only exercised a suite-owned fixture:
+coexists with 4 claims that have only exercised a suite-owned fixture:
 
-- **34/43 prototype-level claims** — suite-owned fixture or reference logic only.
+- **4/43 prototype-level claims** — suite-owned fixture or reference logic only (`A5`, `B3`, `B4`, `B6`).
 - **1/43 reviewed historical analysis** — `A1`, a hand-authored decision whose structure is checked.
-- **7/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
+- **37/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
 - **0/43 source-executed claims** — `source_executed` and above are runtime-only rungs. `O1`'s
   gate does import and run authentic donor PKos code, but its retained analysis receipt records
   what that code produced rather than the invocation itself, so the claim is capped at
@@ -42,7 +42,7 @@ coexists with 34 claims that have only exercised a suite-owned fixture:
 
 ## Functional Launchpad Surface
 
-The local CLI and browser launchpad now expose all 49 reviewed engine actions, strict preflighted
+The local CLI and browser launchpad now expose all 50 reviewed engine actions, strict preflighted
 action chains, the contract workbench, manifest and evidence views, project inventory, drift and
 validation reports, ephemeral wave execution, and the optional free-first OpenRouter assistant.
 The browser never receives the provider credential, uses no remote font or script dependency, and
@@ -88,7 +88,7 @@ The remaining work is discharging those obligations, per suite:
 | Accessibility | 6/6 waves | 5 outstanding | Port evaluated rules into the TypeScript runtime; verify overlay consolidation in a real browser; obtain owner approval before any donor freeze. |
 | Operator OS | 6/6 waves | 6 outstanding | Execute the assigned Ryos ports in `dotfiles` with tests; scale live PKos intake into the permanent vault; drive JARVIS actions against real side effects. |
 | Brand + Publishing | 6/6 waves | 6 outstanding | Export from the real Brand Maker runtime into a consumer outside this repo; implement the mapped phase gates; replace the simulated approval gate with human signoff. |
-| Production House | 5/5 waves | 5 outstanding | Fingerprint real episode artifacts; invoke the formatter on a real script slice; take Writers Room story state through the live runtime. |
+| Production House | 5/5 waves | 5 outstanding | Invoke the formatter and Groundwire render on the hashed episode scripts; take Writers Room story state through the live runtime including signoff. |
 | Model Behavior Lab | 5/5 waves | 5 outstanding | Re-run donor experiment runners live; implement the shared comparator slice and delete the duplicated subsystems; replay whole matches. |
 | Discovery + Decision | 5/5 waves | 5 outstanding | Execute SIF and Forge on the same question and diff stages; run red-team and analogy stages live with budget accounting. |
 | Agent Reliability | 5/5 waves | 5 outstanding | Execute fixtures against live agent loops inside each harness runtime; confirm runtime imports of shared components. |

@@ -53,7 +53,7 @@ Milestone status and promotion level are two independent axes and must be report
 is `specified`, in progress, or analysis-complete on the first; it sits at one of the levels above
 on the second. A completed analysis wave may hold `prototype` — finishing scheduled work is not a
 claim about what that work demonstrated — but no report may present the first axis alone, because
-"43/43 complete" and "35 of those exercised only a fixture" are both true and only one of them is
+"43/43 complete" and "4 of those exercised only a fixture" are both true and only one of them is
 reassuring. Only `runtime` claims are barred from completing at `prototype`.
 
 The three levels between `prototype` and `parity_verified` exist because one name for all of them

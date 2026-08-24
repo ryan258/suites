@@ -12,6 +12,27 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-24 — Donor-backed wave implementations, honest promotions, launchpad parser
+
+Replaced fixture-only Production House, Brand B5, and Operator OS O4/O5 gates with authentic
+donor artifact inspection, and promoted every wave that already parsed donor source to
+`source_inspected` instead of leaving it labelled as a suite-local fixture:
+
+- **Production House P1–P5:** parse real Groundwire episode scripts, formatter plays, and
+  Writers Room finals/pipeline status files into `ProductionJob`. Outputs remain modeled;
+  no formatter, audio, or Writers Room runtime is invoked.
+- **Brand B5:** nine-phase intake is aligned to live Brand Workshop phase ids.
+- **Operator OS O4/O5:** intake now hashes donor READMEs; disposition is built from the live
+  O2 inventory. O3/O6 inspect JARVIS backend source files.
+- **Launchpad:** `parse_episode_script` is a reviewed read-only engine action (50 actions).
+  Accessibility `audit_rule_families` adds language-of-page, unlabeled-input, and empty-heading
+  rules from the A4 backlog.
+- **Promotion axis:** 4 prototype (`A5`, `B3`, `B4`, `B6`) | 1 historical | 37 source inspected |
+  0 source executed | 1 parity verified (`A2`) | 0 adopted | 0 converged. 42/43 waves still owe
+  a live runtime follow-up. No donor repository was modified.
+
+---
+
 ## 2026-08-24 — Validator keyword closure, receipt-verification module split, standing gate
 
 Control-plane hardening with no change to the ledger, manifests, or any retained evidence:
