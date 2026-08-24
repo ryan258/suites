@@ -12,6 +12,26 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-24 — Validator keyword closure, receipt-verification module split, standing gate
+
+Control-plane hardening with no change to the ledger, manifests, or any retained evidence:
+
+- **Published-schema `additionalProperties` is now enforced.** The dependency-free validator
+  implemented `properties` but silently ignored the `additionalProperties` keyword declared by
+  every published contract schema. It now rejects unknown fields under `false` and validates
+  them against a schema form; all six contracts currently declare `true`, so behavior is
+  unchanged today and future tightening is actually machine-checked.
+- **`validate_contract` deduplication:** BrandPackage semver and ExperimentRun version checks
+  ran twice verbatim in one function; the second copies are gone.
+- **Registry split:** receipt verification (~1,100 lines) moved out of `registry.py` into
+  `receipts.py`, and adopted policy vocabulary into `recovery_policy.py`. Registry keeps its
+  public import surface unchanged, so CLI, server, wave runner, and tests are untouched.
+  `docs/GLOSSARY.md` maps each governance concept to the function that enforces it.
+- **Standing gate:** `.githooks/pre-commit` runs fast registry validation plus the checked
+  docs commands (<1s). Opt in with `git config core.hooksPath .githooks`.
+
+---
+
 ## 2026-08-24 — OpenRouter custom-endpoint credential pin
 
 `OPENROUTER_API_KEY` is refused at any non-`openrouter.ai` `OPENROUTER_BASE_URL`. A custom
