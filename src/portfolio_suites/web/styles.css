@@ -894,6 +894,26 @@ body {
   line-height: 1.4;
 }
 
+.next-move-command {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text-main);
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.wave-followup {
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 2px solid var(--badge-yellow-text);
+}
+
 .wave-actions {
   display: flex;
   align-items: center;
@@ -1080,4 +1100,12 @@ body.modal-open {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* A custom endpoint is a different recipient than the one this pane is named for, so the
+   disclosure has to be visible before the operator submits, not only in the backend log. */
+.ai-destination-warning {
+  border-color: var(--red, #b3261e);
+  color: var(--red, #b3261e);
+  font-weight: 600;
 }

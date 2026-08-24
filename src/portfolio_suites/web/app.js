@@ -288,7 +288,38 @@ class SuitesApp {
     if (sum) {
       document.getElementById('stat-waves').textContent = `${sum.completed_waves}/${sum.total_waves}`;
       document.getElementById('card-progress-pct').textContent = `${sum.validated_completed_claims}/${sum.total_waves}`;
-      document.getElementById('card-progress-bar').style.width = `${sum.evidence_health_pct || 0}%`;
+      const evidencePct = sum.evidence_health_pct || 0;
+      document.getElementById('card-progress-bar').style.width = `${evidencePct}%`;
+      const progressMeter = document.getElementById('card-progress-meter');
+      if (progressMeter) {
+        progressMeter.setAttribute('aria-valuenow', String(Math.round(evidencePct)));
+        progressMeter.setAttribute('aria-valuetext', `${sum.validated_completed_claims} of ${sum.total_waves} retained claims valid`);
+      }
+      // The promotion ladder, highest rung first. "1 parity verified or higher" next to
+      // "35 prototype" is the sentence the overview was missing; a single completion
+      // percentage cannot say it. The headline counts the rung *and everything above it*:
+      // reading `parity_verified` alone made a successful promotion to `adopted` drop the
+      // number from 1 to 0, reporting improved recovery maturity as a regression.
+      const levels = sum.promotion_counts || {};
+      const headline = document.getElementById('card-promotion-headline');
+      const breakdown = document.getElementById('card-promotion-breakdown');
+      if (headline) {
+        const atParityOrHigher = ['parity_verified', 'adopted', 'converged']
+          .reduce((total, level) => total + (levels[level] || 0), 0);
+        headline.textContent = `${atParityOrHigher} parity verified or higher`;
+      }
+      if (breakdown) {
+        breakdown.textContent = [
+          `${levels.prototype || 0} prototype`,
+          `${levels.reviewed_historical_analysis || 0} reviewed historical`,
+          `${levels.source_inspected || 0} source inspected`,
+          `${levels.source_executed || 0} source executed`,
+          `${levels.adopted || 0} adopted`,
+          `${levels.converged || 0} converged`,
+          `${sum.resolved_capabilities || 0} resolved`,
+        ].join(' · ');
+        breakdown.className = (levels.prototype || 0) ? 'subtext subtext-warn' : 'subtext';
+      }
       document.getElementById('card-total-projects').textContent = sum.total_projects;
       document.getElementById('card-suite-projects').textContent = sum.total_projects - sum.independent_projects;
       document.getElementById('card-ind-projects').textContent = sum.independent_projects;
@@ -305,9 +336,12 @@ class SuitesApp {
       }
     }
 
+    // This badge only ever reported whether the registry parses and validates. Calling that
+    // "Health" invited it to be read as recovery health, which is a different and much worse
+    // number: the registry is structurally valid while 35 claims sit at prototype.
     const healthBadge = document.getElementById('stat-health');
     if (valRes && valRes.ok) {
-      healthBadge.textContent = 'HEALTHY';
+      healthBadge.textContent = 'VALID';
       healthBadge.className = 'pill-badge badge-green';
     } else {
       healthBadge.textContent = 'DRIFT / WARN';
@@ -315,7 +349,56 @@ class SuitesApp {
     }
   }
 
+  renderNextMove() {
+    const card = document.getElementById('next-move-card');
+    if (!card) return;
+    // Same ranking the CLI uses: lowest promotion level first, then manifest order. A
+    // prototype-level claim has the furthest left to climb, so it is the move that moves
+    // the honest number rather than the completion percentage.
+    const rank = [
+      'specified', 'prototype', 'reviewed_historical_analysis', 'source_inspected',
+      'source_executed', 'parity_verified', 'adopted', 'converged',
+    ];
+    // `/api/waves` records, not `/api/suites` manifests. `claim_level` and
+    // `runtime_followup_command` are added by the server only to the enriched wave payload,
+    // so ranking the raw manifests read both as undefined: every wave scored 'specified'
+    // and no backend command could ever be shown.
+    const owing = [];
+    for (const wave of this.state.waves) {
+      if (wave.status === 'complete' && wave.runtime_followup) {
+        owing.push({ wave, level: wave.claim_level || 'specified' });
+      }
+    }
+    owing.sort((a, b) => (rank.indexOf(a.level) - rank.indexOf(b.level)) || ((a.wave.order || 0) - (b.wave.order || 0)));
+    const target = document.getElementById('next-move-target');
+    const level = document.getElementById('next-move-level');
+    const owes = document.getElementById('next-move-owes');
+    const command = document.getElementById('next-move-command');
+    if (!owing.length) {
+      target.textContent = 'No completed wave owes a live run.';
+      level.textContent = '';
+      owes.textContent = '';
+      command.textContent = '';
+      return;
+    }
+    const head = owing[0];
+    target.textContent = `${head.wave.suite_id} / ${head.wave.wave_id}`;
+    level.textContent = head.level.replace(/_/g, ' ');
+    owes.textContent = `Owes: ${head.wave.runtime_followup}`;
+    // Only a runner that declares a deeper mode gets a command. `--full` is silently
+    // dropped for every other wave, so advertising it here offered a move that reruns the
+    // retained preview and discharges nothing.
+    command.textContent = head.wave.runtime_followup_command
+      || 'No command discharges this yet — the wave\'s runner has no deeper mode. '
+       + 'This is hands-on work against the real runtime named above.';
+    command.className = head.wave.runtime_followup_command
+      ? 'next-move-command mono-cell'
+      : 'next-move-command subtext';
+    owes.className = 'subtext subtext-warn';
+  }
+
   renderOverview() {
+    this.renderNextMove();
     const container = document.getElementById('suites-overview-grid');
     if (!container) return;
 
@@ -388,20 +471,31 @@ class SuitesApp {
 
           <h4 style="font-size: 12px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px;">Migration Waves</h4>
           <div class="waves-grid">
-            ${(s.waves || []).map(w => `
+            ${(s.waves || []).map(w => {
+              // Two badges, never one. The green "complete" pill is the work axis; the level
+              // pill beside it is what the wave demonstrated, and a card showing only the
+              // first renders 35 fixture-level claims as a finished green suite.
+              const level = (w.recovery_claim || {}).level || 'specified';
+              const levelClass = level === 'prototype' ? 'badge-yellow'
+                : level === 'parity_verified' || level === 'adopted' || level === 'converged' ? 'badge-green'
+                : 'badge-blue';
+              return `
               <div class="wave-card">
                 <div class="wave-card-header">
                   <span class="wave-id-badge">${escapeHtml(s.id)} / ${escapeHtml(w.id)}</span>
                   <span class="pill-badge ${w.status === 'complete' ? 'badge-green' : 'badge-yellow'}">${escapeHtml(w.status)}</span>
+                  <span class="pill-badge ${levelClass}" title="Evidence promotion level">${escapeHtml(level.replace(/_/g, ' '))}</span>
                 </div>
                 <div class="wave-objective">${escapeHtml(w.objective)}</div>
                 <div class="wave-acceptance">${escapeHtml(w.acceptance)}</div>
+                ${w.runtime_followup ? `<div class="wave-followup subtext subtext-warn"><strong>Still owes a live run:</strong> ${escapeHtml(w.runtime_followup)}</div>` : ''}
                 <div class="wave-actions">
                   <button class="btn btn-sm btn-primary" data-app-action="run-wave" data-suite-id="${escapeHtml(s.id)}" data-wave-id="${escapeHtml(w.id)}">Run Wave Gate</button>
                   ${w.evidence ? `<button class="btn btn-sm btn-secondary" data-app-action="view-evidence" data-evidence="${escapeHtml(w.evidence)}">View Evidence</button>` : ''}
                 </div>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
         </div>
       `;
@@ -452,23 +546,30 @@ class SuitesApp {
     if (!tbody) return;
 
     const driftCount = this.state.drift.filter(d => d.has_drift).length;
+    const incompleteCount = this.state.drift.filter(d => d.untracked_incomplete).length;
     if (summaryBar) {
       summaryBar.innerHTML = `<div style="margin-bottom: 12px; font-size: 13px; color: var(--text-muted);">
         <strong>${escapeHtml(driftCount)}</strong> out of <strong>${escapeHtml(this.state.drift.length)}</strong> monitored repositories have working tree changes or branch/HEAD drift from recorded baseline.
+        <strong>${escapeHtml(incompleteCount)}</strong> have an incomplete untracked-content fingerprint and are unresolved, never in sync.
       </div>`;
     }
 
     tbody.innerHTML = this.state.drift.map(d => {
+      const incompleteReasons = (d.untracked_incomplete_reasons || []).join(', ');
+      const statusClass = d.untracked_incomplete ? 'badge-red' : d.has_drift ? 'badge-yellow' : 'badge-green';
+      const statusLabel = d.untracked_incomplete ? 'FINGERPRINT INCOMPLETE' : d.has_drift ? 'DRIFT DETECTED' : 'IN SYNC';
       return `
         <tr>
           <td><strong class="mono-cell">${escapeHtml(d.name)}</strong></td>
           <td>${d.primary_suite ? `<span class="suite-tag">${escapeHtml(d.primary_suite)}</span>` : '-'}</td>
           <td class="mono-cell">${escapeHtml(d.snapshot_branch)}@${escapeHtml(d.snapshot_head)} (${escapeHtml(d.snapshot_lines)} files)</td>
           <td class="mono-cell">${escapeHtml(d.current_branch)}@${escapeHtml(d.current_head)} (${escapeHtml(d.current_lines)} files)</td>
-          <td><span class="mono-cell">${escapeHtml(d.current_lines)} changed line(s)</span></td>
+          <td><span class="mono-cell">${d.untracked_incomplete
+            ? `Untracked fingerprint unresolved: ${escapeHtml(incompleteReasons || 'unknown reason')}`
+            : `${escapeHtml(d.current_lines)} changed item(s)`}</span></td>
           <td>
-            <span class="pill-badge ${d.has_drift ? 'badge-yellow' : 'badge-green'}">
-              ${d.has_drift ? 'DRIFT DETECTED' : 'IN SYNC'}
+            <span class="pill-badge ${statusClass}">
+              ${statusLabel}
             </span>
           </td>
         </tr>
@@ -541,6 +642,29 @@ class SuitesApp {
     runButton.disabled = !status.configured;
     const boundary = document.getElementById('ai-evidence-boundary');
     if (status.evidence_boundary) boundary.textContent = status.evidence_boundary;
+
+    // The consent surface has to name the host that actually receives the request. While
+    // this pane hardcoded OpenRouter, an operator could opt a custom endpoint in and send
+    // sensitive context to it with every visible label still saying OpenRouter.
+    const host = status.destination_host || '';
+    const custom = status.configured && status.provider_is_openrouter === false;
+    const title = document.getElementById('ai-pane-title');
+    const warning = document.getElementById('ai-destination-warning');
+    const contextNote = document.getElementById('ai-context-destination');
+    if (title) {
+      title.textContent = custom ? `Custom Endpoint Assistant (${host})` : 'Free OpenRouter Assistant';
+    }
+    if (warning) {
+      warning.hidden = !custom;
+      warning.textContent = custom
+        ? `Requests and context go to ${host}, not OpenRouter. This custom destination was `
+          + 'enabled by explicit opt-in and uses its own credential. Review what you send.'
+        : '';
+    }
+    if (contextNote) {
+      contextNote.textContent = `Context is sent to ${custom ? host : 'OpenRouter'} as untrusted `
+        + 'reference data. Nothing is collected automatically from your projects.';
+    }
     this.updateAIModel();
   }
 
@@ -580,7 +704,9 @@ class SuitesApp {
     }
     button.disabled = true;
     button.textContent = 'Asking…';
-    statusBox.innerHTML = '<span class="pill-badge badge-blue">OPENROUTER</span> Requesting provider-assisted output…';
+    const destination = this.state.aiStatus?.destination_host || 'openrouter.ai';
+    statusBox.innerHTML = `<span class="pill-badge badge-blue">${escapeHtml(destination.toUpperCase())}</span> `
+      + 'Requesting provider-assisted output…';
     answer.textContent = '';
     meta.textContent = '';
     try {
@@ -596,13 +722,20 @@ class SuitesApp {
         `${result.provider} / ${result.resolved_model}`,
         `suite=${result.suite_id}`,
         `role=${result.role}`,
-        result.free_only ? 'free-only route' : 'paid routes allowed',
+        result.zero_cost_confirmed === true
+          ? 'zero cost confirmed'
+          : result.zero_cost_confirmed === false
+            ? 'cost reported: billed'
+            : result.free_only_requested
+              ? 'free-only requested; cost unconfirmed'
+              : 'paid routes allowed; cost unconfirmed',
         'model-assisted',
         'human review required'
       ].join(' · ');
       statusBox.innerHTML = '<span class="result-success">Response received. Review it before use; it is not deterministic evidence.</span>';
       answer.focus();
-      this.announce(`OpenRouter returned model-assisted ${role} guidance for ${suiteId}; human review is required.`);
+      this.announce(`${result.destination_host || result.provider} returned model-assisted ${role} `
+        + `guidance for ${suiteId}; human review is required.`);
     } catch (error) {
       const code = error.body?.error?.code ? `${error.body.error.code}: ` : '';
       statusBox.innerHTML = `<span class="result-error">${escapeHtml(code + error.message)}</span>`;
@@ -687,31 +820,40 @@ class SuitesApp {
     statusBox.innerHTML = `<span class="pill-badge badge-blue">RUNNING</span> ${escapeHtml(suiteId)}/${escapeHtml(waveId)} (ephemeral; retained evidence unchanged)`;
     try {
       const res = await this.fetchJSON(`/api/waves/${encodeURIComponent(suiteId)}/${encodeURIComponent(waveId)}/run`, { method: 'POST' });
-      const resultLabel = res.execution_kind === 'verified_runtime_recovery' && res.passed
-        ? 'VERIFIED RUNTIME RECOVERY'
-        : res.execution_kind === 'verified_source_execution' && res.passed
-          ? 'VERIFIED SOURCE EXECUTION'
-        : res.execution_kind === 'verified_adoption' && res.passed
-          ? 'VERIFIED ADOPTION'
-        : res.execution_kind === 'verified_convergence' && res.passed
-          ? 'VERIFIED CONVERGENCE'
-        : res.execution_kind === 'verified_resolution' && res.passed
-          ? 'VERIFIED RESOLUTION'
-        : res.execution_kind === 'verified_analysis' && res.passed
-          ? 'VERIFIED ANALYSIS'
-        : res.execution_kind === 'prototype_check' && res.prototype_passed
-          ? 'PROTOTYPE CHECK PASSED'
-          : res.execution_kind === 'unverifiable_environment'
-            ? 'UNVERIFIABLE IN THIS ENVIRONMENT'
-          : res.execution_kind === 'unintegrated_specification'
-            ? 'SPECIFIED / NOT INTEGRATED'
-            : 'FAILED';
-      const resultClass = res.passed || res.prototype_passed
+      // Every execution_kind the runner can emit has a label here. A chain of conditions
+      // ending in `: 'FAILED'` treats an unlisted kind as a failure, which is how a passing
+      // A2 fast probe rendered as "FAILED · FAST PROBE PASSED" -- styled green by `passed`
+      // and captioned red by the fallthrough. A lookup makes a missing kind visible as a
+      // missing kind instead of silently reading as failure.
+      const PASSED_LABELS = {
+        verified_runtime_recovery: 'VERIFIED RUNTIME RECOVERY',
+        verified_source_execution: 'VERIFIED SOURCE EXECUTION',
+        verified_adoption: 'VERIFIED ADOPTION',
+        verified_convergence: 'VERIFIED CONVERGENCE',
+        verified_resolution: 'VERIFIED RESOLUTION',
+        verified_analysis: 'ANALYSIS GATE PASSED',
+        fast_probe: 'FAST PROBE PASSED',
+        prototype_check: 'PROTOTYPE CHECK PASSED',
+      };
+      const NEUTRAL_LABELS = {
+        unverifiable_environment: 'UNVERIFIABLE IN THIS ENVIRONMENT',
+        unintegrated_specification: 'SPECIFIED / NOT INTEGRATED',
+        unverifiable_evidence: 'RETAINED EVIDENCE INVALID',
+        error: 'ERROR',
+      };
+      const gatePassed = res.passed || res.prototype_passed;
+      const resultLabel = gatePassed
+        ? (PASSED_LABELS[res.prototype_passed ? 'prototype_check' : res.execution_kind] || `PASSED (${res.execution_kind})`)
+        : (NEUTRAL_LABELS[res.execution_kind] || 'FAILED');
+      // The gate outcome and what the wave claims are different questions, so the label
+      // carries both: a passing gate on a prototype-level claim is still a prototype.
+      const promotion = res.claim_level ? ` · claim: ${res.claim_level}` : '';
+      const resultClass = gatePassed
         ? 'result-success'
         : res.execution_kind === 'unverifiable_environment'
           ? 'result-warn'
           : 'result-error';
-      statusBox.innerHTML = `<span class="${resultClass}">${escapeHtml(resultLabel)} · ${escapeHtml(suiteId)}/${escapeHtml(waveId)} · ${escapeHtml(res.message)}</span>`;
+      statusBox.innerHTML = `<span class="${resultClass}">${escapeHtml(resultLabel)}${escapeHtml(promotion)} · ${escapeHtml(suiteId)}/${escapeHtml(waveId)} · ${escapeHtml(res.message)}</span>`;
       this.announce(`${suiteId}/${waveId}: ${resultLabel}. Retained evidence was not changed.`);
       await this.refreshData();
     } catch (err) {
@@ -744,7 +886,10 @@ class SuitesApp {
           `/api/waves/${encodeURIComponent(wave.sId)}/${encodeURIComponent(wave.wId)}/run`,
           { method: 'POST' }
         );
-        if (res.passed || res.prototype_passed) {
+        if (res.prototype_passed) {
+          // A prototype claim is never a verified analysis, whatever execution_kind says.
+          counts.set('prototype_check', (counts.get('prototype_check') || 0) + 1);
+        } else if (res.passed) {
           counts.set(res.execution_kind, (counts.get(res.execution_kind) || 0) + 1);
         } else if (res.execution_kind === 'unverifiable_environment') {
           environmentBlockedCount += 1;

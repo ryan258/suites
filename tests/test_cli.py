@@ -2,6 +2,7 @@ import io
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from portfolio_suites.cli import main
 
@@ -25,7 +26,15 @@ class CLITests(unittest.TestCase):
         self.assertIn("Portfolio snapshot", output)
         self.assertIn("Top-level directories reviewed: 70", output)
         self.assertIn("Recovery standard: 9.0/10 target", output)
-        self.assertIn("1 runtime recovery, 42 analysis, 0 adopted, 0 converged", output)
+        # Both axes, and specifically the prototype count: the milestone line alone reads
+        # as a recovered portfolio, which is the reporting defect this asserts against.
+        self.assertIn("Wave milestone progress: 43/43", output)
+        self.assertIn("Completed analysis milestones: 42", output)
+        self.assertIn(
+            "Evidence promotion: 34 prototype, 1 reviewed historical, 7 source inspected, "
+            "0 source executed, 1 parity verified, 0 adopted, 0 converged, 0 resolved",
+            output,
+        )
 
     def test_next_command(self):
         f = io.StringIO()
@@ -88,7 +97,8 @@ class CLITests(unittest.TestCase):
             code = main(["wave", "accessibility", "A1", "--no-record"])
         self.assertEqual(code, 0)
         output = f.getvalue()
-        self.assertIn("[ANALYSIS]", output)
+        self.assertIn("[HISTORICAL]", output)
+        self.assertIn("claim=reviewed_historical_analysis", output)
 
     def test_wave_run_no_record(self):
         f = io.StringIO()
@@ -96,7 +106,7 @@ class CLITests(unittest.TestCase):
             code = main(["wave", "model-behavior-lab", "M1", "--no-record"])
         self.assertEqual(code, 0)
         output = f.getvalue()
-        self.assertIn("[ANALYSIS]", output)
+        self.assertIn("[PROTOTYPE]", output)
 
     def test_wave_run_is_ephemeral_by_default(self):
         evidence = Path("accessibility/evidence/A2-WCAG-331-EVIDENCE.json")
@@ -124,14 +134,36 @@ class CLITests(unittest.TestCase):
             code = main(["wave", "--all", "--no-record"])
         output = f.getvalue()
         self.assertIn(code, {0, 2})
-        self.assertIn("42 verified analyses", output)
-        self.assertIn("0 prototype checks passed", output)
+        self.assertIn("8 verified analyses", output)
+        self.assertIn("34 prototype checks passed", output)
         self.assertIn("0 runtime recoveries", output)
         if code == 0:
             self.assertIn("1 fast probes", output)
         else:
             self.assertIn("[UNVERIFIABLE]", output)
             self.assertIn("1 environment-unverifiable", output)
+
+    def test_drift_command_surfaces_incomplete_untracked_fingerprint(self):
+        incomplete = {
+            "name": "donor",
+            "has_drift": True,
+            "snapshot_branch": "main",
+            "snapshot_head": "abc123",
+            "current_branch": "main",
+            "current_head": "abc123",
+            "current_lines": 0,
+            "untracked_incomplete": True,
+            "untracked_incomplete_reasons": ["untracked_path_enumeration_failed"],
+            "status_unfingerprinted": False,
+            "patch_unfingerprinted": False,
+        }
+        output = io.StringIO()
+        with patch("portfolio_suites.cli.get_live_drift_report", return_value=[incomplete]):
+            with redirect_stdout(output):
+                code = main(["drift"])
+        self.assertEqual(code, 0)
+        self.assertIn("UNRESOLVED", output.getvalue())
+        self.assertIn("untracked_path_enumeration_failed", output.getvalue())
 
 
 class WaveExitStatusTests(unittest.TestCase):

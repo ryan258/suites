@@ -18,10 +18,12 @@ from .ai import (
 )
 from .chains import ChainError, run_chain
 from .engine_actions import EngineActionError, list_actions, run_action
-from .paths import PROJECTS_ROOT
+from .paths import PROJECTS_ROOT, CommitUnverified
 from .provenance import is_sensitive_path
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
 from .registry import (
+    RECOVERY_PROMOTION_LEVELS,
+    LedgerConflict,
     fingerprint_baselines,
     get_live_drift_report,
     get_portfolio_summary,
@@ -57,12 +59,24 @@ def _status() -> int:
     print(f"Top-level directories reviewed: {summary['total_projects']}")
     print(f"Recovery standard: {summary['recovery_target_score']:.1f}/10 target ({summary['recovery_standard_id']})")
     print(f"Wave milestone progress: {summary['completed_waves']}/{summary['total_waves']} ({summary['portfolio_progress_pct']}%; not a recovery score)")
+    # Milestone progress says how much was scheduled and finished. Promotion says how much
+    # each finished milestone demonstrated. Printing only the first reads as a recovered
+    # portfolio, which is why both lines are here and the second is the longer one.
+    levels = summary["promotion_counts"]
     print(
-        "Verified claims: "
-        f"{summary['recovered_runtime_behaviors']} runtime recovery, "
-        f"{summary['verified_analysis_milestones']} analysis, "
-        f"{summary['adopted_runtime_behaviors']} adopted, "
-        f"{summary['converged_runtime_behaviors']} converged"
+        f"Completed analysis milestones: {summary['completed_analysis_milestones']} "
+        f"(evidence promotion below, not recovery)"
+    )
+    print(
+        "Evidence promotion: "
+        f"{levels['prototype']} prototype, "
+        f"{levels['reviewed_historical_analysis']} reviewed historical, "
+        f"{levels['source_inspected']} source inspected, "
+        f"{levels['source_executed']} source executed, "
+        f"{levels['parity_verified']} parity verified, "
+        f"{levels['adopted']} adopted, "
+        f"{levels['converged']} converged, "
+        f"{summary['resolved_capabilities']} resolved"
     )
     print(
         f"Retained evidence: {summary['validated_completed_claims']}/{summary['completed_waves']} "
@@ -111,9 +125,38 @@ def _next() -> int:
         ]
         print("All migration waves across all 8 suites are scheduled complete.")
         if outstanding:
-            print(f"{len(outstanding)} completed wave(s) still owe runtime follow-up:")
-            for suite_id, wave in outstanding:
-                print(f"  {suite_id} / {wave['id']}: {wave['runtime_followup']}")
+            # A flat list of 42 follow-up strings is a debt count wearing a list's clothes:
+            # nothing in it says which one to do. Ranking is by the lowest promotion level
+            # first (a prototype claim has the furthest to climb), then by manifest order,
+            # so `next` can name one move and the command that runs it.
+            rank = {level: index for index, level in enumerate(RECOVERY_PROMOTION_LEVELS)}
+            ordered = sorted(
+                outstanding,
+                key=lambda item: (
+                    rank.get((item[1].get("recovery_claim") or {}).get("level"), len(rank)),
+                    item[1].get("order", 0),
+                ),
+            )
+            head_suite, head_wave = ordered[0]
+            head_level = (head_wave.get("recovery_claim") or {}).get("level", "specified")
+            print()
+            print(f"NEXT RECOVERY MOVE: {head_suite} / {head_wave['id']} (currently {head_level})")
+            print(f"  owes: {head_wave['runtime_followup']}")
+            command = WaveRunner.full_depth_command(head_suite, head_wave["id"])
+            if command:
+                print(f"  run:  {command}")
+            else:
+                # The wave's own runner has no deeper mode, so `--full` would be silently
+                # dropped and reproduce the retained preview. Naming a command that cannot
+                # discharge the debt is worse than naming none.
+                print("  run:  no command discharges this yet — the wave's runner has no")
+                print("        deeper mode, so `--full` would re-run the existing preview.")
+                print("        This is hands-on work against the real runtime named above.")
+            print()
+            print(f"{len(outstanding)} completed wave(s) still owe runtime follow-up, lowest promotion first:")
+            for suite_id, wave in ordered:
+                level = (wave.get("recovery_claim") or {}).get("level", "specified")
+                print(f"  [{level:<28}] {suite_id} / {wave['id']}: {wave['runtime_followup']}")
         return 0
     for _, suite_id, wave in sorted(candidates):
         print(f"{suite_id} / {wave['id']}: {wave['objective']}")
@@ -212,13 +255,13 @@ def _contract_cmd(name: str, action: str, file_path: str | None) -> int:
 def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_evidence: bool, full: bool) -> int:
     if run_all or (not suite_id and not wave_id):
         results = WaveRunner.run_all(write_evidence=write_evidence, full=full)
-        runtime_count = sum(1 for r in results if r.execution_kind == "verified_runtime_recovery" and r.passed)
-        analysis_count = sum(1 for r in results if r.execution_kind == "verified_analysis" and r.passed)
-        source_count = sum(1 for r in results if r.execution_kind == "verified_source_execution" and r.passed)
-        adoption_count = sum(1 for r in results if r.execution_kind == "verified_adoption" and r.passed)
-        convergence_count = sum(1 for r in results if r.execution_kind == "verified_convergence" and r.passed)
-        resolution_count = sum(1 for r in results if r.execution_kind == "verified_resolution" and r.passed)
-        prototype_count = sum(1 for r in results if r.execution_kind == "prototype_check" and r.prototype_passed)
+        runtime_count = sum(1 for r in results if r.execution_kind == "verified_runtime_recovery" and r.passed and not r.prototype_passed)
+        analysis_count = sum(1 for r in results if r.execution_kind == "verified_analysis" and r.passed and not r.prototype_passed)
+        source_count = sum(1 for r in results if r.execution_kind == "verified_source_execution" and r.passed and not r.prototype_passed)
+        adoption_count = sum(1 for r in results if r.execution_kind == "verified_adoption" and r.passed and not r.prototype_passed)
+        convergence_count = sum(1 for r in results if r.execution_kind == "verified_convergence" and r.passed and not r.prototype_passed)
+        resolution_count = sum(1 for r in results if r.execution_kind == "verified_resolution" and r.passed and not r.prototype_passed)
+        prototype_count = sum(1 for r in results if r.prototype_passed)
         # Every kind that actually ran a gate: if one of these did not pass, the run found a
         # product failure. `fast_probe` belongs here too -- it is a wave that executed and
         # came back failing, and leaving it out let a printed [FAIL] exit 0.
@@ -244,10 +287,14 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
             for r in results
             if write_evidence and r.record_status in {"read_only", "ineligible"}
         )
+        record_unverified_count = sum(
+            1 for r in results if write_evidence and r.record_status == "committed_unverified"
+        )
 
         for r in results:
-            tag = format_wave_tag(r.execution_kind, r.passed, r.prototype_passed)
-            print(f"{tag:<12} {r.suite_id:<20} {r.wave_id:<4} : {r.message}")
+            tag = format_wave_tag(r.execution_kind, r.passed, r.prototype_passed, r.claim_level)
+            promotion = f"claim={r.claim_level}" if r.claim_level else "claim=unclassified"
+            print(f"{tag:<12} {r.suite_id:<20} {r.wave_id:<4} {promotion:<36} : {r.message}")
         print("-" * 65)
         print(
             f"Results: {runtime_count} runtime recoveries, {analysis_count} verified analyses, "
@@ -261,20 +308,39 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         if write_evidence:
             print(
                 f"Recording: {sum(1 for r in results if r.record_status == 'recorded')} written, "
-                f"{record_rejected_count} rejected, {record_incomplete_count} unsupported/ineligible."
+                f"{record_rejected_count} rejected, {record_unverified_count} committed but unverified, "
+                f"{record_incomplete_count} unsupported/ineligible."
             )
         if failed_count or unintegrated_count or error_count or record_rejected_count:
             return EXIT_FAILED
-        return EXIT_INCOMPLETE if unverifiable_count or record_incomplete_count else EXIT_OK
+        return (
+            EXIT_INCOMPLETE
+            if unverifiable_count or record_incomplete_count or record_unverified_count
+            else EXIT_OK
+        )
 
     if not suite_id or not wave_id:
         print("Error: Specify suite and wave (e.g. 'suites wave accessibility A2') or '--all'", file=sys.stderr)
         return 1
 
     result = WaveRunner.run_wave(suite_id, wave_id, write_evidence=write_evidence, full=full)
-    tag = format_wave_tag(result.execution_kind, result.passed, result.prototype_passed)
-    print(f"{tag} {result.suite_id} / {result.wave_id} ({result.execution_kind}): {result.message}")
-    if result.record_note:
+    tag = format_wave_tag(
+        result.execution_kind,
+        result.passed,
+        result.prototype_passed,
+        result.claim_level,
+    )
+    promotion = f"; claim={result.claim_level}" if result.claim_level else ""
+    print(
+        f"{tag} {result.suite_id} / {result.wave_id} "
+        f"({result.execution_kind}{promotion}): {result.message}"
+    )
+    if result.record_status == "committed_unverified":
+        print(
+            f"Evidence commit UNVERIFIED: {result.record_note}. "
+            "Do not assume the prior receipt was retained."
+        )
+    elif result.record_note:
         print(f"Evidence NOT written: {result.record_note}. Prior receipt retained.")
     elif result.evidence_path and write_evidence:
         print(f"Evidence recorded at: {result.evidence_path}")
@@ -282,6 +348,8 @@ def _wave_cmd(suite_id: str | None, wave_id: str | None, run_all: bool, write_ev
         return EXIT_INCOMPLETE
     if write_evidence and result.record_status == "candidate_rejected":
         return EXIT_FAILED
+    if write_evidence and result.record_status == "committed_unverified":
+        return EXIT_INCOMPLETE
     if write_evidence and result.record_status in {"read_only", "ineligible"}:
         return EXIT_INCOMPLETE
     return EXIT_OK if result.passed or result.prototype_passed else EXIT_FAILED
@@ -294,7 +362,17 @@ def _drift() -> int:
     print("-" * 75)
     for d in drift_items:
         if d["has_drift"]:
-            print(f"DRIFT {d['name']:<30} snap={d['snapshot_branch']}@{d['snapshot_head']} live={d['current_branch']}@{d['current_head']} (dirty={d['current_lines']})")
+            if d.get("untracked_incomplete"):
+                reasons = ", ".join(
+                    d.get("untracked_incomplete_reasons") or ["unknown reason"]
+                )
+                print(
+                    f"UNRESOLVED {d['name']:<25} untracked fingerprint incomplete: {reasons}; "
+                    f"snap={d['snapshot_branch']}@{d['snapshot_head']} "
+                    f"live={d['current_branch']}@{d['current_head']}"
+                )
+            else:
+                print(f"DRIFT {d['name']:<30} snap={d['snapshot_branch']}@{d['snapshot_head']} live={d['current_branch']}@{d['current_head']} (dirty={d['current_lines']})")
     if not drifted:
         print("All monitored repositories match baseline snapshot.")
     unfingerprinted = [
@@ -310,7 +388,17 @@ def _drift() -> int:
 
 
 def _baseline(dry_run: bool, accept: bool) -> int:
-    updated = fingerprint_baselines(dry_run, accept)
+    try:
+        updated = fingerprint_baselines(dry_run, accept)
+    except LedgerConflict as conflict:
+        print(f"Error: {conflict}", file=sys.stderr)
+        return EXIT_FAILED
+    except CommitUnverified as unverified:
+        # The ledger was replaced; only its durability is unconfirmed. Saying "not written"
+        # here would send the operator looking for a change that is already on disk.
+        print(f"Warning: {unverified}", file=sys.stderr)
+        print("The new ledger is in place. Re-run after confirming the filesystem is healthy.", file=sys.stderr)
+        return EXIT_INCOMPLETE
     if not updated:
         print(
             "Baselines already accept live state; nothing to record."

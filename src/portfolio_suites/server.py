@@ -328,6 +328,14 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                             "evidence_errors": evidence_status["evidence_errors"],
                             "claim_kind": claim.get("kind"),
                             "claim_level": claim.get("level"),
+                            # The registry knows exactly which live run each completed wave
+                            # still owes. Dropping it here left the dashboard able to report
+                            # "42 follow-ups remain" with no way to see any of them.
+                            "runtime_followup": w.get("runtime_followup", ""),
+                            # Whether a deeper run is even runnable is a property of the
+                            # runner, and only the backend can see it. Without this the
+                            # browser had to guess, and it guessed `--full` for every wave.
+                            "runtime_followup_command": WaveRunner.full_depth_command(s_id, w_id),
                             "verification_depth": "retained_receipt" if is_passed else "none",
                             "runner_available": has_runner,
                             "execution_kind": exec_kind,
@@ -451,12 +459,22 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 # Ephemeral execution by default; only mutate evidence files on explicit record request
                 res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=record_param, full=full_param)
                 status_code = 404 if res.execution_kind == "error" else 200
+                # A gate outcome alone does not say how much the wave claims to have shown,
+                # so the run result carries the promotion level the caller should display
+                # beside it.
+                ran_suite = get_suite(suite_id) or {}
+                ran_wave = next(
+                    (w for w in ran_suite.get("waves", []) if w.get("id") == wave_id), {}
+                )
                 self._send_json(status_code, {
                     "suite_id": res.suite_id,
                     "wave_id": res.wave_id,
                     "passed": res.passed,
                     "prototype_passed": res.prototype_passed,
                     "execution_kind": res.execution_kind,
+                    "claim_kind": res.claim_kind,
+                    "claim_level": res.claim_level,
+                    "runtime_followup": ran_wave.get("runtime_followup", ""),
                     "message": res.message,
                     "record_requested": record_param,
                     "recorded": res.record_status == "recorded",

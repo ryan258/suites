@@ -62,6 +62,23 @@ class WebSecurityTests(unittest.TestCase):
         self.assertIn('data-app-action="run-wave"', app_source)
         self.assertIn("event.target.closest('[data-app-action]')", app_source)
 
+    def test_drift_dashboard_never_renders_incomplete_fingerprint_as_in_sync(self):
+        app_source = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+        self.assertIn("untracked_incomplete", app_source)
+        self.assertIn("untracked_incomplete_reasons", app_source)
+        self.assertIn("FINGERPRINT INCOMPLETE", app_source)
+
+    def test_browser_never_counts_a_prototype_as_a_verified_analysis(self):
+        """The CLI keys prototype_count off prototype_passed; the browser must agree."""
+        app_source = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+        self.assertNotIn("if (res.passed || res.prototype_passed) {", app_source)
+        self.assertIn("if (res.prototype_passed) {", app_source)
+        self.assertIn("counts.set('prototype_check'", app_source)
+        self.assertIn(
+            "PASSED_LABELS[res.prototype_passed ? 'prototype_check' : res.execution_kind]",
+            app_source,
+        )
+
     def test_escape_html_behavior_neutralizes_hostile_xss_payloads(self):
         """Execute escapeHtml directly in Node to test behavioral neutralization of injection vectors."""
         if not shutil.which("node"):

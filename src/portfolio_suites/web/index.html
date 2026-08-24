@@ -39,7 +39,7 @@
         <span class="pill-val" id="stat-waves">-</span>
       </div>
       <div class="metric-pill">
-        <span class="pill-label">Health</span>
+        <span class="pill-label">Registry validity</span>
         <span class="pill-badge badge-green" id="stat-health">CHECKING</span>
       </div>
     </div>
@@ -171,11 +171,13 @@
       <section id="tab-ai" class="tab-pane">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Free OpenRouter Assistant</h1>
+            <h1 class="pane-title" id="ai-pane-title">Free OpenRouter Assistant</h1>
             <p class="pane-desc">Provider-assisted drafting, analysis, and review for a named suite. Deterministic engines and retained receipts remain authoritative.</p>
           </div>
           <span class="pill-badge badge-yellow" id="ai-provider-status">CHECKING</span>
         </div>
+
+        <div class="ai-boundary ai-destination-warning" id="ai-destination-warning" role="alert" hidden></div>
 
         <div class="ai-boundary" id="ai-evidence-boundary">
           Model output requires human review and never becomes migration, parity, accessibility-conformance, adoption, or publication evidence.
@@ -218,7 +220,7 @@
             <div class="card">
               <label class="form-label" for="ai-context">Optional reference context</label>
               <textarea id="ai-context" class="context-editor" maxlength="75000" spellcheck="false" placeholder="Paste only the material you intend to send. Never paste credentials or private keys."></textarea>
-              <p class="subtext">Context is sent to OpenRouter as untrusted reference data. Nothing is collected automatically from your projects.</p>
+              <p class="subtext" id="ai-context-destination">Context is sent to OpenRouter as untrusted reference data. Nothing is collected automatically from your projects.</p>
             </div>
           </div>
 
@@ -284,10 +286,32 @@
               <span class="stat-icon">📈</span>
             </div>
             <div class="stat-number" id="card-progress-pct">0%</div>
-            <div class="progress-bar-container">
+            <div
+              class="progress-bar-container"
+              role="progressbar"
+              id="card-progress-meter"
+              aria-labelledby="card-progress-pct"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            >
               <div class="progress-bar-fill" id="card-progress-bar" style="width: 0%;"></div>
             </div>
             <div class="subtext" id="card-runtime-debt"></div>
+          </div>
+
+          <!-- The second axis. The tile above is retained-receipt validity; this one is how
+               much those receipts demonstrated, which is the number a reader assumes the
+               first tile is already telling them. -->
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Evidence Promotion</span>
+              <span class="stat-icon">🪜</span>
+            </div>
+            <div class="stat-number" id="card-promotion-headline">-</div>
+            <div class="stat-footer">
+              <span class="subtext" id="card-promotion-breakdown"></span>
+            </div>
           </div>
 
           <div class="stat-card">
@@ -299,6 +323,23 @@
             <div class="stat-footer">
               <span class="subtext">Strict JSON Schema & Version Enforced</span>
             </div>
+          </div>
+        </div>
+
+        <!-- One move, not a debt count. An overview that reports "42 follow-ups remain" and
+             stops has told the operator the size of the problem and nothing about where to
+             start; this names the single lowest-promotion wave and the command that runs it. -->
+        <div class="section-block">
+          <div class="section-header-row">
+            <h2 class="section-heading">Next Recovery Move</h2>
+          </div>
+          <div class="stat-card" id="next-move-card">
+            <div class="stat-header">
+              <span class="stat-title" id="next-move-target">Loading…</span>
+              <span class="pill-badge badge-yellow" id="next-move-level"></span>
+            </div>
+            <div class="subtext" id="next-move-owes"></div>
+            <pre class="next-move-command mono-cell" id="next-move-command"></pre>
           </div>
         </div>
 
@@ -472,7 +513,7 @@
         <div class="pane-header">
           <div>
             <h1 class="pane-title">Live Drift Inspector</h1>
-            <p class="pane-desc">Compares live local repository Git states (HEAD, branch, dirty files) against recorded project ledger snapshots.</p>
+            <p class="pane-desc">Compares live local repository Git states and untracked-content fingerprint completeness against recorded project ledger snapshots.</p>
           </div>
           <button class="btn btn-secondary" id="btn-rescan-drift">Re-scan Repositories</button>
         </div>
