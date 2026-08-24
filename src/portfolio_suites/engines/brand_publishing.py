@@ -7,7 +7,12 @@ from __future__ import annotations
 import datetime
 import re
 from typing import Any
-from ..approvals import ApprovalError, canonical_digest, verify_operator_approval
+from ..approvals import (
+    ApprovalCommitUnverified,
+    ApprovalError,
+    canonical_digest,
+    verify_operator_approval,
+)
 from ..contracts import SCHEMA_VERSION, validate_contract
 from ..identifiers import new_prefixed_id
 
@@ -316,6 +321,22 @@ class BrandPublishingEngine:
                 "decision": "approved",
                 "payload_sha256": canonical_digest(pkg),
             })
+        except ApprovalCommitUnverified as error:
+            # The store replacement may already have spent this token, so the safe answers
+            # are neither "proceed simulated" nor "get another token" -- they both invite a
+            # replay. The intake stops here without emitting its normal reconciliation
+            # receipt; an operator must inspect the authority store first.
+            return {
+                "brand_id": brand_id,
+                "phases_total": len(phases),
+                "phases_completed": completed_count,
+                "intake_log": completed_phases,
+                "resulting_package": None,
+                "reconciliation_status": "approval_commit_unverified",
+                "status": "approval_commit_unverified",
+                "approval_store_inspection_required": True,
+                "error": str(error),
+            }
         except ApprovalError:
             approval = None
 
@@ -341,7 +362,14 @@ class BrandPublishingEngine:
             "phases_completed": completed_count,
             "intake_log": completed_phases,
             "resulting_package": validated_pkg,
-            "reconciliation_status": "brand_workshop_intake_ported_to_brand_maker",
+            # "ported" named an outcome this gate cannot reach: the phases it drives are
+            # suite-local fixture inputs and Brand Workshop is never opened. What the gate
+            # does establish is that the nine-phase state machine accepts a complete intake
+            # and refuses an incomplete one, so that is what the status says -- with the
+            # donor boundary stated outright rather than left to be inferred.
+            "reconciliation_status": "suite_local_intake_phases_validated",
+            "brand_workshop_read": False,
+            "external_runtime_invoked": False,
         }
 
     @staticmethod
@@ -389,6 +417,20 @@ class BrandPublishingEngine:
                 "decision": human_decision,
                 "payload_sha256": canonical_digest(release_payload),
             })
+        except ApprovalCommitUnverified as error:
+            # Distinct from an ordinary refusal on purpose: "no verified approval" means
+            # the token is unspent and a new one may be issued, while this state means the
+            # store replacement already committed and the token may be spent. Flattening
+            # both into blocked_unverified_operator_approval is how a caller retries into
+            # a replay.
+            return {
+                "review_id": new_prefixed_id("vcc-rev"),
+                "brand_package_id": valid_pkg["package_id"],
+                "source_id": valid_source["source_id"],
+                "error": str(error),
+                "status": "approval_commit_unverified",
+                "approval_store_inspection_required": True,
+            }
         except ApprovalError as error:
             approval_error = str(error)
         if operator_approval_token is not None and approval is None:

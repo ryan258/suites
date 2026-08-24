@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import fcntl
+import hashlib
 import inspect
 import json
 import os
-import tempfile
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,12 +22,8 @@ from .adapters.game_design import GameDesignSourceAdapter
 from .adapters.model_behavior import ModelBehaviorSourceAdapter
 from .adapters.operator_os import OperatorOSSourceAdapter
 from .adapters.production_house import ProductionHouseSourceAdapter
-from .contracts import generate_sample
-from .engines.agent_reliability import AgentReliabilityEngine
 from .engines.brand_publishing import BrandPublishingEngine
-from .engines.discovery_decision import DiscoveryDecisionEngine
-from .engines.game_design import GameDesignEngine
-from .engines.model_behavior import ModelBehaviorEngine
+from .paths import ConfinementError, open_confined_directory
 from .registry import (
     SUITES_ROOT,
     evidence_errors,
@@ -34,29 +31,50 @@ from .registry import (
     get_suite,
     load_suites,
 )
+from .txn import (
+    CommitUncertain,
+    OccupantConflict,
+    commit_replacement,
+    discard_temp,
+    verify_payload,
+    write_temp_payload,
+)
 
 
 @dataclass
 class WaveRunResult:
     suite_id: str
     wave_id: str
-    passed: bool  # True ONLY for authentic verified migration acceptance
+    passed: bool  # True when the gate executed and passed
     message: str
     evidence_path: str | None = None
     data: dict[str, Any] | None = None
     execution_kind: str = "unintegrated_specification"
     prototype_passed: bool = False
-    # Why nothing was written when --record was asked for. None when not asked, or when the
-    # write succeeded. "Not written" has several distinct causes and they must not be conflated.
+    # Work and promotion are separate axes. A completed analysis may be only a historical
+    # review or may have inspected donor source; carrying the claim here prevents CLI/API
+    # callers from flattening both into the same generic "analysis" outcome.
+    claim_kind: str | None = None
+    claim_level: str | None = None
+    # Recording diagnostic when --record did not complete cleanly. A pre-commit refusal means
+    # no write; a committed_unverified result means replacement occurred but could not be
+    # verified. Those states must never share the same operator message.
     record_note: str | None = None
     # Machine-readable recording outcome. Gate success and evidence persistence are separate
     # operations: a passing gate must never make a rejected --record request look successful.
     record_status: str = "not_requested"
 
 
+@dataclass(frozen=True)
+class EvidenceCommitUnverified:
+    """A replacement occurred, but its durability or canonical path could not be verified."""
+
+    declared_path: str
+    note: str
+
 
 _RECORD_LOCKS: dict[Path, threading.Lock] = {}
-_RECORD_LOCKS_GUARD = threading.Lock()
+_LOCKS_MUTEX = threading.Lock()
 
 
 def _wave_for_evidence(rel_path: str) -> tuple[str, dict[str, Any]] | None:
@@ -75,8 +93,7 @@ def _wave_for_evidence(rel_path: str) -> tuple[str, dict[str, Any]] | None:
 
 
 def _record_lock(evidence_file: Path) -> threading.Lock:
-    """Serialize writers for one retained receipt while allowing unrelated waves to record."""
-    with _RECORD_LOCKS_GUARD:
+    with _LOCKS_MUTEX:
         return _RECORD_LOCKS.setdefault(evidence_file, threading.Lock())
 
 
@@ -86,15 +103,27 @@ def _skipped_stages(data: Any) -> list[str]:
     return sorted(name for name, stage in stages.items() if isinstance(stage, dict) and stage.get("skipped"))
 
 
-def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, passed: bool) -> str | None:
+def _record_evidence(
+    wave: dict[str, Any],
+    data: Any,
+    write_evidence: bool,
+    passed: bool,
+) -> str | EvidenceCommitUnverified | None:
     """Record evidence ONLY when requested, the gate passed, AND the candidate validates.
 
     The receipt path comes from the wave manifest's own `evidence` field, so a runner cannot
     write to a path the registry does not already know about.
 
     Writes a temp sibling, runs `evidence_errors` against it, and only then atomically
-    replaces the retained receipt. A rejected candidate leaves the prior receipt
-    byte-for-byte unchanged and returns None.
+    replaces the retained receipt. The commit is bound to the validated bytes twice over:
+    the digest of the buffer that was validated is re-derived from the object the temp name
+    reaches immediately before the swap (so bytes altered after validation are refused, not
+    installed), and the replacement is a compare-and-swap against the retained receipt's
+    identity at the start of this recording (so a receipt another process committed or
+    edited meanwhile is preserved rather than replaced). A pre-commit rejection leaves the
+    prior receipt byte-for-byte unchanged and returns None. Once replacement succeeds,
+    later durability or canonical-path failures return :class:`EvidenceCommitUnverified`;
+    they must never be reported as a rejection that retained the prior bytes.
 
     This is stricter than `suites validate`, which only inspects completed waves: a wave
     with no declared recovery claim is refused outright, because there would be no contract
@@ -117,8 +146,8 @@ def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, pass
     owner_suite_id = owner[0]
 
     # A manifest is data, not authority to choose an arbitrary filesystem target. Require the
-    # canonical <suite-id>/evidence/<filename> shape before creating any directories, and then
-    # re-check the resolved directory in case a symlink would leave the suites tree.
+    # canonical <suite-id>/evidence/<filename> shape before creating any directories, and
+    # enforce suite-ownership boundary confinement under O_NOFOLLOW.
     rel_parts = PurePosixPath(rel_path).parts
     if (
         len(rel_parts) != 3
@@ -131,51 +160,147 @@ def _record_evidence(wave: dict[str, Any], data: Any, write_evidence: bool, pass
     suite_dir, _, filename = rel_parts
     evidence_dir = SUITES_ROOT / suite_dir / "evidence"
     evidence_file = evidence_dir / filename
+
     try:
-        evidence_dir.resolve(strict=False).relative_to(SUITES_ROOT.resolve(strict=False))
-    except (OSError, ValueError):
-        return None
-    try:
-        payload = data if isinstance(data, str) else json.dumps(data, indent=2)
-    except (TypeError, ValueError):
+        evidence_dir_fd = open_confined_directory(SUITES_ROOT, f"{suite_dir}/evidence", create=True)
+    except (OSError, ConfinementError):
         return None
 
     try:
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        with _record_lock(evidence_file):
-            candidate: Path | None = None
-            try:
-                # A unique same-directory candidate prevents threaded writers from sharing bytes.
-                with tempfile.NamedTemporaryFile(
-                    mode="w",
-                    encoding="utf-8",
-                    dir=evidence_dir,
-                    prefix=f".{evidence_file.stem}.",
-                    suffix=evidence_file.suffix,
-                    delete=False,
-                ) as handle:
-                    handle.write(payload)
-                    candidate = Path(handle.name)
-                if evidence_errors(wave, candidate, owner_suite_id):
-                    return None
-                os.replace(candidate, evidence_file)
-                candidate = None
-            finally:
-                if candidate is not None:
-                    candidate.unlink(missing_ok=True)
-    except OSError:
+        payload = (
+            data.encode("utf-8") if isinstance(data, str) else json.dumps(data, indent=2).encode("utf-8")
+        )
+    except (TypeError, ValueError):
+        os.close(evidence_dir_fd)
         return None
+    payload_digest = hashlib.sha256(payload).hexdigest()
+
+    # The compare-and-swap expectation is captured before any validation work: whatever
+    # occupies the receipt name when this recording started is the only thing this
+    # recording may displace. The expectation is the prior receipt's *content digest*, not
+    # merely its identity -- an in-place truncate-and-rewrite by another writer keeps the
+    # inode while changing every byte, and identity alone would bless that loss. A
+    # concurrent recording that commits during our validation changes either the bytes or
+    # the inode, and the commit refuses instead of clobbering their receipt.
+    try:
+        prior_fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=evidence_dir_fd)
+        try:
+            prior_bytes = os.read(prior_fd, 64 * 1024 * 1024)
+        finally:
+            os.close(prior_fd)
+        prior_digest: str | None = hashlib.sha256(prior_bytes).hexdigest()
+    except OSError:
+        prior_digest = None
+
+    committed = False
+
+    def committed_unverified(reason: str) -> EvidenceCommitUnverified:
+        return EvidenceCommitUnverified(
+            declared_path=rel_path,
+            note=(
+                f"receipt replacement committed for {rel_path}, but post-commit verification "
+                f"failed ({reason}); current receipt state must be inspected"
+            ),
+        )
+
+    temp = None
+    try:
+        with _record_lock(evidence_file):
+            fcntl.flock(evidence_dir_fd, fcntl.LOCK_EX)
+            try:
+                temp = write_temp_payload(
+                    evidence_dir_fd,
+                    evidence_file.stem,
+                    payload,
+                    suffix=evidence_file.suffix,
+                )
+                if evidence_errors(wave, evidence_dir / temp.name, owner_suite_id):
+                    return None
+
+                # Bind the commit to the validated bytes. Validation ran against a
+                # pathname; this re-derives the digest from the object that pathname
+                # reaches right now, through an identity-checked descriptor, so bytes
+                # substituted after validation are refused here rather than installed.
+                try:
+                    verify_payload(evidence_dir_fd, temp, payload_digest)
+                except OccupantConflict:
+                    return None
+
+                kwargs = (
+                    {"expected_absent": True}
+                    if prior_digest is None
+                    else {"expected_digest": prior_digest}
+                )
+                candidate = temp
+                temp = None
+                try:
+                    commit_replacement(evidence_dir_fd, filename, candidate, **kwargs)
+                except OccupantConflict:
+                    # The retained receipt changed identity while we validated: it belongs
+                    # to a newer recording now, and destroying it would lose their work.
+                    return None
+                except CommitUncertain as error:
+                    committed = True
+                    return committed_unverified(str(error))
+
+                # Replacement is the commit point. Everything after it verifies durability and
+                # canonical naming, and therefore has a distinct outcome when it fails.
+                try:
+                    os.fsync(evidence_dir_fd)
+                    current_dir_stat = os.stat(evidence_dir)
+                    pinned_dir_stat = os.fstat(evidence_dir_fd)
+                    if (current_dir_stat.st_dev, current_dir_stat.st_ino) != (
+                        pinned_dir_stat.st_dev,
+                        pinned_dir_stat.st_ino,
+                    ):
+                        committed = True
+                        return committed_unverified(
+                            "canonical evidence directory no longer names the pinned directory"
+                        )
+                    installed_fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=evidence_dir_fd)
+                    try:
+                        installed_stat = os.fstat(installed_fd)
+                    finally:
+                        os.close(installed_fd)
+                    current_file_stat = os.stat(evidence_file)
+                    if (current_file_stat.st_dev, current_file_stat.st_ino) != (
+                        installed_stat.st_dev,
+                        installed_stat.st_ino,
+                    ):
+                        committed = True
+                        return committed_unverified(
+                            "canonical evidence path no longer names the installed receipt"
+                        )
+                except OSError as error:
+                    committed = True
+                    return committed_unverified(str(error))
+            finally:
+                if temp is not None:
+                    discard_temp(evidence_dir_fd, temp)
+                fcntl.flock(evidence_dir_fd, fcntl.LOCK_UN)
+    except OSError as error:
+        return committed_unverified(str(error)) if committed else None
+    finally:
+        os.close(evidence_dir_fd)
     return str(evidence_file)
 
 
 def classify_wave_spec(wave_spec: dict[str, Any], has_runner: bool = True) -> str:
-    """Classify the intended execution kind of a wave specification."""
+    """Classify the intended execution kind of a wave specification.
+
+    This reports the *work* axis only -- what the wave's gate does. How much the gate
+    actually demonstrated is the separate promotion axis carried on `recovery_claim.level`,
+    and callers that display one must display the other: an analysis milestone whose runner
+    only exercised a suite-local fixture and one that parsed real donor source both classify
+    here as completed analysis, and collapsing them is how 35 prototype-level claims came to
+    be reported as verified.
+    """
     manifest_status = wave_spec.get("status", "specified")
     claim = wave_spec.get("recovery_claim", {}) or {}
     claim_kind = claim.get("kind")
     claim_level = claim.get("level")
     if manifest_status == "complete":
-        if claim_kind == "runtime" and claim_level == "source_verified":
+        if claim_kind == "runtime" and claim_level == "source_executed":
             return "verified_source_execution"
         if claim_kind == "runtime" and claim_level == "parity_verified":
             return "verified_runtime_recovery"
@@ -191,13 +316,24 @@ def classify_wave_spec(wave_spec: dict[str, Any], has_runner: bool = True) -> st
     return "prototype_check" if has_runner else "unintegrated_specification"
 
 
-def format_wave_tag(execution_kind: str, passed: bool, prototype_passed: bool = False) -> str:
-    """Return the display tag corresponding to an execution outcome."""
+def format_wave_tag(
+    execution_kind: str,
+    passed: bool,
+    prototype_passed: bool = False,
+    claim_level: str | None = None,
+) -> str:
+    """Return a display tag that preserves both execution and promotion depth."""
     if execution_kind == "error":
         return "[ERROR]"
+    if prototype_passed:
+        return "[PROTOTYPE]"
     if execution_kind == "verified_runtime_recovery" and passed:
         return "[RECOVERED]"
     if execution_kind == "verified_analysis" and passed:
+        if claim_level == "reviewed_historical_analysis":
+            return "[HISTORICAL]"
+        if claim_level == "source_inspected":
+            return "[INSPECTED]"
         return "[ANALYSIS]"
     if execution_kind == "verified_source_execution" and passed:
         return "[SOURCE-RUN]"
@@ -255,13 +391,25 @@ class WaveRunner:
             settled_message = failure_message
         else:
             settled_message = f"gate did not pass; no claim is made (intended: {message})"
+        recording = _record_evidence(wave, receipt, write_evidence, passed)
+        if isinstance(recording, EvidenceCommitUnverified):
+            evidence_path = None
+            record_note = recording.note
+            record_status = "committed_unverified"
+        else:
+            evidence_path = recording
+            record_note = None
+            record_status = "recorded" if recording is not None else "not_requested"
+
         return WaveRunResult(
             suite["id"],
             wave_id,
             passed,
             settled_message,
-            _record_evidence(wave, receipt, write_evidence, passed),
+            evidence_path,
             data,
+            record_note=record_note,
+            record_status=record_status,
         )
 
     @classmethod
@@ -270,6 +418,22 @@ class WaveRunner:
         if not suite:
             return WaveRunResult(suite_id, wave_id, False, f"Unknown suite: {suite_id}", execution_kind="error")
         return cls._run_loaded_wave(suite, wave_id, write_evidence=write_evidence, full=full)
+
+    @classmethod
+    def full_depth_command(cls, suite_id: str, wave_id: str) -> str | None:
+        """The command that performs a deeper run of this wave, or None if none exists.
+
+        `--full` is honoured only by runners that declare it; :meth:`_run_loaded_wave` drops
+        the argument for every other runner. Printing the flag anyway turns the next-action
+        surface into a dead end: the command runs, reproduces the same preview the retained
+        receipt already holds, and discharges no part of the follow-up it was offered for.
+        A follow-up with no executable runner is descriptive work, and the surfaces that
+        present it have to say so rather than inventing a command.
+        """
+        runner_fn = getattr(cls, f"_run_{suite_id.replace('-', '_')}_{wave_id.lower()}", None)
+        if runner_fn is None or "full" not in inspect.signature(runner_fn).parameters:
+            return None
+        return f"PYTHONPATH=src python3 -m portfolio_suites wave {suite_id} {wave_id} --full"
 
     @classmethod
     def _run_loaded_wave(
@@ -289,7 +453,11 @@ class WaveRunner:
         method_name = f"_run_{suite_id.replace('-', '_')}_{wave_id.lower()}"
         runner_fn = getattr(cls, method_name, None)
         if not runner_fn:
-            return cls._run_generic_wave(suite, wave_id, write_evidence)
+            generic = cls._run_generic_wave(suite, wave_id, write_evidence)
+            claim = wave_spec.get("recovery_claim", {}) or {}
+            generic.claim_kind = claim.get("kind")
+            generic.claim_level = claim.get("level")
+            return generic
 
         exec_kind = classify_wave_spec(wave_spec, has_runner=True)
 
@@ -305,17 +473,13 @@ class WaveRunner:
         if exec_kind == "verified_runtime_recovery" and _skipped_stages(raw_res.data):
             exec_kind = "fast_probe"
 
-        # A completed analysis and a recovered runtime are distinct verified claims.
-        is_migration_verified = exec_kind in {
-            "verified_analysis",
-            "verified_source_execution",
-            "verified_runtime_recovery",
-            "verified_adoption",
-            "verified_convergence",
-            "verified_resolution",
-        } and raw_res.passed
-        prototype_passed = exec_kind == "prototype_check" and raw_res.passed
-        gate_passed = raw_res.passed or prototype_passed
+        claim = wave_spec.get("recovery_claim", {}) or {}
+        claim_level = claim.get("level")
+
+        # Prototype-level analysis/checks pass prototype_passed
+        is_prototype = claim_level in {"prototype", "specified"} or exec_kind == "prototype_check"
+        prototype_passed = is_prototype and bool(raw_res.passed)
+        gate_passed = bool(raw_res.passed)
         ineligibility_reason = evidence_ineligibility_reason(wave_spec)
 
         record_note: str | None = raw_res.record_note
@@ -330,15 +494,19 @@ class WaveRunner:
         return WaveRunResult(
             suite_id=raw_res.suite_id,
             wave_id=raw_res.wave_id,
-            passed=is_migration_verified or (exec_kind == "fast_probe" and raw_res.passed),
+            passed=gate_passed,
             message=raw_res.message,
             execution_kind=exec_kind,
             prototype_passed=prototype_passed,
+            claim_kind=claim.get("kind"),
+            claim_level=claim_level,
             evidence_path=raw_res.evidence_path,
             data=raw_res.data,
             record_note=record_note,
             record_status=(
-                "not_requested"
+                "committed_unverified"
+                if raw_res.record_status == "committed_unverified"
+                else "not_requested"
                 if not write_evidence
                 else "read_only"
                 if raw_res.record_note is not None and raw_res.evidence_path is not None
@@ -595,8 +763,10 @@ class WaveRunner:
     def _run_operator_os_o5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         result = OperatorOSSourceAdapter.execute_o5_ryos_disposition_reconciliation()
         passed = (
-            result.get("status") == "disposition_reconciled"
-            and result.get("duplicate_decisions_closed") is True
+            result.get("status") == "disposition_proposal_recorded"
+            and result.get("all_stages_passed") is True
+            and result.get("duplicate_decisions_closed") is False
+            and result.get("duplicate_decision_disposition") == "close_on_verification"
             and result.get("port_candidates_count", 0) >= 2
         )
         return cls._settle(
@@ -605,8 +775,9 @@ class WaveRunner:
             write_evidence,
             passed,
             result,
-            "Reconciled Ryos and master-plan inventory on paper: port targets assigned to dotfiles and "
-            "PKos anchors confirmed. No donor is read and no code is ported.",
+            "Recorded a Ryos and master-plan disposition proposal: port targets named against "
+            "dotfiles and PKos anchors. No donor was read, no code was ported, and no duplicate "
+            "decision was closed -- closure remains proposed on verification.",
             {"port_candidates_count": result.get("port_candidates_count")},
         )
 

@@ -257,13 +257,24 @@ def run_chain(steps: list[dict[str, Any]]) -> dict[str, Any]:
             ) from error
 
         outputs.append(result)
-        metadata = get_action_spec(suite, action)
+        # The record carries the effective per-invocation policy, not the static catalog
+        # entry: a parameter-dependent action that consumed its one-time token in this very
+        # step must be visible as non-replayable here, or any replay surface built on these
+        # traces would repeat an authority consumption the approval authority already spent.
+        metadata = get_action_spec(suite, action, resolved)
         records.append({
             "step": index,
             "suite": suite,
             "action": action,
             "output_kind": metadata["output_kind"],
             "emits": metadata["emits"],
+            "execution_tier": metadata.get("execution_tier"),
+            "side_effect_class": metadata.get("side_effect_class"),
+            "approval_required": metadata.get("approval_required"),
+            "evidence_eligible": metadata.get("evidence_eligible"),
+            "replayable": metadata.get("replayable"),
+            "authority_use": metadata.get("authority_use"),
+            "authority_consumed": bool(metadata.get("authority_consumed")),
             "references": sorted(_referenced_steps(step["arguments"], index)),
             "result": result,
         })

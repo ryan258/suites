@@ -11,9 +11,11 @@ from pathlib import Path
 from unittest import mock
 
 from portfolio_suites import approvals
+from portfolio_suites.paths import CommitUnverified, durable_write_text
 from portfolio_suites.approvals import (
     APPROVAL_SCHEMA,
     STORE_ENV,
+    ApprovalCommitUnverified,
     ApprovalError,
     canonical_digest,
     token_sha256,
@@ -46,6 +48,21 @@ def issue(tmpdir, **overrides):
     return store, token
 
 
+def required_digest(engine, action_name, params):
+    """Ask the engine which exact payload it will authorize.
+
+    The v2 envelope binds detached content digests, so the value cannot be reconstructed
+    from the command line alone. One unapproved run reports it, which is the same two-step
+    an operator performs: run, read the digest, get that digest approved, run again.
+    """
+    os.environ.pop(STORE_ENV, None)
+    refusal = engine.execute_jarvis_action_checkpoint(
+        action_name, params, operator_approved=True
+    )
+    assert refusal["status"] == "error_unverified_approval", refusal["status"]
+    return refusal["approval_payload_sha256"]
+
+
 class ApprovalAuthorityTests(unittest.TestCase):
     def setUp(self):
         self.addCleanup(os.environ.pop, STORE_ENV, None)
@@ -70,18 +87,18 @@ class ApprovalAuthorityTests(unittest.TestCase):
             # correct exclusive lock the second reader cannot start until the first has
             # consumed, so this barrier times out instead of pairing up.
             both_read = threading.Barrier(2)
-            original_read = approvals._read_store
+            original_read = approvals._read_store_fd
 
-            def read_then_wait(path):
-                document = original_read(path)
+            def read_then_wait(filename, dir_fd):
+                document, identity, mode = original_read(filename, dir_fd)
                 try:
                     both_read.wait(timeout=0.25)
                 except threading.BrokenBarrierError:
                     pass
-                return document
+                return document, identity, mode
 
-            approvals._read_store = read_then_wait
-            self.addCleanup(setattr, approvals, "_read_store", original_read)
+            approvals._read_store_fd = read_then_wait
+            self.addCleanup(setattr, approvals, "_read_store_fd", original_read)
 
             def attempt():
                 try:
@@ -166,34 +183,163 @@ class ApprovalAuthorityTests(unittest.TestCase):
             issue(tmpdir)
             events = []
             original_fsync = approvals.os.fsync
-            original_replace = approvals.os.replace
+            original_commit = approvals.commit_replacement
 
             def tracked_fsync(handle):
                 events.append("fsync")
                 return original_fsync(handle)
 
-            def tracked_replace(source, destination):
-                events.append("replace")
-                return original_replace(source, destination)
+            def tracked_commit(*args, **kwargs):
+                # The compare-and-swap is the commit point: the payload must already be
+                # fsynced when it runs, and only the post-commit directory fsync may follow.
+                events.append("cas_commit")
+                return original_commit(*args, **kwargs)
 
             with (
                 mock.patch.object(approvals.os, "fsync", side_effect=tracked_fsync),
-                mock.patch.object(approvals.os, "replace", side_effect=tracked_replace),
+                mock.patch.object(approvals, "commit_replacement", side_effect=tracked_commit),
             ):
                 verify_operator_approval("opa1.apr-1.s3cret", BINDINGS)
 
-            self.assertEqual(events, ["fsync", "replace", "fsync"])
+            self.assertEqual(events, ["fsync", "cas_commit", "fsync"])
 
-    def test_failed_replace_leaves_store_unconsumed_and_removes_temporary_file(self):
+    def test_a_failed_cas_leaves_store_unconsumed_and_removes_temporary_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             store, token = issue(tmpdir)
-            with mock.patch.object(approvals.os, "replace", side_effect=OSError("forced replace failure")):
+            with mock.patch.object(
+                approvals, "commit_replacement", side_effect=OSError("forced commit failure")
+            ):
                 with self.assertRaises(ApprovalError):
                     verify_operator_approval(token, BINDINGS)
 
             with open(store, encoding="utf-8") as handle:
                 self.assertFalse(json.load(handle)["approvals"][0].get("consumed"))
-            self.assertEqual(list(Path(tmpdir).glob("approvals.json*.tmp")), [])
+            leftovers = [
+                p.name for p in Path(tmpdir).iterdir()
+                if p.name != Path(store).name and p.name != Path(store).name + ".lock"
+            ]
+            self.assertEqual(leftovers, [], leftovers)
+
+    def test_a_store_replaced_by_the_issuer_during_consume_loses_no_approvals(self):
+        """The check-then-replace hole: an out-of-band issuer replaces the store between
+        the authority's read and its commit. The consumption must be refused and the
+        issuer's newly issued approvals must survive untouched at the canonical name."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = issue(tmpdir)
+            issuer_document = {
+                "approvals": [
+                    json.loads(Path(store).read_text(encoding="utf-8"))["approvals"][0],
+                    {
+                        "approval_id": "apr-issued-concurrently",
+                        "schema": APPROVAL_SCHEMA,
+                        "reviewer": "Out-of-band Issuer",
+                        "issued_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                        "expires_at": "2099-01-01T00:00:00+00:00",
+                        **BINDINGS,
+                        "token_sha256": token_sha256("opa1.apr-issued-concurrently.s3cret"),
+                    },
+                ]
+            }
+            original_read = approvals._read_store_fd
+
+            def read_then_replace_store_as_issuer(filename, dir_fd):
+                document, identity, mode = original_read(filename, dir_fd)
+                # The issuer does not take our lock: it writes its own newer store and
+                # swaps it into place while this consumer sits between read and commit.
+                issued_name = f"{filename}.issuer-{os.getpid()}.tmp"
+                payload = json.dumps(issuer_document, indent=2).encode("utf-8")
+                issued_fd = os.open(
+                    issued_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=dir_fd
+                )
+                with os.fdopen(issued_fd, "wb") as stream:
+                    stream.write(payload)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(issued_name, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+                return document, identity, mode
+
+            approvals._read_store_fd = read_then_replace_store_as_issuer
+            self.addCleanup(setattr, approvals, "_read_store_fd", original_read)
+
+            with self.assertRaises(ApprovalError) as caught:
+                verify_operator_approval(token, BINDINGS)
+
+            self.assertIn("changed after it was read", str(caught.exception))
+            surviving = json.loads(Path(store).read_text(encoding="utf-8"))
+            self.assertEqual(len(surviving["approvals"]), 2, "the issuer lost a concurrent approval")
+            self.assertFalse(surviving["approvals"][0].get("consumed"), "nothing was consumed")
+            self.assertFalse(surviving["approvals"][1].get("consumed"))
+            leftovers = [p.name for p in Path(tmpdir).iterdir() if p.name.endswith(".tmp")]
+            self.assertEqual(leftovers, [], leftovers)
+
+    def test_a_bystander_swapped_into_the_store_name_preserves_both_documents(self):
+        """The displaced-original probe: the verified store is moved aside and replaced by
+        a bystander before the commit. A replacing rename would destroy the bystander and
+        still report a successful consumption; the compare-and-swap must refuse instead and
+        leave every object alive."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = issue(tmpdir)
+            bystander_bytes = json.dumps({
+                "approvals": [{
+                    "approval_id": "apr-bystander",
+                    "schema": APPROVAL_SCHEMA,
+                    "reviewer": "Bystander Authority",
+                    "issued_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "expires_at": "2099-01-01T00:00:00+00:00",
+                    **BINDINGS,
+                    "token_sha256": token_sha256("opa1.apr-bystander.s3cret"),
+                }]
+            }, indent=2).encode("utf-8")
+            original_read = approvals._read_store_fd
+            displaced_path = Path(tmpdir) / "displaced-original.json"
+
+            def read_then_swap_in_bystander(filename, dir_fd):
+                document, identity, mode = original_read(filename, dir_fd)
+                os.rename(filename, displaced_path.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+                bystander_name = f"{filename}.bystander-{os.getpid()}.tmp"
+                bystander_fd = os.open(
+                    bystander_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=dir_fd
+                )
+                with os.fdopen(bystander_fd, "wb") as stream:
+                    stream.write(bystander_bytes)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(bystander_name, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+                return document, identity, mode
+
+            approvals._read_store_fd = read_then_swap_in_bystander
+            self.addCleanup(setattr, approvals, "_read_store_fd", original_read)
+
+            with self.assertRaises(ApprovalError):
+                verify_operator_approval(token, BINDINGS)
+
+            self.assertEqual(
+                Path(store).read_bytes(), bystander_bytes, "the bystander authority was destroyed"
+            )
+            self.assertTrue(displaced_path.is_file(), "the displaced original was destroyed")
+            self.assertNotIn('"consumed"', displaced_path.read_text(encoding="utf-8"))
+
+    def test_symlink_store_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = issue(tmpdir)
+            symlink_store = os.path.join(tmpdir, "alias_store.json")
+            os.symlink(store, symlink_store)
+            os.environ[STORE_ENV] = symlink_store
+            with self.assertRaises(ApprovalError):
+                verify_operator_approval(token, BINDINGS)
+            with open(store, encoding="utf-8") as handle:
+                self.assertFalse(json.load(handle)["approvals"][0].get("consumed"))
+
+    def test_hardlink_store_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = issue(tmpdir)
+            hardlink_store = os.path.join(tmpdir, "hardlink_store.json")
+            os.link(store, hardlink_store)
+            os.environ[STORE_ENV] = hardlink_store
+            with self.assertRaises(ApprovalError):
+                verify_operator_approval(token, BINDINGS)
+            with open(store, encoding="utf-8") as handle:
+                self.assertFalse(json.load(handle)["approvals"][0].get("consumed"))
 
 
 if __name__ == "__main__":
@@ -211,7 +357,7 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
         from portfolio_suites.registry import SUITES_ROOT
 
         self.engine = OperatorOSEngine
-        self.snapshots = Path(SUITES_ROOT) / "operator-os" / "evidence" / "snapshots"
+        self.snapshots = Path(SUITES_ROOT) / "operator-os" / "state" / "backups"
         self.before = set(self.snapshots.glob("snap-*")) if self.snapshots.is_dir() else set()
 
     def _written(self):
@@ -255,9 +401,7 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
                 tmp,
                 operation="jarvis_action_execution",
                 action_name=self.ACTION,
-                payload_sha256=canonical_digest(
-                    {"action_name": self.ACTION, "parameters": params}
-                ),
+                payload_sha256=required_digest(self.engine, self.ACTION, params),
             )
             first = self.engine.execute_jarvis_action_checkpoint(
                 self.ACTION, params, operator_approved=True, operator_approval_token=token
@@ -295,10 +439,7 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
                     approval_dir,
                     operation="jarvis_action_execution",
                     action_name=self.ACTION,
-                    payload_sha256=canonical_digest({
-                        "action_name": self.ACTION,
-                        "parameters": params,
-                    }),
+                    payload_sha256=required_digest(self.engine, self.ACTION, params),
                 )
                 first = self.engine.execute_jarvis_action_checkpoint(
                     self.ACTION,
@@ -315,10 +456,7 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
                     approval_dir,
                     operation="jarvis_action_execution",
                     action_name=self.ACTION,
-                    payload_sha256=canonical_digest({
-                        "action_name": self.ACTION,
-                        "parameters": params,
-                    }),
+                    payload_sha256=required_digest(self.engine, self.ACTION, params),
                 )
                 second = self.engine.execute_jarvis_action_checkpoint(
                     self.ACTION,
@@ -360,10 +498,7 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
                     approval_dir,
                     operation="jarvis_action_execution",
                     action_name="rotate_local_cache",
-                    payload_sha256=canonical_digest({
-                        "action_name": "rotate_local_cache",
-                        "parameters": params,
-                    }),
+                    payload_sha256=required_digest(self.engine, "rotate_local_cache", params),
                 )
                 receipt = self.engine.execute_jarvis_action_checkpoint(
                     "rotate_local_cache",
@@ -399,10 +534,7 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
                     approval_dir,
                     operation="jarvis_action_execution",
                     action_name="sync_obsidian_notes",
-                    payload_sha256=canonical_digest({
-                        "action_name": "sync_obsidian_notes",
-                        "parameters": params,
-                    }),
+                    payload_sha256=required_digest(self.engine, "sync_obsidian_notes", params),
                 )
                 receipt = self.engine.execute_jarvis_action_checkpoint(
                     "sync_obsidian_notes",
@@ -416,3 +548,57 @@ class JarvisMutationBoundaryTests(unittest.TestCase):
             self.assertTrue(receipt["execution_result"]["sync_performed"])
             self.assertEqual(receipt["execution_result"]["files_synced"], ["one.md"])
             self.assertEqual((destination / "one.md").read_text(encoding="utf-8"), "# One\n")
+
+
+class CommitUnverifiedTests(unittest.TestCase):
+    """A failure after the commit point is a different fact from a failure before it.
+
+    Reporting a post-replacement fsync failure as "cannot consume" tells an operator the
+    token is still spendable when the durable store already says it is spent.
+    """
+
+    def setUp(self):
+        self.addCleanup(os.environ.pop, STORE_ENV, None)
+
+    def test_a_post_replacement_fsync_failure_says_the_token_may_be_spent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store, token = issue(tmp)
+
+            real_fsync = os.fsync
+            replaced = []
+
+            def fsync_after_replace(fd):
+                # Directories only: the file fsync happens before the commit point.
+                if os.fstat(fd).st_mode & 0o170000 == 0o040000 and not replaced:
+                    replaced.append(True)
+                    raise OSError("forced directory fsync failure")
+                return real_fsync(fd)
+
+            with mock.patch.object(os, "fsync", fsync_after_replace):
+                with self.assertRaises(ApprovalCommitUnverified) as caught:
+                    verify_operator_approval(token, BINDINGS)
+
+            self.assertTrue(replaced, "the interleaving never ran")
+            self.assertEqual(caught.exception.approval_id, "apr-1")
+            self.assertIn("may already be spent", str(caught.exception))
+            # And it is: the durable document already records the consumption.
+            document = json.loads(Path(store).read_text(encoding="utf-8"))
+            self.assertTrue(document["approvals"][0]["consumed"], "the store shows the token was spent")
+
+    def test_a_durable_write_that_commits_then_fails_is_not_reported_as_unwritten(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "ledger.json"
+            target.write_text("old", encoding="utf-8")
+
+            real_fsync = os.fsync
+
+            def fsync_after_replace(fd):
+                if os.fstat(fd).st_mode & 0o170000 == 0o040000:
+                    raise OSError("forced directory fsync failure")
+                return real_fsync(fd)
+
+            with mock.patch.object(os, "fsync", fsync_after_replace):
+                with self.assertRaises(CommitUnverified):
+                    durable_write_text(target, "new")
+
+            self.assertEqual(target.read_text(encoding="utf-8"), "new", "the replace did commit")

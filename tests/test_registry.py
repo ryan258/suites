@@ -1,6 +1,8 @@
-import unittest
+import hashlib
 import json
+import shlex
 import subprocess
+import unittest
 from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -11,8 +13,11 @@ from portfolio_suites.registry import (
     _analysis_evidence_errors,
     apply_snapshot_updates,
     _analysis_receipt_semantic_errors,
+    _git_untracked_paths,
     _git_value,
     _runtime_parity_receipt_errors,
+    _untracked_content_digest,
+    check_project_git_drift,
     get_portfolio_summary,
     load_ledger,
     load_recovery_standard,
@@ -20,6 +25,7 @@ from portfolio_suites.registry import (
     validate_registry,
 )
 from portfolio_suites.registry import evidence_errors as registry_evidence_errors
+from portfolio_suites import registry as _registry_module
 
 
 class RegistryTests(unittest.TestCase):
@@ -257,10 +263,31 @@ class RegistryTests(unittest.TestCase):
     def test_summary_separates_analysis_from_runtime_recovery(self):
         summary = get_portfolio_summary()
         self.assertEqual(summary["recovery_target_score"], 9.0)
-        self.assertEqual(summary["verified_analysis_milestones"], 42)
+        self.assertEqual(summary["completed_analysis_milestones"], 42)
         self.assertEqual(summary["recovered_runtime_behaviors"], 1)
         self.assertEqual(summary["adopted_runtime_behaviors"], 0)
         self.assertEqual(summary["converged_runtime_behaviors"], 0)
+
+    def test_summary_reports_promotion_level_as_its_own_axis(self):
+        """Milestone completion must not be able to stand in for evidence depth.
+
+        Every wave is complete, so any count derived from incompleteness reports zero
+        prototypes. These counts come from `recovery_claim.level` instead, and the sum
+        pins them to the wave total so a level going unclassified cannot pass silently.
+        """
+        summary = get_portfolio_summary()
+        levels = summary["promotion_counts"]
+        self.assertEqual(summary["completed_waves"], summary["total_waves"])
+        self.assertEqual(levels["prototype"], 34)
+        self.assertEqual(levels["reviewed_historical_analysis"], 1)
+        self.assertEqual(levels["source_inspected"], 7)
+        self.assertEqual(levels["source_executed"], 0)
+        self.assertEqual(levels["parity_verified"], 1)
+        self.assertEqual(levels["adopted"], 0)
+        self.assertEqual(levels["converged"], 0)
+        self.assertEqual(summary["resolved_capabilities"], 0)
+        self.assertEqual(sum(levels.values()), summary["total_waves"])
+        self.assertEqual(summary["prototype_level_claims"], levels["prototype"])
 
     def test_validate_rejects_a_corrupted_prototype_receipt(self):
         """A retained prototype receipt is re-checked by the canonical validator, not only at record time."""
@@ -356,7 +383,7 @@ class UnsupportedEvidenceContractTests(unittest.TestCase):
     def test_runtime_source_verification_requires_its_versioned_contract(self):
         from portfolio_suites.registry import evidence_errors
 
-        errors = evidence_errors(self._wave("runtime", "source_verified"), Path("/nonexistent/receipt.json"))
+        errors = evidence_errors(self._wave("runtime", "source_executed"), Path("/nonexistent/receipt.json"))
         self.assertTrue(errors)
         self.assertIn("requires receipt_contract", errors[0])
 
@@ -486,6 +513,146 @@ class WorktreeDriftTests(unittest.TestCase):
         self.assertTrue(drift["patch_unfingerprinted"], "must be reported so `baseline` backfills it")
         self.assertFalse(drift["patch_drift"], "an absent baseline field cannot itself be drift")
 
+    def test_untracked_enumeration_timeout_is_explicitly_incomplete(self):
+        with patch(
+            "portfolio_suites.registry.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(["git", "status"], timeout=5),
+        ):
+            paths, complete = _git_untracked_paths(Path("/tmp/example"))
+        self.assertEqual(paths, [])
+        self.assertFalse(complete)
+
+    def test_enumeration_failure_is_unresolved_and_cannot_be_baselined(self):
+        from portfolio_suites import registry
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "donor").mkdir()
+
+            def git_value(_source, *args):
+                if args[:2] == ("rev-parse", "--short"):
+                    return "abc123"
+                if args[:2] == ("branch", "--show-current"):
+                    return "main"
+                return ""
+
+            row = {
+                "name": "donor",
+                "primary_suite": "accessibility",
+                "source_snapshot": {
+                    "git": True,
+                    "head": "abc123",
+                    "branch": "main",
+                    "status_lines": 0,
+                    "status_sha256": hashlib.sha256(b"").hexdigest(),
+                    "patch_sha256": hashlib.sha256(b"").hexdigest(),
+                },
+            }
+            with (
+                patch("portfolio_suites.registry.PROJECTS_ROOT", root),
+                patch("portfolio_suites.registry._git_value", side_effect=git_value),
+                patch("portfolio_suites.registry._git_untracked_paths", return_value=([], False)),
+            ):
+                drift = check_project_git_drift("donor", row)
+
+            self.assertTrue(drift["untracked_incomplete"])
+            self.assertFalse(drift["untracked_enumeration_complete"])
+            self.assertIn(
+                "untracked_path_enumeration_failed",
+                drift["untracked_incomplete_reasons"],
+            )
+            self.assertTrue(drift["has_drift"])
+            self.assertIsNone(registry._live_snapshot("donor", drift))
+
+            with (
+                patch("portfolio_suites.registry.get_live_drift_report", return_value=[drift]),
+                patch("portfolio_suites.registry.load_ledger", return_value={"projects": [row]}),
+            ):
+                self.assertEqual(registry.pending_snapshots(accept=True), {})
+
+    def test_untracked_symlink_target_text_changes_the_digest_without_following(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.txt").write_text("same bytes", encoding="utf-8")
+            (root / "b.txt").write_text("same bytes", encoding="utf-8")
+            link = root / "choice"
+            link.symlink_to("a.txt")
+            first_digest, first_incomplete = _untracked_content_digest(root, ["choice"])
+
+            link.unlink()
+            link.symlink_to("b.txt")
+            second_digest, second_incomplete = _untracked_content_digest(root, ["choice"])
+
+        self.assertFalse(first_incomplete)
+        self.assertFalse(second_incomplete)
+        self.assertNotEqual(first_digest, second_digest)
+        self.assertIn("SYMLINK", first_digest)
+
+    def test_exact_file_cap_is_complete_and_next_entry_truncates(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = []
+            for index in range(1001):
+                name = f"entry-{index:04d}.txt"
+                (root / name).write_text(str(index), encoding="utf-8")
+                paths.append(name)
+
+            exact_digest, exact_incomplete = _untracked_content_digest(root, paths[:1000])
+            overflow_digest, overflow_incomplete = _untracked_content_digest(root, paths)
+
+        self.assertFalse(exact_incomplete)
+        self.assertEqual(len(exact_digest.splitlines()), 1000)
+        self.assertNotIn("MAX_UNTRACKED_FILES_TRUNCATION", exact_digest)
+        self.assertTrue(overflow_incomplete)
+        self.assertIn("MAX_UNTRACKED_FILES_TRUNCATION", overflow_digest)
+
+    def test_validation_names_incomplete_untracked_fingerprint(self):
+        from portfolio_suites import registry
+
+        drift = {
+            "name": "donor",
+            "primary_suite": "accessibility",
+            "snapshot_head": "abc123",
+            "current_head": "abc123",
+            "snapshot_branch": "main",
+            "current_branch": "main",
+            "snapshot_lines": 0,
+            "current_lines": 0,
+            "head_or_branch_drift": False,
+            "lines_drift": False,
+            "content_drift": False,
+            "patch_drift": False,
+            "untracked_incomplete": True,
+            "untracked_incomplete_reasons": ["untracked_path_enumeration_failed"],
+            "has_drift": True,
+        }
+        row = {
+            "name": "donor",
+            "primary_suite": "accessibility",
+            "source_snapshot": {"git": True},
+        }
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "donor").mkdir()
+            with (
+                patch("portfolio_suites.registry.PROJECTS_ROOT", root),
+                patch(
+                    "portfolio_suites.registry.load_ledger",
+                    return_value={"schema_version": "1.0.0", "projects": [row]},
+                ),
+                patch(
+                    "portfolio_suites.registry.load_nested_ledger",
+                    return_value={"schema_version": "1.0.0", "repositories": []},
+                ),
+                patch("portfolio_suites.registry.check_project_git_drift", return_value=drift),
+            ):
+                report = registry.validate_registry(check_live=True)
+
+        self.assertTrue(
+            any("untracked content fingerprint is incomplete" in warning for warning in report.warnings),
+            report.warnings,
+        )
+
 
 class ReceiptSpecTableTests(unittest.TestCase):
     """A duplicate key in the receipt table silently discards a gate's spec.
@@ -556,7 +723,7 @@ class AnalysisPromotionLevelTests(unittest.TestCase):
         return report.errors
 
     def test_analysis_claim_cannot_hold_a_runtime_promotion_level(self):
-        for level in ("parity_verified", "adopted", "converged"):
+        for level in ("source_executed", "parity_verified", "adopted", "converged"):
             with self.subTest(level=level):
                 errors = self._errors_for(level)
                 self.assertTrue(
@@ -564,8 +731,23 @@ class AnalysisPromotionLevelTests(unittest.TestCase):
                     f"{level} was accepted for an analysis claim: {errors}",
                 )
 
-    def test_analysis_claim_may_still_reach_source_verified(self):
-        errors = self._errors_for("source_verified")
+    def test_source_executed_cannot_be_bought_with_a_manifest_boolean(self):
+        """The fail-open this guard replaced.
+
+        `real_runtime: true` was the entire evidence for the strongest claim the ladder can
+        make. Nothing required a source invocation, an argv, an exit code, a source
+        fingerprint, or any receipt field proving the donor was executed -- so an analysis
+        claim could be promoted to `source_executed` with its receipt left untouched, and
+        `validate_registry(check_live=False)` still returned valid.
+        """
+        errors = self._errors_for("source_executed", kind="analysis")
+        self.assertTrue(
+            any("cannot occupy the runtime promotion level" in error for error in errors),
+            f"source_executed was accepted for an analysis claim: {errors}",
+        )
+
+    def test_source_inspected_is_the_highest_analysis_rung(self):
+        errors = self._errors_for("source_inspected")
         self.assertFalse(
             any("cannot occupy the runtime promotion level" in error for error in errors),
             errors,
@@ -641,6 +823,7 @@ class DurableLedgerWriteTests(unittest.TestCase):
 
     def test_ledger_is_replaced_atomically_not_truncated_in_place(self):
         from portfolio_suites import registry
+        from portfolio_suites import txn
 
         with TemporaryDirectory() as tmp:
             ledger = Path(tmp) / "project-ledger.json"
@@ -649,17 +832,18 @@ class DurableLedgerWriteTests(unittest.TestCase):
 
             seen_during_write = {}
 
-            real_replace = __import__("os").replace
+            real_exchange = txn.rename_exchange
 
-            def watched_replace(src, dst):
-                # Mid-write, the destination must still hold the complete old document.
-                seen_during_write["content"] = Path(dst).read_text(encoding="utf-8")
-                return real_replace(src, dst)
+            def watched_exchange(src, dst, *, directory_fd):
+                # The swap is the commit point: mid-write, the destination must still hold
+                # the complete old document, never a partial mixture.
+                seen_during_write["content"] = ledger.read_text(encoding="utf-8")
+                return real_exchange(src, dst, directory_fd=directory_fd)
 
             with patch.object(registry, "_LEDGER_PATH", ledger), \
                  patch.object(registry, "pending_snapshots", return_value={}), \
                  patch.object(registry, "apply_snapshot_updates", return_value=("NEW", ["proj"])), \
-                 patch("portfolio_suites.paths.os.replace", side_effect=watched_replace):
+                 patch.object(txn, "rename_exchange", side_effect=watched_exchange):
                 registry.fingerprint_baselines(dry_run=False)
 
             self.assertEqual(seen_during_write["content"], original)
@@ -667,6 +851,7 @@ class DurableLedgerWriteTests(unittest.TestCase):
 
     def test_a_failed_ledger_write_leaves_the_previous_document_intact(self):
         from portfolio_suites import registry
+        from portfolio_suites import txn
 
         with TemporaryDirectory() as tmp:
             ledger = Path(tmp) / "project-ledger.json"
@@ -676,12 +861,19 @@ class DurableLedgerWriteTests(unittest.TestCase):
             with patch.object(registry, "_LEDGER_PATH", ledger), \
                  patch.object(registry, "pending_snapshots", return_value={}), \
                  patch.object(registry, "apply_snapshot_updates", return_value=("NEW", ["proj"])), \
-                 patch("portfolio_suites.paths.os.replace", side_effect=OSError("disk full")):
-                with self.assertRaises(OSError):
+                 patch.object(
+                     txn, "rename_exchange",
+                     side_effect=OSError(5, "Input/output error"),
+                 ):
+                with self.assertRaises(registry.LedgerConflict):
                     registry.fingerprint_baselines(dry_run=False)
 
             self.assertEqual(ledger.read_text(encoding="utf-8"), original)
-            self.assertEqual(list(Path(tmp).iterdir()), [ledger], "temporary file was left behind")
+            leftovers = [
+                p.name for p in Path(tmp).iterdir()
+                if p.name != ledger.name and p.name != ledger.name + ".lock"
+            ]
+            self.assertEqual(leftovers, [], "temporary file was left behind")
 
 
 class RuntimeDebtInAggregateTests(unittest.TestCase):
@@ -811,7 +1003,7 @@ class SuiteQualifiedSemanticRuleTests(unittest.TestCase):
 
         with patch.object(registry, "ANALYSIS_RECEIPT_SPECS", self._with_extra_spec()):
             errors = registry._analysis_receipt_semantic_errors(
-                {"id": "A3", "recovery_claim": {"kind": "analysis", "level": "source_verified"}},
+                {"id": "A3", "recovery_claim": {"kind": "analysis", "level": "source_executed"}},
                 {"ok": True},
                 "game-design",
             )
@@ -822,7 +1014,7 @@ class SuiteQualifiedSemanticRuleTests(unittest.TestCase):
 
         with patch.object(registry, "ANALYSIS_RECEIPT_SPECS", self._with_extra_spec()):
             errors = registry._analysis_receipt_semantic_errors(
-                {"id": "A3", "recovery_claim": {"kind": "analysis", "level": "source_verified"}},
+                {"id": "A3", "recovery_claim": {"kind": "analysis", "level": "source_executed"}},
                 {"ok": True},
                 "accessibility",
             )
@@ -855,3 +1047,303 @@ class SuiteQualifiedSemanticRuleTests(unittest.TestCase):
             if _re.match(r'    (if|elif) wave_id (==|in) ', line)
         ]
         self.assertEqual(top_level, [], f"branches still dispatch on a bare wave id: {top_level}")
+
+
+class EvidenceOwnershipTests(unittest.TestCase):
+    """Every artifact under a suite's evidence/ directory must be owned by something.
+
+    An undeclared file sitting beside a canonical receipt reads as evidence, passes every
+    gate, and can contradict the record it sits next to.
+    """
+
+    def test_no_artifact_under_active_evidence_is_undeclared(self):
+        suites = load_suites()
+        declared = set()
+        for suite_id, manifest in suites.items():
+            for wave in manifest.get("waves", []):
+                declared.add((SUITES_ROOT / wave["evidence"]).resolve(strict=False))
+            for entry in manifest.get("supporting_evidence", []):
+                declared.add((SUITES_ROOT / entry["path"]).resolve(strict=False))
+        undeclared = sorted(
+            str(found.relative_to(SUITES_ROOT))
+            for suite_id in suites
+            for found in (SUITES_ROOT / suite_id / "evidence").rglob("*")
+            if found.is_file() and found.resolve(strict=False) not in declared
+        )
+        self.assertEqual(undeclared, [], f"undeclared artifacts under active evidence: {undeclared}")
+
+    def test_supporting_evidence_declares_a_role_and_a_reason(self):
+        for suite_id, manifest in load_suites().items():
+            for entry in manifest.get("supporting_evidence", []):
+                with self.subTest(suite=suite_id, path=entry.get("path")):
+                    self.assertIn(entry.get("role"), {"fixture", "ancillary", "historical"})
+                    self.assertTrue(str(entry.get("reason", "")).strip())
+                    self.assertTrue((SUITES_ROOT / entry["path"]).is_file())
+
+    def test_historical_narratives_announce_that_they_are_not_evidence(self):
+        for suite_id, manifest in load_suites().items():
+            for entry in manifest.get("supporting_evidence", []):
+                if entry.get("role") != "historical":
+                    continue
+                with self.subTest(suite=suite_id, path=entry["path"]):
+                    text = (SUITES_ROOT / entry["path"]).read_text(encoding="utf-8")
+                    self.assertIn("SUPERSEDED", text)
+                    self.assertIn("not evidence", text)
+
+
+class DonorGitIsolationTests(unittest.TestCase):
+    """A read-only drift scan must never execute repository-local Git code.
+
+    `core.fsmonitor` names an executable that Git launches during status refreshes. The
+    runner strips the parent environment, but environment stripping alone cannot stop local
+    configuration from executing code -- `.git/config` ships with the checkout. A drift
+    pass across seventy donors would otherwise run seventy donor-controlled programs with
+    this process's authority (approval-store path, credentials, agent sockets) behind them.
+    """
+
+    _git = staticmethod(WorktreeDriftTests._git)
+    _dirty_repo = WorktreeDriftTests._dirty_repo
+
+    def test_repository_local_fsmonitor_executable_is_never_run(self):
+        import os as os_module
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = self._dirty_repo(root)
+
+            sentinel = root / "fsmonitor-sentinel"
+            script = root / "rogue-fsmonitor.sh"
+            script.write_text(
+                "#!/bin/sh\n"
+                f"env > {shlex.quote(str(sentinel))}\n",
+                encoding="utf-8",
+            )
+            script.chmod(0o755)
+            # The hostile setting lives in the donor's own repository config, which no
+            # environment variable can suppress.
+            self._git(repo, "config", "core.fsmonitor", str(script))
+
+            # The control plane's own authority is in the parent environment, exactly as
+            # it is during a real drift pass; the sentinel proves what a launched child
+            # would have inherited.
+            approval_sentinel = str(root / "approval-store-path")
+            os_module.environ["PORTFOLIO_OPERATOR_APPROVAL_STORE"] = approval_sentinel
+            self.addCleanup(os_module.environ.pop, "PORTFOLIO_OPERATOR_APPROVAL_STORE", None)
+
+            with patch("portfolio_suites.registry.PROJECTS_ROOT", root):
+                from portfolio_suites.registry import check_project_git_drift
+
+                drift = check_project_git_drift("donor", {"source_snapshot": {"git": True}})
+
+            self.assertTrue(
+                drift is not None and drift["status_readable"],
+                "drift inspection must still work with fsmonitor neutralized",
+            )
+            self.assertFalse(
+                sentinel.exists(),
+                "a donor-local core.fsmonitor executable was run by a drift command",
+            )
+
+
+class DriftFailsClosedTests(unittest.TestCase):
+    """Unfingerprinted state is unresolved drift, never a clean baseline.
+
+    Both cases hold the pathname and porcelain status shape constant while the bytes move,
+    which is exactly the shape that reported `has_drift=false` before.
+    """
+
+    _git = staticmethod(WorktreeDriftTests._git)
+    _dirty_repo = WorktreeDriftTests._dirty_repo
+
+    def test_sensitive_untracked_content_is_incomplete_not_complete(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = self._dirty_repo(root)
+            (repo / ".env").write_text("SECRET=one\n", encoding="utf-8")
+            with patch("portfolio_suites.registry.PROJECTS_ROOT", root):
+                from portfolio_suites.registry import check_project_git_drift
+
+                first = check_project_git_drift("donor", {"source_snapshot": {"git": True}})
+                self.assertFalse(
+                    first["untracked_fingerprint_complete"],
+                    "an unfingerprinted secret cannot be reported as a complete fingerprint",
+                )
+                self.assertIn(
+                    "untracked_content_fingerprint_incomplete",
+                    first["fingerprint_incomplete_reasons"],
+                )
+                # The reason must not leak the name or the contents of the sensitive entry.
+                self.assertNotIn(".env", " ".join(first["fingerprint_incomplete_reasons"]))
+                self.assertNotIn("SECRET", first["current_status_sha256"])
+
+                baseline = {
+                    "git": True,
+                    "branch": first["current_branch"],
+                    "head": first["current_head"],
+                    "status_lines": first["current_lines"],
+                    "status_sha256": first["current_status_sha256"],
+                    "patch_sha256": first["current_patch_sha256"],
+                }
+                (repo / ".env").write_text("SECRET=two\n", encoding="utf-8")
+                after = check_project_git_drift("donor", {"source_snapshot": baseline})
+                self.assertTrue(after["has_drift"], "unresolved state must never report clean")
+                self.assertIsNone(
+                    _registry_module._live_snapshot("donor", after),
+                    "an incomplete fingerprint must refuse baseline acceptance",
+                )
+
+    def test_an_unreadable_patch_is_incomplete_not_clean(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = self._dirty_repo(root)
+            real_git_value = _registry_module._git_value
+
+            def patch_unavailable(source, *args, **kwargs):
+                if args[:1] == ("diff",):
+                    return "unavailable"
+                return real_git_value(source, *args, **kwargs)
+
+            with patch("portfolio_suites.registry.PROJECTS_ROOT", root), \
+                 patch("portfolio_suites.registry._git_value", patch_unavailable):
+                from portfolio_suites.registry import check_project_git_drift
+
+                first = check_project_git_drift("donor", {"source_snapshot": {"git": True}})
+                self.assertFalse(first["patch_readable"])
+                self.assertIn("git_patch_unreadable", first["fingerprint_incomplete_reasons"])
+
+                baseline = {
+                    "git": True,
+                    "branch": first["current_branch"],
+                    "head": first["current_head"],
+                    "status_lines": first["current_lines"],
+                    "status_sha256": first["current_status_sha256"],
+                    "patch_sha256": first["current_patch_sha256"],
+                }
+                # Byte change to an already-dirty tracked file: porcelain shape is unchanged
+                # and the patch -- the only thing that would have caught it -- is unreadable.
+                (repo / "f.txt").write_text("a completely different dirty edit\n", encoding="utf-8")
+                after = check_project_git_drift("donor", {"source_snapshot": baseline})
+
+                self.assertFalse(after["patch_drift"], "an unreadable patch cannot show drift")
+                self.assertTrue(after["has_drift"], "but it must not report clean either")
+                self.assertIsNone(
+                    _registry_module._live_snapshot("donor", after),
+                    "an unreadable patch must refuse baseline acceptance",
+                )
+
+
+class LedgerTransactionTests(unittest.TestCase):
+    """The ledger is the single source of truth for all 70 dispositions and cannot be rebuilt.
+
+    Rebuilding the document from text read before a long live-git scan and then replacing
+    the file discards whatever another writer committed in between -- and the replace
+    succeeds, so nothing reports it.
+    """
+
+    def _ledger(self, root, note):
+        """One project per line with a source_snapshot field, matching the real ledger shape."""
+        path = root / "portfolio" / "project-ledger.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            '{\n  "schema_version": "1.0.0",\n  "projects": [\n'
+            '    {"name":"donor","note":"' + note + '","source_snapshot":{"git":true}}\n'
+            "  ]\n}\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_a_concurrent_edit_aborts_instead_of_being_overwritten(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = self._ledger(root, "initial")
+
+            def concurrent_writer(_accept):
+                # Lands after the transaction's read, while live state is being computed.
+                ledger.write_text(
+                    ledger.read_text(encoding="utf-8").replace('"note":"initial"', '"note":"writer-b"'),
+                    encoding="utf-8",
+                )
+                return {"donor": {"git": True, "branch": "main", "head": "abc1234",
+                                  "status_lines": 0, "status_sha256": "d" * 64, "patch_sha256": ""}}
+
+            with patch.object(_registry_module, "_LEDGER_PATH", ledger), \
+                 patch.object(_registry_module, "SUITES_ROOT", root), \
+                 patch.object(_registry_module, "pending_snapshots", concurrent_writer):
+                with self.assertRaises(_registry_module.LedgerConflict):
+                    _registry_module.fingerprint_baselines(accept=True)
+
+            surviving = json.loads(ledger.read_text(encoding="utf-8"))
+            self.assertEqual(surviving["projects"][0]["note"], "writer-b", "the concurrent edit was lost")
+
+    def test_an_edit_landing_during_the_commit_window_is_not_overwritten(self):
+        """The old second-line defence rechecked the digest and then still had to create,
+        write, flush, and fsync a temporary before its replacing rename -- so an edit that
+        landed inside that interval was silently destroyed. Conflict detection now lives
+        inside the commit primitive itself, so this probe must abort the transaction."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = self._ledger(root, "initial")
+            real_write_temp = _registry_module.write_temp_payload
+
+            def edit_during_commit(directory_fd, name, payload, **kwargs):
+                # Lands after the transaction's read and during the commit preparation:
+                # exactly the interval the old digest recheck could not cover.
+                ledger.write_text(
+                    ledger.read_text(encoding="utf-8").replace('"note":"initial"', '"note":"writer-b"'),
+                    encoding="utf-8",
+                )
+                return real_write_temp(directory_fd, name, payload, **kwargs)
+
+            snapshots = {"donor": {"git": True, "branch": "main", "head": "abc1234",
+                                   "status_lines": 0, "status_sha256": "d" * 64, "patch_sha256": ""}}
+            with patch.object(_registry_module, "_LEDGER_PATH", ledger), \
+                 patch.object(_registry_module, "SUITES_ROOT", root), \
+                 patch.object(_registry_module, "write_temp_payload", side_effect=edit_during_commit), \
+                 patch.object(_registry_module, "pending_snapshots", return_value=snapshots):
+                with self.assertRaises(_registry_module.LedgerConflict):
+                    _registry_module.fingerprint_baselines(accept=True)
+
+            surviving = json.loads(ledger.read_text(encoding="utf-8"))
+            self.assertEqual(
+                surviving["projects"][0]["note"], "writer-b",
+                "the commit replaced an edit that landed inside the commit window",
+            )
+            leftovers = [
+                p.name for p in ledger.parent.iterdir()
+                if p.name != ledger.name and p.name != ledger.name + ".lock"
+            ]
+            self.assertEqual(leftovers, [], leftovers)
+
+    def test_the_lock_serializes_overlapping_transactions(self):
+        import threading
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._ledger(root, "initial")
+            overlapped = []
+            inside = threading.Event()
+            released = threading.Event()
+
+            with patch.object(_registry_module, "SUITES_ROOT", root):
+                def hold_the_lock():
+                    with _registry_module._ledger_lock():
+                        inside.set()
+                        released.wait(timeout=5)
+
+                holder = threading.Thread(target=hold_the_lock)
+                holder.start()
+                self.assertTrue(inside.wait(timeout=5))
+
+                def second_writer():
+                    with _registry_module._ledger_lock():
+                        overlapped.append(released.is_set())
+
+                contender = threading.Thread(target=second_writer)
+                contender.start()
+                contender.join(timeout=0.5)
+                self.assertTrue(contender.is_alive(), "the second transaction was not blocked")
+                released.set()
+                contender.join(timeout=5)
+                holder.join(timeout=5)
+
+        self.assertEqual(overlapped, [True], "the second transaction ran before the first finished")

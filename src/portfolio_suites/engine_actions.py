@@ -56,10 +56,124 @@ def redact_sensitive_arguments(value: Any) -> Any:
 
 @dataclass(frozen=True)
 class ActionSpec:
+    """The reviewed policy for one exposed action.
+
+    The four policy fields have no defaults on purpose. A defaulted ``read_only`` /
+    ``approval_required=False`` / ``replayable=True`` bundle is how an action that can
+    consume a one-time approval token ends up advertised as replayable: the default reads
+    as a reviewed decision when it is only an absence of one. Every spec states its policy
+    through one of the factories below (or passes all four fields itself), so what the
+    catalog claims about authority is always something somebody wrote.
+
+    ``authority_use`` says how the action relates to operator authority:
+    - ``"none"`` -- the action never touches an approval token.
+    - ``"parameter_dependent"`` -- the action consumes a single-use token when its
+      arguments supply one, so static metadata carries the conservative bound while
+      :func:`effective_policy` derives the truth from validated arguments at preflight.
+    """
+
     output_kind: str
+    side_effect_class: str
+    approval_required: bool
+    evidence_eligible: bool
+    replayable: bool
     contract: str | None = None
+    execution_tier: str = "reference_prototype"
+    authority_use: str = "none"
     input_adapter: Callable[[dict[str, Any]], dict[str, Any]] | None = None
     output_adapter: Callable[[Any], Any] | None = None
+
+
+def read_only_action(output_kind: str, contract: str | None = None, **overrides: Any) -> ActionSpec:
+    """A pure computation: no state change, no authority, deterministically replayable."""
+    policy = {
+        "side_effect_class": "read_only",
+        "approval_required": False,
+        "evidence_eligible": True,
+        "replayable": True,
+    }
+    policy.update(overrides)
+    return ActionSpec(output_kind=output_kind, contract=contract, **policy)
+
+
+def simulated_action(output_kind: str, contract: str | None = None, **overrides: Any) -> ActionSpec:
+    """Builds or advances suite-local in-memory artifacts; nothing external is touched."""
+    policy = {
+        "side_effect_class": "in_memory_mutation",
+        "approval_required": False,
+        "evidence_eligible": True,
+        "replayable": True,
+    }
+    policy.update(overrides)
+    return ActionSpec(output_kind=output_kind, contract=contract, **policy)
+
+
+def authorized_action(output_kind: str, contract: str | None = None, **overrides: Any) -> ActionSpec:
+    """Filesystem mutation gated by a one-time token in arguments; never safely replayable."""
+    policy = {
+        "side_effect_class": "filesystem_mutation",
+        "approval_required": True,
+        "evidence_eligible": True,
+        "replayable": False,
+        "authority_use": "parameter_dependent",
+    }
+    policy.update(overrides)
+    return ActionSpec(output_kind=output_kind, contract=contract, **policy)
+
+
+def parameter_dependent_action(output_kind: str, contract: str | None = None, **overrides: Any) -> ActionSpec:
+    """Simulated without a token; consumes single-use authority when arguments supply one.
+
+    The static metadata here is the conservative bound -- it advertises that the action
+    *can* consume authority and therefore must not be replayed -- while
+    :func:`effective_policy` derives the invocation-specific truth during preflight.
+    """
+    policy = {
+        "side_effect_class": "in_memory_mutation",
+        "approval_required": True,
+        "evidence_eligible": True,
+        "replayable": False,
+        "authority_use": "parameter_dependent",
+    }
+    policy.update(overrides)
+    return ActionSpec(output_kind=output_kind, contract=contract, **policy)
+
+
+# Argument names that carry a one-time approval token. Presence of a non-empty value under
+# any of these keys is what turns a parameter-dependent invocation into an authority-
+# consuming one.
+AUTHORITY_TOKEN_ARGUMENTS = frozenset({"operator_approval_token"})
+
+
+def invocation_consumes_authority(arguments: dict[str, Any]) -> bool:
+    """Whether validated arguments supply a live one-time approval token."""
+    return any(
+        isinstance(arguments.get(name), str) and arguments[name].strip()
+        for name in AUTHORITY_TOKEN_ARGUMENTS
+    )
+
+
+def effective_policy(spec: ActionSpec, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The policy that actually governs one invocation, derived from validated arguments.
+
+    Static action-level metadata cannot represent parameter-dependent authority: the same
+    brand-intake call is a simulated fixture without a token and a single-use authority
+    consumption with one. Chains and any future replay surface must consult this, not the
+    catalog, when deciding whether an invocation may be repeated.
+    """
+    policy = {
+        "side_effect_class": spec.side_effect_class,
+        "approval_required": spec.approval_required,
+        "evidence_eligible": spec.evidence_eligible,
+        "replayable": spec.replayable,
+        "authority_use": spec.authority_use,
+        "authority_consumed": False,
+    }
+    if spec.authority_use == "parameter_dependent" and invocation_consumes_authority(arguments or {}):
+        policy["authority_consumed"] = True
+        policy["side_effect_class"] = "single_use_authority_consumed"
+        policy["replayable"] = False
+    return policy
 
 
 def _brand_phase_input(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -112,72 +226,79 @@ def _fen_output(value: Any) -> Any:
 
 # The reviewed allowlist. Output metadata describes what each action actually returns; a suite-
 # wide contract label is too coarse for summaries, Markdown renderers, boolean predicates, and
-# receipt wrappers that are not contract artifacts.
+# receipt wrappers that are not contract artifacts. Policy comes from the named factories so
+# every entry visibly declares its authority behavior.
 ACTION_SPECS: dict[str, dict[str, ActionSpec]] = {
     "accessibility": {
-        "audit_html_snippet": ActionSpec("contract-list", "A11yFinding"),
-        "audit_rule_families": ActionSpec("contract-list", "A11yFinding"),
-        "create_ai_assisted_finding": ActionSpec("contract", "A11yFinding"),
-        "evaluate_wcag_auditor_backlog_catalog": ActionSpec("receipt"),
-        "finalize_overlay_reconciliation": ActionSpec("receipt"),
-        "reconcile_keyboard_overlays": ActionSpec("receipt"),
-        "roundtrip_kitchen_learning_finding": ActionSpec("receipt"),
+        "audit_html_snippet": read_only_action("contract-list", "A11yFinding"),
+        "audit_rule_families": read_only_action("contract-list", "A11yFinding"),
+        "create_ai_assisted_finding": simulated_action("contract", "A11yFinding"),
+        "evaluate_wcag_auditor_backlog_catalog": read_only_action("receipt"),
+        "finalize_overlay_reconciliation": read_only_action("receipt"),
+        "reconcile_keyboard_overlays": read_only_action("receipt"),
+        "roundtrip_kitchen_learning_finding": read_only_action("receipt"),
     },
     "operator-os": {
-        "capture_live_pkos_stream": ActionSpec("data"),
-        "capture_source": ActionSpec("contract", "SourceRecord"),
-        "detect_reingestion_violation": ActionSpec("boolean"),
-        "execute_jarvis_action_checkpoint": ActionSpec("receipt"),
-        "preview_jarvis_action": ActionSpec("receipt"),
-        "project_to_observer": ActionSpec("markdown"),
-        "reconcile_ryos_disposition": ActionSpec("receipt"),
-        "validate_observer_projection": ActionSpec("data"),
+        "capture_live_pkos_stream": simulated_action("data"),
+        "capture_source": simulated_action("contract", "SourceRecord"),
+        "detect_reingestion_violation": read_only_action("boolean"),
+        "execute_jarvis_action_checkpoint": authorized_action("receipt"),
+        "preview_jarvis_action": read_only_action("receipt"),
+        "project_to_observer": read_only_action("markdown"),
+        "reconcile_ryos_disposition": read_only_action("receipt"),
+        "validate_observer_projection": read_only_action("data"),
     },
     "brand-publishing": {
-        "compile_brand_package": ActionSpec("contract", "BrandPackage"),
-        "dry_run_publish": ActionSpec("receipt"),
-        "execute_brand_maker_intake": ActionSpec("receipt", input_adapter=_brand_phase_input),
-        "get_brand_workshop_phases": ActionSpec("data"),
-        "simulate_vcc_human_approval": ActionSpec("receipt"),
-        "verify_immutability": ActionSpec("data"),
-        "verify_package_consumer": ActionSpec("receipt"),
+        "compile_brand_package": simulated_action("contract", "BrandPackage"),
+        "dry_run_publish": read_only_action("receipt"),
+        # Both of these run as suite-local simulations until their arguments supply a
+        # one-time approval token -- at which point the invocation consumes single-use
+        # authority and must never be replayed. The conservative bound is advertised here;
+        # effective_policy() derives the per-invocation truth during preflight.
+        "execute_brand_maker_intake": parameter_dependent_action(
+            "receipt", input_adapter=_brand_phase_input
+        ),
+        "simulate_vcc_human_approval": parameter_dependent_action("receipt"),
+        "get_brand_workshop_phases": read_only_action("data"),
+        "verify_immutability": read_only_action("data"),
+        "verify_package_consumer": read_only_action("receipt"),
     },
     "production-house": {
-        "advance_job_stage": ActionSpec("contract", "ProductionJob"),
-        "build_groundwire_pipeline_job": ActionSpec("contract", "ProductionJob"),
-        "build_investigative_documentary_job": ActionSpec("contract", "ProductionJob"),
-        "create_job": ActionSpec("contract", "ProductionJob"),
-        "map_writers_room_events": ActionSpec("receipt"),
+        "advance_job_stage": simulated_action("contract", "ProductionJob"),
+        "build_groundwire_pipeline_job": simulated_action("contract", "ProductionJob"),
+        "build_investigative_documentary_job": simulated_action("contract", "ProductionJob"),
+        "create_job": simulated_action("contract", "ProductionJob"),
+        "map_writers_room_events": simulated_action("receipt"),
     },
     "model-behavior-lab": {
-        "build_versioned_corpus": ActionSpec("data"),
-        "compare_runs": ActionSpec("data"),
-        "create_experiment_run": ActionSpec("contract", "ExperimentRun"),
-        "execute_chess_benchmark_run": ActionSpec("contract", "ExperimentRun"),
-        "execute_ethics_scenario_run": ActionSpec("contract", "ExperimentRun"),
-        "parse_fen_board": ActionSpec("data", output_adapter=_fen_output),
+        "build_versioned_corpus": simulated_action("data"),
+        "compare_runs": read_only_action("data"),
+        "create_experiment_run": simulated_action("contract", "ExperimentRun"),
+        "execute_chess_benchmark_run": simulated_action("contract", "ExperimentRun"),
+        "execute_ethics_scenario_run": simulated_action("contract", "ExperimentRun"),
+        "parse_fen_board": read_only_action("data", output_adapter=_fen_output),
     },
     "discovery-decision": {
-        "advance_stage": ActionSpec("contract", "InvestigationRecord"),
-        "create_investigation": ActionSpec("contract", "InvestigationRecord"),
-        "discover_across_sources": ActionSpec("receipt"),
-        "execute_sif_analogy_stage": ActionSpec("contract", "InvestigationRecord"),
-        "ingest_insight_excavator_source": ActionSpec("receipt"),
+        "advance_stage": simulated_action("contract", "InvestigationRecord"),
+        "create_investigation": simulated_action("contract", "InvestigationRecord"),
+        "discover_across_sources": simulated_action("receipt"),
+        "execute_sif_analogy_stage": simulated_action("contract", "InvestigationRecord"),
+        "ingest_insight_excavator_source": simulated_action("receipt"),
     },
     "agent-reliability": {
-        "apply_with_rollback": ActionSpec("receipt"),
-        "audit_promoted_components": ActionSpec("receipt"),
-        "build_curriculum_fixtures": ActionSpec("data"),
-        "partition_plan_by_budget": ActionSpec("receipt"),
-        "recover_plan": ActionSpec("receipt"),
-        "run_adversarial_harness": ActionSpec("contract", "ExperimentRun"),
-        "verify_path_confinement": ActionSpec("data"),
+        "apply_with_rollback": simulated_action("receipt", replayable=True),
+        "audit_promoted_components": read_only_action("receipt"),
+        "build_curriculum_fixtures": simulated_action("data"),
+        "partition_plan_by_budget": simulated_action("receipt"),
+        "recover_plan": simulated_action("receipt"),
+        "run_adversarial_harness": simulated_action("contract", "ExperimentRun"),
+        "verify_path_confinement": read_only_action("data"),
     },
     "game-design": {
-        "audit_authored_game_boundary": ActionSpec("receipt"),
-        "build_text_adventure_pack": ActionSpec("data"),
-        "generate_printable_balance_sheet": ActionSpec("markdown"),
-        "simulate_tucked_in_terrors": ActionSpec("contract", "ExperimentRun"),
+        "audit_authored_game_boundary": read_only_action("receipt"),
+        "build_text_adventure_pack": simulated_action("data"),
+        "generate_printable_balance_sheet": read_only_action("markdown"),
+        "simulate_tucked_in_terrors": simulated_action("contract", "ExperimentRun"),
     },
 }
 
@@ -245,6 +366,12 @@ def list_actions(suite_id: str | None = None) -> dict[str, Any]:
                 "parameters": _describe_parameters(func),
                 "output_kind": spec.output_kind,
                 "emits": spec.contract,
+                "execution_tier": spec.execution_tier,
+                "side_effect_class": spec.side_effect_class,
+                "approval_required": spec.approval_required,
+                "evidence_eligible": spec.evidence_eligible,
+                "replayable": spec.replayable,
+                "authority_use": spec.authority_use,
             })
         catalog[sid] = {
             "engine": ENGINES[sid].__name__,
@@ -254,10 +381,27 @@ def list_actions(suite_id: str | None = None) -> dict[str, Any]:
     return catalog
 
 
-def get_action_spec(suite_id: str, action: str) -> dict[str, Any]:
-    """Public metadata for one reviewed action."""
+def get_action_spec(
+    suite_id: str,
+    action: str,
+    arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Policy metadata for one reviewed action, or for one concrete invocation.
+
+    Without ``arguments`` this is the static catalog entry: for parameter-dependent
+    actions it carries the conservative bound (they may consume single-use authority).
+    With validated ``arguments`` the result is the effective per-invocation policy --
+    including ``authority_consumed``, which any replay surface must treat as "never
+    repeat this invocation".
+    """
     _, spec = _registered_method(suite_id, action)
-    return {"output_kind": spec.output_kind, "emits": spec.contract}
+    policy = effective_policy(spec, arguments)
+    return {
+        "output_kind": spec.output_kind,
+        "emits": spec.contract,
+        "execution_tier": spec.execution_tier,
+        **policy,
+    }
 
 
 def _check_json_value(value: Any, path: str = "value") -> None:

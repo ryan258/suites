@@ -294,7 +294,12 @@ class ModelBehaviorSourceAdapter:
 
     @classmethod
     def execute_m3_chess_adapter_fixture(cls) -> dict[str, Any]:
-        """M3: Build the legal-move adapter fixture from one real recorded match."""
+        """M3: Build the legal-move adapter fixture from one real recorded match.
+
+        The match logs are the donor's; the legality verdict is not. `_is_move_legal_on_board`
+        is this suite's own checker, so the receipt names which evaluator ran rather than
+        letting "exercise the legality checker" be read as invoking the donor's.
+        """
         fingerprint = get_git_fingerprint(CHESS_DIR, CHESS_TRACKED)
         matches = cls._recorded_matches()
         source_verified = is_meaningful_git_fingerprint(fingerprint) and bool(matches)
@@ -341,6 +346,10 @@ class ModelBehaviorSourceAdapter:
             "legality_check": check,
             "ai_chess_fingerprint": fingerprint,
             "source_verification_passed": source_verified,
+            "legality_evaluator": "suite_local",
+            "donor_legality_checker_invoked": False,
+            "donor_match_logs_read": True,
+            "whole_match_replayed": False,
             "all_stages_passed": all_stages_passed,
         }
 

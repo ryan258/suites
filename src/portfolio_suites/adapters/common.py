@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import os
 import re
 import subprocess
@@ -15,15 +16,134 @@ from ..provenance import SENSITIVE_PATH_PATTERN, is_meaningful_git_fingerprint
 
 SENSITIVE_ENV_PATTERN = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL", re.IGNORECASE)
 
+# Only these names are inherited. A denylist over variable *names* cannot work here: the
+# capability a donor subprocess inherits is rarely spelled out in its name. SSH_AUTH_SOCK is
+# an open agent socket, DOCKER_CONFIG and KUBECONFIG are credential directories,
+# PIP_INDEX_URL routinely carries embedded user:pass, and PORTFOLIO_OPERATOR_APPROVAL_STORE
+# is this control plane's own authority -- none of which match KEY|TOKEN|SECRET.
+DONOR_ENV_ALLOWLIST = frozenset({
+    "PATH",     # without it the interpreter and git are unreachable
+    "LANG",     # locale determinism: sorting and message text
+    "LC_ALL",
+    "LC_CTYPE",
+    "TZ",       # timestamp determinism
+    "TMPDIR",   # tools that must write scratch files
+})
 
-def donor_env() -> dict[str, str]:
-    """Environment for donor subprocesses, with this control plane's own secrets removed."""
-    return {
-        name: value
-        for name, value in os.environ.items()
-        if not SENSITIVE_ENV_PATTERN.search(name)
+# Set rather than inherited: the neutral values. HOME is deliberately absent, so these close
+# the credential surfaces the two invoked toolchains would otherwise reach through it
+# (~/.ssh, ~/.npmrc, ~/.docker, ~/.aws, and git's global credential.helper).
+DONOR_ENV_DEFAULTS = {
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+    "GIT_TERMINAL_PROMPT": "0",       # never block on a credential prompt
+    "GIT_ASKPASS": "",
+    "npm_config_userconfig": "/dev/null",
+    "npm_config_update_notifier": "false",
+}
+
+
+@functools.lru_cache(maxsize=1)
+def _global_excludes_file() -> str | None:
+    """The user's global gitignore path, resolved once in *this* process.
+
+    Withholding HOME also withholds git's global excludes, which would silently reclassify
+    editor and tooling directories in all seventy donors as untracked content and flip every
+    clean donor to dirty. That is a change to the migration record, not a security boundary,
+    so the one setting is carried across explicitly -- as a value, never as a config file the
+    subprocess could reach a credential helper through.
+    """
+    configured = subprocess.run(
+        ["git", "config", "--get", "core.excludesFile"],
+        capture_output=True, text=True, timeout=5,
+    ).stdout.strip()
+    if configured:
+        return str(Path(configured).expanduser())
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    default = (Path(xdg) if xdg else Path.home() / ".config") / "git" / "ignore"
+    return str(default) if default.is_file() else None
+
+
+def donor_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Minimal environment for donor subprocesses: allowlisted names plus explicit additions.
+
+    A gate that genuinely needs another variable passes it in ``extra`` and says so at the
+    call site, which is where that decision can be reviewed.
+    """
+    env = {
+        name: os.environ[name]
+        for name in DONOR_ENV_ALLOWLIST
+        if name in os.environ
     }
+    env.update(DONOR_ENV_DEFAULTS)
+    excludes = _global_excludes_file()
+    if excludes:
+        # GIT_CONFIG_KEY/VALUE injects one setting without exposing a config file.
+        env["GIT_CONFIG_COUNT"] = "1"
+        env["GIT_CONFIG_KEY_0"] = "core.excludesFile"
+        env["GIT_CONFIG_VALUE_0"] = excludes
+    for name, value in (extra or {}).items():
+        if SENSITIVE_ENV_PATTERN.search(name):
+            raise ValueError(f"donor subprocesses are never given a credential-shaped variable: {name}")
+        env[name] = value
+    return env
 
+
+# Repository-local configuration can execute code during read-only Git commands, and no
+# environment can prevent it: `.git/config` is read from the donor checkout itself. The one
+# status/drift actually exercises is `core.fsmonitor`, whose value is an executable Git
+# launches to watch the worktree -- a drift scan across seventy donors would otherwise run
+# seventy arbitrary programs *inside this process's authority*, handing whatever the
+# control plane holds (approval-store path, API credentials, agent sockets) to code the
+# review never saw. Command-line `-c` overrides win over repo config, so these close the
+# known executable surfaces without touching the values the fingerprint depends on.
+_DONOR_GIT_CONFIG_OVERRIDES = (
+    "-c", "core.fsmonitor=",       # empty disables the fsmonitor hook/builtin
+    "-c", "credential.helper=",    # never let a read command reach a credential helper
+)
+
+
+def run_donor_git(
+    repo_dir: Path,
+    *args: str,
+    timeout: float = 5.0,
+    check: bool = False,
+    binary: bool = False,
+) -> subprocess.CompletedProcess:
+    """Run Git inside a donor checkout under the minimal, non-executing donor environment.
+
+    This is the one runner for every donor Git invocation -- drift inspection, baseline
+    fingerprints, untracked enumeration -- so there is exactly one place where the
+    environment boundary and the local-config neutralization are reviewed.
+
+    Beyond :func:`donor_env`'s stripped environment, the command runs with:
+
+    - ``--no-pager``, so output plumbing never spawns a pager process;
+    - ``core.fsMonitor`` emptied, refusing repository-local fsmonitor hooks/executables;
+    - ``credential.helper`` emptied, so even an accidental network-touching subcommand
+      cannot execute a helper carrying credentials;
+    - ``GIT_OPTIONAL_LOCKS=0``, keeping status refreshes from writing to the donor's index.
+
+    Callers doing content comparison must pass ``--no-ext-diff``/``--no-textconv``
+    themselves (they are command-specific options), which the drift patch command does.
+    ``binary=True`` returns undecoded bytes, for NUL-delimited machine output.
+    """
+    command = [
+        "git",
+        "--no-pager",
+        *_DONOR_GIT_CONFIG_OVERRIDES,
+        "-C",
+        str(repo_dir),
+        *args,
+    ]
+    return subprocess.run(
+        command,
+        env=donor_env({"GIT_OPTIONAL_LOCKS": "0"}),
+        capture_output=True,
+        text=not binary,
+        check=check,
+        timeout=timeout,
+    )
 
 def get_repo_path(repo_name: str, env_var: str | None = None) -> Path:
     """Resolve repository path dynamically from environment, workspace sibling, or standard directory."""
@@ -45,10 +165,12 @@ def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) 
     if not (repo_dir / ".git").exists():
         return {"branch": "unknown", "head": "unknown", "status": "no_git_dir"}
     try:
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_dir, env=donor_env(), timeout=5).decode().strip()
-        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir, env=donor_env(), timeout=5).decode().strip()
-        status_raw = subprocess.check_output(["git", "status", "--porcelain"], cwd=repo_dir, env=donor_env(), timeout=5).decode().strip()
-        diff_raw = subprocess.check_output(["git", "diff", "HEAD"], cwd=repo_dir, env=donor_env(), timeout=5)
+        head = run_donor_git(repo_dir, "rev-parse", "HEAD", check=True).stdout.strip()
+        branch = run_donor_git(repo_dir, "rev-parse", "--abbrev-ref", "HEAD", check=True).stdout.strip()
+        status_raw = run_donor_git(repo_dir, "status", "--porcelain", check=True).stdout.strip()
+        diff_raw = run_donor_git(
+            repo_dir, "diff", "--no-ext-diff", "--no-textconv", "HEAD", check=True, binary=True
+        ).stdout
 
         dirty_lines = [line for line in status_raw.splitlines() if line.strip()]
         is_dirty = len(dirty_lines) > 0

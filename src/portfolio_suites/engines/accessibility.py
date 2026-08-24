@@ -6,6 +6,7 @@ NOTE: This is a control-plane reference prototype and fixture comparator, not a 
 from __future__ import annotations
 
 import datetime
+import hashlib
 import re
 from typing import Any
 from ..contracts import SCHEMA_VERSION, validate_contract
@@ -17,37 +18,62 @@ from ..contracts import SCHEMA_VERSION, validate_contract
 ATTR = r"(?<![\w-])"
 
 
+def _clean_markup_for_audit(html: str) -> str:
+    """Strip HTML comments, template, script, and style blocks so inert or non-rendered elements cannot be mistaken for rendered DOM elements."""
+    without_comments = re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL)
+    without_templates = re.sub(r"<template\b[^>]*>.*?</template>", "", without_comments, flags=re.DOTALL | re.IGNORECASE)
+    without_scripts = re.sub(r"<script\b[^>]*>.*?</script>", "", without_templates, flags=re.DOTALL | re.IGNORECASE)
+    return re.sub(r"<style\b[^>]*>.*?</style>", "", without_scripts, flags=re.DOTALL | re.IGNORECASE)
+
+
+def _stable_finding_id(
+    prefix: str,
+    source_url: str,
+    rule_id: str,
+    target: str,
+    snippet: str,
+    occurrence_locator: str | int = 0,
+) -> str:
+    """Generate a stable, collision-resistant identifier including occurrence identity."""
+    digest = hashlib.sha256(
+        f"{source_url}:{rule_id}:{target}:{occurrence_locator}:{snippet}".encode("utf-8")
+    ).hexdigest()[:10]
+    return f"find-{prefix}-{digest}"
+
+
 class AccessibilityEngine:
     """Reference prototype for DOM/HTML snippet auditing, A11yFinding contract generation, and overlay reconciliation."""
 
     @staticmethod
     def audit_html_snippet(html_content: str, source_url: str = "snippet://local") -> list[dict[str, Any]]:
-        """Run deterministic WCAG and ARIA rules over HTML markup."""
+        """Run WCAG and ARIA rules over clean HTML markup with stable finding IDs."""
         findings = []
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        clean_html = _clean_markup_for_audit(html_content)
 
         # Rule 1: Form error association (WCAG 3.3.1)
         # Check inputs with class 'error' or 'is-invalid' without aria-describedby or aria-invalid
         input_matches = re.finditer(
             rf'<input\b(?=[^>]*{ATTR}class\s*=["\'][^"\']*{ATTR}(is-invalid|error)(?![\w-])[^"\']*["\'])(?![^>]*{ATTR}(aria-describedby|aria-invalid)(?![\w-]))[^>]*>',
-            html_content,
+            clean_html,
             re.IGNORECASE,
         )
-        for idx, match in enumerate(input_matches, start=1):
+        for match in input_matches:
             raw_tag = match.group(0)
             id_match = re.search(r'id=["\']([^"\']+)["\']', raw_tag)
-            elem_id = id_match.group(1) if id_match else f"input-{idx}"
+            elem_id = id_match.group(1) if id_match else "input"
+            target_sel = f"input#{elem_id}" if id_match else "input"
             finding = {
                 "schema_version": SCHEMA_VERSION,
-                "finding_id": f"find-wcag-331-{idx:03d}",
+                "finding_id": _stable_finding_id("wcag331", source_url, "wcag-3.3.1-error-identification", target_sel, raw_tag, occurrence_locator=f"offset_{match.start()}"),
                 "rule_id": "wcag-3.3.1-error-identification",
                 "severity": "critical",
                 "summary": f"Form control #{elem_id} has invalid state styling without programmatic aria-describedby linkage.",
-                "target": f"input#{elem_id}",
+                "target": target_sel,
                 "evidence": [
                     {
                         "dom_snippet": raw_tag,
-                        "selector": f"input#{elem_id}",
+                        "selector": target_sel,
                         "source": source_url,
                         "timestamp": now_iso,
                     }
@@ -59,22 +85,23 @@ class AccessibilityEngine:
             findings.append(validate_contract("A11yFinding", finding))
 
         # Rule 2: Image alt text (WCAG 1.1.1)
-        img_matches = re.finditer(rf'<img\b(?![^>]*{ATTR}alt\s*=)[^>]*>', html_content, re.IGNORECASE)
-        for idx, match in enumerate(img_matches, start=1):
+        img_matches = re.finditer(rf'<img\b(?![^>]*{ATTR}alt\s*=)[^>]*>', clean_html, re.IGNORECASE)
+        for match in img_matches:
             raw_tag = match.group(0)
             src_match = re.search(r'src=["\']([^"\']+)["\']', raw_tag)
             src_val = src_match.group(1) if src_match else "unknown"
+            target_sel = f"img[src='{src_val}']"
             finding = {
                 "schema_version": SCHEMA_VERSION,
-                "finding_id": f"find-wcag-111-{idx:03d}",
+                "finding_id": _stable_finding_id("wcag111", source_url, "wcag-1.1.1-non-text-content", target_sel, raw_tag, occurrence_locator=f"offset_{match.start()}"),
                 "rule_id": "wcag-1.1.1-non-text-content",
                 "severity": "serious",
                 "summary": f"Image with src '{src_val}' is missing an alt attribute.",
-                "target": f"img[src='{src_val}']",
+                "target": target_sel,
                 "evidence": [
                     {
                         "dom_snippet": raw_tag,
-                        "selector": f"img[src='{src_val}']",
+                        "selector": target_sel,
                         "source": source_url,
                         "timestamp": now_iso,
                     }
@@ -88,18 +115,19 @@ class AccessibilityEngine:
         # Rule 3: Button without accessible name (WCAG 4.1.2)
         btn_matches = re.finditer(
             rf'<button\b(?![^>]*{ATTR}(aria-label|aria-labelledby|title)\s*=)[^>]*>\s*(?:<[^>]+>\s*)*</button>',
-            html_content,
+            clean_html,
             re.IGNORECASE,
         )
-        for idx, match in enumerate(btn_matches, start=1):
+        for match in btn_matches:
             raw_tag = match.group(0)
+            target_sel = "button:empty"
             finding = {
                 "schema_version": SCHEMA_VERSION,
-                "finding_id": f"find-wcag-412-{idx:03d}",
+                "finding_id": _stable_finding_id("wcag412", source_url, "wcag-4.1.2-name-role-value", target_sel, raw_tag, occurrence_locator=f"offset_{match.start()}"),
                 "rule_id": "wcag-4.1.2-name-role-value",
                 "severity": "critical",
                 "summary": "Button element has no text content and lacks an aria-label or aria-labelledby attribute.",
-                "target": "button:empty",
+                "target": target_sel,
                 "evidence": [
                     {
                         "dom_snippet": raw_tag,
@@ -116,8 +144,8 @@ class AccessibilityEngine:
 
         # Rule 4: Link without accessible text (WCAG 2.4.4)
         # Parse <a>...</a> tags and check for inner text, aria attributes, or child img alt text
-        a_pattern = re.finditer(r'<a\b([^>]*)>(.*?)</a>', html_content, re.IGNORECASE | re.DOTALL)
-        for idx, match in enumerate(a_pattern, start=1):
+        a_pattern = re.finditer(r'<a\b([^>]*)>(.*?)</a>', clean_html, re.IGNORECASE | re.DOTALL)
+        for match in a_pattern:
             attrs = match.group(1)
             inner_html = match.group(2).strip()
 
@@ -135,13 +163,14 @@ class AccessibilityEngine:
 
             if not (has_direct_name or visible_text or has_img_alt or has_svg_label):
                 raw_tag = match.group(0)
+                target_sel = "a:empty"
                 finding = {
                     "schema_version": SCHEMA_VERSION,
-                    "finding_id": f"find-wcag-244-{idx:03d}",
+                    "finding_id": _stable_finding_id("wcag244", source_url, "wcag-2.4.4-link-purpose-in-context", target_sel, raw_tag, occurrence_locator=f"offset_{match.start()}"),
                     "rule_id": "wcag-2.4.4-link-purpose-in-context",
                     "severity": "serious",
                     "summary": "Anchor tag contains no accessible name from text, aria-label, or child image alt.",
-                    "target": "a:empty",
+                    "target": target_sel,
                     "evidence": [
                         {
                             "dom_snippet": raw_tag[:120],

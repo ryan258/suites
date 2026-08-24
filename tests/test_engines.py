@@ -246,8 +246,14 @@ class EngineTests(unittest.TestCase):
         self.assertTrue(o4["all_sources_cited"])
 
         o5 = OperatorOSSourceAdapter.execute_o5_ryos_disposition_reconciliation()
-        self.assertEqual(o5["status"], "disposition_reconciled")
-        self.assertTrue(o5["duplicate_decisions_closed"])
+        # The gate records a proposal; its underlying engine leaves acceptance unverified.
+        # These negatives are asserted, not just absent, so a future "closed" cannot creep back.
+        self.assertEqual(o5["status"], "disposition_proposal_recorded")
+        self.assertFalse(o5["duplicate_decisions_closed"])
+        self.assertEqual(o5["duplicate_decision_disposition"], "close_on_verification")
+        self.assertFalse(o5["migration_acceptance_verified"])
+        self.assertFalse(o5["donor_read"])
+        self.assertFalse(o5["external_runtime_invoked"])
         self.assertGreaterEqual(o5["port_candidates_count"], 2)
 
         o6 = OperatorOSSourceAdapter.execute_o6_jarvis_checkpoint_lifecycle()
@@ -1132,19 +1138,30 @@ class BackupTraversalTests(unittest.TestCase):
                 "files": [{"path": "notes/a.md", "size": len(entries[0][1])}],
             }
 
+        name = "snap-000000000000.zip"
         with tempfile.TemporaryDirectory() as tmp:
-            destination = Path(tmp) / "snap-000000000000.zip"
-            before = _write_backup_archive(destination, entries, _archive_manifest(snapshot(0)))
-            after = _write_backup_archive(destination, entries, _archive_manifest(snapshot(1)))
-            self.assertEqual(before, after)
-
-            # The guard still has to refuse genuinely different content under a reused name.
-            with self.assertRaises(OSError):
-                _write_backup_archive(
-                    destination,
-                    [("notes/a.md", b"changed\n")],
-                    _archive_manifest(snapshot(0)),
+            directory_fd = os.open(tmp, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                before, installed, _identity = _write_backup_archive(
+                    directory_fd, name, entries, _archive_manifest(snapshot(0))
                 )
+                self.assertTrue(installed)
+                after, reinstalled, _ = _write_backup_archive(
+                    directory_fd, name, entries, _archive_manifest(snapshot(1))
+                )
+                self.assertEqual(before, after)
+                self.assertFalse(reinstalled)
+
+                # The guard still has to refuse genuinely different content under a reused name.
+                with self.assertRaises(OSError):
+                    _write_backup_archive(
+                        directory_fd,
+                        name,
+                        [("notes/a.md", b"changed\n")],
+                        _archive_manifest(snapshot(0)),
+                    )
+            finally:
+                os.close(directory_fd)
 
 
 class AdversarialFixtureTests(unittest.TestCase):

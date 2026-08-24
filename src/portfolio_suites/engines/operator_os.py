@@ -8,19 +8,33 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import io
 import os
+import secrets
 import stat
-import tempfile
 import zipfile
 from pathlib import Path
 import re
 from typing import Any
-from ..approvals import ApprovalError, canonical_digest, verify_operator_approval
+from ..approvals import (
+    ApprovalCommitUnverified,
+    ApprovalError,
+    canonical_digest,
+    verify_operator_approval,
+)
 from ..contracts import SCHEMA_VERSION, validate_contract
 from ..identifiers import new_prefixed_id
-from ..paths import durable_write_text
+from ..paths import (
+    SUITES_ROOT,
+    ConfinementError,
+    install_new_file,
+    open_confined_directory,
+    remove_fd_if_same,
+    remove_installed_directory,
+    remove_installed_file,
+    rename_no_replace,
+)
 from ..provenance import is_sensitive_path
-from ..registry import SUITES_ROOT
 
 
 MAX_BACKUP_FILE_BYTES = 10 * 1024 * 1024
@@ -30,12 +44,35 @@ MAX_NOTE_BYTES = 2 * 1024 * 1024
 MAX_SYNC_NOTES = 1_000
 
 
-def _action_approval_bindings(action_name: str, parameters: dict[str, Any]) -> dict[str, str]:
+# Version is inside the digest so a v1 token cannot satisfy a v2 artifact binding.
+APPROVAL_BINDING_VERSION = "operator-action-binding-v2"
+
+
+def _action_approval_bindings(
+    action_name: str,
+    parameters: dict[str, Any],
+    *,
+    artifacts: Any = None,
+) -> dict[str, str]:
+    """Bind an approval to the exact artifacts an execution will write, not just its shape.
+
+    ``artifacts`` is the inventory the caller detached *before* asking for authority: the
+    content digest of every source byte it will install and the destination state it
+    observed. Anything that changes between the inventory and the write therefore changes
+    the digest the token has to match, and the execution fails closed instead of writing
+    bytes nobody approved. Actions with no artifact inventory pass ``None`` and are bound to
+    their parameters alone, which for them is the whole of what they do.
+    """
     return {
         "operation": "jarvis_action_execution",
         "action_name": action_name,
         "decision": "approved",
-        "payload_sha256": canonical_digest({"action_name": action_name, "parameters": parameters}),
+        "payload_sha256": canonical_digest({
+            "binding_version": APPROVAL_BINDING_VERSION,
+            "action_name": action_name,
+            "parameters": parameters,
+            "artifacts": artifacts,
+        }),
     }
 
 
@@ -45,7 +82,31 @@ def _action_error(
     message: str,
     *,
     approval_verified: bool = False,
+    approval_bindings: dict[str, str] | None = None,
+    inspection_required: bool = False,
 ) -> dict[str, Any]:
+    """Report a refusal, and where authority was the thing missing, say what to authorize.
+
+    A caller told only "no verified approval" cannot act on that: the digest now covers
+    detached content, so it is not something an operator can derive from the command they
+    typed. Returning it turns the refusal into the first half of the real workflow -- run,
+    read the digest, have it approved, run again -- without weakening anything, since the
+    digest is a commitment to bytes the caller already holds.
+
+    ``inspection_required`` marks post-commit uncertainty: the store replacement may have
+    committed, so the authority must be inspected before any retry or reissue. That state
+    must never be merged into an ordinary refusal whose safe answer is "get a new token".
+    """
+    detail = (
+        {
+            "approval_binding_version": APPROVAL_BINDING_VERSION,
+            "approval_payload_sha256": approval_bindings["payload_sha256"],
+        }
+        if approval_bindings is not None
+        else {}
+    )
+    if inspection_required:
+        detail["approval_store_inspection_required"] = True
     return {
         **preview,
         "status": status,
@@ -56,6 +117,7 @@ def _action_error(
         ),
         "error": message,
         "execution_receipt": None,
+        **detail,
     }
 
 
@@ -89,65 +151,131 @@ def _archive_manifest(manifest_content: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _read_confined_bytes(
+    directory_fd: int,
+    name: str,
+    *,
+    max_bytes: int | None = None,
+) -> bytes | None:
+    """Read ``name`` under ``directory_fd`` without following a link, or None if absent."""
+    try:
+        handle = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory_fd)
+    except FileNotFoundError:
+        return None
+    with os.fdopen(handle, "rb") as stream:
+        payload = stream.read() if max_bytes is None else stream.read(max_bytes + 1)
+    if max_bytes is not None and len(payload) > max_bytes:
+        return None
+    return payload
+
+
+def _install_confined_bytes(directory_fd: int, name: str, payload: bytes) -> tuple[int, int]:
+    """Durably install ``payload`` as ``name`` under ``directory_fd``, never following a link.
+
+    Same guarantee as :func:`durable_write_text`, expressed against an already-open
+    directory rather than a pathname: the bytes land in a sibling temporary, get fsynced,
+    and only then take the target's name. Anchoring it to the descriptor is what keeps an
+    approved artifact inside the directory the approval was checked against, even if that
+    directory's *pathname* is redirected while the write is running.
+
+    The install is `linkat`, not `rename`: both callers are content-addressed and check the
+    destination is absent first, but `os.rename` *replaces* whatever it finds, so a file
+    created inside that window was silently destroyed by a helper whose whole claim is that
+    it never overwrites. `os.link` makes the kernel decide existence and creation together
+    and raises FileExistsError instead, which both callers already treat as a collision.
+
+    Raising means nothing was installed. A failure *after* the name is taken -- a directory
+    fsync that reports an error -- would otherwise leave the artifact on disk while the
+    caller, which never received a return value, records nothing and reports only an error.
+
+    Returns the (device, inode) of the object this call installed, so a caller unwinding a
+    later failure can clean up through :func:`remove_fd_if_same` instead of an unlink by
+    name -- which would delete whatever concurrent writer occupies the name by then.
+    """
+    temporary = f".{name}.{os.getpid()}-{secrets.token_hex(6)}.tmp"
+    handle = os.open(
+        temporary,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=directory_fd,
+    )
+    installed = False
+    installed_identity: tuple[int, int] | None = None
+    try:
+        info = os.fstat(handle)
+        # linkat gives ``name`` this same inode, so the identity taken here is what the
+        # undo below must match before it removes anything.
+        installed_identity = (info.st_dev, info.st_ino)
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(temporary, name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
+        installed = True
+        try:
+            os.unlink(temporary, dir_fd=directory_fd)
+        except OSError:
+            pass
+        os.fsync(directory_fd)
+    except BaseException as error:
+        undo_failure = ""
+        if installed:
+            # The failing step is usually the directory fsync, which is precisely the window
+            # in which another writer can take this name. Only our own inode may be removed.
+            removal = remove_fd_if_same(directory_fd, name, installed_identity, directory=False)
+            if not removal.removed:
+                undo_failure = (
+                    f"{name} was installed and could not be safely removed: "
+                    f"{removal.conflict or 'the name no longer holds the installed object'}"
+                )
+                if removal.recovery_path:
+                    undo_failure += f" (quarantined at {removal.recovery_path})"
+        try:
+            os.unlink(temporary, dir_fd=directory_fd)
+        except OSError:
+            pass
+        if undo_failure:
+            raise OSError(f"confined install failed and left an artifact behind -- {undo_failure}") from error
+        raise
+    assert installed_identity is not None
+    return installed_identity
+
+
 def _write_backup_archive(
-    destination: Path,
+    directory_fd: int,
+    name: str,
     entries: list[tuple[str, bytes]],
     archive_manifest: dict[str, Any],
-) -> str:
-    """Write a deterministic ZIP to a same-directory temporary and atomically install it."""
-    temporary: str | None = None
-    try:
-        handle, temporary = tempfile.mkstemp(
-            dir=str(destination.parent),
-            prefix=f".{destination.name}.",
-            suffix=".tmp",
+) -> tuple[str, bool, tuple[int, int] | None]:
+    """Build a deterministic ZIP in memory and install it under ``directory_fd``.
+
+    Returns its digest, whether this call installed it, and -- when it did -- the identity
+    of the archive it installed. Every entry is already resident (the approval is bound to
+    those exact bytes), so building the archive in memory costs nothing a temporary file
+    would have saved and removes the last pathname from the write.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        archive.writestr(
+            _deterministic_zip_info("SNAPSHOT.json"),
+            json.dumps(
+                archive_manifest,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8"),
         )
-        os.close(handle)
-        with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-            archive.writestr(
-                _deterministic_zip_info("SNAPSHOT.json"),
-                json.dumps(
-                    archive_manifest,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    allow_nan=False,
-                ).encode("utf-8"),
-            )
-            for relative_path, data in sorted(entries):
-                archive.writestr(_deterministic_zip_info(f"files/{relative_path}"), data)
-        hasher = hashlib.sha256()
-        with open(temporary, "rb") as stream:
-            while chunk := stream.read(65536):
-                hasher.update(chunk)
-            os.fsync(stream.fileno())
-        candidate_digest = hasher.hexdigest()
-        if destination.exists():
-            existing_hasher = hashlib.sha256()
-            with destination.open("rb") as stream:
-                while chunk := stream.read(65536):
-                    existing_hasher.update(chunk)
-            if existing_hasher.hexdigest() != candidate_digest:
-                raise OSError(f"content-addressed backup collision at {destination}")
-            os.unlink(temporary)
-            temporary = None
-        else:
-            os.replace(temporary, destination)
-            temporary = None
-        directory_handle = os.open(
-            destination.parent,
-            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
-        )
-        try:
-            os.fsync(directory_handle)
-        finally:
-            os.close(directory_handle)
-        return candidate_digest
-    finally:
-        if temporary is not None:
-            try:
-                os.unlink(temporary)
-            except OSError:
-                pass
+        for relative_path, data in sorted(entries):
+            archive.writestr(_deterministic_zip_info(f"files/{relative_path}"), data)
+    payload = buffer.getvalue()
+    candidate_digest = hashlib.sha256(payload).hexdigest()
+    existing = _read_confined_bytes(directory_fd, name)
+    if existing is not None:
+        if hashlib.sha256(existing).hexdigest() != candidate_digest:
+            raise OSError(f"content-addressed backup collision at {name}")
+        return candidate_digest, False, None
+    installed_identity = _install_confined_bytes(directory_fd, name, payload)
+    return candidate_digest, True, installed_identity
 
 
 def _confined_path(
@@ -181,6 +309,21 @@ def _confined_path(
     return target_p
 
 
+def _write_anchor(target: Path) -> tuple[Path, Path]:
+    """Split a confined destination into a trusted anchor and the path to walk from it.
+
+    ``_confined_path`` has already established that the destination lies under the suites
+    checkout or its sibling projects directory, but it established that about a *resolved
+    string*. Handing the walk a trusted constant to start from is what lets every component
+    below it be re-verified at open time instead of trusted from that earlier lookup.
+    """
+    suites_resolved = SUITES_ROOT.resolve()
+    if target.is_relative_to(suites_resolved):
+        return suites_resolved, target.relative_to(suites_resolved)
+    projects_root = suites_resolved.parent
+    return projects_root, target.relative_to(projects_root)
+
+
 def _read_confined_file(
     candidate: Path,
     max_bytes: int | None = None,
@@ -212,10 +355,13 @@ def _read_confined_file(
     fixes which inode is being read, not how large it stays, and a file growing under the
     loop would otherwise walk straight past the limit.
 
-    ponytail: the file is anchored, its parent directories are not. Swapping a parent for a
-    symlinked directory mid-walk is out of scope; closing that means rebuilding the walk on
-    directory descriptors (os.fwalk + openat), which is more than a read-only audit of a
-    local checkout earns. The threat this does close is a symlink planted in donor content.
+    O_NOFOLLOW on the final component is not sufficient on its own, because it says nothing
+    about the *parents*. Exchanging an already-checked parent directory for a symlink
+    between the confinement decision and the open redirects the read outside the workspace
+    while every check still passes, and the backup path binds whatever it read into an
+    approved archive. So the pathname is never reopened after being checked: the walk
+    descends from the trusted anchor one component at a time under O_NOFOLLOW|O_DIRECTORY,
+    and the file is opened relative to the parent descriptor that walk pinned.
     """
     if sensitivity_path is not None and is_sensitive_path(sensitivity_path):
         return None
@@ -226,9 +372,25 @@ def _read_confined_file(
     )
     if confined is None:
         return None
-    fd = None
+
+    anchor = SUITES_ROOT.resolve().parent
     try:
-        fd = os.open(candidate, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        relative = confined.relative_to(anchor)
+    except ValueError:
+        return None
+    *parents, name = relative.parts
+    if not name:
+        return None
+
+    fd = None
+    parent_fd = None
+    try:
+        parent_fd = open_confined_directory(anchor, Path(*parents) if parents else ".")
+        fd = os.open(
+            name,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+            dir_fd=parent_fd,
+        )
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
             return None
@@ -242,10 +404,13 @@ def _read_confined_file(
                 return None
             chunks.append(chunk)
         return b"".join(chunks)
-    except OSError:
-        # ELOOP for a symlink, ENXIO/EISDIR/ENOENT for anything else the walk raced away.
+    except (OSError, ConfinementError):
+        # ELOOP for a symlink at the file or any parent, ENXIO/EISDIR/ENOENT for anything
+        # else the walk raced away.
         return None
     finally:
+        if parent_fd is not None:
+            os.close(parent_fd)
         if fd is not None:
             os.close(fd)
 
@@ -315,7 +480,6 @@ class OperatorOSEngine:
                 "author": author,
                 "collector": collector,
                 "intake_method": "source_capture",
-                "raw_preview": content[:120].strip(),
             },
         }
         return validate_contract("SourceRecord", record)
@@ -324,15 +488,22 @@ class OperatorOSEngine:
     def project_to_observer(source_record: dict[str, Any], title: str, summary: str, body: str) -> str:
         """Create a derived Obsidian Observer note fenced against accidental re-ingestion."""
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        src_id = source_record.get("source_id", "unknown")
-        sha = source_record.get("sha256", "unknown")
+        src_id = str(source_record.get("source_id", "unknown"))
+        sha = str(source_record.get("sha256", "unknown"))
+
+        # Serialize frontmatter fields safely with JSON string encoding to prevent frontmatter injection
+        title_json = json.dumps(str(title), ensure_ascii=False)
+        src_id_json = json.dumps(src_id, ensure_ascii=False)
+        sha_json = json.dumps(sha, ensure_ascii=False)
+        now_json = json.dumps(now_iso, ensure_ascii=False)
+        clean_header_title = str(title).replace("\n", " ").strip()
 
         return f"""---
-title: "{title}"
+title: {title_json}
 type: observer_projection
-source_id: "{src_id}"
-source_sha256: "{sha}"
-projected_at: "{now_iso}"
+source_id: {src_id_json}
+source_sha256: {sha_json}
+projected_at: {now_json}
 generator: "portfolio_suites.operator_os"
 status: derived
 fenced_from_reingestion: true
@@ -340,7 +511,7 @@ fenced_from_reingestion: true
 
 <!-- FENCE: DO NOT RE-INGEST INTO PKOS CANONICAL CORPUS -->
 
-# {title}
+# {clean_header_title}
 
 > **Source Citation:** `{src_id}` (SHA: `{sha[:12]}...`)
 > **Acquired Origin:** `{source_record.get("origin")}`
@@ -657,36 +828,88 @@ fenced_from_reingestion: true
             archive_file_path = ""
             archive_sha256 = ""
             if not dry_run:
+                # Every byte that will enter the archive has already been read into
+                # `archive_entries` and fingerprinted into `inventoried_files`; the approval
+                # is bound to those fingerprints and to the content-addressed name they
+                # produce, so the token authorizes this archive and no other.
+                backup_bindings = _action_approval_bindings(
+                    action_name,
+                    parameters,
+                    artifacts={
+                        "kind": "backup_snapshot",
+                        "snapshot_id": snap_id,
+                        "vault": target_vault,
+                        "source": str(vault_src),
+                        "files": inventoried_files,
+                        "total_bytes": total_bytes,
+                        "skipped_sensitive_count": skipped_sensitive,
+                        "skipped_unreadable_count": skipped_unreadable,
+                    },
+                )
                 try:
-                    verify_operator_approval(
-                        operator_approval_token,
-                        _action_approval_bindings(action_name, parameters),
+                    verify_operator_approval(operator_approval_token, backup_bindings)
+                except ApprovalCommitUnverified as error:
+                    # The store replacement may already have spent this token. Retrying or
+                    # reissuing before inspecting the authority is exactly the replay the
+                    # uncertainty subclass exists to prevent.
+                    return _action_error(
+                        preview,
+                        "error_approval_commit_unverified",
+                        f"backup approval consumption is uncertain; inspect the approval "
+                        f"store before retrying or reissuing: {error}",
+                        inspection_required=True,
                     )
                 except ApprovalError as error:
                     return _action_error(
                         preview,
                         "error_unverified_approval",
                         f"active backup requires a verified operator approval: {error}",
+                        approval_bindings=backup_bindings,
                     )
                 verified_mutation_authority = True
-                snapshot_dir = SUITES_ROOT / "operator-os" / "evidence" / "snapshots"
+                # Backup payloads are runtime state, not evidence: they are dynamic,
+                # regenerable outputs of an approved action, while a suite's `evidence/`
+                # namespace is the canonical, ownership-checked record where every artifact
+                # must be declared by exactly one wave or supporting entry. Writing
+                # snapshots there made every backup invalidate the registry's own
+                # ownership invariant, so they live in this suite's dedicated state
+                # directory instead (ignored by Git; see .gitignore).
+                #
+                # The directory is a fixed location, but a fixed *pathname* is not a fixed
+                # directory: a pre-existing or raced symlink at operator-os/state/backups
+                # redirects every approved artifact written through it. The walk below
+                # refuses a link at any component and pins the inode; nothing after it
+                # resolves that pathname again.
+                snapshot_relative = Path("operator-os") / "state" / "backups"
+                snapshot_dir = SUITES_ROOT / snapshot_relative
+                archive_name = f"{snap_id}.zip"
+                archive_installed = False
+                archive_identity: tuple[int, int] | None = None
+                snapshot_fd: int | None = None
                 try:
-                    snapshot_dir.mkdir(parents=True, exist_ok=True)
-                    archive_file = snapshot_dir / f"{snap_id}.zip"
-                    archive_existed_before = archive_file.exists()
+                    snapshot_fd = open_confined_directory(
+                        SUITES_ROOT, snapshot_relative, create=True
+                    )
                     archive_manifest = _archive_manifest(manifest_content)
-                    archive_sha256 = _write_backup_archive(
-                        archive_file,
+                    (
+                        archive_sha256,
+                        archive_installed,
+                        archive_identity,
+                    ) = _write_backup_archive(
+                        snapshot_fd,
+                        archive_name,
                         archive_entries,
                         archive_manifest,
                     )
-                    manifest_content["archive_file"] = archive_file.name
+                    manifest_content["archive_file"] = archive_name
                     manifest_content["archive_sha256"] = archive_sha256
                     manifest_content["backup_payload_created"] = True
                     manifest_content["dry_run"] = False
-                    manifest_file = snapshot_dir / f"{snap_id}.json"
-                    if manifest_file.exists():
-                        existing_manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+                    manifest_name = f"{snap_id}.json"
+                    manifest_file = snapshot_dir / manifest_name
+                    existing_bytes = _read_confined_bytes(snapshot_fd, manifest_name)
+                    if existing_bytes is not None:
+                        existing_manifest = json.loads(existing_bytes.decode("utf-8"))
                         comparable_fields = (
                             "snapshot_id",
                             "vault",
@@ -703,25 +926,37 @@ fenced_from_reingestion: true
                         ):
                             raise OSError(f"content-addressed manifest collision at {manifest_file}")
                     else:
-                        durable_write_text(
-                            manifest_file,
-                            json.dumps(manifest_content, indent=2, allow_nan=False),
+                        _install_confined_bytes(
+                            snapshot_fd,
+                            manifest_name,
+                            json.dumps(manifest_content, indent=2, allow_nan=False).encode("utf-8"),
                         )
-                except (OSError, ValueError, zipfile.BadZipFile) as error:
-                    try:
-                        if not archive_existed_before:
-                            archive_file.unlink(missing_ok=True)
-                    except (OSError, UnboundLocalError):
-                        pass
+                except (OSError, ValueError, ConfinementError, zipfile.BadZipFile) as error:
+                    cleanup_note = ""
+                    if archive_installed and snapshot_fd is not None and archive_identity is not None:
+                        # Cleanup removes only the archive THIS run installed. An unlink by
+                        # name would delete whatever concurrent writer claimed the name
+                        # between the install and this failure.
+                        removal = remove_fd_if_same(
+                            snapshot_fd, archive_name, archive_identity, directory=False
+                        )
+                        if not removal.removed:
+                            cleanup_note = (
+                                f" The installed archive could not be safely removed"
+                                f" ({removal.conflict or 'name no longer holds it'}); it"
+                                f" remains for manual review."
+                            )
                     return _action_error(
                         preview,
                         "error_backup_write_failed",
-                        f"backup payload could not be written: {error}",
+                        f"backup payload could not be written: {error}.{cleanup_note}",
                         approval_verified=True,
                     )
-                manifest_file = snapshot_dir / f"{snap_id}.json"
-                manifest_file_path = str(manifest_file)
-                archive_file_path = str(archive_file)
+                finally:
+                    if snapshot_fd is not None:
+                        os.close(snapshot_fd)
+                manifest_file_path = str(snapshot_dir / manifest_name)
+                archive_file_path = str(snapshot_dir / archive_name)
 
             action_results = {
                 "vault": target_vault,
@@ -814,7 +1049,7 @@ fenced_from_reingestion: true
 
             destination_path = parameters.get("destination_path")
             synced_files: list[str] = []
-            unchanged_files: list[str] = []
+            unchanged_entries: list[tuple[str, str]] = []
             destination_display = ""
             if not dry_run:
                 if not isinstance(destination_path, str) or not destination_path.strip():
@@ -841,7 +1076,7 @@ fenced_from_reingestion: true
                         "source and destination note trees must not overlap",
                     )
                 destination_display = str(destination)
-                pending: list[tuple[Path, str, str]] = []
+                pending: list[tuple[str, str, str]] = []
                 for relative, text, digest in note_entries:
                     target = destination / Path(relative)
                     confined_target = _confined_path(target)
@@ -859,53 +1094,186 @@ fenced_from_reingestion: true
                                 "error_sync_conflict",
                                 f"destination note differs and overwrite is refused: {relative}",
                             )
-                        unchanged_files.append(relative)
+                        unchanged_entries.append((relative, digest))
                     else:
-                        pending.append((target, text, relative))
+                        pending.append((relative, text, digest))
                 if pending:
+                    # The note bodies in `pending` were read and hashed before this point and
+                    # are the bytes that will be installed. Binding those digests -- plus the
+                    # destination and the files already observed there -- is what makes the
+                    # token authorize this exact content: editing a source note after
+                    # issuance changes the digest, and the token stops verifying.
+                    sync_bindings = _action_approval_bindings(
+                        action_name,
+                        parameters,
+                        artifacts={
+                            "kind": "note_sync",
+                            "source": str(vault_p),
+                            "destination": str(destination),
+                            "install": [
+                                {"path": relative, "sha256": digest}
+                                for relative, _, digest in pending
+                            ],
+                            "observed_unchanged": [
+                                {"path": relative, "sha256": digest}
+                                for relative, digest in sorted(unchanged_entries)
+                            ],
+                        },
+                    )
                     try:
-                        verify_operator_approval(
-                            operator_approval_token,
-                            _action_approval_bindings(action_name, parameters),
+                        verify_operator_approval(operator_approval_token, sync_bindings)
+                    except ApprovalCommitUnverified as error:
+                        return _action_error(
+                            preview,
+                            "error_approval_commit_unverified",
+                            f"note-sync approval consumption is uncertain; inspect the "
+                            f"approval store before retrying or reissuing: {error}",
+                            inspection_required=True,
                         )
                     except ApprovalError as error:
                         return _action_error(
                             preview,
                             "error_unverified_approval",
                             f"active note sync requires a verified operator approval: {error}",
+                            approval_bindings=sync_bindings,
                         )
                     verified_mutation_authority = True
-                created_files: list[Path] = []
-                created_dirs: list[Path] = []
+                # Every write is anchored back to a trusted constant and re-walked under
+                # O_NOFOLLOW. The `exists()` conflict check above is a *report* of what the
+                # operator was shown, not the guarantee: an approval verification takes real
+                # time, and a checked destination directory can be exchanged for a symlink,
+                # or a checked-absent file created, while it runs. The guarantee is here --
+                # no component is followed, and the file itself is created O_EXCL, so an
+                # existing file is a refusal rather than a silent overwrite.
+                anchor, anchor_relative = _write_anchor(destination)
+                # Names alone are not enough to undo a write: see `remove_installed_file`.
+                # Each entry carries the identity the object had when this run created it.
+                created_files: list[tuple[str, tuple[int, int]]] = []
+                created_dirs: list[tuple[str, tuple[int, int]]] = []
+                destination_fd: int | None = None
+
+                def _roll_back_sync() -> tuple[list[str], list[str]]:
+                    """Undo this run's installs and report any quarantine recovery conflicts."""
+                    removed: list[str] = []
+                    conflicts: list[str] = []
+                    for created, identity in reversed(created_files):
+                        try:
+                            outcome = remove_installed_file(
+                                anchor,
+                                Path(anchor_relative) / created,
+                                identity,
+                            )
+                            if outcome:
+                                removed.append(created)
+                            elif outcome.conflict:
+                                recovery = (
+                                    f"; recoverable object: {outcome.recovery_path}"
+                                    if outcome.recovery_path
+                                    else ""
+                                )
+                                conflicts.append(f"{created}: {outcome.conflict}{recovery}")
+                        except (OSError, ConfinementError) as error:
+                            conflicts.append(f"{created}: rollback path could not be inspected ({error})")
+                    for created, identity in reversed(created_dirs):
+                        try:
+                            outcome = remove_installed_directory(
+                                anchor,
+                                Path(anchor_relative) / created,
+                                identity,
+                            )
+                            if outcome.conflict:
+                                recovery = (
+                                    f"; recoverable object: {outcome.recovery_path}"
+                                    if outcome.recovery_path
+                                    else ""
+                                )
+                                conflicts.append(f"{created}: {outcome.conflict}{recovery}")
+                        except (OSError, ConfinementError) as error:
+                            conflicts.append(f"{created}: rollback path could not be inspected ({error})")
+                    return removed, conflicts
+                # Nothing to install is nothing to authorize, and nothing to authorize means
+                # no token was verified above -- so this branch must not mutate either.
+                # `create=True` would otherwise build the destination tree on an empty or
+                # ineligible source without any approval ever being checked.
                 try:
-                    for target, text, relative in pending:
-                        missing_parents = []
-                        parent = target.parent
-                        while not parent.exists() and parent.is_relative_to(destination):
-                            missing_parents.append(parent)
-                            parent = parent.parent
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        created_dirs.extend(reversed(missing_parents))
-                        durable_write_text(target, text)
-                        created_files.append(target)
-                        synced_files.append(relative)
-                except OSError as error:
-                    for created in reversed(created_files):
-                        try:
-                            created.unlink()
-                        except OSError:
-                            pass
-                    for created in reversed(created_dirs):
-                        try:
-                            created.rmdir()
-                        except OSError:
-                            pass
+                    if pending:
+                        destination_fd = open_confined_directory(
+                            anchor, anchor_relative, create=True
+                        )
+                        for relative, text, _ in pending:
+                            installed = install_new_file(destination_fd, relative, text)
+                            created_dirs.extend(installed.directories)
+                            created_files.append((relative, installed.identity))
+                            synced_files.append(relative)
+                except (OSError, ConfinementError) as error:
+                    conflict = isinstance(error, FileExistsError)
+                    # `dir_fd` anchors only the first lookup, so unlinking a slash-containing
+                    # relative name here would still follow every intermediate component --
+                    # including one exchanged for a symlink since it was created. Rollback
+                    # re-walks from the trusted anchor under the same O_NOFOLLOW discipline
+                    # installation used and touches only final basenames.
+                    _, rollback_conflicts = _roll_back_sync()
+                    synced_files.clear()
+                    rollback_note = (
+                        f"; rollback conflicts: {'; '.join(rollback_conflicts)}"
+                        if rollback_conflicts
+                        else ""
+                    )
                     return _action_error(
                         preview,
-                        "error_sync_write_failed",
-                        f"note sync was rolled back after a write failure: {error}",
+                        "error_sync_conflict" if conflict else "error_sync_write_failed",
+                        (
+                            f"destination note appeared during execution and overwrite is refused: {error}"
+                            if conflict
+                            else f"note sync was rolled back after a write failure: {error}"
+                        )
+                        + rollback_note,
                         approval_verified=True,
                     )
+                finally:
+                    if destination_fd is not None:
+                        os.close(destination_fd)
+
+                # A file recorded as already identical was hashed before the approval was
+                # verified, and verification takes real time. Reporting those pathnames
+                # without rechecking them makes `files_unchanged` a description of the
+                # destination as it was, not as it is -- so the receipt is re-earned here,
+                # through the same no-follow discipline the writes used.
+                for relative, digest in unchanged_entries:
+                    observed = Path(anchor_relative) / relative
+                    try:
+                        parent_fd = open_confined_directory(anchor, observed.parent)
+                        try:
+                            current = _read_confined_bytes(
+                                parent_fd, observed.name, max_bytes=MAX_NOTE_BYTES
+                            )
+                        finally:
+                            os.close(parent_fd)
+                    except (OSError, ConfinementError):
+                        current = None
+                    if current is None or hashlib.sha256(current).hexdigest() != digest:
+                        # This check runs after the installs above, so failing it means the
+                        # run is being abandoned with its own new files already on disk.
+                        # Returning straight out left them installed under an error status
+                        # and named none of them, so nothing downstream could clean up.
+                        removed, rollback_conflicts = _roll_back_sync()
+                        synced_files.clear()
+                        rollback_note = (
+                            f"; rollback conflicts: {'; '.join(rollback_conflicts)}"
+                            if rollback_conflicts
+                            else ""
+                        )
+                        return _action_error(
+                            preview,
+                            "error_sync_conflict",
+                            (
+                                f"destination note changed while the sync ran: {relative}; "
+                                f"rolled back {len(removed)} newly installed note(s)"
+                                + (f": {', '.join(removed)}" if removed else "")
+                                + rollback_note
+                            ),
+                            approval_verified=verified_mutation_authority,
+                        )
             action_results = {
                 "vault_path": str(vault_p),
                 "destination_path": destination_display,
@@ -917,7 +1285,7 @@ fenced_from_reingestion: true
                 "inventory_mode": "read_only_note_inventory" if dry_run else "one_way_additive_sync",
                 "sync_performed": bool(not dry_run and synced_files),
                 "files_synced": synced_files,
-                "files_unchanged": unchanged_files,
+                "files_unchanged": [relative for relative, _ in unchanged_entries],
                 "overwrite_policy": "refuse_different_existing_files",
                 "recovery": (
                     "Delete only the files listed in files_synced to roll back this additive sync."
@@ -956,13 +1324,6 @@ fenced_from_reingestion: true
             rotated_path = ""
             recovery = "Dry run only; no recovery action is needed."
             if not dry_run:
-                raw_cache_path = Path(cache_dir) if Path(cache_dir).is_absolute() else SUITES_ROOT / cache_dir
-                if raw_cache_path.is_symlink():
-                    return _action_error(
-                        preview,
-                        "error_invalid_cache_target",
-                        "active cache rotation refuses symbolic-link targets",
-                    )
                 if not cache_name_is_explicit:
                     return _action_error(
                         preview,
@@ -975,47 +1336,208 @@ fenced_from_reingestion: true
                         "error_path_not_found",
                         f"Cache directory does not exist: {cache_p}",
                     )
+                # The rotation is decided here, on a descriptor, and carried out on that same
+                # descriptor's parent. A path-based `stat` and `os.replace` after the approval
+                # returns would re-resolve the name across the whole verification window, which
+                # is long enough for the checked directory to be exchanged for another one --
+                # or a symlink -- under the same pathname. O_NOFOLLOW is also what refuses a
+                # symbolic-link target now, in the same lookup that pins the inode.
+                anchor, anchor_relative = _write_anchor(cache_p)
+                directory_flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0)
+                parent_fd: int | None = None
+                cache_fd: int | None = None
                 try:
-                    verify_operator_approval(
-                        operator_approval_token,
-                        _action_approval_bindings(action_name, parameters),
+                    parent_fd = open_confined_directory(anchor, anchor_relative.parent)
+                    cache_fd = os.open(cache_p.name, directory_flags, dir_fd=parent_fd)
+                    approved_identity = os.fstat(cache_fd)
+                    original_mode = stat.S_IMODE(approved_identity.st_mode)
+
+                    # Binding to `parameters` alone binds to a *pathname*. A token issued
+                    # for the directory the operator inventoried stayed valid after that
+                    # directory was replaced, and the replacement -- which no operator ever
+                    # saw -- was what got rotated. The identity goes in the payload so a
+                    # swap changes the digest and the token simply stops matching.
+                    # Deliberately not the entry count: a cache is written to constantly,
+                    # and binding to its contents would expire every token before use.
+                    rotation_bindings = _action_approval_bindings(
+                        action_name,
+                        parameters,
+                        artifacts={
+                            "kind": "cache_rotation",
+                            "cache": str(cache_p),
+                            "device": approved_identity.st_dev,
+                            "inode": approved_identity.st_ino,
+                        },
                     )
-                except ApprovalError as error:
-                    return _action_error(
-                        preview,
-                        "error_unverified_approval",
-                        f"active cache rotation requires a verified operator approval: {error}",
-                    )
-                verified_mutation_authority = True
-                timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-                suffix = canonical_digest({"cache": str(cache_p), "preview": preview["action_id"]})[:8]
-                rotated_p = cache_p.with_name(f"{cache_p.name}.rotated-{timestamp}-{suffix}")
-                if rotated_p.exists():
-                    return _action_error(
-                        preview,
-                        "error_rotation_collision",
-                        f"Rotation destination already exists: {rotated_p}",
-                        approval_verified=True,
-                    )
-                original_mode = stat.S_IMODE(cache_p.stat().st_mode)
-                try:
-                    os.replace(cache_p, rotated_p)
                     try:
-                        cache_p.mkdir(mode=original_mode)
-                    except OSError:
+                        verify_operator_approval(operator_approval_token, rotation_bindings)
+                    except ApprovalCommitUnverified as error:
+                        return _action_error(
+                            preview,
+                            "error_approval_commit_unverified",
+                            f"cache-rotation approval consumption is uncertain; inspect the "
+                            f"approval store before retrying or reissuing: {error}",
+                            inspection_required=True,
+                        )
+                    except ApprovalError as error:
+                        return _action_error(
+                            preview,
+                            "error_unverified_approval",
+                            f"active cache rotation requires a verified operator approval: {error}",
+                            approval_bindings=rotation_bindings,
+                        )
+                    verified_mutation_authority = True
+
+                    # `os.rename` acts on the name, so the approved inode still has to be the
+                    # one that name reaches when the rename runs.
+                    current_fd = os.open(cache_p.name, directory_flags, dir_fd=parent_fd)
+                    try:
+                        current_identity = os.fstat(current_fd)
+                    finally:
+                        os.close(current_fd)
+                    if (current_identity.st_dev, current_identity.st_ino) != (
+                        approved_identity.st_dev,
+                        approved_identity.st_ino,
+                    ):
+                        return _action_error(
+                            preview,
+                            "error_invalid_cache_target",
+                            "cache directory was replaced while the approval was being verified",
+                            approval_verified=True,
+                        )
+
+                    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+                    suffix = canonical_digest({"cache": str(cache_p), "preview": preview["action_id"]})[:8]
+                    rotated_name = f"{cache_p.name}.rotated-{timestamp}-{suffix}"
+                    rotated_p = cache_p.with_name(rotated_name)
+                    try:
+                        # The rotation is a no-replace rename, not an absence check followed
+                        # by a replacing one: POSIX rename replaces an empty destination
+                        # directory, so a directory created in the gap between the check and
+                        # the move used to be destroyed while the action reported success.
+                        # renameat2(RENAME_NOREPLACE)/renameatx_np(RENAME_EXCL) make the
+                        # kernel decide existence and movement in the same operation.
+                        rename_no_replace(
+                            cache_p.name,
+                            rotated_name,
+                            directory_fd=parent_fd,
+                        )
+                    except FileExistsError:
+                        return _action_error(
+                            preview,
+                            "error_rotation_collision",
+                            f"Rotation destination already exists: {rotated_p}",
+                            approval_verified=True,
+                        )
+                    except OSError as error:
+                        return _action_error(
+                            preview,
+                            "error_rotation_failed",
+                            f"Cache rotation failed without moving anything: {error}",
+                            approval_verified=True,
+                        )
+                    try:
+                        # The no-replace move acts on the name, so the approved inode still
+                        # has to be the one that name reached when it ran. There is no
+                        # rename-by-inode, so the order is inverted: move first, then
+                        # confirm through a descriptor that what moved is the approved
+                        # object, and put it back -- never over anyone -- if it is not. The
+                        # rotated name is unique to this run, so the object is pinned under
+                        # a name no other writer is competing for.
+                        moved_fd = os.open(rotated_name, directory_flags, dir_fd=parent_fd)
                         try:
-                            cache_p.rmdir()
+                            moved_identity = os.fstat(moved_fd)
+                        finally:
+                            os.close(moved_fd)
+                        if (moved_identity.st_dev, moved_identity.st_ino) != (
+                            approved_identity.st_dev,
+                            approved_identity.st_ino,
+                        ):
+                            # Rolling back with a replacing rename destroys whatever took the
+                            # cache name in the meantime -- and something did, or the identity
+                            # would have matched. Refuse replacement: if the name is occupied,
+                            # both objects survive and the receipt says where the rotated one is.
+                            try:
+                                rename_no_replace(
+                                    rotated_name,
+                                    cache_p.name,
+                                    directory_fd=parent_fd,
+                                )
+                            except OSError as restore_error:
+                                return _action_error(
+                                    preview,
+                                    "error_invalid_cache_target",
+                                    "cache directory was replaced before it could be rotated; the "
+                                    f"unapproved object could not be restored to '{cache_p.name}' "
+                                    f"without overwriting its current occupant ({restore_error}). "
+                                    f"It remains preserved at '{rotated_p}'.",
+                                    approval_verified=True,
+                                )
+                            return _action_error(
+                                preview,
+                                "error_invalid_cache_target",
+                                "cache directory was replaced before it could be rotated",
+                                approval_verified=True,
+                            )
+                        created_replacement = False
+                        try:
+                            os.mkdir(cache_p.name, original_mode, dir_fd=parent_fd)
+                            created_replacement = True
+                        except FileExistsError:
+                            # A competing writer created a directory at cache_p.name; do not delete it!
+                            # The rotated original remains safely preserved at rotated_name.
+                            return _action_error(
+                                preview,
+                                "error_cache_collision",
+                                f"A competing directory was created at '{cache_p.name}' after rotation; the rotated backup remains preserved at '{rotated_p}'.",
+                                approval_verified=True,
+                            )
                         except OSError:
-                            pass
-                        os.replace(rotated_p, cache_p)
-                        raise
-                except OSError as error:
+                            if created_replacement:
+                                try:
+                                    os.rmdir(cache_p.name, dir_fd=parent_fd)
+                                except OSError:
+                                    pass
+                            try:
+                                # Restoration must not replace either: an uncooperative
+                                # writer claiming the cache name during this window keeps
+                                # it, and the rotated original stays preserved under its
+                                # unique recovery name instead of being lost or copied
+                                # over something else.
+                                rename_no_replace(
+                                    rotated_name,
+                                    cache_p.name,
+                                    directory_fd=parent_fd,
+                                )
+                            except OSError:
+                                return _action_error(
+                                    preview,
+                                    "error_rotation_failed",
+                                    "Cache rotation failed and the replacement directory "
+                                    f"could not be restored; the rotated original is "
+                                    f"preserved at '{rotated_p}' and must be renamed back to "
+                                    f"'{cache_p.name}' manually once its current occupant "
+                                    "is resolved.",
+                                    approval_verified=True,
+                                )
+                            raise
+                    except OSError as error:
+                        return _action_error(
+                            preview,
+                            "error_rotation_failed",
+                            f"Cache rotation failed and the original path was restored when possible: {error}",
+                            approval_verified=True,
+                        )
+                except (OSError, ConfinementError) as error:
                     return _action_error(
                         preview,
-                        "error_rotation_failed",
-                        f"Cache rotation failed and the original path was restored when possible: {error}",
-                        approval_verified=True,
+                        "error_invalid_cache_target",
+                        f"cache directory could not be opened without following a link: {error}",
                     )
+                finally:
+                    for open_fd in (cache_fd, parent_fd):
+                        if open_fd is not None:
+                            os.close(open_fd)
                 rotated_path = str(rotated_p)
                 recovery = (
                     f"Remove the new empty directory {cache_p}, then rename {rotated_p} back to {cache_p}."

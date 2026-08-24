@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import hashlib
 import datetime
 import json
 import os
 import re
+import stat
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,8 +17,15 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from .contracts import CONTRACTS, SCHEMA_VERSION, ContractError, validate_contract
-from .paths import PROJECTS_ROOT, SUITES_ROOT, durable_write_text
-from .provenance import is_meaningful_git_fingerprint
+from .adapters.common import run_donor_git
+from .paths import (
+    PROJECTS_ROOT,
+    SUITES_ROOT,
+    CommitUnverified,
+    open_confined_directory,
+)
+from .provenance import is_meaningful_git_fingerprint, is_sensitive_path
+from .txn import CommitUncertain, OccupantConflict, commit_replacement, write_temp_payload
 
 RECOVERY_STANDARD_PATH = SUITES_ROOT / "portfolio" / "recovery-standard.json"
 SUITE_DIRS = (
@@ -31,9 +41,20 @@ RECOVERY_DIMENSIONS = {
     "provenance_and_owner_control": 5,
     "reporting_accuracy": 5,
 }
+# Retired `source_verified`: one name covered historical review, source inspection, and execution.
 RECOVERY_PROMOTION_LEVELS = [
-    "specified", "prototype", "source_verified", "parity_verified", "adopted", "converged",
+    "specified",
+    "prototype",
+    "reviewed_historical_analysis",
+    "source_inspected",
+    "source_executed",
+    "parity_verified",
+    "adopted",
+    "converged",
 ]
+# Levels at which a claim asserts that donor code actually ran. `source_executed` invokes the
+# donor; `parity_verified` and above additionally compare it against the destination.
+EXECUTED_PROMOTION_LEVELS = frozenset({"source_executed", "parity_verified", "adopted", "converged"})
 RECOVERY_RESOLUTION_OUTCOMES = [
     "ported", "already_covered", "retained_independent", "rejected",
     "historical_only", "deferred_with_trigger",
@@ -42,6 +63,16 @@ RECOVERY_CLAIM_KINDS = ["analysis", "runtime", "adoption", "convergence", "resol
 # Promotion levels whose names assert that a real runtime was executed and compared.
 # Reaching one requires runtime evidence, so a claim that declares no runtime cannot hold it.
 RUNTIME_PROMOTION_LEVELS = frozenset({"parity_verified", "adopted", "converged"})
+# Which claim kinds may occupy an executed promotion level at all. `runtime` earns the whole
+# ladder by retaining a receipt that proves the invocation; `adoption` and `convergence` are
+# the terminal rungs their own contracts describe. Every other kind -- `analysis` and
+# `resolution` -- is validated against a receipt specification that describes what a receipt
+# *contains*, which can never establish an argv, an exit status, or a donor fingerprint.
+EXECUTED_LEVELS_BY_KIND = {
+    "runtime": EXECUTED_PROMOTION_LEVELS,
+    "adoption": frozenset({"adopted"}),
+    "convergence": frozenset({"converged"}),
+}
 RECOVERY_ENFORCEMENT = {
     "completed_wave_requires_recovery_claim": True,
     "prototype_never_counts_as_recovered": True,
@@ -332,8 +363,19 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
     "operator-os/O5": {
         "equals": {
             "wave_id": "O5",
-            "status": "disposition_reconciled",
-            "duplicate_decisions_closed": True,
+            "status": "disposition_proposal_recorded",
+            # The negative fields are required, not merely allowed. A receipt that simply
+            # omitted them would read as silence about whether closure happened; asserting
+            # them false is what makes the gate's boundary machine-checked.
+            "duplicate_decisions_closed": False,
+            "migration_acceptance_verified": False,
+            "donor_read": False,
+            "external_runtime_invoked": False,
+            # The positive half of the same boundary. Without these the receipt could say
+            # the run failed, or that closure was decided outright, and still validate --
+            # the narrowed gate would have been asserted by the prose alone.
+            "all_stages_passed": True,
+            "duplicate_decision_disposition": "close_on_verification",
         },
         "objects": ["canonical_anchors"],
         "lists": ["proposed_ports", "source_inventory_catalog"],
@@ -430,7 +472,9 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "equals": {
             "phases_total": 9,
             "phases_completed": 9,
-            "reconciliation_status": "brand_workshop_intake_ported_to_brand_maker",
+            "reconciliation_status": "suite_local_intake_phases_validated",
+            "brand_workshop_read": False,
+            "external_runtime_invoked": False,
         },
         "lists": ["intake_log"],
         "objects": ["resulting_package"],
@@ -555,6 +599,13 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
             "all_stages_passed": True,
             "legality_check.legal": True,
             "match_fixture.repeat_verdict_stable": True,
+            "legality_evaluator": "suite_local",
+            # M3 sits at `source_inspected`, and this is the field that earns it: the rung
+            # means authentic donor artifacts were read and parsed. Leaving it unrequired let
+            # the claim rest on the objective's prose rather than on the receipt.
+            "donor_match_logs_read": True,
+            "donor_legality_checker_invoked": False,
+            "whole_match_replayed": False,
         },
         "objects": ["match_fixture", "legality_check"],
         "strings": ["match_fixture.source_sha256", "match_fixture.invalid_move_behavior"],
@@ -1067,7 +1118,7 @@ def _portfolio_runtime_receipt_errors(path: Path, contract_id: str, level: str) 
     document, errors = _receipt_document(path, contract_id)
     if document is None:
         return errors
-    expected_status = "source_verified" if level == "source_verified" else "parity_verified"
+    expected_status = "source_executed" if level == "source_executed" else "parity_verified"
     if document.get("status") != expected_status or document.get("all_stages_passed") is not True:
         errors.append(f"runtime receipt must retain status {expected_status!r} and all_stages_passed true")
     source = document.get("source_invocation")
@@ -1083,7 +1134,7 @@ def _portfolio_runtime_receipt_errors(path: Path, contract_id: str, level: str) 
     commands = document.get("reproducible_commands")
     if not isinstance(commands, list) or not commands or any(not isinstance(item, list) or not item for item in commands):
         errors.append("reproducible_commands must retain at least one argv command")
-    if level != "source_verified":
+    if level != "source_executed":
         destination = document.get("destination_invocation")
         if not (
             isinstance(destination, dict)
@@ -1228,7 +1279,7 @@ def evidence_ineligibility_reason(wave: dict[str, Any]) -> str | None:
     level = claim.get("level")
     contract = claim.get("receipt_contract")
     expected: set[str]
-    if kind == "runtime" and level == "source_verified":
+    if kind == "runtime" and level == "source_executed":
         expected = {"portfolio-runtime-source-v1"}
     elif kind == "runtime" and level == "parity_verified":
         expected = {"accessibility-wcag-331-v1", "portfolio-runtime-parity-v1"}
@@ -1257,8 +1308,10 @@ def evidence_errors(wave: dict[str, Any], path: Path, suite_id: str | None = Non
 
     Supported receipt contracts:
     - `analysis` is checked against its declared basis and `ANALYSIS_RECEIPT_SPECS`.
-    - `runtime` supports `source_verified`, `parity_verified`, `adopted`, and `converged`
-      through their corresponding versioned lifecycle validators.
+    - `runtime` supports `source_executed`, `parity_verified`, `adopted`, and `converged`
+      through their corresponding versioned lifecycle validators. Those levels are runtime-
+      only: an analysis receipt has no field that can prove a donor invocation, so an
+      analysis claim is refused at them rather than validated leniently.
     - `adoption`, `convergence`, and `resolution` dispatch to their own receipt validators.
     Any other claim kind or runtime level is refused rather than waved through.
     """
@@ -1272,7 +1325,7 @@ def evidence_errors(wave: dict[str, Any], path: Path, suite_id: str | None = Non
     if kind == "runtime":
         level = claim.get("level")
         contract_id = claim.get("receipt_contract", "")
-        if level == "source_verified":
+        if level == "source_executed":
             return _portfolio_runtime_receipt_errors(path, contract_id, level)
         if level == "parity_verified":
             return _runtime_parity_receipt_errors(path, contract_id)
@@ -1312,17 +1365,223 @@ def get_project(name: str) -> dict[str, Any] | None:
 
 
 def _git_value(path: Path, *args: str) -> str:
+    """Read one value from a donor repository through the hardened donor Git runner.
+
+    Every registry Git invocation goes through
+    :func:`portfolio_suites.adapters.common.run_donor_git`; calling ``subprocess`` directly
+    here would bypass both the minimal environment and the local-config neutralization, and
+    a read-only drift command would execute repository-local code with this process's
+    authority behind it.
+    """
     try:
-        result = subprocess.run(
-            ["git", "-C", str(path), *args],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
-        )
+        result = run_donor_git(path, *args, timeout=5)
     except (OSError, subprocess.TimeoutExpired):
         return "unavailable"
     return result.stdout.strip() if result.returncode == 0 else "unavailable"
+
+
+def _git_untracked_paths(source: Path) -> tuple[list[str], bool]:
+    """Return NUL-delimited untracked paths plus whether Git enumerated them successfully."""
+    try:
+        result = run_donor_git(
+            source,
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=all",
+            "-z",
+            timeout=5,
+            binary=True,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return [], False
+    if result.returncode != 0:
+        return [], False
+    raw = result.stdout
+    entries = raw.split(b"\x00")
+    untracked = []
+    for entry in entries:
+        if entry.startswith(b"?? "):
+            rel_name = entry[3:].decode("utf-8", errors="replace")
+            if rel_name:
+                untracked.append(rel_name)
+    return untracked, True
+
+
+def _untracked_content_digest(source: Path, untracked_paths: list[str]) -> tuple[str, bool]:
+    """Stream-hash non-sensitive untracked entries without following symlinks.
+
+    Returns (digest, is_incomplete).
+    """
+    if not untracked_paths:
+        return "", False
+
+    file_hashes: list[str] = []
+    max_files = 1000
+    max_stream_bytes = 100 * 1024 * 1024  # 100MB per file streaming budget
+    total_bytes_streamed = 0
+    max_total_bytes = 500 * 1024 * 1024  # 500MB total streaming budget
+    is_incomplete = False
+
+    processed_entries = 0
+    truncated = False
+    # Not reading a secret into evidence is correct. Reporting the result as a *complete*
+    # fingerprint is not: the bytes of a sensitive untracked file can change with the
+    # pathname and status shape held constant, and nothing here would notice. The count is
+    # recorded so the digest still moves when the set changes; neither name nor content is.
+    sensitive_skipped = 0
+
+    def fingerprint_entry(file_path: Path, rel_file: str) -> bool:
+        """Fingerprint one non-directory entry; false means the cap refused this entry."""
+        nonlocal processed_entries, total_bytes_streamed, is_incomplete, truncated
+        nonlocal sensitive_skipped
+
+        if is_sensitive_path(rel_file):
+            sensitive_skipped += 1
+            is_incomplete = True
+            return True
+        if processed_entries >= max_files:
+            if not truncated:
+                file_hashes.append("::MAX_UNTRACKED_FILES_TRUNCATION::")
+                truncated = True
+            is_incomplete = True
+            return False
+        processed_entries += 1
+
+        try:
+            initial = file_path.lstat()
+        except OSError:
+            is_incomplete = True
+            file_hashes.append(f"{rel_file}:UNREADABLE_ENTRY_INCOMPLETE")
+            return True
+
+        if stat.S_ISLNK(initial.st_mode):
+            try:
+                target = os.readlink(file_path)
+                target_digest = hashlib.sha256(os.fsencode(target)).hexdigest()
+                current = file_path.lstat()
+                if (current.st_dev, current.st_ino, current.st_mtime_ns) != (
+                    initial.st_dev,
+                    initial.st_ino,
+                    initial.st_mtime_ns,
+                ):
+                    raise OSError("symlink changed while it was fingerprinted")
+                file_hashes.append(f"{rel_file}:SYMLINK:{target_digest}")
+            except OSError:
+                is_incomplete = True
+                file_hashes.append(f"{rel_file}:UNREADABLE_SYMLINK_INCOMPLETE")
+            return True
+
+        if not stat.S_ISREG(initial.st_mode):
+            is_incomplete = True
+            file_hashes.append(
+                f"{rel_file}:UNSUPPORTED_ENTRY_INCOMPLETE:mode={stat.S_IFMT(initial.st_mode):o}"
+            )
+            return True
+
+        file_size = initial.st_size
+        if file_size > max_stream_bytes or (total_bytes_streamed + file_size) > max_total_bytes:
+            is_incomplete = True
+            file_hashes.append(
+                f"{rel_file}:LARGE_FILE_INCOMPLETE:size={file_size}:mtime={initial.st_mtime_ns}"
+            )
+            return True
+
+        try:
+            flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0)
+            file_fd = os.open(file_path, flags)
+            try:
+                opened = os.fstat(file_fd)
+                if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (
+                    initial.st_dev,
+                    initial.st_ino,
+                ):
+                    raise OSError("entry changed before it was opened")
+                hasher = hashlib.sha256()
+                with os.fdopen(file_fd, "rb") as stream:
+                    file_fd = -1
+                    while chunk := stream.read(65536):
+                        hasher.update(chunk)
+                        total_bytes_streamed += len(chunk)
+                current = file_path.lstat()
+                if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != (
+                    initial.st_dev,
+                    initial.st_ino,
+                    initial.st_size,
+                    initial.st_mtime_ns,
+                ):
+                    raise OSError("file changed while it was fingerprinted")
+                file_hashes.append(f"{rel_file}:{hasher.hexdigest()}")
+            finally:
+                if file_fd >= 0:
+                    os.close(file_fd)
+        except OSError:
+            is_incomplete = True
+            file_hashes.append(f"{rel_file}:UNREADABLE_FILE_INCOMPLETE")
+        return True
+
+    for candidate in sorted(set(untracked_paths)):
+        if is_sensitive_path(candidate):
+            sensitive_skipped += 1
+            is_incomplete = True
+            continue
+        candidate_path = source / candidate
+        try:
+            candidate_stat = candidate_path.lstat()
+        except OSError:
+            if not fingerprint_entry(candidate_path, candidate):
+                break
+            continue
+
+        if not stat.S_ISDIR(candidate_stat.st_mode):
+            if not fingerprint_entry(candidate_path, candidate):
+                break
+            continue
+
+        walk_errors: list[OSError] = []
+        for root, dirnames, filenames in os.walk(
+            candidate_path,
+            topdown=True,
+            followlinks=False,
+            onerror=walk_errors.append,
+        ):
+            dirnames.sort()
+            filenames.sort()
+            root_path = Path(root)
+            symlink_dirs: list[str] = []
+            real_dirs: list[str] = []
+            for dirname in dirnames:
+                try:
+                    mode = (root_path / dirname).lstat().st_mode
+                except OSError:
+                    mode = 0
+                if stat.S_ISLNK(mode) or mode == 0:
+                    symlink_dirs.append(dirname)
+                else:
+                    real_dirs.append(dirname)
+            dirnames[:] = real_dirs
+
+            for entry_name in [*symlink_dirs, *filenames]:
+                file_path = root_path / entry_name
+                try:
+                    rel_file = file_path.relative_to(source).as_posix()
+                except ValueError:
+                    is_incomplete = True
+                    file_hashes.append("::UNTRACKED_PATH_ESCAPE_INCOMPLETE::")
+                    continue
+                if not fingerprint_entry(file_path, rel_file):
+                    break
+            if truncated:
+                break
+        if walk_errors:
+            is_incomplete = True
+            file_hashes.append(f"{candidate}:UNREADABLE_DIRECTORY_INCOMPLETE")
+        if truncated:
+            break
+
+    if sensitive_skipped:
+        file_hashes.append(f"::SENSITIVE_UNTRACKED_UNFINGERPRINTED:{sensitive_skipped}::")
+
+    return "\n".join(sorted(set(file_hashes))), is_incomplete
 
 
 def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | None:
@@ -1335,18 +1594,43 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
     current_head = _git_value(source, "rev-parse", "--short", "HEAD")
     current_branch = _git_value(source, "branch", "--show-current") or "DETACHED"
     current_status = _git_value(source, "status", "--porcelain")
-    current_lines = len(current_status.splitlines()) if current_status else 0
+    current_lines = len(current_status.splitlines()) if current_status and current_status != "unavailable" else 0
+    untracked_paths, untracked_enumeration_complete = _git_untracked_paths(source)
+    untracked_digest, untracked_incomplete = _untracked_content_digest(source, untracked_paths)
+    status_readable = current_status != "unavailable"
+    untracked_incomplete_reasons: list[str] = []
+    if not status_readable:
+        untracked_incomplete_reasons.append("git_status_unreadable")
+    if not untracked_enumeration_complete:
+        untracked_incomplete_reasons.append("untracked_path_enumeration_failed")
+    if untracked_incomplete:
+        untracked_incomplete_reasons.append("untracked_content_fingerprint_incomplete")
+
+    status_fragments = [current_status if current_status != "unavailable" else ""]
+    if untracked_digest:
+        status_fragments.append(untracked_digest)
+    if not untracked_enumeration_complete:
+        status_fragments.append("::UNTRACKED_PATH_ENUMERATION_INCOMPLETE::")
+    status_payload = "\n---\n".join(status_fragments)
     # A dirty-item count is blind to two files changing identity while the count holds.
-    current_status_sha256 = hashlib.sha256(current_status.encode("utf-8")).hexdigest()
+    # Streaming untracked files' SHA-256 prevents untracked content alterations from reporting clean.
+    current_status_sha256 = hashlib.sha256(status_payload.encode("utf-8")).hexdigest()
 
     # Porcelain output is "XY path" -- it carries no file content, so editing an
     # already-modified tracked file leaves it byte-identical. The patch is what closes
-    # that hole.
-    # ponytail: `git diff HEAD` covers tracked modifications only. Untracked file
-    # *contents* stay unfingerprinted; hash them here if a donor ever parks real work
-    # in untracked files.
-    current_patch = _git_value(source, "diff", "HEAD")
+    # that hole. The content options are refused here rather than in the shared runner:
+    # they are diff-specific, and they are exactly the features a local config can aim at
+    # external executables (diff.external, textconv filters).
+    current_patch = _git_value(source, "diff", "--no-ext-diff", "--no-textconv", "HEAD")
     patch_readable = current_patch != "unavailable"
+    if not patch_readable:
+        untracked_incomplete_reasons.append("git_patch_unreadable")
+    # One flag for "this fingerprint does not cover everything it claims to". Any component
+    # the comparison needs and could not read leaves drift unresolved, not absent: an
+    # unreadable patch is exactly how a byte change to an already-dirty tracked file reports
+    # clean, because porcelain output carries no content.
+    fingerprint_incomplete = bool(untracked_incomplete_reasons)
+    untracked_incomplete = fingerprint_incomplete
     current_patch_sha256 = (
         hashlib.sha256(current_patch.encode("utf-8")).hexdigest() if patch_readable else ""
     )
@@ -1363,7 +1647,9 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
     patch_drift = (
         bool(snap_patch_sha256) and patch_readable and current_patch_sha256 != snap_patch_sha256
     )
-    has_drift = head_or_branch_drift or lines_drift or content_drift or patch_drift
+    has_drift = (
+        head_or_branch_drift or lines_drift or content_drift or patch_drift or fingerprint_incomplete
+    )
 
     return {
         "name": name,
@@ -1379,6 +1665,14 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
         "snapshot_status_sha256": snap_status_sha256,
         "current_status_sha256": current_status_sha256,
         "content_drift": content_drift,
+        "status_readable": status_readable,
+        "patch_readable": patch_readable,
+        "fingerprint_complete": not fingerprint_incomplete,
+        "fingerprint_incomplete_reasons": untracked_incomplete_reasons,
+        "untracked_enumeration_complete": untracked_enumeration_complete,
+        "untracked_fingerprint_complete": not untracked_incomplete,
+        "untracked_incomplete": untracked_incomplete,
+        "untracked_incomplete_reasons": untracked_incomplete_reasons,
         "status_unfingerprinted": not snap_status_sha256,
         "snapshot_patch_sha256": snap_patch_sha256,
         "current_patch_sha256": current_patch_sha256,
@@ -1417,7 +1711,12 @@ def get_portfolio_summary() -> dict[str, Any]:
     # 100% while nearly every wave still owes a live run: `next` already listed the debt
     # per wave, and the headline was the one place it went missing.
     waves_owing_runtime_followup = 0
-    verified_analysis_milestones = 0
+    # Two axes, counted separately on purpose. `completed_analysis_milestones` is scheduling
+    # progress; `promotion_counts` is how much each of those milestones actually demonstrated.
+    # A single number that mixes them can only be wrong in one direction, and it was: every
+    # completed analysis was reported as verified regardless of the level it claimed.
+    completed_analysis_milestones = 0
+    promotion_counts = {level: 0 for level in RECOVERY_PROMOTION_LEVELS}
     recovered_runtime_behaviors = 0
     adopted_runtime_behaviors = 0
     converged_runtime_behaviors = 0
@@ -1439,6 +1738,7 @@ def get_portfolio_summary() -> dict[str, Any]:
         waves_owing_runtime_followup += owing_in_suite
         valid_in_suite = 0
         invalid_in_suite = 0
+        prototype_in_suite = 0
         for wave in waves:
             if wave.get("status") != "complete":
                 continue
@@ -1456,8 +1756,12 @@ def get_portfolio_summary() -> dict[str, Any]:
             claim = wave.get("recovery_claim", {})
             kind = claim.get("kind")
             level = claim.get("level")
+            if level in promotion_counts:
+                promotion_counts[level] += 1
             if kind == "analysis":
-                verified_analysis_milestones += 1
+                completed_analysis_milestones += 1
+                if level == "prototype":
+                    prototype_in_suite += 1
             if kind == "runtime" and level in RUNTIME_PROMOTION_LEVELS:
                 recovered_runtime_behaviors += 1
             if kind in {"runtime", "adoption"} and level in {"adopted", "converged"}:
@@ -1482,6 +1786,7 @@ def get_portfolio_summary() -> dict[str, Any]:
             "validated_completed_claims": valid_in_suite,
             "invalid_completed_claims": invalid_in_suite,
             "waves_owing_runtime_followup": owing_in_suite,
+            "prototype_level_claims": prototype_in_suite,
             "current_wave": current_wave.get("id") if current_wave else "complete",
             "completion_percentage": round((completed_in_suite / len(waves) * 100) if waves else 100, 1),
         })
@@ -1502,7 +1807,9 @@ def get_portfolio_summary() -> dict[str, Any]:
         "portfolio_progress_pct": round((completed_waves / total_waves * 100) if total_waves else 0, 1),
         "recovery_standard_id": standard.get("standard_id"),
         "recovery_target_score": standard.get("target_score"),
-        "verified_analysis_milestones": verified_analysis_milestones,
+        "completed_analysis_milestones": completed_analysis_milestones,
+        "promotion_counts": promotion_counts,
+        "prototype_level_claims": promotion_counts["prototype"],
         "recovered_runtime_behaviors": recovered_runtime_behaviors,
         "adopted_runtime_behaviors": adopted_runtime_behaviors,
         "converged_runtime_behaviors": converged_runtime_behaviors,
@@ -1650,6 +1957,10 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
             report.errors.append(f"{name}: disposition and migration are required")
 
     declared_evidence_paths: dict[Path, str] = {}
+    # Every artifact under a suite's evidence/ directory must be owned by something. A wave
+    # owns its canonical receipt; anything else is declared here with the role it actually
+    # plays, so a stale narrative cannot sit beside a canonical receipt looking like one.
+    allowed_evidence_roles = {"fixture", "ancillary", "historical"}
     allowed_suite_states = {"specified", "prototype", "migrating", "operational", "converged", "retired"}
     allowed_wave_statuses = {"specified", "prototype", "complete", "blocked", "deferred"}
 
@@ -1722,32 +2033,60 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                 if is_complete:
                     report.errors.append(f"{suite_id}/{wave.get('id')}: completed wave requires recovery_claim")
                 continue
-            if claim.get("kind") not in claim_kinds:
-                report.errors.append(f"{suite_id}/{wave.get('id')}: unknown recovery claim kind")
             claim_kind = claim.get("kind")
             claim_level = claim.get("level")
-            if claim_level not in RECOVERY_PROMOTION_LEVELS:
+            if not isinstance(claim_kind, str) or claim_kind not in claim_kinds:
+                report.errors.append(f"{suite_id}/{wave.get('id')}: unknown recovery claim kind")
+                claim_kind = None
+            if not isinstance(claim_level, str) or claim_level not in RECOVERY_PROMOTION_LEVELS:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: unknown recovery promotion level")
+                claim_level = None
             elif is_complete and claim_level == "specified":
                 report.errors.append(f"{suite_id}/{wave.get('id')}: completed wave cannot claim a specified level")
             elif is_complete and claim_kind == "runtime" and claim_level == "prototype":
                 report.errors.append(f"{suite_id}/{wave.get('id')}: completed runtime wave cannot claim a prototype level")
             if not isinstance(claim.get("real_runtime"), bool):
                 report.errors.append(f"{suite_id}/{wave.get('id')}: recovery claim must state real_runtime")
-            if claim_kind == "runtime" and claim.get("real_runtime") is not True:
-                report.errors.append(f"{suite_id}/{wave.get('id')}: runtime recovery must exercise a real runtime")
+            if (
+                claim_kind in {"runtime", "adoption", "convergence"}
+                or claim_level in EXECUTED_PROMOTION_LEVELS
+            ) and claim.get("real_runtime") is not True:
+                report.errors.append(
+                    f"{suite_id}/{wave.get('id')}: executed recovery claim ({claim_kind}/{claim_level}) must exercise a real runtime"
+                )
             if claim_kind == "analysis" and claim.get("real_runtime") is not False:
                 report.errors.append(f"{suite_id}/{wave.get('id')}: analysis claim cannot manufacture runtime execution")
-            # `parity_verified` and above are runtime rungs: their names assert that a donor
-            # and a destination were both executed and compared. An analysis claim states in
-            # the same breath that no runtime ran, so it may climb no higher than
-            # `source_verified`. Only the runtime branch below carries evidence that can
-            # substantiate the upper rungs, and nothing was applying it to analysis claims.
-            if claim_kind == "analysis" and claim_level in RUNTIME_PROMOTION_LEVELS:
-                report.errors.append(
-                    f"{suite_id}/{wave.get('id')}: analysis claim cannot occupy the runtime "
-                    f"promotion level {claim_level!r}; the highest analysis level is 'source_verified'"
-                )
+            # `source_executed` and above are runtime rungs: their names assert that donor
+            # code was actually invoked, and `parity_verified` and above additionally assert
+            # it was compared against a destination. Analysis claims are validated against
+            # the per-wave receipt specification, which describes what a receipt *contains* --
+            # it has no way to establish an argv, an exit code, a source fingerprint, or any
+            # other proof that the donor ran. Letting an analysis claim sit at
+            # `source_executed` therefore made a manifest boolean the whole evidence for the
+            # strongest thing the ladder can say, which is exactly the fail-open this refuses.
+            # An analysis wave whose runner really does invoke the donor is not blocked from
+            # the rung -- it earns it by declaring `kind: runtime` and retaining a
+            # `portfolio-runtime-source-v1` receipt that proves the invocation.
+            # Guarding on `analysis` alone left the gate open for every other non-runtime
+            # kind. `resolution` routes to the generic resolution contract, and `adoption`
+            # and `convergence` fall through to theirs, so all three could sit at
+            # `source_executed` with no argv, exit status, or donor invocation anywhere in
+            # the receipt -- the same fail-open this refuses for `analysis`. The rule is a
+            # property of the kind, so it is stated as one.
+            if claim_level is not None and claim_kind is not None:
+                if claim_level in EXECUTED_PROMOTION_LEVELS and claim_level not in EXECUTED_LEVELS_BY_KIND.get(
+                    claim_kind, frozenset()
+                ):
+                    permitted = EXECUTED_LEVELS_BY_KIND.get(claim_kind)
+                    report.errors.append(
+                        f"{suite_id}/{wave.get('id')}: {claim_kind} claim cannot occupy the runtime "
+                        f"promotion level {claim_level!r}; "
+                        + (
+                            f"the only executed level it may hold is {sorted(permitted)[0]!r}"
+                            if permitted
+                            else "it may not hold an executed level at all"
+                        )
+                    )
             # A completed analysis wave has, by definition, left its runtime work undone.
             # Without a written followup that work is not deferred, it is lost: the wave
             # reads as finished and nothing in the ledger remembers what it did not do.
@@ -1777,9 +2116,9 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                     "accessibility-wcag-331-v1", "portfolio-runtime-parity-v1"
                 }:
                     report.errors.append(f"{suite_id}/{wave.get('id')}: runtime parity receipt contract is missing or unsupported")
-            if claim_kind == "runtime" and claim_level == "source_verified" and claim.get("receipt_contract") != "portfolio-runtime-source-v1":
+            if claim_kind == "runtime" and claim_level == "source_executed" and claim.get("receipt_contract") != "portfolio-runtime-source-v1":
                 report.errors.append(
-                    f"{suite_id}/{wave.get('id')}: source-verified runtime requires portfolio-runtime-source-v1"
+                    f"{suite_id}/{wave.get('id')}: source_executed runtime requires portfolio-runtime-source-v1"
                 )
             if claim_kind == "runtime" and claim_level in {"adopted", "converged"}:
                 expected_runtime_contract = (
@@ -1812,11 +2151,54 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                     report.errors.append(f"{suite_id}/{wave.get('id')}: completed claim evidence is missing")
                 else:
                     report.warnings.append(
-                        f"{suite_id}/{wave.get('id')}: declared claim has no retained receipt at {evidence_path}"
+                        f"{suite_id}/{wave.get('id')}: declared claim has no retained receipt at {declared_path}"
                     )
             else:
                 for evidence_error in evidence_errors(wave, evidence_file, suite_id):
                     report.errors.append(f"{suite_id}/{wave.get('id')}: {evidence_error}")
+
+    for suite_id, manifest in suites.items():
+        supporting = manifest.get("supporting_evidence", [])
+        if not isinstance(supporting, list):
+            report.errors.append(f"{suite_id}: supporting_evidence must be a list")
+            supporting = []
+        for entry in supporting:
+            if not isinstance(entry, dict):
+                report.errors.append(f"{suite_id}: every supporting evidence entry must be an object")
+                continue
+            entry_path = resolve_declared_evidence_path(entry.get("path"), suite_id)
+            if entry_path is None:
+                report.errors.append(
+                    f"{suite_id}: supporting evidence path is invalid or escapes its suite: {entry.get('path')!r}"
+                )
+                continue
+            if entry.get("role") not in allowed_evidence_roles:
+                report.errors.append(f"{suite_id}: supporting evidence {entry['path']} has an invalid role")
+            if not isinstance(entry.get("reason"), str) or not entry["reason"].strip():
+                report.errors.append(f"{suite_id}: supporting evidence {entry['path']} needs a reason")
+            resolved_entry = entry_path.resolve(strict=False)
+            prior_owner = declared_evidence_paths.get(resolved_entry)
+            if prior_owner is not None:
+                report.errors.append(
+                    f"{suite_id}: supporting evidence {entry['path']} is already owned by {prior_owner}"
+                )
+            else:
+                declared_evidence_paths[resolved_entry] = f"{suite_id}/supporting"
+            if not entry_path.is_file():
+                report.errors.append(f"{suite_id}: declared supporting evidence is missing at {entry['path']}")
+
+        evidence_dir = SUITES_ROOT / suite_id / "evidence"
+        if not evidence_dir.is_dir():
+            continue
+        for found in sorted(evidence_dir.rglob("*")):
+            if not found.is_file():
+                continue
+            if found.resolve(strict=False) in declared_evidence_paths:
+                continue
+            report.errors.append(
+                f"{suite_id}: undeclared artifact under active evidence: "
+                f"{found.relative_to(SUITES_ROOT)}"
+            )
 
     if check_live:
         expected = set(projects)
@@ -1848,6 +2230,20 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                 report.warnings.append(
                     f"{name}: working-tree item count changed from {drift['snapshot_lines']} "
                     f"to {drift['current_lines']}"
+                )
+            if drift.get("patch_drift"):
+                report.warnings.append(
+                    f"{name}: working-tree patch content drifted from recorded snapshot"
+                )
+            if drift.get("content_drift"):
+                report.warnings.append(
+                    f"{name}: working-tree untracked/status content drifted from recorded snapshot"
+                )
+            if drift.get("untracked_incomplete"):
+                reasons = ", ".join(drift.get("untracked_incomplete_reasons") or ["unknown reason"])
+                report.warnings.append(
+                    f"{name}: untracked content fingerprint is incomplete ({reasons}); "
+                    "drift is unresolved and baseline recording is refused"
                 )
 
         nested_rows = nested.get("repositories", [])
@@ -1916,8 +2312,16 @@ def apply_snapshot_updates(text: str, snapshots: dict[str, dict[str, Any]]) -> t
 
 
 def _live_snapshot(name: str, drift: dict[str, Any]) -> dict[str, Any] | None:
-    """Build a baseline snapshot from a project's live git state, or None if git is unreadable."""
-    if "unavailable" in {drift["current_head"], drift["current_branch"]}:
+    """Build a baseline snapshot from a project's live git state, or None if git is unreadable.
+
+    A baseline is a claim that the recorded bytes were reviewed. Any component the
+    fingerprint needs and could not read makes that claim unsupportable, so acceptance is
+    refused rather than recorded with a hole in it.
+    """
+    if (
+        "unavailable" in {drift["current_head"], drift["current_branch"]}
+        or not drift.get("fingerprint_complete", False)
+    ):
         return None
     return {
         "git": True,
@@ -1956,12 +2360,91 @@ def pending_snapshots(accept: bool = False) -> dict[str, dict[str, Any]]:
     return pending
 
 
+class LedgerConflict(RuntimeError):
+    """The ledger changed under a transaction that had already read it."""
+
+
+@contextlib.contextmanager
+def _ledger_lock():
+    """Serialize ledger transactions on a sidecar lock opened under an anchored directory.
+
+    The lock is a sidecar rather than the ledger itself because the commit detaches the
+    document's inode from its name, so locking the document would lock an inode no longer
+    reachable by that name for the next writer. The lock covers cooperative writers only;
+    uncooperative ones are handled by the compare-and-swap inside the commit itself.
+    """
+    directory_fd = open_confined_directory(SUITES_ROOT, "portfolio")
+    try:
+        handle = os.open(
+            f"{_LEDGER_PATH.name}.lock",
+            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=directory_fd,
+        )
+    finally:
+        os.close(directory_fd)
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(handle)
+
+
 def fingerprint_baselines(dry_run: bool = False, accept: bool = False) -> list[str]:
-    """Record missing baseline fingerprints, and on `accept` re-capture drifted baselines."""
-    text = _LEDGER_PATH.read_text(encoding="utf-8")
-    new_text, updated = apply_snapshot_updates(text, pending_snapshots(accept))
-    if updated and not dry_run:
-        # The ledger is the single source of truth for all 70 dispositions and cannot be
-        # rebuilt from the suites; it gets the same durable replace as the approval store.
-        durable_write_text(_LEDGER_PATH, new_text)
+    """Record missing baseline fingerprints, and on `accept` re-capture drifted baselines.
+
+    Read, live-state decision, transformation and commit all happen under one lock. Without
+    it the new document is built from text read before an arbitrarily long git scan, and
+    replacing the file discards every edit another writer committed in between -- silently,
+    because the replace succeeds.
+
+    The sidecar lock only covers cooperative writers, so the conflict check lives inside
+    the commit primitive itself (:func:`portfolio_suites.txn.commit_replacement`): the
+    replacement is conditional on the occupant still being byte-for-byte the document this
+    transaction read, decided atomically at the swap rather than by a digest check that
+    ends before the temporary is even flushed. An uncooperative writer that lands an edit
+    during the write therefore blocks the commit instead of being overwritten.
+    """
+    with _ledger_lock():
+        text = _LEDGER_PATH.read_text(encoding="utf-8")
+        read_digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        new_text, updated = apply_snapshot_updates(text, pending_snapshots(accept))
+        if updated and not dry_run:
+            try:
+                ledger_mode = stat.S_IMODE(_LEDGER_PATH.stat().st_mode)
+            except OSError:
+                ledger_mode = 0o600
+            # ``_LEDGER_PATH`` is trusted module state like SUITES_ROOT itself; opening its
+            # parent O_NOFOLLOW pins the directory inode without re-resolving any string.
+            directory_fd = os.open(
+                _LEDGER_PATH.parent,
+                os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0),
+            )
+            try:
+                temp = write_temp_payload(
+                    directory_fd,
+                    _LEDGER_PATH.name,
+                    new_text.encode("utf-8"),
+                    mode=ledger_mode,
+                )
+                try:
+                    commit_replacement(
+                        directory_fd,
+                        _LEDGER_PATH.name,
+                        temp,
+                        expected_digest=read_digest,
+                    )
+                except OccupantConflict as error:
+                    raise LedgerConflict(
+                        "the project ledger changed while baselines were being computed; "
+                        "no baseline was written and the concurrent edit was preserved. "
+                        "Re-run to replay against the current document."
+                    ) from error
+                except CommitUncertain as error:
+                    # The ledger is the single source of truth for all 70 dispositions and
+                    # cannot be rebuilt from the suites, so "replaced but durability is
+                    # unconfirmed" must never be reported as a clean refusal.
+                    raise CommitUnverified(str(error)) from error
+            finally:
+                os.close(directory_fd)
     return updated

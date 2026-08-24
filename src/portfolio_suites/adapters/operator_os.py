@@ -532,10 +532,19 @@ class OperatorOSSourceAdapter:
             "proposed_ports": disposition.get("proposed_ports", []),
             "superseded_features": disposition.get("superseded_features", []),
             "source_inventory_catalog": RYOS_DISPOSITION_CATALOG,
-            "duplicate_decisions_closed": True,
-            "donor_freeze_status": "formalized_donor_freeze_candidate",
+            # The engine this reads from says `migration_acceptance_verified: False` and
+            # `duplicate_row_proposal: "close_on_verification"` -- a proposal awaiting
+            # verification. Reporting that as a closure named an outcome the gate never
+            # performed, so the receipt now states the disposition and, explicitly, the
+            # things it did not do.
+            "duplicate_decisions_closed": False,
+            "duplicate_decision_disposition": disposition.get("duplicate_row_proposal"),
+            "migration_acceptance_verified": disposition.get("migration_acceptance_verified", False),
+            "donor_read": False,
+            "external_runtime_invoked": False,
+            "donor_freeze_status": disposition.get("donor_freeze_status"),
             "all_stages_passed": len(disposition.get("proposed_ports", [])) >= 2 and disposition.get("duplicate_row_proposal") == "close_on_verification",
-            "status": "disposition_reconciled",
+            "status": "disposition_proposal_recorded",
         }
 
     @classmethod

@@ -8,8 +8,10 @@ from portfolio_suites.registry import load_suites
 from portfolio_suites.waves import WaveRunner
 
 # Waves promoted from specification to source-backed prototype checks.
+# M3 is deliberately absent: its runner reads and parses real donor match logs, which is the
+# definition of `source_inspected`, so it is asserted below at the rung it actually earns.
 PROMOTED = {
-    "model-behavior-lab": ["M1", "M2", "M3", "M4", "M5"],
+    "model-behavior-lab": ["M1", "M2", "M4", "M5"],
     "discovery-decision": ["D1", "D2", "D3", "D4", "D5"],
     "agent-reliability": ["R1", "R2", "R3", "R4", "R5"],
     "game-design": ["G1", "G2", "G3", "G4", "G5"],
@@ -42,6 +44,20 @@ class SourceBackedWaveTests(unittest.TestCase):
                     self.assertIs(claim.get("real_runtime"), False)
                     self.assertTrue(claim.get("evidence_basis"))
                     self.assertTrue(waves[wave_id].get("runtime_followup"))
+
+    def test_donor_reading_wave_declares_source_inspected(self):
+        """A runner that parses authentic donor artifacts may not report as a fixture check.
+
+        M3's objective says it builds from real donor match logs and its receipt asserts
+        `donor_match_logs_read`. `prototype` means the runner read nothing donor-side, so
+        that pairing published one more prototype and one fewer inspection than was true.
+        """
+        wave = {w["id"]: w for w in load_suites()["model-behavior-lab"]["waves"]}["M3"]
+        claim = wave.get("recovery_claim", {})
+        self.assertEqual(claim.get("kind"), "analysis")
+        self.assertEqual(claim.get("level"), "source_inspected")
+        self.assertIs(claim.get("real_runtime"), False)
+        self.assertTrue(wave.get("runtime_followup"))
 
     def test_promoted_waves_pass_against_their_real_donors(self):
         for suite_id, wave_ids in PROMOTED.items():
