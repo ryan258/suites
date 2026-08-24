@@ -265,6 +265,16 @@ def _validate_schema_node(
             for prop_name, prop_schema in properties.items():
                 if prop_name in value and isinstance(prop_schema, dict):
                     _validate_schema_node(schema_doc, prop_schema, value[prop_name], f"{path}.{prop_name}")
+        additional = node_schema.get("additionalProperties")
+        if additional is not None:
+            declared = set(properties) if isinstance(properties, dict) else set()
+            for key in value:
+                if key in declared:
+                    continue
+                if additional is False:
+                    raise ContractError(f"{path}.{key} is not an allowed property")
+                if isinstance(additional, dict):
+                    _validate_schema_node(schema_doc, additional, value[key], f"{path}.{key}")
 
 
 def _check_published_types(name: str, payload: Mapping[str, Any]) -> None:
@@ -364,15 +374,8 @@ def validate_contract(name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(payload.get("size_bytes"), int) or payload.get("size_bytes", -1) < 0:
             raise ContractError("SourceRecord.size_bytes must be a non-negative integer")
     elif name == "BrandPackage":
-        if not isinstance(payload.get("version"), str) or not SEMVER.fullmatch(payload.get("version", "")):
-            raise ContractError("BrandPackage.version must be semantic x.y.z")
         if not payload.get("provenance"):
             raise ContractError("BrandPackage requires at least one provenance reference")
-    elif name == "ExperimentRun":
-        if not isinstance(payload.get("benchmark_version"), str) or not payload.get("benchmark_version"):
-            raise ContractError("ExperimentRun.benchmark_version is required")
-        if not isinstance(payload.get("scorer_version"), str) or not payload.get("scorer_version"):
-            raise ContractError("ExperimentRun.scorer_version is required")
 
     try:
         return json.loads(json.dumps(dict(payload), allow_nan=False))

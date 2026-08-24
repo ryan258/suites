@@ -2,7 +2,12 @@ import copy
 import math
 import unittest
 
-from portfolio_suites.contracts import ContractError, generate_sample, validate_contract
+from portfolio_suites.contracts import (
+    ContractError,
+    _validate_schema_node,
+    generate_sample,
+    validate_contract,
+)
 
 
 class PublishedKeywordValidationTests(unittest.TestCase):
@@ -38,6 +43,31 @@ class PublishedKeywordValidationTests(unittest.TestCase):
             payload["parameters"] = copy.deepcopy(bad)
             with self.subTest(bad=bad), self.assertRaises(ContractError):
                 validate_contract("ExperimentRun", payload)
+
+    def test_additional_properties_false_rejects_unknown_fields(self):
+        schema = {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "additionalProperties": False,
+        }
+        _validate_schema_node(schema, schema, {"name": "ok"}, "doc")
+        with self.assertRaisesRegex(ContractError, "not an allowed property"):
+            _validate_schema_node(schema, schema, {"name": "ok", "extra": 1}, "doc")
+
+    def test_additional_properties_schema_validates_unknown_fields(self):
+        schema = {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "additionalProperties": {"type": "integer"},
+        }
+        _validate_schema_node(schema, schema, {"tag": 3}, "doc")
+        with self.assertRaisesRegex(ContractError, "JSON integer"):
+            _validate_schema_node(schema, schema, {"tag": "nope"}, "doc")
+
+    def test_published_contracts_still_allow_extension_fields(self):
+        payload = generate_sample("SourceRecord")
+        payload["operator_note"] = "added by tooling"
+        validate_contract("SourceRecord", payload)
 
 
 if __name__ == "__main__":
