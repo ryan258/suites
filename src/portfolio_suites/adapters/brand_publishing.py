@@ -339,3 +339,44 @@ class BrandPublishingSourceAdapter:
             "source_verification_passed": source_verified,
             "all_stages_passed": all_stages_passed,
         }
+
+    @classmethod
+    def execute_b5_brand_maker_intake(cls) -> dict[str, Any]:
+        """B5: Drive the nine-phase intake machine using live Brand Workshop phase ids."""
+        workshop = cls.execute_b2_phase_mapping()
+        extracted = workshop.get("donor", {}).get("extracted_phases_from_source") or []
+        complete_phase_inputs = {
+            1: {"one_liner": "Local-first portfolio suite", "enemy": "Fragile unversioned schemas", "brand_name": "Cyborg Suites"},
+            2: {"primary_operator": "Ryan Johnson", "pain_points": ["drift", "cognitive load"], "target_audience": "Technical Operators"},
+            3: {"tone_adjectives": ["clear", "grounded", "concise"], "taboo_words": ["vague", "magic", "untested"]},
+            4: {"palette_hex": ["#111827", "#3b82f6"], "typeface_pair": "Inter / JetBrains Mono", "tagline": "Instituted Brand Package"},
+            5: {"verifiable_claims": ["Zero-dependency local control", "Deterministic test gates"]},
+            6: {"logo_paths": ["assets/logo.svg"], "icon_set": "lucide"},
+            7: {"do_list": ["Pin versions"], "dont_list": ["Silent mutations"], "usage_rules": ["Never modify without explicit version bump"]},
+            8: {"formats": ["markdown", "json"], "cadence": "on_demand"},
+            9: {"approver_signoff": "simulated_fixture_operator"},
+        }
+        res_complete = BrandPublishingEngine.execute_brand_maker_intake("cyborg-brand", complete_phase_inputs)
+        res_empty = BrandPublishingEngine.execute_brand_maker_intake("cyborg-brand", {})
+        workshop_read = (
+            workshop.get("all_stages_passed") is True
+            and len(extracted) == 9
+        )
+        res_complete["brand_workshop_read"] = workshop_read
+        res_complete["external_runtime_invoked"] = False
+        res_complete["workshop_phases"] = extracted
+        res_complete["workshop_fingerprint"] = (workshop.get("donor") or {}).get("fingerprint")
+        passed = (
+            workshop_read
+            and res_complete.get("phases_completed") == 9
+            and res_complete.get("resulting_package", {}).get("schema_version") == "1.0.0"
+            and res_empty.get("phases_completed") == 0
+            and res_empty.get("resulting_package") is None
+        )
+        if not passed:
+            res_complete["all_stages_passed"] = False
+            res_complete["reconciliation_status"] = "source_unverified"
+        else:
+            res_complete["all_stages_passed"] = True
+            res_complete["reconciliation_status"] = "workshop_aligned_intake_validated"
+        return res_complete

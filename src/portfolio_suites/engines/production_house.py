@@ -1,6 +1,9 @@
-"""Production House reference prototype engine powering Groundwire capture, Writers Room events, and ProductionJob flows.
+"""Production House engine: resumable ProductionJob flows plus deterministic script inspection.
 
-NOTE: This is a control-plane reference prototype and fixture comparator, not a replacement for external canonical project runtimes (e.g. Groundwire, writers-room)."""
+NOTE: This is a control-plane engine and fixture comparator, not a replacement for external
+canonical project runtimes (e.g. Groundwire, writers-room). Script parsing is local and
+read-only; no audio, formatter, or Writers Room runtime is invoked from these methods.
+"""
 
 from __future__ import annotations
 
@@ -49,8 +52,54 @@ def _validate_artifacts(name: str, artifacts: Any) -> list[dict[str, Any]]:
     return validated
 
 
+_CHARACTER_CUE = re.compile(r"^\*\*([A-Z][A-Z0-9][A-Z0-9_ \-]{0,40})\*\*", re.M)
+_MARKDOWN_HEADING = re.compile(r"^#{1,3}\s+(.+)$", re.M)
+_FOUNTAIN_SCENE = re.compile(r"^(?:INT\.|EXT\.|INT/EXT\.|EST\.)[^\n]+", re.M | re.I)
+_FOUNTAIN_CHARACTER = re.compile(r"^([A-Z][A-Z0-9][A-Z0-9 \-']{1,40})$", re.M)
+
+
 class ProductionHouseEngine:
     """Manage resumable ProductionJob lifecycles and creative execution pipelines."""
+
+    @staticmethod
+    def parse_episode_script(script_text: str, source_name: str = "script.md") -> dict[str, Any]:
+        """Parse a Groundwire/Fountain-shaped episode script into deterministic structure.
+
+        This is a local text parse of bytes the caller already holds. It does not open a
+        donor path, invoke a formatter, mix audio, or claim QC of a rendered master.
+        """
+        if not isinstance(source_name, str) or not source_name.strip() or len(source_name) > 240:
+            raise ValueError("source_name must be a non-empty string up to 240 characters")
+        if not isinstance(script_text, str) or not script_text.strip():
+            raise ValueError("script_text must be a non-empty string")
+        if len(script_text) > 1_048_576:
+            raise ValueError("script_text exceeds the 1 MiB parse bound")
+        characters = sorted({
+            match.group(1).strip()
+            for match in _CHARACTER_CUE.finditer(script_text)
+        })
+        if not characters:
+            characters = sorted({
+                match.group(1).strip()
+                for match in _FOUNTAIN_CHARACTER.finditer(script_text)
+                if " " not in match.group(1) or match.group(1).isupper()
+            })
+        headings = [item.strip() for item in _MARKDOWN_HEADING.findall(script_text) if item.strip()]
+        fountain_scenes = [item.strip() for item in _FOUNTAIN_SCENE.findall(script_text)]
+        encoded = script_text.encode("utf-8")
+        return {
+            "source_name": source_name.strip(),
+            "sha256": hashlib.sha256(encoded).hexdigest(),
+            "bytes": len(encoded),
+            "word_count": len(script_text.split()),
+            "characters": characters[:40],
+            "character_count": len(characters),
+            "headings": headings[:40],
+            "heading_count": len(headings),
+            "fountain_scene_count": len(fountain_scenes),
+            "parser": "suite_local_episode_script_v1",
+            "external_runtime_invoked": False,
+        }
 
     @staticmethod
     def create_job(job_id: str, domain: str, task: str, inputs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -132,7 +181,7 @@ class ProductionHouseEngine:
             "schema_version": SCHEMA_VERSION,
             "job_id": f"job-gw-{episode_slug}",
             "domain": "groundwire-audio-play",
-            "task": "project-full-episode-fixture",
+            "task": "project-episode-from-hashed-script",
             "status": "completed",
             "inputs": [
                 {"name": f"{episode_slug}.fountain", "sha256": script_sha, "type": "script"}
@@ -143,10 +192,10 @@ class ProductionHouseEngine:
                 {"name": f"{episode_slug}-qc-report.json", "sha256": script_sha, "lufs": -16.2, "peak_db": -1.0}
             ],
             "events": [
-                {"time": now_iso, "stage": "fixture_fountain_parse", "status": "modeled", "notes": "Projected a 12-scene, 4-voice fixture; no parser was invoked"},
-                {"time": now_iso, "stage": "fixture_formatter_projection", "status": "modeled", "notes": "Projected metadata for 142 fixture stems; no voice provider was invoked"},
-                {"time": now_iso, "stage": "fixture_mix_projection", "status": "modeled", "notes": "Projected a -22 dB fixture mix target; no audio was mixed"},
-                {"time": now_iso, "stage": "fixture_qc_projection", "status": "modeled", "notes": "Projected a -16.2 LUFS fixture result; no broadcast QC was performed"}
+                {"time": now_iso, "stage": "script_intake", "status": "modeled", "notes": "Job input is the hashed episode script; no donor parser subprocess was invoked"},
+                {"time": now_iso, "stage": "formatter_projection", "status": "modeled", "notes": "Projected stem metadata from the hashed script; no voice provider was invoked"},
+                {"time": now_iso, "stage": "mix_projection", "status": "modeled", "notes": "Projected a -22 dB mix target; no audio was mixed"},
+                {"time": now_iso, "stage": "qc_projection", "status": "modeled", "notes": "Projected a -16.2 LUFS result; no broadcast QC was performed"}
             ],
             "created_at": now_iso,
             "updated_at": now_iso,
@@ -168,7 +217,7 @@ class ProductionHouseEngine:
             "schema_version": SCHEMA_VERSION,
             "job_id": f"job-gw-doc-{episode_slug}",
             "domain": "groundwire-documentary",
-            "task": "project-investigative-documentary-fixture",
+            "task": "project-documentary-from-hashed-script",
             "status": "completed",
             "inputs": [
                 {"name": f"{episode_slug}.fountain", "sha256": script_sha, "type": "script"},
@@ -181,10 +230,10 @@ class ProductionHouseEngine:
                 {"name": f"{episode_slug}-provenance-manifest.json", "sha256": script_sha, "lufs": -16.0, "sources": 3}
             ],
             "events": [
-                {"time": now_iso, "stage": "fixture_multi_source_intake", "status": "modeled", "notes": "Projected archival-tape and multi-mic fixture inputs; no media was ingested"},
-                {"time": now_iso, "stage": "fixture_dialogue_cleanup", "status": "modeled", "notes": "Projected a dereverb step; no noise-reduction runtime was invoked"},
-                {"time": now_iso, "stage": "fixture_ducking_mix", "status": "modeled", "notes": "Projected a -18 dB ducking target; no audio was mixed"},
-                {"time": now_iso, "stage": "fixture_broadcast_qc", "status": "modeled", "notes": "Projected an EBU R128 target; compliance was not measured"}
+                {"time": now_iso, "stage": "multi_source_intake", "status": "modeled", "notes": "Projected archival-tape and multi-mic inputs from the hashed script; no media was ingested"},
+                {"time": now_iso, "stage": "dialogue_cleanup", "status": "modeled", "notes": "Projected a dereverb step; no noise-reduction runtime was invoked"},
+                {"time": now_iso, "stage": "ducking_mix", "status": "modeled", "notes": "Projected a -18 dB ducking target; no audio was mixed"},
+                {"time": now_iso, "stage": "broadcast_qc", "status": "modeled", "notes": "Projected an EBU R128 target; compliance was not measured"}
             ],
             "created_at": now_iso,
             "updated_at": now_iso,

@@ -755,7 +755,7 @@ class WaveRunner:
             write_evidence,
             passed,
             result,
-            f"Widened PKOS intake stream across {result.get('batch_size', 0)} sources with verified Observer projection fences.",
+            f"Widened PKOS intake stream across {result.get('batch_size', 0)} donor README sources with verified Observer projection fences.",
             {"batch_size": result.get("batch_size")},
         )
 
@@ -775,9 +775,9 @@ class WaveRunner:
             write_evidence,
             passed,
             result,
-            "Recorded a Ryos and master-plan disposition proposal: port targets named against "
-            "dotfiles and PKos anchors. No donor was read, no code was ported, and no duplicate "
-            "decision was closed -- closure remains proposed on verification.",
+            "Recorded a Ryos and master-plan disposition proposal from the live O2 inventory. "
+            "No code was ported and no duplicate decision was closed -- closure remains "
+            "proposed on verification.",
             {"port_candidates_count": result.get("port_candidates_count")},
         )
 
@@ -894,25 +894,12 @@ class WaveRunner:
 
     @classmethod
     def _run_brand_publishing_b5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        complete_phase_inputs = {
-            1: {"one_liner": "Local-first portfolio suite", "enemy": "Fragile unversioned schemas", "brand_name": "Cyborg Suites"},
-            2: {"primary_operator": "Ryan Johnson", "pain_points": ["drift", "cognitive load"], "target_audience": "Technical Operators"},
-            3: {"tone_adjectives": ["clear", "grounded", "concise"], "taboo_words": ["vague", "magic", "untested"]},
-            4: {"palette_hex": ["#111827", "#3b82f6"], "typeface_pair": "Inter / JetBrains Mono", "tagline": "Instituted Brand Package"},
-            5: {"verifiable_claims": ["Zero-dependency local control", "Deterministic test gates"]},
-            6: {"logo_paths": ["assets/logo.svg"], "icon_set": "lucide"},
-            7: {"do_list": ["Pin versions"], "dont_list": ["Silent mutations"], "usage_rules": ["Never modify without explicit version bump"]},
-            8: {"formats": ["markdown", "json"], "cadence": "on_demand"},
-            9: {"approver_signoff": "simulated_fixture_operator"},
-        }
-        res_complete = BrandPublishingEngine.execute_brand_maker_intake("cyborg-brand", complete_phase_inputs)
-        res_empty = BrandPublishingEngine.execute_brand_maker_intake("cyborg-brand", {})
-
+        res_complete = BrandPublishingSourceAdapter.execute_b5_brand_maker_intake()
         passed = (
-            res_complete.get("phases_completed") == 9
+            res_complete.get("all_stages_passed") is True
+            and res_complete.get("brand_workshop_read") is True
+            and res_complete.get("phases_completed") == 9
             and res_complete.get("resulting_package", {}).get("schema_version") == "1.0.0"
-            and res_empty.get("phases_completed") == 0
-            and res_empty.get("resulting_package") is None
         )
         return cls._settle(
             suite,
@@ -920,8 +907,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res_complete,
-            "Drove 9 fixture intake phases through the suite-local Brand Maker state machine; "
-            "validated input completeness. Brand Workshop is not read.",
+            "Drove 9 intake phases aligned to live Brand Workshop phase ids through the "
+            "suite-local Brand Maker state machine.",
             res_complete,
         )
 
@@ -977,8 +964,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Recorded three donor repository fingerprints and projected a deterministic Groundwire "
-            "fixture into ProductionJob; no episode artifacts or external runtime were invoked.",
+            "Parsed a real Groundwire episode script into ProductionJob; outputs remain modeled and "
+            "no audio runtime was invoked.",
             res.get("job"),
         )
 
@@ -992,8 +979,7 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Projected a deterministic episode fixture into ProductionJob against a formatter "
-            "fingerprint; the formatter was not invoked.",
+            "Hashed a real formatter play into ProductionJob; the formatter was not invoked.",
             res.get("job"),
         )
 
@@ -1007,7 +993,7 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Projected a versioned handoff fixture into ProductionJob; Writers Room and human "
+            "Hashed a real Writers Room final into ProductionJob; Writers Room and human "
             "signoff were not invoked.",
             res.get("job"),
         )
@@ -1022,8 +1008,8 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Exercised a deterministic documentary fixture model through ProductionJob; no media "
-            "runtime or Groundwire episode was invoked.",
+            "Projected a real Groundwire episode and production-house domain template through "
+            "ProductionJob; no media runtime was invoked.",
             res.get("job"),
         )
 
@@ -1037,7 +1023,7 @@ class WaveRunner:
             write_evidence,
             passed,
             res,
-            "Projected fixture story revisions into ProductionJob events; Writers Room, signoff, "
+            "Mapped real Writers Room pipeline status files into ProductionJob events; signoff "
             "and runtime consolidation were not performed.",
             res.get("mapping"),
         )

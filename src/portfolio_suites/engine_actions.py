@@ -269,6 +269,7 @@ ACTION_SPECS: dict[str, dict[str, ActionSpec]] = {
         "build_investigative_documentary_job": simulated_action("contract", "ProductionJob"),
         "create_job": simulated_action("contract", "ProductionJob"),
         "map_writers_room_events": simulated_action("receipt"),
+        "parse_episode_script": read_only_action("data"),
     },
     "model-behavior-lab": {
         "build_versioned_corpus": simulated_action("data"),

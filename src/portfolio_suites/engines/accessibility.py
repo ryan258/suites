@@ -310,6 +310,100 @@ class AccessibilityEngine:
                 )
             )
 
+        # Backlog Candidate 4: Page language (WCAG 3.1.1)
+        if re.search(r"<html\b", html_content, re.IGNORECASE) and not re.search(
+            rf"<html\b[^>]*{ATTR}lang\s*=", html_content, re.IGNORECASE
+        ):
+            findings.append(
+                validate_contract(
+                    "A11yFinding",
+                    {
+                        "schema_version": SCHEMA_VERSION,
+                        "finding_id": "find-wcag-311-lang-001",
+                        "rule_id": "wcag-3.1.1-language-of-page",
+                        "severity": "serious",
+                        "summary": "Document root <html> is missing a lang attribute.",
+                        "target": "html",
+                        "evidence": [
+                            {
+                                "dom_snippet": "<html> ... (no lang) ...",
+                                "selector": "html",
+                                "source": source_url,
+                                "timestamp": now_iso,
+                            }
+                        ],
+                        "evidence_kind": "deterministic",
+                        "needs_review": False,
+                        "status": "open",
+                    },
+                )
+            )
+
+        # Backlog Candidate 5: Labels or instructions (WCAG 3.3.2)
+        unlabeled = re.finditer(
+            rf'<input\b(?![^>]*{ATTR}type\s*=["\'](?:hidden|submit|button|image|reset)["\'])'
+            rf'(?![^>]*{ATTR}(aria-label|aria-labelledby|title|id)\s*=)[^>]*>',
+            html_content,
+            re.IGNORECASE,
+        )
+        for idx, match in enumerate(unlabeled, start=1):
+            findings.append(
+                validate_contract(
+                    "A11yFinding",
+                    {
+                        "schema_version": SCHEMA_VERSION,
+                        "finding_id": f"find-wcag-332-label-{idx:03d}",
+                        "rule_id": "wcag-3.3.2-labels-or-instructions",
+                        "severity": "serious",
+                        "summary": "Input has no accessible name from aria-label, aria-labelledby, title, or id (for a matching label).",
+                        "target": "input",
+                        "evidence": [
+                            {
+                                "dom_snippet": match.group(0)[:160],
+                                "selector": "input",
+                                "source": source_url,
+                                "timestamp": now_iso,
+                            }
+                        ],
+                        "evidence_kind": "deterministic",
+                        "needs_review": False,
+                        "status": "open",
+                    },
+                )
+            )
+
+        # Backlog Candidate 6: Empty heading (WCAG 1.3.1 / 2.4.6)
+        empty_headings = re.finditer(
+            r"<h([1-6])\b[^>]*>\s*</h\1>",
+            html_content,
+            re.IGNORECASE,
+        )
+        for idx, match in enumerate(empty_headings, start=1):
+            findings.append(
+                validate_contract(
+                    "A11yFinding",
+                    {
+                        "schema_version": SCHEMA_VERSION,
+                        "finding_id": f"find-wcag-246-empty-h-{idx:03d}",
+                        "rule_id": "wcag-2.4.6-headings-and-labels",
+                        "severity": "moderate",
+                        "summary": f"Heading level h{match.group(1)} is empty.",
+                        "target": f"h{match.group(1)}",
+                        "evidence": [
+                            {
+                                "dom_snippet": match.group(0),
+                                "selector": f"h{match.group(1)}",
+                                "source": source_url,
+                                "timestamp": now_iso,
+                            }
+                        ],
+                        "evidence_kind": "deterministic",
+                        "needs_review": False,
+                        "status": "open",
+                    },
+                )
+            )
+
         return findings
 
     @staticmethod

@@ -13,9 +13,11 @@ from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
 from ..engines.operator_os import OperatorOSEngine
 from .common import (
     SUITES_ROOT,
+    donor_file_record,
     get_git_fingerprint,
     get_repo_path,
     is_meaningful_git_fingerprint,
+    read_donor_text,
 )
 
 @contextlib.contextmanager
@@ -394,8 +396,12 @@ class OperatorOSSourceAdapter:
         jarvis_fp = get_git_fingerprint(JARVIS_DIR)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        has_backend_schemas = (JARVIS_DIR / "backend" / "app" / "schemas.py").is_file()
-        has_backend_main = (JARVIS_DIR / "backend" / "app" / "main.py").is_file()
+        schemas_path = JARVIS_DIR / "backend" / "app" / "schemas.py"
+        main_path = JARVIS_DIR / "backend" / "app" / "main.py"
+        schemas_record = donor_file_record(schemas_path, JARVIS_DIR)
+        main_record = donor_file_record(main_path, JARVIS_DIR)
+        has_backend_schemas = schemas_record is not None
+        has_backend_main = main_record is not None
 
         action_name = "run_portfolio_backup"
         parameters = {
@@ -425,7 +431,10 @@ class OperatorOSSourceAdapter:
                 **jarvis_fp,
                 "has_schemas": has_backend_schemas,
                 "has_main": has_backend_main,
+                "schemas": schemas_record,
+                "main": main_record,
             },
+            "jarvis_source_inspected": has_backend_schemas and has_backend_main,
             "action_preview": preview,
             "dry_run_only": True,
             "requires_human_approval": preview.get("requires_human_approval", False),
@@ -443,43 +452,27 @@ class OperatorOSSourceAdapter:
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         pkos_fp = get_git_fingerprint(PKOS_DIR)
         observer_fp = get_git_fingerprint(OBSERVER_DIR)
+        dotfiles_fp = get_git_fingerprint(DOTFILES_DIR)
 
-        notes_stream = [
-            {
-                "source_id": "src-daily-log-20260820",
-                "origin": "dotfiles://logs/daily-20260820.md",
-                "content": (
-                    "# Daily Operating Log - 2026-08-20\n"
-                    "- Verified portfolio suites control plane baseline.\n"
-                    "- Executed clean migration wave gates for Operator OS.\n"
-                    "- Preserved isolated git working trees across all 70 repositories."
-                ),
-                "title": "Daily Operating Log 2026-08-20",
-                "summary": "Daily operating log covering suites control plane and clean migration gates.",
-            },
-            {
-                "source_id": "src-arch-decision-009",
-                "origin": "notes://arch/sqlite-wal.md",
-                "content": (
-                    "# Architecture Decision 009: SQLite WAL Concurrency\n"
-                    "- Selected single-writer WAL mode for zero-dependency local ledger.\n"
-                    "- Established content-addressed sha256 receipts on all mutating transactions."
-                ),
-                "title": "Architecture Decision 009 - SQLite WAL Concurrency",
-                "summary": "Selection of single-writer WAL mode for zero-dependency local ledger.",
-            },
-            {
-                "source_id": "src-security-boundary-003",
-                "origin": "dotfiles://security/operator-boundary.md",
-                "content": (
-                    "# Security Boundary: Operator Gating\n"
-                    "- Never auto-manufacture human approval tokens.\n"
-                    "- Actions fail closed when operator approval token is absent."
-                ),
-                "title": "Security Boundary - Operator Gating",
-                "summary": "Policy establishing fail-closed boundaries for unapproved operator actions.",
-            },
+        donor_notes = [
+            (PKOS_DIR / "README.md", "src-pkos-readme", "pkos://README.md", "PKos README"),
+            (DOTFILES_DIR / "README.md", "src-dotfiles-readme", "dotfiles://README.md", "dotfiles README"),
+            (OBSERVER_DIR / "README.md", "src-observer-readme", "observer://README.md", "Observer README"),
         ]
+        notes_stream = []
+        for path, source_id, origin, title in donor_notes:
+            content = read_donor_text(path)
+            record = donor_file_record(path, path.parent)
+            if not content or record is None:
+                continue
+            notes_stream.append({
+                "source_id": source_id,
+                "origin": origin,
+                "content": content[:20_000],
+                "title": title,
+                "summary": f"Donor-backed intake from {record['path']} ({record['bytes']} bytes).",
+                "sha256": record["sha256"],
+            })
 
         stream_results = OperatorOSEngine.capture_live_pkos_stream(
             notes_stream, collector="portfolio_suites.adapters.operator_os.o4_stream"
@@ -497,8 +490,15 @@ class OperatorOSSourceAdapter:
         sources_verified = (
             is_meaningful_git_fingerprint(pkos_fp)
             and is_meaningful_git_fingerprint(observer_fp)
+            and is_meaningful_git_fingerprint(dotfiles_fp)
         )
-        all_stages_passed = len(stream_results) >= 3 and all_fenced and all_cited and sources_verified
+        all_stages_passed = (
+            len(notes_stream) >= 3
+            and len(stream_results) >= 3
+            and all_fenced
+            and all_cited
+            and sources_verified
+        )
 
         return {
             "schema_version": SCHEMA_VERSION,
@@ -506,6 +506,8 @@ class OperatorOSSourceAdapter:
             "executed_at": now_iso,
             "pkos_fingerprint": pkos_fp,
             "observer_fingerprint": observer_fp,
+            "dotfiles_fingerprint": dotfiles_fp,
+            "donor_notes_read": len(notes_stream),
             "batch_size": len(stream_results),
             "all_fenced_from_reingestion": all_fenced,
             "all_sources_cited": all_cited,
@@ -520,8 +522,19 @@ class OperatorOSSourceAdapter:
     def execute_o5_ryos_disposition_reconciliation(cls) -> dict[str, Any]:
         """Execute O5 wave gate: formalize Ryos and master-plan inventory disposition and dotfiles porting."""
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        inventory = cls.execute_o2_ryos_inventory()
         disposition = OperatorOSEngine.reconcile_ryos_disposition()
-
+        catalog = inventory.get("inventory_catalog") or RYOS_DISPOSITION_CATALOG
+        donor_read = (
+            inventory.get("status") == "verified"
+            and inventory.get("ryos_core_files_count", 0) >= 3
+            and bool(catalog)
+        )
+        all_stages_passed = (
+            donor_read
+            and len(disposition.get("proposed_ports", [])) >= 2
+            and disposition.get("duplicate_row_proposal") == "close_on_verification"
+        )
         return {
             "schema_version": SCHEMA_VERSION,
             "wave_id": "O5",
@@ -531,20 +544,16 @@ class OperatorOSSourceAdapter:
             "port_candidates_count": len(disposition.get("proposed_ports", [])),
             "proposed_ports": disposition.get("proposed_ports", []),
             "superseded_features": disposition.get("superseded_features", []),
-            "source_inventory_catalog": RYOS_DISPOSITION_CATALOG,
-            # The engine this reads from says `migration_acceptance_verified: False` and
-            # `duplicate_row_proposal: "close_on_verification"` -- a proposal awaiting
-            # verification. Reporting that as a closure named an outcome the gate never
-            # performed, so the receipt now states the disposition and, explicitly, the
-            # things it did not do.
+            "source_inventory_catalog": catalog,
+            "ryos_core_files_count": inventory.get("ryos_core_files_count", 0),
             "duplicate_decisions_closed": False,
             "duplicate_decision_disposition": disposition.get("duplicate_row_proposal"),
             "migration_acceptance_verified": disposition.get("migration_acceptance_verified", False),
-            "donor_read": False,
+            "donor_read": donor_read,
             "external_runtime_invoked": False,
             "donor_freeze_status": disposition.get("donor_freeze_status"),
-            "all_stages_passed": len(disposition.get("proposed_ports", [])) >= 2 and disposition.get("duplicate_row_proposal") == "close_on_verification",
-            "status": "disposition_proposal_recorded",
+            "all_stages_passed": all_stages_passed,
+            "status": "disposition_proposal_recorded" if all_stages_passed else "source_unverified",
         }
 
     @classmethod
@@ -552,6 +561,8 @@ class OperatorOSSourceAdapter:
         """Execute O6 wave gate: test multi-action checkpoint lifecycle with fail-closed security boundary (zero disk mutations)."""
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         jarvis_fp = get_git_fingerprint(JARVIS_DIR)
+        schemas_record = donor_file_record(JARVIS_DIR / "backend" / "app" / "schemas.py", JARVIS_DIR)
+        main_record = donor_file_record(JARVIS_DIR / "backend" / "app" / "main.py", JARVIS_DIR)
 
         # 1. Test fail-closed behavior when approval is absent
         unapproved_res = OperatorOSEngine.execute_jarvis_action_checkpoint(
@@ -591,7 +602,11 @@ class OperatorOSSourceAdapter:
             and execution_res.get("execution_authority") == "caller_confirmed_read_only_or_dry_run"
             and isinstance(execution_res.get("execution_result", {}).get("scanned_files_count"), int)
         )
-        source_verified = is_meaningful_git_fingerprint(jarvis_fp)
+        source_verified = (
+            is_meaningful_git_fingerprint(jarvis_fp)
+            and schemas_record is not None
+            and main_record is not None
+        )
         all_stages_passed = fail_closed_ok and preview_ok and execution_ok and source_verified
 
         return {
@@ -599,6 +614,7 @@ class OperatorOSSourceAdapter:
             "wave_id": "O6",
             "executed_at": now_iso,
             "jarvis_fingerprint": jarvis_fp,
+            "jarvis_source": {"schemas": schemas_record, "main": main_record},
             "fail_closed_test": {
                 "action": "audit_secrets",
                 "operator_approved": False,

@@ -136,8 +136,8 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
             "all_sources_cited": True,
         },
         "lists": ["processed_records"],
-        "minimums": {"batch_size": 3, "observer_projections_count": 1},
-        "fingerprints": ["pkos_fingerprint", "observer_fingerprint"],
+        "fingerprints": ["pkos_fingerprint", "observer_fingerprint", "dotfiles_fingerprint"],
+        "minimums": {"batch_size": 3, "observer_projections_count": 1, "donor_notes_read": 3},
     },
     "operator-os/O5": {
         "equals": {
@@ -148,7 +148,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
             # them false is what makes the gate's boundary machine-checked.
             "duplicate_decisions_closed": False,
             "migration_acceptance_verified": False,
-            "donor_read": False,
+            "donor_read": True,
             "external_runtime_invoked": False,
             # The positive half of the same boundary. Without these the receipt could say
             # the run failed, or that closure was decided outright, and still validate --
@@ -251,11 +251,11 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "equals": {
             "phases_total": 9,
             "phases_completed": 9,
-            "reconciliation_status": "suite_local_intake_phases_validated",
-            "brand_workshop_read": False,
+            "reconciliation_status": "workshop_aligned_intake_validated",
+            "brand_workshop_read": True,
             "external_runtime_invoked": False,
         },
-        "lists": ["intake_log"],
+        "lists": ["intake_log", "workshop_phases"],
         "objects": ["resulting_package"],
         "contracts": {"resulting_package": "BrandPackage"},
     },
@@ -275,14 +275,14 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
     "production-house/P1": {
         "equals": {
             "wave": "P1",
-            "status": "source_fingerprints_with_fixture_projection_verified",
-            "episode_artifacts_read": False,
+            "status": "source_episode_script_projected",
+            "episode_artifacts_read": True,
             "external_runtime_invoked": False,
             "fixture_output_only": True,
             "job.external_runtime_invoked": False,
             "all_stages_passed": True,
         },
-        "objects": ["job"],
+        "objects": ["job", "script"],
         "fingerprints": [
             "production_house_fingerprint",
             "groundwire_fingerprint",
@@ -293,45 +293,46 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
     "production-house/P2": {
         "equals": {
             "wave": "P2",
-            "status": "fixture_output_projection_verified",
+            "status": "source_play_projected",
             "external_formatter_invoked": False,
             "fixture_output_only": True,
             "job.external_runtime_invoked": False,
             "all_stages_passed": True,
         },
-        "objects": ["job"],
+        "objects": ["job", "script"],
         "fingerprints": ["formatter_fingerprint"],
         "contracts": {"job": "ProductionJob"},
     },
     "production-house/P3": {
         "equals": {
             "wave": "P3",
-            "status": "fixture_handoff_projection_verified",
+            "status": "source_handoff_projected",
             "writers_room_runtime_invoked": False,
             "signoff_observed": False,
             "job.external_runtime_invoked": False,
             "all_stages_passed": True,
         },
-        "objects": ["job"],
+        "objects": ["job", "script"],
         "fingerprints": ["writers_room_fingerprint"],
         "contracts": {"job": "ProductionJob"},
     },
     "production-house/P4": {
         "equals": {
             "wave": "P4",
-            "status": "documentary_fixture_model_verified",
+            "status": "source_documentary_script_projected",
             "external_runtime_invoked": False,
             "fixture_output_only": True,
             "job.external_runtime_invoked": False,
             "all_stages_passed": True,
         },
-        "objects": ["job"],
+        "objects": ["job", "script"],
+        "fingerprints": ["production_house_fingerprint", "groundwire_fingerprint"],
         "contracts": {"job": "ProductionJob"},
     },
     "production-house/P5": {
         "equals": {
             "wave": "P5",
-            "status": "fixture_event_projection_verified",
+            "status": "source_event_stream_projected",
             "writers_room_runtime_invoked": False,
             "runtime_consolidation_performed": False,
             "mapping.writers_room_runtime_invoked": False,
@@ -340,6 +341,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
             "all_stages_passed": True,
         },
         "objects": ["mapping", "mapping.mapped_job"],
+        "fingerprints": ["writers_room_fingerprint"],
         "contracts": {"mapping.mapped_job": "ProductionJob"},
     },
     "model-behavior-lab/M1": {

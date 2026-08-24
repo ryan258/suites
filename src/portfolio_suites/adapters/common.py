@@ -11,7 +11,7 @@ from typing import Any
 
 from ..contracts import compute_sha256
 from ..paths import SUITES_ROOT
-from ..provenance import SENSITIVE_PATH_PATTERN, is_meaningful_git_fingerprint
+from ..provenance import SENSITIVE_PATH_PATTERN, is_meaningful_git_fingerprint, is_sensitive_path
 
 
 SENSITIVE_ENV_PATTERN = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL", re.IGNORECASE)
@@ -250,3 +250,64 @@ def get_git_fingerprint(repo_dir: Path, tracked_files: list[str] | None = None) 
         }
     except Exception as error:
         return {"branch": "unknown", "head": "unknown", "error": str(error)}
+
+
+MAX_DONOR_FILE_BYTES = 1_048_576
+
+
+def read_donor_bytes(path: Path, *, max_bytes: int = MAX_DONOR_FILE_BYTES) -> bytes | None:
+    """Read a regular, non-sensitive donor file. Symlinks and oversize files fail closed."""
+    if not isinstance(path, Path) or is_sensitive_path(path):
+        return None
+    try:
+        if path.is_symlink() or not path.is_file():
+            return None
+        size = path.stat().st_size
+        if size <= 0 or size > max_bytes:
+            return None
+        data = path.read_bytes()
+    except OSError:
+        return None
+    if len(data) > max_bytes:
+        return None
+    return data
+
+
+def read_donor_text(path: Path, *, max_bytes: int = MAX_DONOR_FILE_BYTES) -> str | None:
+    """Read donor file bytes as UTF-8 text, or None when the file cannot be used."""
+    data = read_donor_bytes(path, max_bytes=max_bytes)
+    if data is None:
+        return None
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("utf-8", errors="replace")
+
+
+def first_existing_donor_file(root: Path, relatives: list[str]) -> Path | None:
+    """Return the first listed relative path that is a readable donor file."""
+    if not isinstance(root, Path):
+        return None
+    for relative in relatives:
+        if not isinstance(relative, str) or not relative or ".." in Path(relative).parts:
+            continue
+        candidate = root / relative
+        if read_donor_bytes(candidate) is not None:
+            return candidate
+    return None
+
+
+def donor_file_record(path: Path, root: Path | None = None) -> dict[str, Any] | None:
+    """Content-addressed record for one inspected donor file."""
+    data = read_donor_bytes(path)
+    if data is None:
+        return None
+    try:
+        relative = str(path.relative_to(root)) if root is not None else path.name
+    except ValueError:
+        relative = path.name
+    return {
+        "path": relative.replace("\\", "/"),
+        "sha256": compute_sha256(data),
+        "bytes": len(data),
+    }
