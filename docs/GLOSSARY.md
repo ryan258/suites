@@ -21,6 +21,7 @@ table is stale.
 | Drift & baselines | Tamper-evident working-tree tracking of donor repos. | `registry.check_project_git_drift`, `pending_snapshots`, `fingerprint_baselines` |
 | Wave recording | Writing evidence only when a claim can verify it. | `waves.WaveRunner`, `_record_evidence` (calls `receipts.evidence_errors`) |
 | Owner approvals | Fail-closed authority for mutating operator actions. | `approvals.py` (store outside this repo, consumed once) |
+| Donor isolation | Donor code executes in a subprocess that cannot reach the control plane's authority. | `adapters.common.donor_env` (env allowlist, credential-shaped names refused); `adapters/donor_*_probe.py` invoked via `subprocess.run` |
 
 ## Module map (post-split)
 

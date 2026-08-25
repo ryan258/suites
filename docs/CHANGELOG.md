@@ -12,6 +12,61 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-24 — Doc-drift correction, donor execution moved out-of-process, dead metadata removed
+
+A control-plane review found the project committing the defect it exists to prevent, plus one
+in-process donor import that the accessibility adapter had already solved correctly.
+
+- **The roadmap overstated drift, and this is the correction.** `ROADMAP.md` claimed
+  `0/58 monitored source repositories drifted` under a *Current Promotion Target* heading while
+  `suites drift` reported 4/58 (`aerocafe`, `ai-agriculture-advisors`, `kb-overlay` at 1 dirty
+  item each, `rip-tequila` at 31). The zero was true when written on 2026-08-22 and rotted
+  silently after. Root cause: `tests/test_docs.py` pins registry-derived figures, and drift is
+  filesystem state, so it was the one number in that file no gate could hold honest. The claim
+  now lives in a dated *Baseline snapshot* bullet and the current-state heading points at the
+  CLI instead. The four repositories were left drifted; nothing was re-baselined.
+- **Rule added (`AGENTS.md` §3.6):** live filesystem figures are queried via CLI and never
+  asserted as current claims in static Markdown, which generalizes the fix to the next writer.
+- **Donor code no longer runs inside the control plane.** The O1 gate imported authentic PKos
+  into this process via `sys.path` insertion, giving donor code the process authority that holds
+  the approval store, while the accessibility adapter had long since isolated its donor probe in
+  a stripped-environment subprocess. O1 now invokes `adapters/donor_pkos_cas_probe.py` under
+  `donor_env({"PYTHONPATH": ...})`, which does not inherit `PYTHONPATH` — so the donor
+  subprocess cannot import `portfolio_suites` at all. The `donor_import_path` helper and its two
+  tests are deleted rather than left available to the next gate. Rule added (`AGENTS.md` §3.7).
+- **`environment_blocked` survives the process boundary.** Crossing into a subprocess initially
+  collapsed "PKos is present but will not import here" and "the PKos API changed" into one
+  non-zero exit, discarding a distinction the failure record exists to make. The probe now exits
+  `3` for import failure, distinct from `2` for usage, and the adapter maps it back to
+  `environment_blocked: True`. Pinned from both ends by
+  `test_donor_probe_reports_an_unimportable_donor_as_environment_blocked`.
+- **Donor self-attestation reduced.** `raw_bytes_match` is computed by donor code inside a
+  temporary directory that is destroyed before the parent could inspect it. The adapter now
+  independently recomputes the source digest with `contracts.compute_sha256` and requires it to
+  equal the `sha256` the donor reported, and `cas_verified` depends on that cross-check.
+- **`audit_secrets` is now genuinely bounded.** The walk had no file-count cap despite being
+  HTTP-POST reachable, while `backup_data` and `sync_obsidian_notes` both had one;
+  `operator-os/README.md` had described the scan as "bounded" before it was. `MAX_AUDIT_FILES`
+  (5,000) fails closed with `error_audit_limit` rather than truncating, because a short scan
+  reporting `clean` is a false "no secrets found" — the same silent-truncation defect removed
+  from this action once before.
+- **`ActionSpec.execution_tier` deleted.** It carried its `reference_prototype` default across
+  all 50 actions and was never once overridden, so it added a field to the action catalog, the
+  action-spec response, and every chain trace record while conveying nothing. No consumer read
+  it. Action count is unchanged at 50.
+- **Direct test execution stopped silently skipping.** Six test files carried `unittest.main()`
+  mid-file, so `python3 tests/test_registry.py` ran 22 of its 69 tests and exited 0. Discovery
+  was never affected, which is why this survived. All six now call it at end of file.
+- **Probe output parsing hardened.** Three `json.loads(proc.stdout)` sites would fail on any
+  donor warning printed before the JSON payload, recording a working donor as a failed gate.
+  All three now read the last line.
+
+Control plane: 444 tests passing, `validate --fast` clean, O1 re-verified against live donor
+code (`cas_verified`, no operational errors). No donor repository was modified, and no wave
+promotion, manifest, or retained receipt changed.
+
+---
+
 ## 2026-08-24 — Donor-backed wave implementations, honest promotions, launchpad parser
 
 Replaced fixture-only Production House, Brand B5, and Operator OS O4/O5 gates with authentic

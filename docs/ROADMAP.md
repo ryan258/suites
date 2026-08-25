@@ -6,9 +6,14 @@ The `/Users/ryanjohnson/Projects/suites` control plane governs portfolio migrati
 
 - **Completed Foundation & Milestones**: 43/43 waves verified (1 runtime recovery `A2`, 42 analysis milestones). Detailed logs and completed foundations are recorded in [CHANGELOG.md](CHANGELOG.md).
 - **Remaining Work**: 0 remaining migration wave specifications; all 43 milestone wave specifications verified.
-- **Current Promotion Target**: 0/58 monitored source repositories drifted; `allys-tools` clean at
-  `f2b4c6e`. All 58 baselines carry `status_sha256` as of 2026-08-22, so working-tree *content* drift
-  is now checked alongside branch, HEAD, and dirty count — the zero is the full claim it reads as.
+- **Current Promotion Target**: `allys-tools`, clean at `f2b4c6e` as of the snapshot below.
+  Live drift is deliberately not restated in this file. Every other figure here is registry-derived
+  and pinned by `tests/test_docs.py`; drift is filesystem state, so a count written here is the one
+  number no gate can hold honest and it rots silently between edits. The CLI is the only current
+  source: `PYTHONPATH=src python3 -m portfolio_suites drift`.
+- **Baseline snapshot (2026-08-22)**: 0/58 monitored source repositories drifted *at snapshot time*.
+  All 58 baselines carry `status_sha256` as of that date, so working-tree *content* drift is checked
+  alongside branch, HEAD, and dirty count — the zero was the full claim it reads as, on that date.
   Five repos (`alias-scanner`, `code-tutorial-builder`, `cyborg-agent`, `obsidian-observer`, `sif`)
   had gone from 1 dirty item to 0 since the 2026-08-19 snapshot and were re-baselined by owner
   instruction via `suites baseline --accept`.
