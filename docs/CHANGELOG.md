@@ -12,6 +12,20 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-25 — Trust-boundary digest CAS, non-blocking storage reads, Level 0–1 CI pipeline, test port isolation
+
+Hardened the trust and transaction layer beneath approvals and engines, added CI automation, and resolved server test port collisions.
+
+- **Approval CAS bound to exact content digest.** `_durably_replace_store_confined` in `approvals.py` now passes `expected_digest` rather than `expected_identity`, ensuring concurrent in-place truncate-and-rewrites by an external issuer are caught with `OccupantConflict` / `ApprovalError` instead of losing newly issued credentials.
+- **Operator OS storage reads hardened against blocking non-regular files.** `_read_confined_bytes` in `operator_os.py` now opens with `O_NONBLOCK`, asserts `stat.S_ISREG`, and enforces byte limits (defaulting to `MAX_BACKUP_TOTAL_BYTES`). Non-regular occupants (e.g. FIFOs) return `None` immediately without hanging.
+- **Candidate descriptor leak eliminated on commit uncertainty.** `_finish_commit` in `txn.py` wraps `os.fsync(directory_fd)` in a `try ... finally` to guarantee `temp.close()` executes even when directory fsync raises an `OSError` and propagates `CommitUncertain`.
+- **Accurate execution-derived authority consumption tracing.** `engine_actions.effective_policy` and `get_action_spec` evaluate execution results rather than token presence alone. Corrected the `SIMULATED_PACKAGE_APPROVED_AT` sentinel comparison in `result_consumes_authority` so brand intake attempts with unverified tokens do not falsely claim `authority_consumed = True` and burn replayability.
+- **Automated Level 0–1 CI pipeline established.** Added `.github/workflows/ci.yml` running base-diff whitespace checks, browser probe and UI JavaScript syntax verification, `validate --fast`, and full discovery test suite with distribution wheel smoke tests.
+- **Server test suite port contention eliminated.** `tests/test_server.py` now uses ephemeral ports (`port=0`) dynamically bound by the OS, preventing port collisions on 8399/8400 during concurrent or sandboxed runs.
+- **v1.0 Official Release Roadmap restructuring and test pinning.** Repurposed `docs/ROADMAP.md` into a forward release specification detailing per-rung promotion definitions, recovery tier targets (flagship 9.0, production 8.0, lab 7.0), and explicit completion criteria. Extended `tests/test_docs.py` to machine-check all 4 columns of the milestone register (including per-suite runtime follow-up counts) and recovery tier scores against live manifests and `recovery_policy.py`.
+
+---
+
 ## 2026-08-24 — Doc-drift correction, donor execution moved out-of-process, dead metadata removed
 
 A control-plane review found the project committing the defect it exists to prevent, plus one

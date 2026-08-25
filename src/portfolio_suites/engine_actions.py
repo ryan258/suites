@@ -17,6 +17,7 @@ from typing import Any, Callable
 
 from .contracts import ContractError, validate_contract
 from .engines import ENGINES
+from .engines.brand_publishing import SIMULATED_PACKAGE_APPROVED_AT
 
 
 class EngineActionError(ValueError):
@@ -177,7 +178,7 @@ def result_consumes_authority(arguments: dict[str, Any], result: Any) -> bool:
     if result.get("verified") is True and result.get("dry_run") is False:
         return True
     pkg = result.get("resulting_package")
-    if isinstance(pkg, dict) and pkg.get("approved_at") and pkg.get("approved_at") != "2026-08-20T00:00:00Z":
+    if isinstance(pkg, dict) and pkg.get("approved_at") and pkg.get("approved_at") != SIMULATED_PACKAGE_APPROVED_AT:
         return True
     return False
 

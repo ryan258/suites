@@ -43,26 +43,36 @@ class ArtifactTests(unittest.TestCase):
         for line in roadmap.splitlines():
             if not line.startswith("|") or "---" in line or "Verified" in line:
                 continue
-            m = re.search(r"\|\s*([A-Za-z0-9 +]+?)\s*\|\s*(\d+)/(\d+)\s*\|\s*(?:`([A-Z]\d+)`|(\w+))\s*\|", line)
+            m = re.search(
+                r"\|\s*([A-Za-z0-9 +]+?)\s*\|\s*(\d+)/(\d+)\s*\|\s*(?:`([A-Z]\d+)`|(\w+))\s*\|\s*(?:.*?(\d+)\s*runtime follow-ups? remain.*?)?\|",
+                line,
+            )
             if m:
                 completed_count = int(m.group(2))
                 total_count = int(m.group(3))
                 target = m.group(4) if m.group(4) else None
+                followups = int(m.group(6)) if m.group(6) is not None else None
                 s_name = m.group(1).lower().replace("+", "").split()[0]
                 for s_id, s_manifest in load_suites().items():
                     if s_id.startswith(s_name) or s_manifest["name"].lower().startswith(s_name):
                         prefix = s_manifest["waves"][0]["id"][0]
-                        queue[prefix] = (completed_count, total_count, target)
+                        queue[prefix] = (completed_count, total_count, target, followups)
         for suite_id, manifest in load_suites().items():
             waves = manifest.get("waves", [])
             completed = sum(1 for w in waves if w.get("status") == "complete")
             upcoming = next((w["id"] for w in waves if w.get("status") != "complete"), None)
+            followup_count = sum(1 for w in waves if w.get("runtime_followup"))
             with self.subTest(suite=suite_id):
                 self.assertEqual(
                     queue.get(waves[0]["id"][0]),
-                    (completed, len(waves), upcoming),
+                    (completed, len(waves), upcoming, followup_count),
                     f"ROADMAP promotion queue row for {suite_id} is stale",
                 )
+
+        from portfolio_suites.recovery_policy import RECOVERY_TIERS
+        for tier_name, tier in RECOVERY_TIERS.items():
+            target_str = f"{tier['target_score']:.1f}/10"
+            self.assertIn(target_str, roadmap, f"roadmap missing target score {target_str} for {tier_name}")
 
         for token in (
             f"{len(CONTRACTS)} Shared contracts",

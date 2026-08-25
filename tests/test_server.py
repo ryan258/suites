@@ -12,7 +12,8 @@ from portfolio_suites.server import create_server
 class ServerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = create_server(port=8399)
+        cls.server = create_server(port=0)
+        cls.port = cls.server.server_address[1]
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
 
@@ -22,14 +23,14 @@ class ServerTests(unittest.TestCase):
         cls.server.server_close()
 
     def _get_json(self, path: str):
-        url = f"http://127.0.0.1:8399{path}"
+        url = f"http://127.0.0.1:{self.port}{path}"
         with urllib.request.urlopen(url) as response:
             self.assertEqual(response.status, 200)
             return json.loads(response.read().decode("utf-8"))
 
     def _post_json(self, path: str):
         req = urllib.request.Request(
-            f"http://127.0.0.1:8399{path}",
+            f"http://127.0.0.1:{self.port}{path}",
             data=b"",
             method="POST",
         )
@@ -72,7 +73,7 @@ class ServerTests(unittest.TestCase):
         self.assertIn("# Project Bible", bible["content"])
 
         with self.assertRaises(urllib.error.HTTPError) as context:
-            urllib.request.urlopen("http://127.0.0.1:8399/api/docs/..%2F.env")
+            urllib.request.urlopen(f"http://127.0.0.1:{self.port}/api/docs/..%2F.env")
         self.assertEqual(context.exception.code, 404)
 
     def test_ai_status_endpoint_never_exposes_credentials(self):
@@ -109,7 +110,7 @@ class ServerTests(unittest.TestCase):
             "content": "A safe next move.",
         }
         request = urllib.request.Request(
-            "http://127.0.0.1:8399/api/ai/assist",
+            f"http://127.0.0.1:{self.port}/api/ai/assist",
             data=json.dumps({
                 "prompt": "Help",
                 "suite_id": "operator-os",
@@ -158,7 +159,7 @@ class ServerTests(unittest.TestCase):
 
     def test_unknown_wave_post_returns_not_found(self):
         req = urllib.request.Request(
-            "http://127.0.0.1:8399/api/waves/missing-suite/X1/run",
+            f"http://127.0.0.1:{self.port}/api/waves/missing-suite/X1/run",
             data=b"",
             method="POST",
         )
@@ -168,24 +169,24 @@ class ServerTests(unittest.TestCase):
 
     def test_evidence_endpoint_security_confinement(self):
         # Path escaping outside workspace should return 404
-        url = "http://127.0.0.1:8399/api/evidence?file=../../../../etc/passwd"
+        url = f"http://127.0.0.1:{self.port}/api/evidence?file=../../../../etc/passwd"
         with self.assertRaises(urllib.error.HTTPError) as ctx:
             urllib.request.urlopen(url)
         self.assertEqual(ctx.exception.code, 404)
 
         # Accessing non-evidence root files like .env must return 404
-        env_url = "http://127.0.0.1:8399/api/evidence?file=.env"
+        env_url = f"http://127.0.0.1:{self.port}/api/evidence?file=.env"
         with self.assertRaises(urllib.error.HTTPError) as ctx:
             urllib.request.urlopen(env_url)
         self.assertEqual(ctx.exception.code, 404)
 
         # Valid relative evidence should return 200
-        valid_url = "http://127.0.0.1:8399/api/evidence?file=accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md"
+        valid_url = f"http://127.0.0.1:{self.port}/api/evidence?file=accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md"
         data = self._get_json(valid_url[valid_url.find("/api"):])
         self.assertIn("content", data)
 
     def test_cors_headers_are_not_present(self):
-        url = "http://127.0.0.1:8399/api/summary"
+        url = f"http://127.0.0.1:{self.port}/api/summary"
         with urllib.request.urlopen(url) as response:
             self.assertIsNone(response.headers.get("Access-Control-Allow-Origin"))
             self.assertIsNone(response.headers.get("Access-Control-Allow-Methods"))
@@ -193,7 +194,7 @@ class ServerTests(unittest.TestCase):
     def test_browser_security_headers_cover_api_and_static_assets(self):
         for path in ("/api/summary", "/", "/app.js"):
             with self.subTest(path=path):
-                with urllib.request.urlopen(f"http://127.0.0.1:8399{path}") as response:
+                with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}") as response:
                     self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
                     self.assertEqual(response.headers["X-Frame-Options"], "DENY")
                     self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
@@ -203,7 +204,7 @@ class ServerTests(unittest.TestCase):
                     self.assertIn("frame-ancestors 'none'", csp)
 
     def test_validate_post_endpoint(self):
-        url = "http://127.0.0.1:8399/api/contracts/SourceRecord/validate"
+        url = f"http://127.0.0.1:{self.port}/api/contracts/SourceRecord/validate"
         sample = self._get_json("/api/contracts/SourceRecord/sample")
         req = urllib.request.Request(
             url,
@@ -220,7 +221,8 @@ class ServerTests(unittest.TestCase):
 class ServerTrustBoundaryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = create_server(port=8400)
+        cls.server = create_server(port=0)
+        cls.port = cls.server.server_address[1]
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
 
@@ -230,7 +232,7 @@ class ServerTrustBoundaryTests(unittest.TestCase):
         cls.server.server_close()
 
     def test_malformed_content_length_is_a_client_error(self):
-        connection = http.client.HTTPConnection("127.0.0.1", 8400, timeout=2)
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=2)
         try:
             connection.putrequest("POST", "/api/contracts/SourceRecord/validate")
             connection.putheader("Content-Type", "application/json")
@@ -244,7 +246,7 @@ class ServerTrustBoundaryTests(unittest.TestCase):
         self.assertIn("Content-Length", payload["error"])
 
     def test_oversized_json_body_is_rejected_before_reading(self):
-        connection = http.client.HTTPConnection("127.0.0.1", 8400, timeout=2)
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=2)
         try:
             connection.putrequest("POST", "/api/contracts/SourceRecord/validate")
             connection.putheader("Content-Type", "application/json")
@@ -259,7 +261,7 @@ class ServerTrustBoundaryTests(unittest.TestCase):
 
     def test_nonfinite_json_number_is_rejected(self):
         request = urllib.request.Request(
-            "http://127.0.0.1:8400/api/ai/assist",
+            f"http://127.0.0.1:{self.port}/api/ai/assist",
             data=b'{"prompt":"Help","suite_id":"operator-os","temperature":NaN}',
             headers={"Content-Type": "application/json"},
             method="POST",
@@ -272,12 +274,12 @@ class ServerTrustBoundaryTests(unittest.TestCase):
 
     def test_unhashable_enum_payload_is_a_contract_error(self):
         with urllib.request.urlopen(
-            "http://127.0.0.1:8400/api/contracts/ProductionJob/sample"
+            f"http://127.0.0.1:{self.port}/api/contracts/ProductionJob/sample"
         ) as response:
             sample = json.loads(response.read().decode("utf-8"))
         sample["status"] = []
         request = urllib.request.Request(
-            "http://127.0.0.1:8400/api/contracts/ProductionJob/validate",
+            f"http://127.0.0.1:{self.port}/api/contracts/ProductionJob/validate",
             data=json.dumps(sample).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
@@ -291,7 +293,7 @@ class ServerTrustBoundaryTests(unittest.TestCase):
 
     def test_cross_origin_wave_execution_is_rejected_before_dispatch(self):
         request = urllib.request.Request(
-            "http://127.0.0.1:8400/api/waves/model-behavior-lab/M1/run",
+            f"http://127.0.0.1:{self.port}/api/waves/model-behavior-lab/M1/run",
             data=b"",
             headers={
                 "Origin": "https://attacker.example",
@@ -307,7 +309,7 @@ class ServerTrustBoundaryTests(unittest.TestCase):
 
     def test_cross_origin_engine_execution_is_rejected_before_dispatch(self):
         request = urllib.request.Request(
-            "http://127.0.0.1:8400/api/engines/operator-os/audit_secrets/run",
+            f"http://127.0.0.1:{self.port}/api/engines/operator-os/audit_secrets/run",
             data=json.dumps({"path": "."}).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
@@ -324,7 +326,7 @@ class ServerTrustBoundaryTests(unittest.TestCase):
 
     def test_cross_origin_chain_execution_is_rejected_before_dispatch(self):
         request = urllib.request.Request(
-            "http://127.0.0.1:8400/api/chains/run",
+            f"http://127.0.0.1:{self.port}/api/chains/run",
             data=json.dumps([{"suite": "accessibility", "action": "audit_html_snippet", "arguments": {"html_content": "<p>test</p>"}}]).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
@@ -341,7 +343,7 @@ class ServerTrustBoundaryTests(unittest.TestCase):
 
     def test_cross_origin_ai_execution_is_rejected_before_dispatch(self):
         request = urllib.request.Request(
-            "http://127.0.0.1:8400/api/ai/assist",
+            f"http://127.0.0.1:{self.port}/api/ai/assist",
             data=json.dumps({"prompt": "steal data", "suite_id": "operator-os"}).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
@@ -359,14 +361,14 @@ class ServerTrustBoundaryTests(unittest.TestCase):
     def test_get_cannot_trigger_live_wave_execution(self):
         with patch("portfolio_suites.server.WaveRunner.run_all") as run_all:
             with self.assertRaises(urllib.error.HTTPError) as context:
-                urllib.request.urlopen("http://127.0.0.1:8400/api/waves?run=true")
+                urllib.request.urlopen(f"http://127.0.0.1:{self.port}/api/waves?run=true")
         self.assertEqual(context.exception.code, 405)
         run_all.assert_not_called()
 
     def test_repeated_route_prefix_is_not_normalized(self):
         with self.assertRaises(urllib.error.HTTPError) as context:
             urllib.request.urlopen(
-                "http://127.0.0.1:8400/api/suites//api/suites/accessibility"
+                f"http://127.0.0.1:{self.port}/api/suites//api/suites/accessibility"
             )
         self.assertEqual(context.exception.code, 404)
 
@@ -376,7 +378,7 @@ class ServerTrustBoundaryTests(unittest.TestCase):
         for method, path in (("GET", "/api/summary"), ("POST", "/api/waves/accessibility/A2/run")):
             with self.subTest(method=method):
                 request = urllib.request.Request(
-                    f"http://127.0.0.1:8400{path}",
+                    f"http://127.0.0.1:{self.port}{path}",
                     data=b"" if method == "POST" else None,
                     headers={"Host": "evil.example.com"},
                     method=method,

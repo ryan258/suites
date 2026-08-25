@@ -108,6 +108,41 @@ class TestActionPolicyTruthfulness(unittest.TestCase):
         self.assertTrue(step0["replayable"])
         self.assertNotEqual(step0["side_effect_class"], "single_use_authority_consumed")
 
+    def test_failed_approval_intake_does_not_claim_authority_consumed(self):
+        from portfolio_suites.chains import run_chain
+        from portfolio_suites.engines.brand_publishing import SIMULATED_PACKAGE_APPROVED_AT
+
+        phase_inputs = {
+            "1": {"one_liner": "A", "enemy": "B", "brand_name": "Test Brand"},
+            "2": {"primary_operator": "Ryan", "pain_points": ["drift"], "target_audience": "Devs"},
+            "3": {"tone_adjectives": ["crisp"], "taboo_words": ["bad"]},
+            "4": {"palette_hex": ["#000"], "typeface_pair": "Inter", "tagline": "Tag"},
+            "5": {"verifiable_claims": ["Fast"]},
+            "6": {"logo_paths": ["l.svg"], "icon_set": "lucide"},
+            "7": {"do_list": ["Pin"], "dont_list": ["Mutate"], "usage_rules": ["Rule 1"]},
+            "8": {"formats": ["json"], "cadence": "daily"},
+            "9": {"approver_signoff": "Ryan"},
+        }
+        outcome = run_chain([
+            {
+                "suite": "brand-publishing",
+                "action": "execute_brand_maker_intake",
+                "arguments": {
+                    "brand_id": "test-brand",
+                    "phase_inputs": phase_inputs,
+                    "operator_approval_token": "opa1.invalid.token",
+                },
+            }
+        ])
+        step0 = outcome["steps"][0]
+        pkg = step0["result"]["resulting_package"]
+        self.assertIsNotNone(pkg)
+        self.assertEqual(pkg["approved_at"], SIMULATED_PACKAGE_APPROVED_AT)
+        self.assertEqual(pkg["provenance"][0]["decision_source"], "simulated_fixture")
+        self.assertFalse(step0["authority_consumed"], "failed approval intake must not burn authority")
+        self.assertTrue(step0["replayable"])
+        self.assertNotEqual(step0["side_effect_class"], "single_use_authority_consumed")
+
 
 class TestEngineActionDiscovery(unittest.TestCase):
     def test_every_suite_exposes_at_least_one_action(self):
