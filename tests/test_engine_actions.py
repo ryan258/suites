@@ -151,9 +151,6 @@ class TestEngineActionBoundary(unittest.TestCase):
             run_action("accessibility", "audit_html_snippet", {1: "x"})
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class TestChains(unittest.TestCase):
     """Chained engine actions: one action's output as another's argument."""
@@ -223,3 +220,8 @@ class TestChains(unittest.TestCase):
         from portfolio_suites.chains import ChainError, run_chain
         with self.assertRaises(ChainError):
             run_chain([])
+
+
+if __name__ == "__main__":
+    unittest.main()
+

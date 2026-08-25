@@ -357,9 +357,6 @@ class RegistryTests(unittest.TestCase):
         self.assertTrue(any("completed runtime wave cannot claim a prototype level" in e for e in report.errors), report.errors)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class UnsupportedEvidenceContractTests(unittest.TestCase):
     """A receipt no contract can check must be refused, not silently accepted."""
@@ -1347,3 +1344,8 @@ class LedgerTransactionTests(unittest.TestCase):
                 holder.join(timeout=5)
 
         self.assertEqual(overlapped, [True], "the second transaction ran before the first finished")
+
+
+if __name__ == "__main__":
+    unittest.main()
+

@@ -499,9 +499,6 @@ class CacheRotationConfinementTests(unittest.TestCase):
         self.assertTrue((real / "entry").exists())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class RollbackIdentityTests(unittest.TestCase):
     """Undo paths must remove their own work and nothing else.
@@ -850,3 +847,8 @@ class ConfinedReadParentRaceTests(unittest.TestCase):
 
             self.assertTrue(swapped, "the interleaving never ran")
             self.assertIsNone(data, "a swapped parent redirected the read outside the workspace")
+
+
+if __name__ == "__main__":
+    unittest.main()
+

@@ -144,6 +144,22 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(rule('<input class="no-error-state" id="a">'), [])
         self.assertEqual(rule('<input class="form-control is-invalid" id="d">'), ["wcag-3.3.1-error-identification"])
 
+    def test_audit_secrets_fails_closed_at_the_file_cap(self):
+        """The cap must refuse, not truncate: a short scan reporting `clean` would be a lie."""
+        from portfolio_suites.engines import operator_os as oos
+
+        original = oos.MAX_AUDIT_FILES
+        oos.MAX_AUDIT_FILES = 2
+        try:
+            result = OperatorOSEngine.execute_jarvis_action_checkpoint(
+                "audit_secrets", {"path": "src"}, operator_approved=True
+            )
+        finally:
+            oos.MAX_AUDIT_FILES = original
+
+        self.assertEqual(result["status"], "error_audit_limit")
+        self.assertIsNone(result.get("execution_result"))
+
     def test_operator_os_engine(self):
         src = OperatorOSEngine.capture_source("# Test Note", "note://test", "src-test-01")
         self.assertEqual(src["source_id"], "src-test-01")
@@ -228,6 +244,36 @@ class EngineTests(unittest.TestCase):
             "unknown_command", {}, operator_approved=True
         )
         self.assertEqual(chk_unknown["status"], "error_unknown_action")
+
+    def test_donor_probe_reports_an_unimportable_donor_as_environment_blocked(self):
+        """`environment_blocked` has to survive the subprocess boundary.
+
+        In-process, a missing PKos raised ModuleNotFoundError and the adapter classified it.
+        Across a subprocess the only channel is the exit code, so "cannot load the donor" and
+        "the donor API changed" collapse into one non-zero exit unless the probe distinguishes
+        them. This pins that contract from both ends.
+        """
+        import subprocess
+        import sys
+
+        from portfolio_suites.adapters import donor_pkos_cas_probe as probe
+        from portfolio_suites.adapters.operator_os import (
+            DONOR_PKOS_CAS_PROBE,
+            PROBE_EXIT_IMPORT_FAILED,
+        )
+
+        self.assertEqual(PROBE_EXIT_IMPORT_FAILED, probe.EXIT_IMPORT_FAILED)
+        self.assertNotEqual(probe.EXIT_IMPORT_FAILED, probe.EXIT_USAGE)
+
+        agents = Path(__file__).resolve().parents[1] / "AGENTS.md"
+        proc = subprocess.run(
+            [sys.executable, str(DONOR_PKOS_CAS_PROBE), str(agents)],
+            env={"PATH": os.environ.get("PATH", "")},  # no PYTHONPATH: pkos is unreachable
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        self.assertEqual(proc.returncode, probe.EXIT_IMPORT_FAILED, proc.stderr)
 
     def test_operator_os_adapter(self):
         o1 = OperatorOSSourceAdapter.execute_o1_source_record_observer_gate()
@@ -787,9 +833,6 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(b_audit["status"], "boundary_formalized")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 def _scan_probe_dir(probe_name):
     """Run the audit in a child process so an indefinite open shows up as a live process."""
@@ -939,44 +982,6 @@ class CacheRotationTests(unittest.TestCase):
         self.assertEqual(receipt["status"], "success")
         self.assertIs(receipt["execution_result"]["rotated"], False)
         self.assertEqual(receipt["execution_result"]["rotation_mode"], "dry_run")
-
-
-class DonorImportPathTests(unittest.TestCase):
-    """The donor is on sys.path at position 0, so failing to take it back off shadows
-    every later import in the process — including the next wave under `wave --all`."""
-
-    def test_donor_path_and_modules_are_removed_after_the_call(self):
-        import sys
-
-        from portfolio_suites.adapters.operator_os import donor_import_path
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            donor = Path(tmpdir)
-            (donor / "fakedonor").mkdir()
-            (donor / "fakedonor" / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
-
-            with donor_import_path(donor, "fakedonor"):
-                import fakedonor
-
-                self.assertEqual(fakedonor.VALUE, 1)
-                self.assertEqual(sys.path[0], str(donor))
-
-            self.assertNotIn(str(donor), sys.path)
-            self.assertNotIn("fakedonor", sys.modules)
-
-    def test_a_path_the_caller_did_not_add_is_left_alone(self):
-        import sys
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            from portfolio_suites.adapters.operator_os import donor_import_path
-
-            sys.path.insert(0, tmpdir)
-            try:
-                with donor_import_path(Path(tmpdir), "nothing_imported"):
-                    pass
-                self.assertIn(tmpdir, sys.path)
-            finally:
-                sys.path.remove(tmpdir)
 
 
 class SensitivePathPolicyTests(unittest.TestCase):
@@ -1322,3 +1327,8 @@ class AdversarialFixtureTests(unittest.TestCase):
                     1.0,
                     f"breaking {name} left the scorecard green",
                 )
+
+
+if __name__ == "__main__":
+    unittest.main()
+

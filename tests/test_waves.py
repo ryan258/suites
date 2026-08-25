@@ -343,9 +343,6 @@ class WaveTests(unittest.TestCase):
         self.assertIn("HISTORICAL PARITY RECEIPT RETAINED", res.message)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class SettledMessageTests(unittest.TestCase):
     """A failing gate never narrates its intended success as fact.
@@ -410,3 +407,8 @@ class SettledMessageTests(unittest.TestCase):
                         result.message.startswith(past_tense_openers),
                         f"{suite_id}/{wave['id']} narrated success on a failed gate: {result.message}",
                     )
+
+
+if __name__ == "__main__":
+    unittest.main()
+

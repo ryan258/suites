@@ -342,9 +342,6 @@ class ApprovalAuthorityTests(unittest.TestCase):
                 self.assertFalse(json.load(handle)["approvals"][0].get("consumed"))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class JarvisMutationBoundaryTests(unittest.TestCase):
     """The one JARVIS handler that writes to disk must need the authority, not a boolean."""
@@ -602,3 +599,8 @@ class CommitUnverifiedTests(unittest.TestCase):
                     durable_write_text(target, "new")
 
             self.assertEqual(target.read_text(encoding="utf-8"), "new", "the replace did commit")
+
+
+if __name__ == "__main__":
+    unittest.main()
+
