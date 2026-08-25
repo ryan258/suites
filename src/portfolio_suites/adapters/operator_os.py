@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import contextlib
 import datetime
+import json
+import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +13,7 @@ from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
 from ..engines.operator_os import OperatorOSEngine
 from .common import (
     SUITES_ROOT,
+    donor_env,
     donor_file_record,
     get_git_fingerprint,
     get_repo_path,
@@ -20,29 +21,8 @@ from .common import (
     read_donor_text,
 )
 
-@contextlib.contextmanager
-def donor_import_path(donor_dir: Path, package: str):
-    """Expose a donor repo to `import` for one call only, then take it back off sys.path.
-
-    The donor goes in at position 0, so leaving it there would let the donor shadow every
-    later import in the process — including in a subsequent wave under `wave --all`. The
-    donor's own modules are dropped from sys.modules on the way out too: a cached donor
-    module would make a second run in the same process read the first run's code, which is
-    exactly what the outside-world sensitivity test needs to be able to see change in.
-    """
-    entry = str(donor_dir)
-    added = entry not in sys.path
-    if added:
-        sys.path.insert(0, entry)
-    try:
-        yield
-    finally:
-        if added:
-            with contextlib.suppress(ValueError):
-                sys.path.remove(entry)
-        for name in [m for m in sys.modules if m == package or m.startswith(f"{package}.")]:
-            del sys.modules[name]
-
+DONOR_PKOS_CAS_PROBE = Path(__file__).with_name("donor_pkos_cas_probe.py")
+PROBE_EXIT_IMPORT_FAILED = 3  # keep in sync with donor_pkos_cas_probe.EXIT_IMPORT_FAILED
 
 DOTFILES_DIR = get_repo_path("dotfiles", "DOTFILES_DIR")
 PKOS_DIR = get_repo_path("PKos", "PKOS_DIR")
@@ -152,43 +132,59 @@ class OperatorOSSourceAdapter:
             })
 
         if has_agents and has_pkos_storage and has_pkos_normalize:
+            donor_cas_cmd = [sys.executable, str(DONOR_PKOS_CAS_PROBE), str(agents_path)]
             try:
-                with donor_import_path(PKOS_DIR, "pkos"):
-                    from pkos.storage import Workspace, checksum_file
-                    from pkos.normalize import normalize
+                proc = subprocess.run(
+                    donor_cas_cmd,
+                    cwd=PKOS_DIR,
+                    env=donor_env({"PYTHONPATH": str(PKOS_DIR)}),
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                if proc.returncode == 0 and proc.stdout.strip():
+                    last_line = proc.stdout.strip().splitlines()[-1]
+                    payload = json.loads(last_line)
+                    cas_acquisition = payload.get("acquired_record") or {}
+                    normalize_counts = payload.get("counts", {})
+                    raw_bytes_match = payload.get("raw_bytes_match", False)
 
-                    with tempfile.TemporaryDirectory() as tmpdir:
-                        ws = Workspace(Path(tmpdir))
-                        acquired_record = ws.acquire_file(
-                            agents_path,
-                            kind="operator_policy",
-                            label="dotfiles/AGENTS.md",
-                        )
-                        # Verify raw CAS object exists and hash matches byte-for-byte
-                        cas_object_path = ws.root / acquired_record["raw_object"]
-                        raw_bytes_match = (
-                            cas_object_path.is_file()
-                            and checksum_file(cas_object_path) == acquired_record["sha256"]
-                            and checksum_file(agents_path) == acquired_record["sha256"]
-                        )
-                        # Run real PKos normalization into SQLite
-                        counts = normalize(ws)
-                        normalize_counts = counts
-                        cas_acquisition = acquired_record
-                        cas_verified = (
-                            raw_bytes_match
-                            and counts.get("acquisitions", 0) >= 1
-                            and counts.get("items", 0) >= 1
-                            and counts.get("chunks", 0) >= 1
-                            and counts.get("failures", 0) == 0
-                        )
+                    # Independent parent-side cross-check: donor CAS sha256 matches actual file bytes
+                    agents_bytes = agents_path.read_bytes() if has_agents else b""
+                    parent_sha = compute_sha256(agents_bytes)
+                    sha_cross_check = (
+                        bool(cas_acquisition.get("sha256"))
+                        and cas_acquisition.get("sha256") == parent_sha
+                    )
+
+                    cas_verified = (
+                        raw_bytes_match
+                        and sha_cross_check
+                        and normalize_counts.get("acquisitions", 0) >= 1
+                        and normalize_counts.get("items", 0) >= 1
+                        and normalize_counts.get("chunks", 0) >= 1
+                        and normalize_counts.get("failures", 0) == 0
+                    )
+                else:
+                    cas_verified = False
+                    # The probe exits 3 only when PKos itself would not import. Reporting that
+                    # as a plain non-zero exit would read as "the donor API changed" on a
+                    # machine that simply cannot load the donor.
+                    import_failed = proc.returncode == PROBE_EXIT_IMPORT_FAILED
+                    operational_errors.append({
+                        "stage": "cas_acquisition",
+                        "command": f"{sys.executable} {DONOR_PKOS_CAS_PROBE.name} {agents_path}",
+                        "error_kind": "donor_import_failed" if import_failed else "non_zero_exit",
+                        "message": (proc.stderr or proc.stdout)[:500],
+                        "environment_blocked": import_failed,
+                    })
             except Exception as exc:
                 # A silent False here would report a red wave with no way to tell a PKos API
                 # change from a broken donor file. Record why, the way A2 does.
                 cas_verified = False
                 operational_errors.append({
                     "stage": "cas_acquisition",
-                    "command": f"pkos.storage.Workspace(...).acquire_file({agents_path}) + pkos.normalize.normalize(ws)",
+                    "command": f"{sys.executable} {DONOR_PKOS_CAS_PROBE.name} {agents_path}",
                     "error_kind": type(exc).__name__,
                     "message": str(exc),
                     "environment_blocked": isinstance(exc, (ImportError, ModuleNotFoundError)),

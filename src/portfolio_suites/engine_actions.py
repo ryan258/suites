@@ -78,7 +78,6 @@ class ActionSpec:
     evidence_eligible: bool
     replayable: bool
     contract: str | None = None
-    execution_tier: str = "reference_prototype"
     authority_use: str = "none"
     input_adapter: Callable[[dict[str, Any]], dict[str, Any]] | None = None
     output_adapter: Callable[[Any], Any] | None = None
@@ -367,7 +366,6 @@ def list_actions(suite_id: str | None = None) -> dict[str, Any]:
                 "parameters": _describe_parameters(func),
                 "output_kind": spec.output_kind,
                 "emits": spec.contract,
-                "execution_tier": spec.execution_tier,
                 "side_effect_class": spec.side_effect_class,
                 "approval_required": spec.approval_required,
                 "evidence_eligible": spec.evidence_eligible,
@@ -400,7 +398,6 @@ def get_action_spec(
     return {
         "output_kind": spec.output_kind,
         "emits": spec.contract,
-        "execution_tier": spec.execution_tier,
         **policy,
     }
 

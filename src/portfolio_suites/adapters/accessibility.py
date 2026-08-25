@@ -151,7 +151,7 @@ class AccessibilitySourceAdapter:
             )
             donor_source_duration_ms = (time.perf_counter() - t0_donor_source) * 1000.0
             if donor_source_proc.returncode == 0 and donor_source_proc.stdout.strip():
-                donor_source = json.loads(donor_source_proc.stdout)
+                donor_source = json.loads(donor_source_proc.stdout.strip().splitlines()[-1])
                 donor_source_ok = (
                     donor_source.get("rule_id") == "input-assistance-error-msg"
                     and donor_source.get("wcag_criterion") == "3.3.1"
@@ -189,7 +189,7 @@ class AccessibilitySourceAdapter:
                 )
                 donor_runtime_duration_ms = (time.perf_counter() - t0_donor_runtime) * 1000.0
                 if donor_runtime_proc.returncode == 0 and donor_runtime_proc.stdout.strip():
-                    donor_result = json.loads(donor_runtime_proc.stdout)
+                    donor_result = json.loads(donor_runtime_proc.stdout.strip().splitlines()[-1])
                     outcomes = donor_result.get("outcomes")
                     donor_runtime_ok = (
                         donor_result.get("rule_id") == "input-assistance-error-msg"
@@ -403,7 +403,7 @@ console.log(JSON.stringify(result));
                 timeout=30,
             )
             if eval_proc.returncode == 0 and eval_proc.stdout.strip():
-                raw_result = json.loads(eval_proc.stdout.strip())
+                raw_result = json.loads(eval_proc.stdout.strip().splitlines()[-1])
                 for idx, raw_f in enumerate(raw_result.get("findings", []), start=1):
                     # Preserve unverified source status and set needs_review: true (human confirmation boundary)
                     contract_finding = {

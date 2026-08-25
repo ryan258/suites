@@ -42,6 +42,7 @@ MAX_BACKUP_TOTAL_BYTES = 100 * 1024 * 1024
 MAX_BACKUP_FILES = 10_000
 MAX_NOTE_BYTES = 2 * 1024 * 1024
 MAX_SYNC_NOTES = 1_000
+MAX_AUDIT_FILES = 5_000
 
 
 # Version is inside the digest so a v1 token cannot satisfy a v2 artifact binding.
@@ -686,6 +687,16 @@ fenced_from_reingestion: true
                     dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "node_modules", ".venv", "dist", "build")]
                     for f in files:
                         if f.endswith((".py", ".json", ".md", ".env.example", ".txt", ".yml", ".yaml")):
+                            if len(candidate_files) >= MAX_AUDIT_FILES:
+                                # Fail closed, same as backup_data. This action is HTTP-POST
+                                # reachable, so an uncapped walk is a cheap denial of service
+                                # even on loopback; a truncated report would also be a
+                                # dishonest "no secrets found".
+                                return _action_error(
+                                    preview,
+                                    "error_audit_limit",
+                                    f"audit inventory exceeds the {MAX_AUDIT_FILES}-file safety limit",
+                                )
                             candidate_files.append(Path(root) / f)
 
             for cf in candidate_files:

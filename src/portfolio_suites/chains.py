@@ -268,7 +268,6 @@ def run_chain(steps: list[dict[str, Any]]) -> dict[str, Any]:
             "action": action,
             "output_kind": metadata["output_kind"],
             "emits": metadata["emits"],
-            "execution_tier": metadata.get("execution_tier"),
             "side_effect_class": metadata.get("side_effect_class"),
             "approval_required": metadata.get("approval_required"),
             "evidence_eligible": metadata.get("evidence_eligible"),
