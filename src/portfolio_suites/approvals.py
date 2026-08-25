@@ -102,7 +102,7 @@ def _open_authority_dir(path: Path) -> int:
         raise ApprovalError(f"approval store directory unreadable: {error}") from error
 
 
-def _read_store_fd(filename: str, dir_fd: int) -> tuple[dict[str, Any], tuple[int, int], int]:
+def _read_store_fd(filename: str, dir_fd: int) -> tuple[dict[str, Any], tuple[int, int], str, int]:
     try:
         store_fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
     except OSError as error:
@@ -113,12 +113,13 @@ def _read_store_fd(filename: str, dir_fd: int) -> tuple[dict[str, Any], tuple[in
             raise ApprovalError("approval store cannot be a symlink")
         if info.st_nlink > 1:
             raise ApprovalError(f"approval store has multiple hard links ({info.st_nlink})")
-        with os.fdopen(os.dup(store_fd), "r", encoding="utf-8") as stream:
+        with os.fdopen(os.dup(store_fd), "rb") as stream:
             content = stream.read()
-            document = json.loads(content)
+            digest = hashlib.sha256(content).hexdigest()
+            document = json.loads(content.decode("utf-8"))
         if not isinstance(document, dict) or not isinstance(document.get("approvals"), list):
             raise ApprovalError("approval store must contain an 'approvals' list")
-        return document, (info.st_dev, info.st_ino), info.st_mode
+        return document, (info.st_dev, info.st_ino), digest, info.st_mode
     except (OSError, ValueError) as error:
         raise ApprovalError(f"approval store unreadable: {error}") from error
     finally:
@@ -129,19 +130,20 @@ def _durably_replace_store_confined(
     filename: str,
     dir_fd: int,
     document: dict[str, Any],
-    expected_identity: tuple[int, int],
+    expected_digest: str,
     mode: int,
     approval_id: str | None = None,
 ) -> None:
     """Commit the consumed-against document over the store this transaction read.
 
     The replacement is a compare-and-swap, not a replacing rename: it commits only if the
-    object currently at the store name is the exact inode ``_read_store_fd`` validated. An
-    out-of-band issuer that does not share this module's sidecar lock can therefore replace
-    the store with newly issued approvals between the read and the commit and lose nothing
-    -- its document is still occupying the name, the consumption is refused as a plain
-    retryable failure, and no pre-commit ``stat`` is being asked to prove anything about a
-    rename that happens later. See :mod:`portfolio_suites.txn` for the mechanism.
+    object currently at the store name has the exact content digest ``_read_store_fd``
+    validated. An out-of-band issuer that does not share this module's sidecar lock can
+    therefore replace or edit the store with newly issued approvals between the read and
+    the commit and lose nothing -- its document is preserved, the consumption is refused
+    as a plain retryable failure, and no pre-commit ``stat`` is being asked to prove
+    anything about a rename that happens later. See :mod:`portfolio_suites.txn` for the
+    mechanism.
     """
     text = json.dumps(document, indent=2)
     try:
@@ -150,7 +152,7 @@ def _durably_replace_store_confined(
         raise ApprovalError(f"approval store is not writable, cannot consume: {error}") from error
 
     try:
-        commit_replacement(dir_fd, filename, temp, expected_identity=expected_identity)
+        commit_replacement(dir_fd, filename, temp, expected_digest=expected_digest)
     except OccupantConflict as error:
         raise ApprovalError(
             "the approval store changed after it was read; nothing was consumed and every "
@@ -235,7 +237,7 @@ def verify_operator_approval(token: str | None, bindings: dict[str, Any]) -> dic
             # flock serializes both threads (distinct fds) and processes.
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
             try:
-                document, identity, mode = _read_store_fd(path.name, dir_fd)
+                document, identity, digest, mode = _read_store_fd(path.name, dir_fd)
                 matches = [r for r in document["approvals"] if isinstance(r, dict) and r.get("approval_id") == approval_id]
                 if len(matches) != 1:
                     raise ApprovalError(f"approval '{approval_id}' is not issued by this authority")
@@ -250,7 +252,7 @@ def verify_operator_approval(token: str | None, bindings: dict[str, Any]) -> dic
                 record["consumed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 record["consumed_bindings"] = {key: str(value) for key, value in sorted(bindings.items())}
                 _durably_replace_store_confined(
-                    path.name, dir_fd, document, identity, mode, approval_id
+                    path.name, dir_fd, document, digest, mode, approval_id
                 )
                 try:
                     current_parent_stat = os.stat(path.parent)

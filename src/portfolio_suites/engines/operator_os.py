@@ -156,18 +156,29 @@ def _read_confined_bytes(
     directory_fd: int,
     name: str,
     *,
-    max_bytes: int | None = None,
+    max_bytes: int | None = MAX_BACKUP_TOTAL_BYTES,
 ) -> bytes | None:
-    """Read ``name`` under ``directory_fd`` without following a link, or None if absent."""
+    """Read ``name`` under ``directory_fd`` without following a link, or None if absent or unsupported."""
+    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0)
     try:
-        handle = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory_fd)
-    except FileNotFoundError:
+        handle = os.open(name, flags, dir_fd=directory_fd)
+    except (FileNotFoundError, OSError):
         return None
-    with os.fdopen(handle, "rb") as stream:
-        payload = stream.read() if max_bytes is None else stream.read(max_bytes + 1)
-    if max_bytes is not None and len(payload) > max_bytes:
+    try:
+        info = os.fstat(handle)
+        if not stat.S_ISREG(info.st_mode):
+            return None
+        if max_bytes is not None and info.st_size > max_bytes:
+            return None
+        with os.fdopen(os.dup(handle), "rb") as stream:
+            payload = stream.read() if max_bytes is None else stream.read(max_bytes + 1)
+        if max_bytes is not None and len(payload) > max_bytes:
+            return None
+        return payload
+    except OSError:
         return None
-    return payload
+    finally:
+        os.close(handle)
 
 
 def _install_confined_bytes(directory_fd: int, name: str, payload: bytes) -> tuple[int, int]:
@@ -270,7 +281,7 @@ def _write_backup_archive(
             archive.writestr(_deterministic_zip_info(f"files/{relative_path}"), data)
     payload = buffer.getvalue()
     candidate_digest = hashlib.sha256(payload).hexdigest()
-    existing = _read_confined_bytes(directory_fd, name)
+    existing = _read_confined_bytes(directory_fd, name, max_bytes=MAX_BACKUP_TOTAL_BYTES)
     if existing is not None:
         if hashlib.sha256(existing).hexdigest() != candidate_digest:
             raise OSError(f"content-addressed backup collision at {name}")
@@ -918,7 +929,9 @@ fenced_from_reingestion: true
                     manifest_content["dry_run"] = False
                     manifest_name = f"{snap_id}.json"
                     manifest_file = snapshot_dir / manifest_name
-                    existing_bytes = _read_confined_bytes(snapshot_fd, manifest_name)
+                    existing_bytes = _read_confined_bytes(
+                        snapshot_fd, manifest_name, max_bytes=MAX_BACKUP_FILE_BYTES
+                    )
                     if existing_bytes is not None:
                         existing_manifest = json.loads(existing_bytes.decode("utf-8"))
                         comparable_fields = (

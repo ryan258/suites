@@ -261,7 +261,7 @@ def run_chain(steps: list[dict[str, Any]]) -> dict[str, Any]:
         # entry: a parameter-dependent action that consumed its one-time token in this very
         # step must be visible as non-replayable here, or any replay surface built on these
         # traces would repeat an authority consumption the approval authority already spent.
-        metadata = get_action_spec(suite, action, resolved)
+        metadata = get_action_spec(suite, action, resolved, result=result)
         records.append({
             "step": index,
             "suite": suite,

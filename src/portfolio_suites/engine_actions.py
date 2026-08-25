@@ -144,34 +144,72 @@ def parameter_dependent_action(output_kind: str, contract: str | None = None, **
 AUTHORITY_TOKEN_ARGUMENTS = frozenset({"operator_approval_token"})
 
 
-def invocation_consumes_authority(arguments: dict[str, Any]) -> bool:
+def invocation_supplies_authority(arguments: dict[str, Any]) -> bool:
     """Whether validated arguments supply a live one-time approval token."""
     return any(
-        isinstance(arguments.get(name), str) and arguments[name].strip()
+        isinstance(arguments.get(name), str) and bool(arguments[name].strip())
         for name in AUTHORITY_TOKEN_ARGUMENTS
     )
 
 
-def effective_policy(spec: ActionSpec, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
-    """The policy that actually governs one invocation, derived from validated arguments.
+def invocation_consumes_authority(arguments: dict[str, Any], result: Any = None) -> bool:
+    """Whether the invocation arguments or resulting execution actually consumed authority."""
+    if result is None:
+        return invocation_supplies_authority(arguments)
+    return result_consumes_authority(arguments, result)
+
+
+def result_consumes_authority(arguments: dict[str, Any], result: Any) -> bool:
+    """True only if the action actually validated and consumed an operator approval token."""
+    if not invocation_supplies_authority(arguments) or not isinstance(result, dict):
+        return False
+    if result.get("approval_store_inspection_required"):
+        return False
+    status = str(result.get("status") or "")
+    if status.startswith("error_") or status.startswith("blocked_"):
+        return False
+    if result.get("reconciliation_status") in {"intake_incomplete", "approval_commit_unverified"}:
+        return False
+    if result.get("approval_verified") is True:
+        return True
+    if result.get("decision_source") == "verified_operator_approval" or result.get("human_confirmation_claimed") is True:
+        return True
+    if result.get("verified") is True and result.get("dry_run") is False:
+        return True
+    pkg = result.get("resulting_package")
+    if isinstance(pkg, dict) and pkg.get("approved_at") and pkg.get("approved_at") != "2026-08-20T00:00:00Z":
+        return True
+    return False
+
+
+def effective_policy(
+    spec: ActionSpec,
+    arguments: dict[str, Any] | None = None,
+    result: Any = None,
+) -> dict[str, Any]:
+    """The policy that actually governs one invocation, derived from arguments and execution outcome.
 
     Static action-level metadata cannot represent parameter-dependent authority: the same
     brand-intake call is a simulated fixture without a token and a single-use authority
     consumption with one. Chains and any future replay surface must consult this, not the
     catalog, when deciding whether an invocation may be repeated.
     """
+    args = arguments or {}
+    is_param_dep = spec.authority_use == "parameter_dependent"
+    supplies_auth = is_param_dep and invocation_supplies_authority(args)
+    if result is not None:
+        consumed = is_param_dep and result_consumes_authority(args, result)
+    else:
+        consumed = supplies_auth
+
     policy = {
-        "side_effect_class": spec.side_effect_class,
-        "approval_required": spec.approval_required,
+        "side_effect_class": "single_use_authority_consumed" if consumed else spec.side_effect_class,
+        "approval_required": supplies_auth if is_param_dep else spec.approval_required,
         "evidence_eligible": spec.evidence_eligible,
-        "replayable": spec.replayable,
+        "replayable": not consumed if is_param_dep else spec.replayable,
         "authority_use": spec.authority_use,
-        "authority_consumed": False,
+        "authority_consumed": consumed,
     }
-    if spec.authority_use == "parameter_dependent" and invocation_consumes_authority(arguments or {}):
-        policy["authority_consumed"] = True
-        policy["side_effect_class"] = "single_use_authority_consumed"
-        policy["replayable"] = False
     return policy
 
 
@@ -384,17 +422,18 @@ def get_action_spec(
     suite_id: str,
     action: str,
     arguments: dict[str, Any] | None = None,
+    result: Any = None,
 ) -> dict[str, Any]:
     """Policy metadata for one reviewed action, or for one concrete invocation.
 
     Without ``arguments`` this is the static catalog entry: for parameter-dependent
     actions it carries the conservative bound (they may consume single-use authority).
-    With validated ``arguments`` the result is the effective per-invocation policy --
-    including ``authority_consumed``, which any replay surface must treat as "never
-    repeat this invocation".
+    With validated ``arguments`` and optional execution ``result`` the outcome is the
+    effective per-invocation policy -- including ``authority_consumed``, which any replay
+    surface must treat as "never repeat this invocation".
     """
     _, spec = _registered_method(suite_id, action)
-    policy = effective_policy(spec, arguments)
+    policy = effective_policy(spec, arguments, result=result)
     return {
         "output_kind": spec.output_kind,
         "emits": spec.contract,

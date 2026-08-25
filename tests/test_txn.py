@@ -7,6 +7,7 @@ destroyed, a candidate that changed after validation is never committed, and eve
 path leaves the directory holding only objects someone can account for.
 """
 
+import errno
 import hashlib
 import os
 import tempfile
@@ -359,6 +360,24 @@ class TxnTests(unittest.TestCase):
                     self.dir_fd, "huge_doc", write_temp_payload(self.dir_fd, "huge_doc", b"next"),
                     expected_digest=hashlib.sha256(b"small_initial").hexdigest(),
                 )
+
+    def test_finish_commit_closes_temp_fd_on_directory_fsync_error(self):
+        temp = write_temp_payload(self.dir_fd, "doc", b"v1")
+        temp_fd = temp.fd
+        real_fsync = os.fsync
+
+        def failing_fsync(fd):
+            if fd == self.dir_fd:
+                raise OSError(errno.EIO, "fsync failed")
+            return real_fsync(fd)
+
+        with mock.patch.object(txn.os, "fsync", side_effect=failing_fsync):
+            with self.assertRaises(CommitUncertain):
+                commit_replacement(self.dir_fd, "doc", temp, expected_absent=True)
+
+        with self.assertRaises(OSError) as err:
+            os.fstat(temp_fd)
+        self.assertEqual(err.exception.errno, errno.EBADF)
 
 
 if __name__ == "__main__":

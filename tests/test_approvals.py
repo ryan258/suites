@@ -90,12 +90,12 @@ class ApprovalAuthorityTests(unittest.TestCase):
             original_read = approvals._read_store_fd
 
             def read_then_wait(filename, dir_fd):
-                document, identity, mode = original_read(filename, dir_fd)
+                res = original_read(filename, dir_fd)
                 try:
                     both_read.wait(timeout=0.25)
                 except threading.BrokenBarrierError:
                     pass
-                return document, identity, mode
+                return res
 
             approvals._read_store_fd = read_then_wait
             self.addCleanup(setattr, approvals, "_read_store_fd", original_read)
@@ -243,7 +243,7 @@ class ApprovalAuthorityTests(unittest.TestCase):
             original_read = approvals._read_store_fd
 
             def read_then_replace_store_as_issuer(filename, dir_fd):
-                document, identity, mode = original_read(filename, dir_fd)
+                res = original_read(filename, dir_fd)
                 # The issuer does not take our lock: it writes its own newer store and
                 # swaps it into place while this consumer sits between read and commit.
                 issued_name = f"{filename}.issuer-{os.getpid()}.tmp"
@@ -256,7 +256,7 @@ class ApprovalAuthorityTests(unittest.TestCase):
                     stream.flush()
                     os.fsync(stream.fileno())
                 os.replace(issued_name, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
-                return document, identity, mode
+                return res
 
             approvals._read_store_fd = read_then_replace_store_as_issuer
             self.addCleanup(setattr, approvals, "_read_store_fd", original_read)
@@ -271,6 +271,52 @@ class ApprovalAuthorityTests(unittest.TestCase):
             self.assertFalse(surviving["approvals"][1].get("consumed"))
             leftovers = [p.name for p in Path(tmpdir).iterdir() if p.name.endswith(".tmp")]
             self.assertEqual(leftovers, [], leftovers)
+
+    def test_an_in_place_store_rewrite_as_issuer_preserves_new_approvals(self):
+        """The in-place truncate-and-rewrite probe: an issuer adds an approval by truncating
+        and rewriting the store in place without changing its inode. The digest-bound CAS
+        must detect the change, reject the stale consumption, and preserve the new approval."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store, token = issue(tmpdir)
+            issuer_document = {
+                "approvals": [
+                    json.loads(Path(store).read_text(encoding="utf-8"))["approvals"][0],
+                    {
+                        "approval_id": "apr-issuer-concurrent-inplace",
+                        "schema": APPROVAL_SCHEMA,
+                        "reviewer": "Concurrent In-Place Issuer",
+                        "issued_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                        "expires_at": "2099-01-01T00:00:00+00:00",
+                        **BINDINGS,
+                        "token_sha256": token_sha256("opa1.apr-issuer-concurrent-inplace.s3cret"),
+                    },
+                ]
+            }
+            original_read = approvals._read_store_fd
+
+            def read_then_rewrite_store_in_place(filename, dir_fd):
+                res = original_read(filename, dir_fd)
+                payload = json.dumps(issuer_document, indent=2).encode("utf-8")
+                # Truncate and rewrite the existing file descriptor/name in place (retaining inode)
+                store_fd = os.open(filename, os.O_WRONLY | os.O_TRUNC, dir_fd=dir_fd)
+                try:
+                    os.write(store_fd, payload)
+                    os.fsync(store_fd)
+                finally:
+                    os.close(store_fd)
+                return res
+
+            approvals._read_store_fd = read_then_rewrite_store_in_place
+            self.addCleanup(setattr, approvals, "_read_store_fd", original_read)
+
+            with self.assertRaises(ApprovalError) as caught:
+                verify_operator_approval(token, BINDINGS)
+
+            self.assertIn("changed after it was read", str(caught.exception))
+            surviving = json.loads(Path(store).read_text(encoding="utf-8"))
+            self.assertEqual(len(surviving["approvals"]), 2, "the issuer lost a concurrent in-place approval")
+            self.assertFalse(surviving["approvals"][0].get("consumed"), "nothing was consumed")
+            self.assertFalse(surviving["approvals"][1].get("consumed"))
 
     def test_a_bystander_swapped_into_the_store_name_preserves_both_documents(self):
         """The displaced-original probe: the verified store is moved aside and replaced by
@@ -294,7 +340,7 @@ class ApprovalAuthorityTests(unittest.TestCase):
             displaced_path = Path(tmpdir) / "displaced-original.json"
 
             def read_then_swap_in_bystander(filename, dir_fd):
-                document, identity, mode = original_read(filename, dir_fd)
+                res = original_read(filename, dir_fd)
                 os.rename(filename, displaced_path.name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
                 bystander_name = f"{filename}.bystander-{os.getpid()}.tmp"
                 bystander_fd = os.open(
@@ -305,7 +351,7 @@ class ApprovalAuthorityTests(unittest.TestCase):
                     stream.flush()
                     os.fsync(stream.fileno())
                 os.replace(bystander_name, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
-                return document, identity, mode
+                return res
 
             approvals._read_store_fd = read_then_swap_in_bystander
             self.addCleanup(setattr, approvals, "_read_store_fd", original_read)

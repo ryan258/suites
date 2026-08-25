@@ -88,6 +88,26 @@ class TestActionPolicyTruthfulness(unittest.TestCase):
             self.assertIn("authority_use", record)
             self.assertFalse(record["authority_consumed"])
 
+    def test_incomplete_intake_with_token_does_not_claim_authority_consumed(self):
+        from portfolio_suites.chains import run_chain
+
+        outcome = run_chain([
+            {
+                "suite": "brand-publishing",
+                "action": "execute_brand_maker_intake",
+                "arguments": {
+                    "brand_id": "test-brand",
+                    "phase_inputs": {},
+                    "operator_approval_token": "opa1.fake.token",
+                },
+            }
+        ])
+        step0 = outcome["steps"][0]
+        self.assertEqual(step0["result"]["reconciliation_status"], "intake_incomplete")
+        self.assertFalse(step0["authority_consumed"], "incomplete intake must not claim authority was consumed")
+        self.assertTrue(step0["replayable"])
+        self.assertNotEqual(step0["side_effect_class"], "single_use_authority_consumed")
+
 
 class TestEngineActionDiscovery(unittest.TestCase):
     def test_every_suite_exposes_at_least_one_action(self):

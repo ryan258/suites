@@ -961,6 +961,19 @@ class OperatorConfinementTests(unittest.TestCase):
         self.assertEqual(result["scanned_files_count"], 1)
         self.assertEqual(len(result["findings"]), 1)
 
+    def test_read_confined_bytes_refuses_fifo_non_blockingly(self):
+        """A FIFO occupant must not block reading and must return None."""
+        import portfolio_suites.engines.operator_os as operator_os
+
+        fifo_path = self.probe / "test_fifo"
+        os.mkfifo(fifo_path)
+        dir_fd = os.open(self.probe, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            result = operator_os._read_confined_bytes(dir_fd, "test_fifo")
+            self.assertIsNone(result)
+        finally:
+            os.close(dir_fd)
+
 
 class CacheRotationTests(unittest.TestCase):
     def test_active_cache_rotation_refuses_a_non_cache_directory(self):

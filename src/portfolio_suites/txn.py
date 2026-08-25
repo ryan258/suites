@@ -429,7 +429,8 @@ def _finish_commit(
             f"{temp.name}: replacement committed, but directory durability could not be "
             f"confirmed ({error})"
         )
-    temp.close()
+    finally:
+        temp.close()
     return ReplacementResult(displaced=superseded)
 
 
