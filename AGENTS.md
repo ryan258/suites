@@ -70,6 +70,15 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
 5. **Tamper-Evident Working Tree Tracking**:
    - Preserve dirty state patches and check drift non-destructively; never modify donor repositories or commit changes without explicit delegation.
 
+6. **Live State Figures vs. Static Markdown**:
+   - Live filesystem figures (such as active donor repository drift or dirty working tree counts) must be queried dynamically via CLI tools (`suites drift`, `suites validate`) and never asserted as live claims in static Markdown documentation. Markdown docs may only record dated snapshot baselines; live numbers in static files cannot be enforced by registry-driven doc gates and will rot silently.
+
+7. **Donor Code Runs Out-of-Process**:
+   - Never import a donor repository into the control-plane process. This process holds the approval store, credential-bearing configuration, and the ledger; an in-process donor import hands all of it to code this repository does not own.
+   - A gate that must execute donor code adds a `donor_*_probe.py` module beside the adapters, runs it with `subprocess.run([sys.executable, str(PROBE), ...], env=donor_env({...}))`, passes inputs as argv, and reads one JSON line from stdout. `donor_env` withholds `PYTHONPATH` and `HOME`, so the probe cannot reach back into `portfolio_suites` or the user's credential surfaces.
+   - The probe must return a dedicated exit code for "the donor could not be imported" so the adapter can still record `environment_blocked` truthfully. A single non-zero exit reports a missing dependency as an API break.
+   - Verify donor claims the parent can check itself. A digest the donor both computes and attests is donor self-attestation; recompute it host-side and require agreement.
+
 ---
 
 ## 4. Reporting & Communication Rules
@@ -120,7 +129,7 @@ node .gitnexus/run.cjs status
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **suites** (2362 symbols, 5079 relationships, 201 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **suites** (2362 symbols, 5085 relationships, 201 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
