@@ -11,7 +11,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, Callable, NamedTuple
 
 from .approvals import canonical_digest
 from .adapters.accessibility import AccessibilitySourceAdapter
@@ -285,6 +285,38 @@ def _record_evidence(
     return str(evidence_file)
 
 
+def _record_status(
+    raw_res: WaveRunResult,
+    *,
+    write_evidence: bool,
+    gate_passed: bool,
+    record_note: str | None,
+    ineligibility_reason: str | None,
+) -> str:
+    """Why this run did or did not leave a receipt behind.
+
+    This is the field an operator reads to find out whether their `--record` actually
+    wrote anything, and the six outcomes are not interchangeable: "the gate failed" and
+    "the gate passed but the wave may not record" and "the candidate was rejected" each
+    call for a different next action. Ordered checks, because the conditions are not
+    mutually exclusive -- an unverified commit outranks everything, and a run that was
+    never asked to record outranks every reason a recording could have failed.
+    """
+    if raw_res.record_status == "committed_unverified":
+        return "committed_unverified"
+    if not write_evidence:
+        return "not_requested"
+    if raw_res.evidence_path is not None:
+        # A note alongside a retained path means the prior receipt stood and this run
+        # wrote nothing over it.
+        return "read_only" if record_note is not None else "recorded"
+    if not gate_passed:
+        return "gate_failed"
+    if ineligibility_reason is not None:
+        return "ineligible"
+    return "candidate_rejected"
+
+
 def classify_wave_spec(wave_spec: dict[str, Any], has_runner: bool = True) -> str:
     """Classify the intended execution kind of a wave specification.
 
@@ -354,6 +386,172 @@ def format_wave_tag(
     return "[FAIL]"
 
 
+class TableRunner(NamedTuple):
+    """One wave whose gate is entirely described by data.
+
+    These waves differ only in which adapter runs, what the receipt is called when it
+    passes, and which slice of it the caller is shown. Twenty-eight copies of that shape
+    were twenty-eight chances for one to drift; the ones with a real pass predicate of
+    their own stay written out as methods below.
+    """
+
+    adapter: Callable[[], dict[str, Any]]
+    message: str
+    data_key: str | None
+
+
+TABLE_RUNNERS: dict[tuple[str, str], TableRunner] = {
+    ("accessibility", "A3"): TableRunner(
+        AccessibilitySourceAdapter.execute_keyboard_overlay_reconciliation_gate,
+        "Compared 3 keyboard overlay implementations and retained the kb-overlay recommendation; "
+        "no donor freeze or runtime consolidation was performed.",
+        None,
+    ),
+    ("accessibility", "A5"): TableRunner(
+        AccessibilitySourceAdapter.execute_a11y_kitchen_roundtrip_gate,
+        "Projected A11yFinding through the suite-local teaching view with zero field loss; "
+        "the A11y Kitchen runtime was not invoked.",
+        None,
+    ),
+    ("accessibility", "A6"): TableRunner(
+        AccessibilitySourceAdapter.execute_keyboard_overlay_consolidation_gate,
+        "Measured the full overlay permission surface; scope narrowing and donor freeze remain outstanding.",
+        None,
+    ),
+    ("production-house", "P1"): TableRunner(
+        ProductionHouseSourceAdapter.execute_p1_groundwire_fingerprint,
+        "Parsed a real Groundwire episode script into ProductionJob; outputs remain modeled and "
+        "no audio runtime was invoked.",
+        "job",
+    ),
+    ("production-house", "P2"): TableRunner(
+        ProductionHouseSourceAdapter.execute_p2_formatter_job,
+        "Hashed a real formatter play into ProductionJob; the formatter was not invoked.",
+        "job",
+    ),
+    ("production-house", "P3"): TableRunner(
+        ProductionHouseSourceAdapter.execute_p3_writers_room_handoff,
+        "Hashed a real Writers Room final into ProductionJob; Writers Room and human "
+        "signoff were not invoked.",
+        "job",
+    ),
+    ("production-house", "P4"): TableRunner(
+        ProductionHouseSourceAdapter.execute_p4_documentary_pipeline,
+        "Projected a real Groundwire episode and production-house domain template through "
+        "ProductionJob; no media runtime was invoked.",
+        "job",
+    ),
+    ("production-house", "P5"): TableRunner(
+        ProductionHouseSourceAdapter.execute_p5_writers_room_event_stream,
+        "Mapped real Writers Room pipeline status files into ProductionJob events; signoff "
+        "and runtime consolidation were not performed.",
+        "mapping",
+    ),
+    ("model-behavior-lab", "M1"): TableRunner(
+        ModelBehaviorSourceAdapter.execute_m1_ethics_experiment_run,
+        "Normalized a recorded ai-ethics-comparator result into ExperimentRun with field parity.",
+        "field_parity",
+    ),
+    ("model-behavior-lab", "M2"): TableRunner(
+        ModelBehaviorSourceAdapter.execute_m2_comparator_kernel_matrix,
+        "Measured the donor subsystem duplication a shared kernel would replace; extraction not performed.",
+        "extraction_matrix",
+    ),
+    ("model-behavior-lab", "M3"): TableRunner(
+        ModelBehaviorSourceAdapter.execute_m3_chess_adapter_fixture,
+        "Built the legal-move chess adapter fixture from a recorded ai-chess match.",
+        "match_fixture",
+    ),
+    ("model-behavior-lab", "M4"): TableRunner(
+        ModelBehaviorSourceAdapter.execute_m4_chess_benchmark_run,
+        "Scored recorded chess openings through the kernel that scores the ethics pack.",
+        "canonical_run",
+    ),
+    ("model-behavior-lab", "M5"): TableRunner(
+        ModelBehaviorSourceAdapter.execute_m5_benchmark_corpus_manifest,
+        "Pinned every donor benchmark corpus by content hash for reproducible re-runs.",
+        "corpus_manifest",
+    ),
+    ("discovery-decision", "D1"): TableRunner(
+        DiscoveryDecisionSourceAdapter.execute_d1_sif_forge_stage_matrix,
+        "Mapped real SIF phase nodes to Forge stages with the donors' own budgets and artifacts.",
+        "matrix",
+    ),
+    ("discovery-decision", "D2"): TableRunner(
+        DiscoveryDecisionSourceAdapter.execute_d2_forge_redteam_record,
+        "Projected the recorded SIF red-team phase into a suite-local, budgeted Forge "
+        "InvestigationRecord; the donor runtimes were not invoked.",
+        "investigation",
+    ),
+    ("discovery-decision", "D3"): TableRunner(
+        DiscoveryDecisionSourceAdapter.execute_d3_insight_excavator_discovery,
+        "Cited two real Excavator documents by content with re-verifiable byte anchors.",
+        "discovery",
+    ),
+    ("discovery-decision", "D4"): TableRunner(
+        DiscoveryDecisionSourceAdapter.execute_d4_sif_analogy_forge_record,
+        "Projected the recorded SIF analogy phase through the same bounded suite-local Forge "
+        "path; the donor runtimes were not invoked.",
+        "investigation",
+    ),
+    ("discovery-decision", "D5"): TableRunner(
+        DiscoveryDecisionSourceAdapter.execute_d5_insight_excavator_citation,
+        "Projected an Excavator citation into a recorded Forge investigation; retirement not performed.",
+        "retirement",
+    ),
+    ("agent-reliability", "R1"): TableRunner(
+        AgentReliabilitySourceAdapter.execute_r1_adversarial_harness_scorecard,
+        "Derived adversarial fixtures from the looping-box action policy and probed confinement.",
+        "canonical_run",
+    ),
+    ("agent-reliability", "R2"): TableRunner(
+        AgentReliabilitySourceAdapter.execute_r2_cross_harness_eval,
+        "Measured reliability-gate coverage across Looping Box, SSSF, and Agentic Harness sources.",
+        "gates_covered",
+    ),
+    ("agent-reliability", "R3"): TableRunner(
+        AgentReliabilitySourceAdapter.execute_r3_promoted_components,
+        "Counted the real sibling-repo consumers of every promoted shared component.",
+        "promoted_components",
+    ),
+    ("agent-reliability", "R4"): TableRunner(
+        AgentReliabilitySourceAdapter.execute_r4_promoted_components_audit,
+        "Applied the two-consumer craft rule to the measured component inventory.",
+        "audit",
+    ),
+    ("agent-reliability", "R5"): TableRunner(
+        AgentReliabilitySourceAdapter.execute_r5_curriculum_fixtures,
+        "Mined real AI Staff and harness eval cases into deterministic curriculum fixtures.",
+        "curriculum_fixtures",
+    ),
+    ("game-design", "G1"): TableRunner(
+        GameDesignSourceAdapter.execute_g1_tucked_in_terrors_fingerprint,
+        "Fingerprinted the donor's real rules data and 1000 recorded runs into a parity fixture.",
+        "outcome_distribution",
+    ),
+    ("game-design", "G2"): TableRunner(
+        GameDesignSourceAdapter.execute_g2_storyweaver_pack_parity,
+        "Projected the donor game into the Storyweaver pack vocabulary; no parity measured.",
+        "shape_projection",
+    ),
+    ("game-design", "G3"): TableRunner(
+        GameDesignSourceAdapter.execute_g3_authored_game_boundary,
+        "Inventoried the authored Oregon D&D corpus and measured zero engine coupling.",
+        "engine_coupling",
+    ),
+    ("game-design", "G4"): TableRunner(
+        GameDesignSourceAdapter.execute_g4_storyweaver_adventure_pack,
+        "Checked a second game class against the pack vocabulary Storyweaver really writes.",
+        "schema_check",
+    ),
+    ("game-design", "G5"): TableRunner(
+        GameDesignSourceAdapter.execute_g5_march_madness_boundary,
+        "Audited March Madness for mandatory engine coupling before any port is scheduled.",
+        "engine_coupling",
+    ),
+}
+
+
 class WaveRunner:
     """Execute wave verification gates and generate structured evidence files."""
 
@@ -420,6 +618,56 @@ class WaveRunner:
         return cls._run_loaded_wave(suite, wave_id, write_evidence=write_evidence, full=full)
 
     @classmethod
+    def _run_table_wave(
+        cls, suite: dict[str, Any], wave_id: str, write_evidence: bool, entry: TableRunner
+    ) -> WaveRunResult:
+        """Run a wave whose whole gate is one adapter call and a standard pass predicate."""
+        receipt = entry.adapter()
+        data = receipt if entry.data_key is None else receipt.get(entry.data_key)
+        return cls._settle(
+            suite,
+            wave_id,
+            write_evidence,
+            receipt.get("all_stages_passed", False),
+            receipt,
+            entry.message,
+            data,
+        )
+
+    @classmethod
+    def _resolve_runner(cls, suite_id: str, wave_id: str):
+        """The runner for one wave, plus whether it honours `--full`.
+
+        A written-out method wins over a table row on purpose: that is what lets a test
+        attach `_run_fake_suite_x1` to the class and have it dispatch, and what lets a
+        table wave be promoted to a real method later without touching either caller.
+        Returns `(callable, supports_full)`, or `(None, False)` when no runner exists.
+        """
+        method = getattr(cls, f"_run_{suite_id.replace('-', '_')}_{wave_id.lower()}", None)
+        if method is not None:
+            return method, "full" in inspect.signature(method).parameters
+        entry = TABLE_RUNNERS.get((suite_id, wave_id))
+        if entry is None:
+            return None, False
+
+        def run(suite: dict[str, Any], wid: str, write_evidence: bool) -> WaveRunResult:
+            return cls._run_table_wave(suite, wid, write_evidence, entry)
+
+        # No table wave declares `--full`; a deeper run needs a real method.
+        return run, False
+
+    @classmethod
+    def has_runner(cls, suite_id: str, wave_id: str) -> bool:
+        """Whether this wave has an executable gate, method or table row.
+
+        Callers used to ask `hasattr(WaveRunner, "_run_...")` with a hand-built name. That
+        stopped being the whole answer once a wave could be a table row instead of an
+        attribute, and a stringly-typed probe that silently answers False is how every
+        wave quietly reclassifies itself as unrunnable.
+        """
+        return cls._resolve_runner(suite_id, wave_id)[0] is not None
+
+    @classmethod
     def full_depth_command(cls, suite_id: str, wave_id: str) -> str | None:
         """The command that performs a deeper run of this wave, or None if none exists.
 
@@ -430,8 +678,8 @@ class WaveRunner:
         A follow-up with no executable runner is descriptive work, and the surfaces that
         present it have to say so rather than inventing a command.
         """
-        runner_fn = getattr(cls, f"_run_{suite_id.replace('-', '_')}_{wave_id.lower()}", None)
-        if runner_fn is None or "full" not in inspect.signature(runner_fn).parameters:
+        _, supports_full = cls._resolve_runner(suite_id, wave_id)
+        if not supports_full:
             return None
         return f"PYTHONPATH=src python3 -m portfolio_suites wave {suite_id} {wave_id} --full"
 
@@ -450,9 +698,8 @@ class WaveRunner:
         if not wave_spec:
             return WaveRunResult(suite_id, wave_id, False, f"Wave {wave_id} not found in {suite_id}", execution_kind="error")
 
-        method_name = f"_run_{suite_id.replace('-', '_')}_{wave_id.lower()}"
-        runner_fn = getattr(cls, method_name, None)
-        if not runner_fn:
+        runner_fn, supports_full = cls._resolve_runner(suite_id, wave_id)
+        if runner_fn is None:
             generic = cls._run_generic_wave(suite, wave_id, write_evidence)
             claim = wave_spec.get("recovery_claim", {}) or {}
             generic.claim_kind = claim.get("kind")
@@ -462,7 +709,7 @@ class WaveRunner:
         exec_kind = classify_wave_spec(wave_spec, has_runner=True)
 
         # ponytail: only depth-aware runners declare `full`; the rest keep their 3-arg signature.
-        depth_kwargs = {"full": full} if "full" in inspect.signature(runner_fn).parameters else {}
+        depth_kwargs = {"full": full} if supports_full else {}
         raw_res = runner_fn(suite, wave_id, write_evidence, **depth_kwargs)
 
         if not raw_res.passed and raw_res.data and raw_res.data.get("environment_blocked"):
@@ -503,20 +750,12 @@ class WaveRunner:
             evidence_path=raw_res.evidence_path,
             data=raw_res.data,
             record_note=record_note,
-            record_status=(
-                "committed_unverified"
-                if raw_res.record_status == "committed_unverified"
-                else "not_requested"
-                if not write_evidence
-                else "read_only"
-                if raw_res.record_note is not None and raw_res.evidence_path is not None
-                else "recorded"
-                if raw_res.evidence_path is not None and record_note is None
-                else "gate_failed"
-                if not gate_passed
-                else "ineligible"
-                if ineligibility_reason is not None
-                else "candidate_rejected"
+            record_status=_record_status(
+                raw_res,
+                write_evidence=write_evidence,
+                gate_passed=gate_passed,
+                record_note=record_note,
+                ineligibility_reason=ineligibility_reason,
             ),
         )
 
@@ -615,20 +854,6 @@ class WaveRunner:
             failure_message=failure_message,
         )
 
-    @classmethod
-    def _run_accessibility_a3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        reconciliation = AccessibilitySourceAdapter.execute_keyboard_overlay_reconciliation_gate()
-        passed = reconciliation.get("all_stages_passed", False)
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            passed,
-            reconciliation,
-            "Compared 3 keyboard overlay implementations and retained the kb-overlay recommendation; "
-            "no donor freeze or runtime consolidation was performed.",
-            reconciliation,
-        )
 
     @classmethod
     def _run_accessibility_a4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
@@ -655,34 +880,7 @@ class WaveRunner:
             receipt.get("catalog_evaluation"),
         )
 
-    @classmethod
-    def _run_accessibility_a5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        kitchen_view = AccessibilitySourceAdapter.execute_a11y_kitchen_roundtrip_gate()
-        passed = kitchen_view.get("all_stages_passed", False)
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            passed,
-            kitchen_view,
-            "Projected A11yFinding through the suite-local teaching view with zero field loss; "
-            "the A11y Kitchen runtime was not invoked.",
-            kitchen_view,
-        )
 
-    @classmethod
-    def _run_accessibility_a6(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        consolidation = AccessibilitySourceAdapter.execute_keyboard_overlay_consolidation_gate()
-        passed = consolidation.get("all_stages_passed", False)
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            passed,
-            consolidation,
-            "Measured the full overlay permission surface; scope narrowing and donor freeze remain outstanding.",
-            consolidation,
-        )
 
     @classmethod
     def _run_operator_os_o1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
@@ -954,343 +1152,32 @@ class WaveRunner:
             approved_receipt,
         )
 
-    @classmethod
-    def _run_production_house_p1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ProductionHouseSourceAdapter.execute_p1_groundwire_fingerprint()
-        passed = res.get("all_stages_passed", False)
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            passed,
-            res,
-            "Parsed a real Groundwire episode script into ProductionJob; outputs remain modeled and "
-            "no audio runtime was invoked.",
-            res.get("job"),
-        )
 
-    @classmethod
-    def _run_production_house_p2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ProductionHouseSourceAdapter.execute_p2_formatter_job()
-        passed = res.get("all_stages_passed", False)
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            passed,
-            res,
-            "Hashed a real formatter play into ProductionJob; the formatter was not invoked.",
-            res.get("job"),
-        )
 
-    @classmethod
-    def _run_production_house_p3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ProductionHouseSourceAdapter.execute_p3_writers_room_handoff()
-        passed = res.get("all_stages_passed", False)
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            passed,
-            res,
-            "Hashed a real Writers Room final into ProductionJob; Writers Room and human "
-            "signoff were not invoked.",
-            res.get("job"),
-        )
 
-    @classmethod
-    def _run_production_house_p4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ProductionHouseSourceAdapter.execute_p4_documentary_pipeline()
-        passed = res.get("all_stages_passed", False)
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            passed,
-            res,
-            "Projected a real Groundwire episode and production-house domain template through "
-            "ProductionJob; no media runtime was invoked.",
-            res.get("job"),
-        )
 
-    @classmethod
-    def _run_production_house_p5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ProductionHouseSourceAdapter.execute_p5_writers_room_event_stream()
-        passed = res.get("all_stages_passed", False)
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            passed,
-            res,
-            "Mapped real Writers Room pipeline status files into ProductionJob events; signoff "
-            "and runtime consolidation were not performed.",
-            res.get("mapping"),
-        )
 
-    @classmethod
-    def _run_model_behavior_lab_m1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ModelBehaviorSourceAdapter.execute_m1_ethics_experiment_run()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Normalized a recorded ai-ethics-comparator result into ExperimentRun with field parity.",
-            res.get("field_parity"),
-        )
 
-    @classmethod
-    def _run_model_behavior_lab_m2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ModelBehaviorSourceAdapter.execute_m2_comparator_kernel_matrix()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Measured the donor subsystem duplication a shared kernel would replace; extraction not performed.",
-            res.get("extraction_matrix"),
-        )
 
-    @classmethod
-    def _run_model_behavior_lab_m3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ModelBehaviorSourceAdapter.execute_m3_chess_adapter_fixture()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Built the legal-move chess adapter fixture from a recorded ai-chess match.",
-            res.get("match_fixture"),
-        )
 
-    @classmethod
-    def _run_model_behavior_lab_m4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ModelBehaviorSourceAdapter.execute_m4_chess_benchmark_run()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Scored recorded chess openings through the kernel that scores the ethics pack.",
-            res.get("canonical_run"),
-        )
 
-    @classmethod
-    def _run_model_behavior_lab_m5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = ModelBehaviorSourceAdapter.execute_m5_benchmark_corpus_manifest()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Pinned every donor benchmark corpus by content hash for reproducible re-runs.",
-            res.get("corpus_manifest"),
-        )
 
-    @classmethod
-    def _run_discovery_decision_d1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = DiscoveryDecisionSourceAdapter.execute_d1_sif_forge_stage_matrix()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Mapped real SIF phase nodes to Forge stages with the donors' own budgets and artifacts.",
-            res.get("matrix"),
-        )
 
-    @classmethod
-    def _run_discovery_decision_d2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = DiscoveryDecisionSourceAdapter.execute_d2_forge_redteam_record()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Projected the recorded SIF red-team phase into a suite-local, budgeted Forge "
-            "InvestigationRecord; the donor runtimes were not invoked.",
-            res.get("investigation"),
-        )
 
-    @classmethod
-    def _run_discovery_decision_d3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = DiscoveryDecisionSourceAdapter.execute_d3_insight_excavator_discovery()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Cited two real Excavator documents by content with re-verifiable byte anchors.",
-            res.get("discovery"),
-        )
 
-    @classmethod
-    def _run_discovery_decision_d4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = DiscoveryDecisionSourceAdapter.execute_d4_sif_analogy_forge_record()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Projected the recorded SIF analogy phase through the same bounded suite-local Forge "
-            "path; the donor runtimes were not invoked.",
-            res.get("investigation"),
-        )
 
-    @classmethod
-    def _run_discovery_decision_d5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = DiscoveryDecisionSourceAdapter.execute_d5_insight_excavator_citation()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Projected an Excavator citation into a recorded Forge investigation; retirement not performed.",
-            res.get("retirement"),
-        )
 
-    @classmethod
-    def _run_agent_reliability_r1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = AgentReliabilitySourceAdapter.execute_r1_adversarial_harness_scorecard()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Derived adversarial fixtures from the looping-box action policy and probed confinement.",
-            res.get("canonical_run"),
-        )
 
-    @classmethod
-    def _run_agent_reliability_r2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = AgentReliabilitySourceAdapter.execute_r2_cross_harness_eval()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Measured reliability-gate coverage across Looping Box, SSSF, and Agentic Harness sources.",
-            res.get("gates_covered"),
-        )
 
-    @classmethod
-    def _run_agent_reliability_r3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = AgentReliabilitySourceAdapter.execute_r3_promoted_components()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Counted the real sibling-repo consumers of every promoted shared component.",
-            res.get("promoted_components"),
-        )
 
-    @classmethod
-    def _run_agent_reliability_r4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = AgentReliabilitySourceAdapter.execute_r4_promoted_components_audit()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Applied the two-consumer craft rule to the measured component inventory.",
-            res.get("audit"),
-        )
 
-    @classmethod
-    def _run_agent_reliability_r5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = AgentReliabilitySourceAdapter.execute_r5_curriculum_fixtures()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Mined real AI Staff and harness eval cases into deterministic curriculum fixtures.",
-            res.get("curriculum_fixtures"),
-        )
 
     # --- Game Design & Simulation Suite Runners ---
 
-    @classmethod
-    def _run_game_design_g1(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = GameDesignSourceAdapter.execute_g1_tucked_in_terrors_fingerprint()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res.get("document", {}),
-            "Fingerprinted the donor's real rules data and 1000 recorded runs into a parity fixture.",
-            res.get("outcome_distribution"),
-        )
 
-    @classmethod
-    def _run_game_design_g2(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = GameDesignSourceAdapter.execute_g2_storyweaver_pack_parity()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Projected the donor game into the Storyweaver pack vocabulary; no parity measured.",
-            res.get("shape_projection"),
-        )
 
-    @classmethod
-    def _run_game_design_g3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = GameDesignSourceAdapter.execute_g3_authored_game_boundary()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Inventoried the authored Oregon D&D corpus and measured zero engine coupling.",
-            res.get("engine_coupling"),
-        )
 
-    @classmethod
-    def _run_game_design_g4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = GameDesignSourceAdapter.execute_g4_storyweaver_adventure_pack()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Checked a second game class against the pack vocabulary Storyweaver really writes.",
-            res.get("schema_check"),
-        )
 
-    @classmethod
-    def _run_game_design_g5(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
-        res = GameDesignSourceAdapter.execute_g5_march_madness_boundary()
-        return cls._settle(
-            suite,
-            wave_id,
-            write_evidence,
-            res.get("all_stages_passed", False),
-            res,
-            "Audited March Madness for mandatory engine coupling before any port is scheduled.",
-            res.get("engine_coupling"),
-        )
 
     @classmethod
     def _run_generic_wave(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:

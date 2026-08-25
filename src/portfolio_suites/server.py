@@ -162,6 +162,20 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         host = self.headers.get("Host")
         return bool(host and origin.rstrip("/") == f"http://{host}")
 
+    def _reject_untrusted_donor_scan(self) -> bool:
+        """Refuse a cross-origin GET that would spawn donor git across the portfolio.
+
+        Loopback binding and the Host check stop DNS rebinding, but neither stops a page the
+        operator merely *visits* from issuing `fetch("http://127.0.0.1:8383/api/drift")`. The
+        response is CORS-blocked, so nothing leaks -- but the scan still runs, and it is ~4s
+        of git subprocesses across every donor checkout on a threaded server with no rate
+        limit. Reads that only touch loaded manifests stay open; these two do not.
+        """
+        if self._execution_request_is_trusted():
+            return False
+        self._send_json(403, {"error": "cross-origin live donor scans are refused"})
+        return True
+
     def _request_host_is_loopback(self) -> bool:
         """Reject DNS-rebinding: a non-loopback Host means the request was aimed here by name."""
         return _is_loopback_host_header(self.headers.get("Host"))
@@ -227,11 +241,15 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 nested = load_nested_ledger()
                 self._send_json(200, nested.get("repositories", []))
             elif path == "/api/drift":
+                if self._reject_untrusted_donor_scan():
+                    return
                 self._send_json(200, get_live_drift_report())
             elif path == "/api/graph":
                 self._send_json(200, get_dependency_graph())
             elif path == "/api/validate":
                 fast = query.get("fast", ["false"])[0].lower() in ("true", "1")
+                if not fast and self._reject_untrusted_donor_scan():
+                    return
                 report = validate_registry(check_live=not fast)
                 self._send_json(200, {"ok": report.ok, "errors": report.errors, "warnings": report.warnings})
             elif path == "/api/ai/status":
@@ -307,8 +325,7 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                         evidence_status = get_wave_evidence_status(s_id, w, ownership_index)
                         manifest_complete = w_status == "complete"
                         is_passed = manifest_complete and evidence_status["evidence_valid"]
-                        method_name = f"_run_{s_id.replace('-', '_')}_{w_id.lower()}"
-                        has_runner = hasattr(WaveRunner, method_name)
+                        has_runner = WaveRunner.has_runner(s_id, w_id)
                         exec_kind = (
                             classify_wave_spec(w, has_runner=has_runner)
                             if evidence_status["evidence_valid"] or not manifest_complete

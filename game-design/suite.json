@@ -38,7 +38,7 @@
       "status": "complete",
       "objective": "Fingerprint Tucked in Terrors rules, seeds, metrics, and report outputs.",
       "acceptance": "The parity fixture captures game version, configuration, runs, statistics, and expected tolerances.",
-      "evidence": "game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.md",
+      "evidence": "game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.json",
       "runtime_followup": "Re-run the donor simulator to regenerate the sample instead of fingerprinting its retained run.",
       "recovery_claim": {
         "kind": "analysis",

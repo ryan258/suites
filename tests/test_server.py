@@ -158,7 +158,7 @@ class ServerTests(unittest.TestCase):
             "A1",
             True,
             "reviewed historical analysis",
-            evidence_path="accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md",
+            evidence_path="accessibility/evidence/A1-WCAG-AUDITOR-PARITY.json",
             data={"fixture": "read-only-record"},
             execution_kind="verified_analysis",
             claim_kind="analysis",
@@ -217,7 +217,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 404)
 
         # Valid relative evidence should return 200
-        valid_url = f"http://127.0.0.1:{self.port}/api/evidence?file=accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md"
+        valid_url = f"http://127.0.0.1:{self.port}/api/evidence?file=accessibility/evidence/A1-WCAG-AUDITOR-PARITY.json"
         data = self._get_json(valid_url[valid_url.find("/api"):])
         self.assertIn("content", data)
 
@@ -326,6 +326,43 @@ class ServerTrustBoundaryTests(unittest.TestCase):
         payload = json.loads(context.exception.read().decode("utf-8"))
         self.assertFalse(payload["ok"])
         self.assertIn("must be one of", payload["error"])
+
+    def test_cross_origin_donor_scan_reads_are_rejected_before_dispatch(self):
+        """Loopback binding does not stop a page the operator merely visits from firing
+        these. Each spawns git across every donor checkout; the CORS-blocked response does
+        not stop the work from happening."""
+        for path, patched in (
+            ("/api/drift", "get_live_drift_report"),
+            ("/api/validate", "validate_registry"),
+        ):
+            with self.subTest(path=path):
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{self.port}{path}",
+                    headers={
+                        "Origin": "https://attacker.example",
+                        "Sec-Fetch-Site": "cross-site",
+                    },
+                )
+                with patch(f"portfolio_suites.server.{patched}") as scan:
+                    with self.assertRaises(urllib.error.HTTPError) as context:
+                        urllib.request.urlopen(request)
+                self.assertEqual(context.exception.code, 403)
+                scan.assert_not_called()
+
+    def test_manifest_only_reads_stay_open_to_any_origin(self):
+        """The refusal is scoped to live donor scans. Reads served from loaded manifests
+        cost nothing to run, and gating them would break the dashboard for no benefit."""
+        for path in ("/api/summary", "/api/graph", "/api/suites", "/api/validate?fast=true"):
+            with self.subTest(path=path):
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{self.port}{path}",
+                    headers={
+                        "Origin": "https://attacker.example",
+                        "Sec-Fetch-Site": "cross-site",
+                    },
+                )
+                with urllib.request.urlopen(request) as response:
+                    self.assertEqual(response.status, 200)
 
     def test_cross_origin_wave_execution_is_rejected_before_dispatch(self):
         request = urllib.request.Request(

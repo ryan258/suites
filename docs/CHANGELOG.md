@@ -203,7 +203,7 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 - **9/10 Recovery Standard Adopted**: Weighted rubrics, strict promotion gates (`prototype` → `reviewed_historical_analysis` → `source_inspected` → `source_executed` → `parity_verified` → `adopted` → `converged`), and fail-closed validation. The former single `source_verified` rung is retired: it named three different depths of evidence at once.
 
 ### Verified Wave Milestones Completed (43/43)
-1. **`A1` — Accessibility (Analysis Milestone)**: WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md)).
+1. **`A1` — Accessibility (Analysis Milestone)**: WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.json)).
 2. **`A2` — Accessibility (Runtime Recovery)**: WCAG 3.3.1 Error Association rule port into destination runtime [`allys-tools`](file:///Users/ryanjohnson/Projects/allys-tools) (`f2b4c6e`) with 127/127 tests passing and four-stage adapter verification ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A2-WCAG-331-EVIDENCE.json)).
 3. **`A3` — Accessibility (Analysis Milestone)**: Compared the permission surfaces of `kb-overlay`, `keyboard-nav-overlay`, and `keyboard-nav-overlay-94bf7e` and retained a canonical-anchor recommendation; no donor freeze or runtime consolidation occurred ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.json)).
 4. **`A4` — Accessibility (Analysis Milestone)**: Batch evaluation of 20 candidate WCAG Auditor rules with live donor rule AST parsing, zero contract drift on `A11yFinding`, and zero false positives on compliant markup ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json)).
@@ -241,7 +241,7 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 36. **`R3` — Agent Reliability Lab (Analysis Milestone)**: Counted real sibling-repo consumers of promoted shared components ([evidence](file:///Users/ryanjohnson/Projects/suites/agent-reliability/evidence/R3-PROMOTED-COMPONENTS.json)).
 37. **`R4` — Agent Reliability Lab (Analysis Milestone)**: Applied two-consumer craft rule to measured component inventory ([evidence](file:///Users/ryanjohnson/Projects/suites/agent-reliability/evidence/R4-PROMOTED-COMPONENTS-AUDIT.json)).
 38. **`R5` — Agent Reliability Lab (Analysis Milestone)**: Mined AI Staff and harness eval cases into deterministic curriculum fixtures ([evidence](file:///Users/ryanjohnson/Projects/suites/agent-reliability/evidence/R5-CURRICULUM-FIXTURES-VERIFIED.json)).
-39. **`G1` — Game Design (Analysis Milestone)**: Fingerprinted Tucked in Terrors rules data and 1000 recorded runs into parity fixture ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.md)).
+39. **`G1` — Game Design (Analysis Milestone)**: Fingerprinted Tucked in Terrors rules data and 1000 recorded runs into parity fixture ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.json)).
 40. **`G2` — Game Design (Analysis Milestone)**: Projected donor game into Storyweaver pack vocabulary ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G2-STORYWEAVER-PACK-PARITY.json)).
 41. **`G3` — Game Design (Analysis Milestone)**: Inventoried authored Oregon D&D corpus and measured zero engine coupling ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G3-AUTHORED-GAME-BOUNDARY.json)).
 42. **`G4` — Game Design (Analysis Milestone)**: Checked second game class against Storyweaver pack vocabulary ([evidence](file:///Users/ryanjohnson/Projects/suites/game-design/evidence/G4-STORYWEAVER-ADVENTURE-PACK.json)).
@@ -633,7 +633,7 @@ WAVE VERIFICATION: 1/43 Waves Verified (A1 Parity Matrix); 42 Waves Specified wi
    - Pinned role routing budgets for orchestrator, analyst, reviewer, creative, and accessibility roles.
 
 5. **Wave Specification & Parity Artifacts**:
-   - **A1 Parity Matrix**: Verified rule, crawl, and deliverable parity matrix between `wcag-auditor` and `allys-tools` ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md)).
+   - **A1 Parity Matrix**: Verified rule, crawl, and deliverable parity matrix between `wcag-auditor` and `allys-tools` ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A1-WCAG-AUDITOR-PARITY.json)).
    - **42 Wave Specifications**: Detailed acceptance criteria and reference prototype runners for incremental source migrations.
 
 6. **Truth-Bound Execution Model**:

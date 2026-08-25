@@ -1,0 +1,63 @@
+{
+  "wave_id": "G1",
+  "donor": "tucked-in-terrors",
+  "game_version_fingerprint": "main@21511ab",
+  "game_version_dirty": false,
+  "cards_sha256": "43f0f300fa2e2b7d8dac418ec82506f1e55c7e68cf0d620824ec68b6e002fd0a",
+  "cards_count": 31,
+  "objectives_sha256": "059e14a20e41956618aa8d664964fefe1efced95c22d6edf5139f54fc25d04f9",
+  "objectives_count": 8,
+  "results_sha256": "b70aec649014a9b3ecbfcc24870d2dbfae875c54e803b4603f5366cc194d9e54",
+  "recorded_runs": 1000,
+  "objectives_exercised": [
+    "OBJ01_THE_FIRST_NIGHT"
+  ],
+  "outcome_distribution": {
+    "LOSS_NIGHTFALL": 926,
+    "PRIMARY_WIN": 74
+  },
+  "metric_tolerances": {
+    "distinct_toys_played": {
+      "min": 0,
+      "max": 7,
+      "mean": 3.739,
+      "samples": 1000
+    },
+    "final_turn": {
+      "min": 3,
+      "max": 5,
+      "mean": 4.94,
+      "samples": 1000
+    },
+    "mana_from_effects": {
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "samples": 1000
+    },
+    "memory_tokens": {
+      "min": 0,
+      "max": 0,
+      "mean": 0.0,
+      "samples": 1000
+    },
+    "spirit_tokens": {
+      "min": 0,
+      "max": 55,
+      "mean": 2.432,
+      "samples": 1000
+    },
+    "spirits_created": {
+      "min": 0,
+      "max": 55,
+      "mean": 2.432,
+      "samples": 1000
+    }
+  },
+  "configuration": {
+    "seed_policy": "donor run_01 corpus is the fixed reference sample; no reseeding is claimed.",
+    "expected_tolerances": "any replacement runtime must reproduce the distribution above per objective."
+  },
+  "projection_markdown": "# G1 \u2014 Tucked in Terrors parity fixture\n\n- game_version_fingerprint: `main@21511ab` (dirty=False)\n- cards_sha256: `43f0f300fa2e2b7d8dac418ec82506f1e55c7e68cf0d620824ec68b6e002fd0a` (31 cards)\n- objectives_sha256: `059e14a20e41956618aa8d664964fefe1efced95c22d6edf5139f54fc25d04f9` (8 objectives)\n- results_sha256: `b70aec649014a9b3ecbfcc24870d2dbfae875c54e803b4603f5366cc194d9e54` (1000 recorded runs)\n- objectives_exercised: OBJ01_THE_FIRST_NIGHT\n\n## outcome_distribution\n\n| win_status | runs | share |\n| --- | ---: | ---: |\n| LOSS_NIGHTFALL | 926 | 0.926 |\n| PRIMARY_WIN | 74 | 0.074 |\n\n## metric_tolerances\n\n| metric | min | mean | max |\n| --- | ---: | ---: | ---: |\n| distinct_toys_played | 0 | 3.739 | 7 |\n| final_turn | 3 | 4.94 | 5 |\n| mana_from_effects | 0 | 0.0 | 0 |\n| memory_tokens | 0 | 0.0 | 0 |\n| spirit_tokens | 0 | 2.432 | 55 |\n| spirits_created | 0 | 2.432 | 55 |\n\n## configuration\n\n- seed_policy: donor run_01 corpus is the fixed reference sample; no reseeding is claimed.\n- expected_tolerances: any replacement runtime must reproduce the distribution above per objective.\n",
+  "all_stages_passed": true
+}

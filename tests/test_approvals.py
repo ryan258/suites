@@ -11,7 +11,6 @@ from pathlib import Path
 from unittest import mock
 
 from portfolio_suites import approvals
-from portfolio_suites.paths import CommitUnverified, durable_write_text
 from portfolio_suites.approvals import (
     APPROVAL_SCHEMA,
     STORE_ENV,
@@ -627,24 +626,6 @@ class CommitUnverifiedTests(unittest.TestCase):
             # And it is: the durable document already records the consumption.
             document = json.loads(Path(store).read_text(encoding="utf-8"))
             self.assertTrue(document["approvals"][0]["consumed"], "the store shows the token was spent")
-
-    def test_a_durable_write_that_commits_then_fails_is_not_reported_as_unwritten(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp) / "ledger.json"
-            target.write_text("old", encoding="utf-8")
-
-            real_fsync = os.fsync
-
-            def fsync_after_replace(fd):
-                if os.fstat(fd).st_mode & 0o170000 == 0o040000:
-                    raise OSError("forced directory fsync failure")
-                return real_fsync(fd)
-
-            with mock.patch.object(os, "fsync", fsync_after_replace):
-                with self.assertRaises(CommitUnverified):
-                    durable_write_text(target, "new")
-
-            self.assertEqual(target.read_text(encoding="utf-8"), "new", "the replace did commit")
 
 
 if __name__ == "__main__":

@@ -6,9 +6,7 @@ import ctypes
 import errno
 import os
 import secrets
-import stat
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
@@ -44,58 +42,14 @@ PROJECTS_ROOT = SUITES_ROOT.parent
 class CommitUnverified(OSError):
     """The replacement committed; the durability check after it did not.
 
-    ``os.replace`` is the commit point: the new document is already reachable under the
-    target name. A failure after it -- the directory fsync -- means the change may not
-    survive a power loss, which is a different fact from "nothing was written", and a
-    caller told only "OSError" reports the second when the first is true.
+    The swap is the commit point: the new document is already reachable under the target
+    name. A failure after it -- the directory fsync -- means the change may not survive a
+    power loss, which is a different fact from "nothing was written", and a caller told
+    only "OSError" reports the second when the first is true.
+
+    Raised by :func:`portfolio_suites.registry.fingerprint_baselines` when the ledger
+    commit lands but its durability cannot be confirmed; ``suites baseline`` catches it.
     """
-
-
-def durable_write_text(path: Path, text: str) -> None:
-    """Replace ``path`` atomically, persisting both its contents and its directory entry.
-
-    Single-writer convenience, not a concurrency contract. Concurrent editors belong to
-    :mod:`portfolio_suites.txn`. The replacement inherits the target's mode because
-    ``mkstemp`` creates 0600 and Git cannot report a permission-only strip. A missing
-    target keeps 0600. Post-replace fsync failure raises :class:`CommitUnverified` -- the
-    new document is already in place.
-    """
-    try:
-        existing_mode: int | None = stat.S_IMODE(path.stat().st_mode)
-    except OSError:
-        existing_mode = None
-
-    temporary: str | None = None
-    try:
-        handle, temporary = tempfile.mkstemp(dir=str(path.parent), prefix=path.name, suffix=".tmp")
-        with os.fdopen(handle, "w", encoding="utf-8") as stream:
-            stream.write(text)
-            stream.flush()
-            if existing_mode is not None:
-                os.fchmod(stream.fileno(), existing_mode)
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-        temporary = None
-
-        try:
-            directory_handle = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-            try:
-                os.fsync(directory_handle)
-            finally:
-                os.close(directory_handle)
-        except OSError as error:
-            raise CommitUnverified(
-                f"{path} was replaced with the new document, but its durability could not be "
-                f"confirmed: {error}"
-            ) from error
-    finally:
-        if temporary is not None:
-            try:
-                os.unlink(temporary)
-            except OSError:
-                # The write has already failed. Cleanup failure must not replace the
-                # original error or imply the replacement succeeded.
-                pass
 
 
 class ConfinementError(OSError):

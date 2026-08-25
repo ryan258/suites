@@ -184,8 +184,7 @@ def _read_confined_bytes(
 def _install_confined_bytes(directory_fd: int, name: str, payload: bytes) -> tuple[int, int]:
     """Durably install ``payload`` as ``name`` under ``directory_fd``, never following a link.
 
-    Same guarantee as :func:`durable_write_text`, expressed against an already-open
-    directory rather than a pathname: the bytes land in a sibling temporary, get fsynced,
+    Durability expressed against an already-open directory rather than a pathname: the bytes land in a sibling temporary, get fsynced,
     and only then take the target's name. Anchoring it to the descriptor is what keeps an
     approved artifact inside the directory the approval was checked against, even if that
     directory's *pathname* is redirected while the write is running.

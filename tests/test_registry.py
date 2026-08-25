@@ -703,7 +703,7 @@ class AnalysisPromotionLevelTests(unittest.TestCase):
                 "objective": "o",
                 "acceptance": "a",
                 "runtime_followup": "deferred runtime work",
-                "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md",
+                "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.json",
                 "recovery_claim": {
                     "kind": kind,
                     "level": level,
@@ -932,34 +932,10 @@ class RuntimeDebtInAggregateTests(unittest.TestCase):
 class DurableWriteModeTests(unittest.TestCase):
     """A durable replace must not quietly narrow the target's permissions.
 
-    `mkstemp` creates its file 0600. Replacing the 0644 project ledger with it strips group
-    and other read access, and Git cannot report the loss because it tracks only the
-    executable bit -- both modes are `100644` to Git.
+    The commit primitive creates its candidate 0600. Replacing the 0644 project ledger with
+    it strips group and other read access, and Git cannot report the loss because it tracks
+    only the executable bit -- both modes are `100644` to Git.
     """
-
-    def test_existing_permissions_survive_the_replacement(self):
-        import os
-        import stat as stat_module
-        from portfolio_suites.paths import durable_write_text
-
-        with TemporaryDirectory() as tmp:
-            for mode in (0o644, 0o640, 0o600):
-                with self.subTest(mode=oct(mode)):
-                    target = Path(tmp) / f"ledger{mode:o}.json"
-                    target.write_text("{}", encoding="utf-8")
-                    os.chmod(target, mode)
-                    durable_write_text(target, '{"projects": []}')
-                    self.assertEqual(stat_module.S_IMODE(target.stat().st_mode), mode)
-                    self.assertEqual(target.read_text(encoding="utf-8"), '{"projects": []}')
-
-    def test_a_new_file_keeps_the_private_default(self):
-        import stat as stat_module
-        from portfolio_suites.paths import durable_write_text
-
-        with TemporaryDirectory() as tmp:
-            target = Path(tmp) / "brand-new.json"
-            durable_write_text(target, "{}")
-            self.assertEqual(stat_module.S_IMODE(target.stat().st_mode), 0o600)
 
     def test_the_tracked_ledger_keeps_its_mode_through_baseline(self):
         """The file this actually protects, at the mode it actually ships with."""
@@ -977,6 +953,121 @@ class DurableWriteModeTests(unittest.TestCase):
                  patch.object(registry, "apply_snapshot_updates", return_value=("NEW", ["proj"])):
                 registry.fingerprint_baselines(dry_run=False)
             self.assertEqual(stat_module.S_IMODE(ledger.stat().st_mode), live_mode)
+
+    def test_a_ledger_commit_that_lands_then_fails_is_not_reported_as_unwritten(self):
+        """"Cannot write" and "wrote it but cannot prove it survives a crash" are opposite
+        operator instructions. The ledger is the only record of all 70 dispositions, so a
+        post-commit durability failure must not read as a clean refusal."""
+        import os
+        import stat as stat_module
+        from portfolio_suites import registry
+        from portfolio_suites.paths import CommitUnverified
+
+        real_fsync = os.fsync
+
+        def fail_directory_fsync(fd):
+            # Directories only: the candidate's own fsync happens before the commit point.
+            if os.fstat(fd).st_mode & 0o170000 == 0o040000:
+                raise OSError("forced directory fsync failure")
+            return real_fsync(fd)
+
+        with TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "project-ledger.json"
+            ledger.write_text('{"schema_version":"1.0.0","projects":[]}', encoding="utf-8")
+            with patch.object(registry, "_LEDGER_PATH", ledger), \
+                 patch.object(registry, "pending_snapshots", return_value={}), \
+                 patch.object(registry, "apply_snapshot_updates", return_value=("NEW", ["proj"])), \
+                 patch.object(os, "fsync", fail_directory_fsync):
+                with self.assertRaises(CommitUnverified):
+                    registry.fingerprint_baselines(dry_run=False)
+
+            self.assertEqual(
+                ledger.read_text(encoding="utf-8"), "NEW", "the replacement did commit"
+            )
+
+
+class AnalysisReceiptSpecCoverageTests(unittest.TestCase):
+    """Every completed analysis wave must reach a spec that can actually check it.
+
+    A wave with no `ANALYSIS_RECEIPT_SPECS` entry used to pass validation silently by
+    declaring `.md` evidence: the suffix short-circuited `evidence_errors` before the
+    semantic check ran, so the receipt was only scanned for its basis strings as bare
+    substrings. Both halves of that hole are guarded here.
+    """
+
+    def _complete_analysis_waves(self):
+        for suite_id, manifest in load_suites().items():
+            for wave in manifest.get("waves", []):
+                claim = wave.get("recovery_claim") or {}
+                if wave.get("status") == "complete" and claim.get("kind") == "analysis":
+                    yield suite_id, wave
+
+    def test_every_completed_analysis_wave_has_a_receipt_spec(self):
+        from portfolio_suites.receipts import ANALYSIS_RECEIPT_SPECS
+
+        missing = [
+            f"{suite_id}/{wave['id']}"
+            for suite_id, wave in self._complete_analysis_waves()
+            if f"{suite_id}/{wave['id']}" not in ANALYSIS_RECEIPT_SPECS
+        ]
+        self.assertEqual(missing, [], "completed analysis waves with no checkable receipt spec")
+
+    def test_every_analysis_receipt_is_json(self):
+        from portfolio_suites.registry import resolve_declared_evidence_path
+
+        prose = []
+        for suite_id, wave in self._complete_analysis_waves():
+            path = resolve_declared_evidence_path(wave.get("evidence"), suite_id)
+            if path is not None and path.suffix != ".json":
+                prose.append(f"{suite_id}/{wave['id']} -> {path.name}")
+        self.assertEqual(prose, [], "analysis receipts must be structured JSON, not prose")
+
+    def test_a_spec_key_names_a_wave_that_exists(self):
+        from portfolio_suites.receipts import ANALYSIS_RECEIPT_SPECS
+
+        declared = {
+            f"{suite_id}/{wave['id']}"
+            for suite_id, manifest in load_suites().items()
+            for wave in manifest.get("waves", [])
+        }
+        self.assertEqual(
+            sorted(set(ANALYSIS_RECEIPT_SPECS) - declared), [],
+            "spec entries for waves no manifest declares",
+        )
+
+    def test_every_analysis_runner_receipt_validates_against_spec(self):
+        from portfolio_suites.receipts import ANALYSIS_RECEIPT_SPECS, _analysis_receipt_semantic_errors
+        from portfolio_suites.waves import WaveRunner
+
+        suites = load_suites()
+        captured: dict[tuple[str, str], Any] = {}
+        orig_settle = WaveRunner._settle
+
+        def capture_settle(suite, wave_id, write_evidence, passed, receipt, message, data=None, failure_message=None):
+            captured[(suite["id"], wave_id)] = receipt
+            return orig_settle(suite, wave_id, write_evidence, passed, receipt, message, data, failure_message)
+
+        with patch.object(WaveRunner, "_settle", side_effect=capture_settle):
+            for key in sorted(ANALYSIS_RECEIPT_SPECS):
+                suite_id, wave_id = key.split("/", 1)
+                if WaveRunner.has_runner(suite_id, wave_id):
+                    WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
+
+        failures = []
+        for (suite_id, wave_id), receipt in captured.items():
+            wave = next(w for w in suites[suite_id]["waves"] if w["id"] == wave_id)
+            basis = set(wave.get("recovery_claim", {}).get("evidence_basis") or [])
+            if not isinstance(receipt, dict):
+                failures.append(f"{suite_id}/{wave_id}: receipt is not a dict ({type(receipt).__name__})")
+                continue
+            missing_basis = sorted(basis - set(receipt))
+            if missing_basis:
+                failures.append(f"{suite_id}/{wave_id}: missing declared basis fields: {missing_basis}")
+            semantic_errors = _analysis_receipt_semantic_errors(wave, receipt, suite_id)
+            if semantic_errors:
+                failures.append(f"{suite_id}/{wave_id}: semantic errors: {semantic_errors}")
+
+        self.assertEqual(failures, [], "runner receipts that failed analysis spec validation")
 
 
 class SuiteQualifiedSemanticRuleTests(unittest.TestCase):

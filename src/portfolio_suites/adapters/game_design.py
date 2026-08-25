@@ -145,7 +145,7 @@ class GameDesignSourceAdapter:
         source_verified = is_meaningful_git_fingerprint(fingerprint) and corpus is not None
         if not source_verified:
             return {
-                "wave": "G1",
+                "wave_id": "G1",
                 "status": "source_unverified",
                 "all_stages_passed": False,
                 "document": "# G1 — Tucked in Terrors fingerprint\n\nSource unverified; no receipt written.\n",
@@ -188,14 +188,25 @@ class GameDesignSourceAdapter:
         ]
 
         return {
-            "wave": "G1",
-            "status": "fingerprinted",
-            "all_stages_passed": True,
-            "document": "\n".join(lines),
+            "wave_id": "G1",
+            "donor": "tucked-in-terrors",
+            "game_version_fingerprint": fingerprint["short"],
+            "game_version_dirty": fingerprint["is_dirty"],
+            "cards_sha256": corpus["cards_sha256"],
+            "cards_count": len(corpus["cards"]),
+            "objectives_sha256": corpus["objectives_sha256"],
+            "objectives_count": len(corpus["objectives"]),
+            "results_sha256": corpus["results_sha256"],
+            "recorded_runs": len(rows),
+            "objectives_exercised": objectives,
             "outcome_distribution": distribution,
             "metric_tolerances": metrics,
-            "tucked_in_terrors_fingerprint": fingerprint,
-            "source_verification_passed": True,
+            "configuration": {
+                "seed_policy": "donor run_01 corpus is the fixed reference sample; no reseeding is claimed.",
+                "expected_tolerances": "any replacement runtime must reproduce the distribution above per objective.",
+            },
+            "projection_markdown": "\n".join(lines),
+            "all_stages_passed": True,
         }
 
     @classmethod

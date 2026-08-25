@@ -55,7 +55,10 @@ def _walk_path(value: Any, path: str, source_step: int, consumer_step: int) -> A
                 )
             value = value[part]
         elif isinstance(value, list):
-            if not part.lstrip("-").isdigit():
+            # removeprefix, not lstrip: lstrip("-") also strips "--1" down to "1", which
+            # passes isdigit() and then raises a bare ValueError out of int() below --
+            # escaping this module's ChainError contract.
+            if not part.removeprefix("-").isdigit():
                 raise ChainError(
                     f"path '{path}' needs an integer index for a list, got '{part}'",
                     consumer_step,

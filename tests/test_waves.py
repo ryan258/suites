@@ -391,8 +391,7 @@ class SettledMessageTests(unittest.TestCase):
         )
         for suite_id, manifest in load_suites().items():
             for wave in manifest.get("waves", []):
-                method = f"_run_{suite_id.replace('-', '_')}_{wave['id'].lower()}"
-                if not hasattr(WaveRunner, method):
+                if not WaveRunner.has_runner(suite_id, wave["id"]):
                     continue
                 with self.subTest(wave=f"{suite_id}/{wave['id']}"):
                     result = WaveRunner._settle(

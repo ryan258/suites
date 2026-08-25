@@ -252,3 +252,50 @@ class DocumentedCommandTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CITestCoverageTests(unittest.TestCase):
+    """Every test module must be a deliberate CI decision, not an oversight.
+
+    The hermetic PR job names its modules one by one, so adding a test file runs it
+    locally and nowhere else until somebody remembers to edit the workflow. That is how
+    `tests.test_integrity_boundaries` -- which needs no donor checkout -- ended up
+    unrun on every pull request. A module that genuinely needs the provisioned donor
+    portfolio belongs in DONOR_DEPENDENT, where the exclusion is visible and reviewed;
+    the manual `portfolio-integration` job runs the full `discover` and covers those.
+    """
+
+    # Verified by running each module against a checkout with no donor siblings and a
+    # scratch HOME: these are the ones that cannot pass without the real portfolio.
+    DONOR_DEPENDENT = frozenset({
+        "test_accessibility_adapter",
+        "test_ai",
+        "test_cli",
+        "test_engines",
+        "test_flagship_semantic_guards",
+        "test_registry",
+        "test_source_waves",
+        "test_wave_recording_hardening",
+        "test_waves",
+        "test_wheel_smoke",  # self-skips unless SUITES_WHEEL_SMOKE=1, which only that job sets
+    })
+
+    def test_hermetic_job_runs_every_module_that_does_not_need_donors(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        listed = set(re.findall(r"tests\.(test_\w+)", workflow))
+        on_disk = {p.stem for p in (ROOT / "tests").glob("test_*.py")}
+
+        stale = sorted(self.DONOR_DEPENDENT - on_disk)
+        self.assertEqual(stale, [], "DONOR_DEPENDENT names modules that no longer exist")
+
+        missing = sorted(on_disk - self.DONOR_DEPENDENT - listed)
+        self.assertEqual(
+            missing, [],
+            "these modules need no donors but the hermetic CI job never runs them; "
+            "add them to .github/workflows/ci.yml or to DONOR_DEPENDENT",
+        )
+
+    def test_the_integration_job_still_runs_everything(self):
+        """The donor-dependent exclusions are only safe while some job runs discover."""
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        self.assertIn("unittest discover -s tests", workflow)

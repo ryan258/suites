@@ -61,6 +61,7 @@ jobs:
             tests.test_docs \
             tests.test_engine_action_json_boundary \
             tests.test_engine_actions \
+            tests.test_integrity_boundaries \
             tests.test_lab_engine_hardening \
             tests.test_mutation_confinement \
             tests.test_provenance \

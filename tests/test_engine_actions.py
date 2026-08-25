@@ -301,6 +301,11 @@ class TestChains(unittest.TestCase):
         with self.assertRaises(ChainError):
             run_chain([])
 
+    def test_invalid_list_index_like_double_hyphen_raises_chain_error(self):
+        from portfolio_suites.chains import ChainError, _walk_path
+        with self.assertRaises(ChainError):
+            _walk_path(["first", "second"], "--1", source_step=0, consumer_step=1)
+
 
 if __name__ == "__main__":
     unittest.main()

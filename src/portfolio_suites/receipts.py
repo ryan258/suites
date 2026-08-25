@@ -85,6 +85,22 @@ def _receipt_value(document: dict[str, Any], dotted_path: str) -> Any:
 
 
 ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
+    "accessibility/A1": {
+        "equals": {
+            "wave_id": "A1",
+            "review_kind": "source_only",
+            "source_repository_modified": False,
+            "donor_registered_rule_count": 34,
+        },
+        "objects": ["source_fingerprints", "rule_decision_counts", "retirement_gate"],
+        "lists": [
+            "rule_decisions",
+            "crawl_and_sampling_decisions",
+            "deliverable_and_workflow_decisions",
+        ],
+        "strings": ["projection_markdown"],
+        "minimums": {"rule_decisions_count": 34},
+    },
     "accessibility/A3": {
         "equals": {"canonical_target": "kb-overlay"},
         "objects": ["matrix"],
@@ -568,6 +584,19 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["curriculum_fixtures"],
         "lists": ["mined_modules"],
         "fingerprints": ["ai_staff_fingerprint", "agentic_harness_fingerprint"],
+    },
+    "game-design/G1": {
+        "equals": {"wave_id": "G1", "donor": "tucked-in-terrors", "game_version_dirty": False},
+        "objects": ["outcome_distribution", "metric_tolerances", "configuration"],
+        "lists": ["objectives_exercised"],
+        "strings": [
+            "game_version_fingerprint",
+            "cards_sha256",
+            "objectives_sha256",
+            "results_sha256",
+            "projection_markdown",
+        ],
+        "minimums": {"cards_count": 31, "objectives_count": 8, "recorded_runs": 1000},
     },
     "game-design/G2": {
         "equals": {
@@ -1119,8 +1148,14 @@ def evidence_errors(wave: dict[str, Any], path: Path, suite_id: str | None = Non
         basis = {b for b in (claim.get("evidence_basis") or []) if isinstance(b, str) and b}
         if not basis:
             return ["analysis wave has empty or invalid evidence_basis"]
+        if path.suffix != ".json":
+            return [
+                "analysis evidence must be a .json receipt; a prose receipt reaches no "
+                "ANALYSIS_RECEIPT_SPECS entry, so its declared basis is checked as bare "
+                "substrings and nothing verifies what those sections say"
+            ]
         errors = _analysis_evidence_errors(path, basis)
-        if errors or path.suffix != ".json":
+        if errors:
             return errors
         try:
             document = _load_json(path)

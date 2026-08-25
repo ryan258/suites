@@ -1,0 +1,423 @@
+{
+  "wave_id": "A1",
+  "snapshot_date": "2026-08-19",
+  "review_kind": "source_only",
+  "source_repository_modified": false,
+  "source_fingerprints": {
+    "allys-tools": {
+      "revision": "main@87f21ba",
+      "working_tree_at_snapshot": "one untracked `.DS_Store`",
+      "boundary": "Canonical destination; do not overwrite or absorb unrelated local state."
+    },
+    "wcag-auditor": {
+      "revision": "main@ec899a3",
+      "working_tree_at_snapshot": "clean",
+      "boundary": "Donor; no deletion or retirement until all accepted rows below have parity evidence."
+    }
+  },
+  "donor_registered_rule_count": 34,
+  "rule_decisions": [
+    {
+      "rule": "missing-labels",
+      "success_criterion": "3.3.2",
+      "decision": "covered",
+      "ally_owner": "page-scanner",
+      "parity_basis": "axe `label`, `select-name`, and ARIA name rules; compare unlabeled native and ARIA controls."
+    },
+    {
+      "rule": "missing-lang",
+      "success_criterion": "3.1.1",
+      "decision": "covered",
+      "ally_owner": "page-scanner",
+      "parity_basis": "axe `html-has-lang`, `html-lang-valid`, and mismatch rules are broader."
+    },
+    {
+      "rule": "inline-language-change",
+      "success_criterion": "3.1.2",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "axe validates declared `lang` but cannot prove an undeclared language change; multilingual fixture must stay review-only."
+    },
+    {
+      "rule": "empty-links",
+      "success_criterion": "2.4.4",
+      "decision": "covered",
+      "ally_owner": "page-scanner",
+      "parity_basis": "axe `link-name`/`area-alt` cover programmatic names."
+    },
+    {
+      "rule": "empty-buttons",
+      "success_criterion": "4.1.2",
+      "decision": "covered",
+      "ally_owner": "page-scanner",
+      "parity_basis": "axe `button-name`, `input-button-name`, and ARIA command-name rules."
+    },
+    {
+      "rule": "missing-title",
+      "success_criterion": "2.4.2",
+      "decision": "covered",
+      "ally_owner": "page-scanner",
+      "parity_basis": "axe `document-title`."
+    },
+    {
+      "rule": "autofocus-inputs",
+      "success_criterion": "2.4.3",
+      "decision": "reject",
+      "ally_owner": "none / optional lint",
+      "parity_basis": "Attribute presence is not proof of bad focus order; only keep as advisory if a real workflow needs it."
+    },
+    {
+      "rule": "complex-alt-text",
+      "success_criterion": "1.1.1",
+      "decision": "covered",
+      "ally_owner": "page-scanner + alt-text-writer",
+      "parity_basis": "axe covers image/SVG/role/input/object alternatives; Ally's writer is gated review, not evidence of conformance."
+    },
+    {
+      "rule": "time-based-media",
+      "success_criterion": "1.2.2",
+      "decision": "covered",
+      "ally_owner": "page-scanner",
+      "parity_basis": "axe `video-caption`; retain manual review of caption quality."
+    },
+    {
+      "rule": "audio-description-track",
+      "success_criterion": "1.2.5",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Track/alternative presence can be observed; adequacy and applicability require human review."
+    },
+    {
+      "rule": "adaptable-landmarks",
+      "success_criterion": "1.3.1",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "A missing `main` is useful structural guidance but not a complete 1.3.1 determination."
+    },
+    {
+      "rule": "reading-sequence",
+      "success_criterion": "1.3.2",
+      "decision": "covered",
+      "ally_owner": "keyboard-tester",
+      "parity_basis": "Ally already reports positive `tabindex` and measures reached order; donor criterion mapping is less precise."
+    },
+    {
+      "rule": "contrast-minimum",
+      "success_criterion": "1.4.3",
+      "decision": "covered",
+      "ally_owner": "page-scanner + palette-checker",
+      "parity_basis": "axe handles rendered text contrast; ChromaCheck handles palette evidence."
+    },
+    {
+      "rule": "focus-appearance",
+      "success_criterion": "2.4.7",
+      "decision": "covered",
+      "ally_owner": "keyboard-tester",
+      "parity_basis": "Ally compares focused/unfocused pixels for real tabbable elements."
+    },
+    {
+      "rule": "keyboard-accessibility",
+      "success_criterion": "2.1.1",
+      "decision": "covered",
+      "ally_owner": "keyboard-tester",
+      "parity_basis": "Ally performs sequential keyboard traversal; donor mostly infers from markup/handlers."
+    },
+    {
+      "rule": "keyboard-trap",
+      "success_criterion": "2.1.2",
+      "decision": "covered",
+      "ally_owner": "keyboard-tester",
+      "parity_basis": "Ally tests repeated Tab and reverse escape; donor's markup heuristic is weaker."
+    },
+    {
+      "rule": "enough-time-controls",
+      "success_criterion": "2.2.2",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "axe covers blink/marquee; custom carousel/auto-update inference must remain review-only."
+    },
+    {
+      "rule": "navigable-skip-links",
+      "success_criterion": "2.4.1",
+      "decision": "covered",
+      "ally_owner": "page-scanner",
+      "parity_basis": "axe `bypass`."
+    },
+    {
+      "rule": "link-purpose",
+      "success_criterion": "2.4.4",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Vague-text terms are language/context heuristics; useful queue, not confirmed failure."
+    },
+    {
+      "rule": "focus-not-obscured",
+      "success_criterion": "2.4.11",
+      "decision": "port-review",
+      "ally_owner": "keyboard-tester",
+      "parity_basis": "Requires focus/viewport/overlay interaction; static sticky-chrome inference cannot be confirmed evidence."
+    },
+    {
+      "rule": "pointer-gestures",
+      "success_criterion": "2.5.1",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Event/data-attribute inference cannot prove the lack of a single-pointer alternative."
+    },
+    {
+      "rule": "pointer-cancellation",
+      "success_criterion": "2.5.2",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Handler-name inference cannot prove behavior; dynamic test design is required."
+    },
+    {
+      "rule": "dragging-movements",
+      "success_criterion": "2.5.7",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "`draggable`/drag handlers identify candidates, not absence of alternatives."
+    },
+    {
+      "rule": "target-size-minimum",
+      "success_criterion": "2.5.8",
+      "decision": "covered",
+      "ally_owner": "page-scanner",
+      "parity_basis": "axe `target-size` is run under the WCAG 2.2 AA tags."
+    },
+    {
+      "rule": "predictable-navigation",
+      "success_criterion": "3.2.2",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "`onchange`/navigation-like controls are candidates; only interaction proves an unexpected context change."
+    },
+    {
+      "rule": "input-assistance-error-msg",
+      "success_criterion": "3.3.1",
+      "decision": "port-narrow",
+      "ally_owner": "aria-validator extension",
+      "parity_basis": "`aria-invalid=true` with no valid error/description target is a precise DOM defect; do not claim all error behavior was tested."
+    },
+    {
+      "rule": "labels-or-instructions",
+      "success_criterion": "3.3.2",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Constraint presence plus absent helper text is useful but context/language dependent."
+    },
+    {
+      "rule": "error-suggestion",
+      "success_criterion": "3.3.3",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Donor language terms cannot establish whether a correction is possible or adequate."
+    },
+    {
+      "rule": "required-field-indicators",
+      "success_criterion": "3.3.2",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Visible indication is language/context dependent; preserve the review label."
+    },
+    {
+      "rule": "redundant-entry",
+      "success_criterion": "3.3.7",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Similar names/fields do not prove repeated information or an unavailable exception."
+    },
+    {
+      "rule": "accessible-authentication",
+      "success_criterion": "3.3.8",
+      "decision": "port-review",
+      "ally_owner": "keyboard/interaction extension",
+      "parity_basis": "CAPTCHA, paste blocking, password-manager, and alternative-method behavior require interaction and human judgment."
+    },
+    {
+      "rule": "identify-input-purpose",
+      "success_criterion": "1.3.5",
+      "decision": "port-review",
+      "ally_owner": "page-scanner extension",
+      "parity_basis": "Missing autocomplete on inferred personal-data fields is useful, but field purpose inference is fallible."
+    },
+    {
+      "rule": "aria-validation",
+      "success_criterion": "4.1.2",
+      "decision": "covered",
+      "ally_owner": "aria-validator",
+      "parity_basis": "Ally uses `aria-query`, validates role/property support, required relationships, values, and ID references."
+    },
+    {
+      "rule": "status-messages",
+      "success_criterion": "4.1.3",
+      "decision": "port-review",
+      "ally_owner": "aria-validator extension",
+      "parity_basis": "Status-like class/text inference finds candidates; behavior and notification without focus require review/AT evidence."
+    }
+  ],
+  "rule_decisions_count": 34,
+  "rule_decision_counts": {
+    "covered": 15,
+    "port-narrow": 1,
+    "port-review": 17,
+    "reject": 1
+  },
+  "crawl_and_sampling_decisions": [
+    {
+      "donor_behavior": "Same-origin live crawl",
+      "current_ally_state": "Present, concurrent, with sitemap discovery and canonical URLs",
+      "decision": "retain Ally",
+      "target": "page-scanner"
+    },
+    {
+      "donor_behavior": "`max_pages`",
+      "current_ally_state": "Present",
+      "decision": "retain Ally",
+      "target": "page-scanner"
+    },
+    {
+      "donor_behavior": "depth bound",
+      "current_ally_state": "Not exposed",
+      "decision": "port optional `maxDepth`",
+      "target": "page-scanner crawl options"
+    },
+    {
+      "donor_behavior": "robots.txt",
+      "current_ally_state": "Present, with explicit skipped URLs",
+      "decision": "retain Ally",
+      "target": "shared browser + manifest"
+    },
+    {
+      "donor_behavior": "sitemap discovery",
+      "current_ally_state": "Ally is stronger",
+      "decision": "retain Ally",
+      "target": "shared browser"
+    },
+    {
+      "donor_behavior": "custom user agent",
+      "current_ally_state": "Not exposed in crawl API",
+      "decision": "port optional value",
+      "target": "shared browser context and robots evaluation"
+    },
+    {
+      "donor_behavior": "authenticated Playwright storage state",
+      "current_ally_state": "Not exposed",
+      "decision": "port with credential/path safety checks",
+      "target": "full-audit/page-scanner options"
+    },
+    {
+      "donor_behavior": "repeatable include/exclude URL filters",
+      "current_ally_state": "Not exposed",
+      "decision": "port as validated patterns",
+      "target": "page-scanner queue"
+    },
+    {
+      "donor_behavior": "polite delay",
+      "current_ally_state": "Not exposed",
+      "decision": "port optional delay",
+      "target": "page-scanner worker scheduling"
+    },
+    {
+      "donor_behavior": "sequential/representative strategy",
+      "current_ally_state": "Ally currently queue/sitemap driven",
+      "decision": "port representative selection as report metadata, not silent coverage reduction",
+      "target": "page-scanner crawl artifact"
+    },
+    {
+      "donor_behavior": "SPA hints (`data-href`, `data-route`, `routerlink`, hash routes, `xlink:href`)",
+      "current_ally_state": "Anchor discovery exists; sitemap also helps",
+      "decision": "port safe same-origin hints",
+      "target": "shared browser discovery"
+    },
+    {
+      "donor_behavior": "per-rule finding cap/truncation",
+      "current_ally_state": "Not exposed",
+      "decision": "do not suppress canonical findings; add report grouping/capping only",
+      "target": "report presentation"
+    },
+    {
+      "donor_behavior": "page templates/types and sample summary",
+      "current_ally_state": "Exact successful URLs exist, but no WCAG-EM-style summary",
+      "decision": "port derived summary",
+      "target": "report/manifest, explicitly non-conformance"
+    },
+    {
+      "donor_behavior": "failed page behavior",
+      "current_ally_state": "Typed `A11yScanError` and exact successful coverage",
+      "decision": "retain Ally; donor warning model is weaker",
+      "target": "finding contract"
+    }
+  ],
+  "deliverable_and_workflow_decisions": [
+    {
+      "donor_surface": "JSON results",
+      "ally_equivalent": "schema-valid findings + manifest",
+      "decision": "retain Ally"
+    },
+    {
+      "donor_surface": "Markdown/HTML report",
+      "ally_equivalent": "report-generator Markdown/HTML/PDF",
+      "decision": "retain Ally"
+    },
+    {
+      "donor_surface": "text summary",
+      "ally_equivalent": "CLI summaries and manifest",
+      "decision": "retain Ally; add no second report renderer"
+    },
+    {
+      "donor_surface": "VPAT 2.5",
+      "ally_equivalent": "full A/AA draft with named-expert export gate",
+      "decision": "retain Ally; donor ungated VPAT must not replace it"
+    },
+    {
+      "donor_surface": "baseline suppression",
+      "ally_equivalent": "coverage-aware regression watcher",
+      "decision": "retain Ally; donor fingerprint suppression is weaker"
+    },
+    {
+      "donor_surface": "SARIF",
+      "ally_equivalent": "no full-audit SARIF artifact observed",
+      "decision": "candidate adapter after A2 only if a real CI consumer exists"
+    },
+    {
+      "donor_surface": "configurable fail threshold",
+      "ally_equivalent": "narrow tool exit codes exist",
+      "decision": "candidate suite gate, but preserve scan-error exit 2 and explicit coverage"
+    },
+    {
+      "donor_surface": "WCAG-EM scope/sample metadata",
+      "ally_equivalent": "exact coverage exists but no concise methodology block",
+      "decision": "port derived, explicitly non-certifying summary"
+    },
+    {
+      "donor_surface": "synthetic screen-reader/cognitive/copywriter pass",
+      "ally_equivalent": "screen-reader sim, cognitive scorer, rewriter, visual reviewer",
+      "decision": "reject duplicate provider/persona lifecycle; retain Ally's labeled review queues"
+    },
+    {
+      "donor_surface": "remediation snippets",
+      "ally_equivalent": "suggested fixes + human-gated fix plan",
+      "decision": "port only useful snippets through source-aware dry-run proposals"
+    },
+    {
+      "donor_surface": "always save another Markdown report",
+      "ally_equivalent": "versioned audit destination already owns artifacts",
+      "decision": "reject hidden duplicate output"
+    }
+  ],
+  "retirement_gate": {
+    "donor": "wcag-auditor",
+    "ready_to_retire": false,
+    "requirements": [
+      "accepted rule fixtures",
+      "crawl-option parity",
+      "any approved SARIF/WCAG-EM adapter",
+      "output migration guidance",
+      "clean source reconciliation",
+      "an owner decision about repository archival"
+    ],
+    "note": "Passing Ally tests alone is insufficient."
+  },
+  "projection_markdown": "# A1 \u2014 WCAG Auditor to Ally parity decision\n\nSnapshot: 2026-08-19, source-only review. No source repository was modified.\n\n## Outcome\n\nWCAG Auditor should not be merged as a second scanner or report lifecycle. Ally already has the\nstronger canonical finding identity, error channel, exact producer/page coverage, full-audit proof\nmanifest, human-gated fixes, reporting, tickets, VPAT workflow, and coverage-aware regression\nhistory. WCAG Auditor remains a donor until its useful behavior is either ported or explicitly\nrejected.\n\nOf WCAG Auditor's **34 registered rules**:\n\n- 15 are already covered by axe-core, Ally's dynamic keyboard tester, or Ally's ARIA validator;\n- 18 contain a potentially useful heuristic or interaction that must enter Ally as an explicit\n  `needs-review` or narrowly justified deterministic finding\u2014never as an automatic conformance\n  claim; and\n- 1 (`autofocus-inputs`) is rejected as a WCAG failure because `autofocus` by itself does not prove\n  a 2.4.3 violation. It may survive only as optional advisory lint.\n\nThe donor also has meaningful crawl/workflow features not present in Ally: authenticated storage\nstate, depth bounds, include/exclude filters, configurable user agent/delay, representative template\nsampling, SPA route hints beyond anchors, and a WCAG-EM-style scope/sample summary. Those are\nseparable options around Ally's existing crawler; they do not justify preserving another finding or\nreport model.\n\n## Source fingerprints and preservation boundary\n\n| Source | Fingerprint | Working tree at snapshot | Boundary |\n|---|---|---|---|\n| `allys-tools` | `main@87f21ba` | one untracked `.DS_Store` | Canonical destination; do not overwrite or absorb unrelated local state. |\n| `wcag-auditor` | `main@ec899a3` | clean | Donor; no deletion or retirement until all accepted rows below have parity evidence. |\n\nThe donor README claims 34 active rules and the registration function in\n`wcag_auditor/rules/core_rules.py` registers exactly 34. `MissingAltTextRule` exists in source but is\nnot registered; `ComplexAltTextRule` is the active replacement. It is not counted as a migration\nitem.\n\n## Rule-by-rule decision\n\nStatus vocabulary:\n\n- **covered** \u2014 retain Ally behavior and add a regression comparison only if source outputs differ.\n- **port-review** \u2014 port only as `needs-review`; the donor logic is heuristic or presence-only.\n- **port-narrow** \u2014 eligible for an `unverified` deterministic finding if the fixture proves the\n  exact DOM condition without implying broader conformance.\n- **reject** \u2014 do not port as a WCAG failure.\n\n| Donor rule | SC | Decision | Ally owner | Parity basis / required fixture |\n|---|---:|---|---|---|\n| `missing-labels` | 3.3.2 | covered | page-scanner | axe `label`, `select-name`, and ARIA name rules; compare unlabeled native and ARIA controls. |\n| `missing-lang` | 3.1.1 | covered | page-scanner | axe `html-has-lang`, `html-lang-valid`, and mismatch rules are broader. |\n| `inline-language-change` | 3.1.2 | port-review | page-scanner extension | axe validates declared `lang` but cannot prove an undeclared language change; multilingual fixture must stay review-only. |\n| `empty-links` | 2.4.4 | covered | page-scanner | axe `link-name`/`area-alt` cover programmatic names. |\n| `empty-buttons` | 4.1.2 | covered | page-scanner | axe `button-name`, `input-button-name`, and ARIA command-name rules. |\n| `missing-title` | 2.4.2 | covered | page-scanner | axe `document-title`. |\n| `autofocus-inputs` | 2.4.3 | reject | none / optional lint | Attribute presence is not proof of bad focus order; only keep as advisory if a real workflow needs it. |\n| `complex-alt-text` | 1.1.1 | covered | page-scanner + alt-text-writer | axe covers image/SVG/role/input/object alternatives; Ally's writer is gated review, not evidence of conformance. |\n| `time-based-media` | 1.2.2 | covered | page-scanner | axe `video-caption`; retain manual review of caption quality. |\n| `audio-description-track` | 1.2.5 | port-review | page-scanner extension | Track/alternative presence can be observed; adequacy and applicability require human review. |\n| `adaptable-landmarks` | 1.3.1 | port-review | page-scanner extension | A missing `main` is useful structural guidance but not a complete 1.3.1 determination. |\n| `reading-sequence` | 1.3.2 | covered | keyboard-tester | Ally already reports positive `tabindex` and measures reached order; donor criterion mapping is less precise. |\n| `contrast-minimum` | 1.4.3 | covered | page-scanner + palette-checker | axe handles rendered text contrast; ChromaCheck handles palette evidence. |\n| `focus-appearance` | 2.4.7 | covered | keyboard-tester | Ally compares focused/unfocused pixels for real tabbable elements. |\n| `keyboard-accessibility` | 2.1.1 | covered | keyboard-tester | Ally performs sequential keyboard traversal; donor mostly infers from markup/handlers. |\n| `keyboard-trap` | 2.1.2 | covered | keyboard-tester | Ally tests repeated Tab and reverse escape; donor's markup heuristic is weaker. |\n| `enough-time-controls` | 2.2.2 | port-review | page-scanner extension | axe covers blink/marquee; custom carousel/auto-update inference must remain review-only. |\n| `navigable-skip-links` | 2.4.1 | covered | page-scanner | axe `bypass`. |\n| `link-purpose` | 2.4.4 | port-review | page-scanner extension | Vague-text terms are language/context heuristics; useful queue, not confirmed failure. |\n| `focus-not-obscured` | 2.4.11 | port-review | keyboard-tester | Requires focus/viewport/overlay interaction; static sticky-chrome inference cannot be confirmed evidence. |\n| `pointer-gestures` | 2.5.1 | port-review | page-scanner extension | Event/data-attribute inference cannot prove the lack of a single-pointer alternative. |\n| `pointer-cancellation` | 2.5.2 | port-review | page-scanner extension | Handler-name inference cannot prove behavior; dynamic test design is required. |\n| `dragging-movements` | 2.5.7 | port-review | page-scanner extension | `draggable`/drag handlers identify candidates, not absence of alternatives. |\n| `target-size-minimum` | 2.5.8 | covered | page-scanner | axe `target-size` is run under the WCAG 2.2 AA tags. |\n| `predictable-navigation` | 3.2.2 | port-review | page-scanner extension | `onchange`/navigation-like controls are candidates; only interaction proves an unexpected context change. |\n| `input-assistance-error-msg` | 3.3.1 | port-narrow | aria-validator extension | `aria-invalid=true` with no valid error/description target is a precise DOM defect; do not claim all error behavior was tested. |\n| `labels-or-instructions` | 3.3.2 | port-review | page-scanner extension | Constraint presence plus absent helper text is useful but context/language dependent. |\n| `error-suggestion` | 3.3.3 | port-review | page-scanner extension | Donor language terms cannot establish whether a correction is possible or adequate. |\n| `required-field-indicators` | 3.3.2 | port-review | page-scanner extension | Visible indication is language/context dependent; preserve the review label. |\n| `redundant-entry` | 3.3.7 | port-review | page-scanner extension | Similar names/fields do not prove repeated information or an unavailable exception. |\n| `accessible-authentication` | 3.3.8 | port-review | keyboard/interaction extension | CAPTCHA, paste blocking, password-manager, and alternative-method behavior require interaction and human judgment. |\n| `identify-input-purpose` | 1.3.5 | port-review | page-scanner extension | Missing autocomplete on inferred personal-data fields is useful, but field purpose inference is fallible. |\n| `aria-validation` | 4.1.2 | covered | aria-validator | Ally uses `aria-query`, validates role/property support, required relationships, values, and ID references. |\n| `status-messages` | 4.1.3 | port-review | aria-validator extension | Status-like class/text inference finds candidates; behavior and notification without focus require review/AT evidence. |\n\n## Crawl and sampling decision\n\n| Donor behavior | Current Ally state | Decision | Target |\n|---|---|---|---|\n| Same-origin live crawl | Present, concurrent, with sitemap discovery and canonical URLs | retain Ally | page-scanner |\n| `max_pages` | Present | retain Ally | page-scanner |\n| depth bound | Not exposed | port optional `maxDepth` | page-scanner crawl options |\n| robots.txt | Present, with explicit skipped URLs | retain Ally | shared browser + manifest |\n| sitemap discovery | Ally is stronger | retain Ally | shared browser |\n| custom user agent | Not exposed in crawl API | port optional value | shared browser context and robots evaluation |\n| authenticated Playwright storage state | Not exposed | port with credential/path safety checks | full-audit/page-scanner options |\n| repeatable include/exclude URL filters | Not exposed | port as validated patterns | page-scanner queue |\n| polite delay | Not exposed | port optional delay | page-scanner worker scheduling |\n| sequential/representative strategy | Ally currently queue/sitemap driven | port representative selection as report metadata, not silent coverage reduction | page-scanner crawl artifact |\n| SPA hints (`data-href`, `data-route`, `routerlink`, hash routes, `xlink:href`) | Anchor discovery exists; sitemap also helps | port safe same-origin hints | shared browser discovery |\n| per-rule finding cap/truncation | Not exposed | do not suppress canonical findings; add report grouping/capping only | report presentation |\n| page templates/types and sample summary | Exact successful URLs exist, but no WCAG-EM-style summary | port derived summary | report/manifest, explicitly non-conformance |\n| failed page behavior | Typed `A11yScanError` and exact successful coverage | retain Ally; donor warning model is weaker | finding contract |\n\nAuthenticated state is sensitive: the option may consume a user-supplied Playwright storage-state\nfile but must never copy it into audit output, manifests, fixtures, logs, or source control.\n\n## Finding contract decision\n\nDo not import WCAG Auditor's unversioned dictionaries. Accepted donor rules must produce Ally's\nexisting `A11yFinding` through `createFinding`:\n\n- stable finding identity version and deterministic ID;\n- canonical safe HTTP(S) URL;\n- shared selector dialect;\n- supported WCAG success criterion;\n- explicit severity and `unverified`/`needs-review` status;\n- structured evidence; and\n- operational failures in `A11yScanError`, never disguised as findings.\n\nThe suite-level `A11yFinding` schema in this clean workspace is an interchange envelope. Ally's\ninternal Zod contract remains the authoritative, stricter implementation until a real second\nconsumer proves a lossless adapter.\n\n## Deliverable and workflow decision\n\n| Donor surface | Ally equivalent | Decision |\n|---|---|---|\n| JSON results | schema-valid findings + manifest | retain Ally |\n| Markdown/HTML report | report-generator Markdown/HTML/PDF | retain Ally |\n| text summary | CLI summaries and manifest | retain Ally; add no second report renderer |\n| VPAT 2.5 | full A/AA draft with named-expert export gate | retain Ally; donor ungated VPAT must not replace it |\n| baseline suppression | coverage-aware regression watcher | retain Ally; donor fingerprint suppression is weaker |\n| SARIF | no full-audit SARIF artifact observed | candidate adapter after A2 only if a real CI consumer exists |\n| configurable fail threshold | narrow tool exit codes exist | candidate suite gate, but preserve scan-error exit 2 and explicit coverage |\n| WCAG-EM scope/sample metadata | exact coverage exists but no concise methodology block | port derived, explicitly non-certifying summary |\n| synthetic screen-reader/cognitive/copywriter pass | screen-reader sim, cognitive scorer, rewriter, visual reviewer | reject duplicate provider/persona lifecycle; retain Ally's labeled review queues |\n| remediation snippets | suggested fixes + human-gated fix plan | port only useful snippets through source-aware dry-run proposals |\n| always save another Markdown report | versioned audit destination already owns artifacts | reject hidden duplicate output |\n\n## A2 implementation order\n\nThe first code migration should be the narrow deterministic 3.3.1 condition:\n\n1. add a fixture for `aria-invalid=true` with missing/broken error references;\n2. implement it in Ally's ARIA validator using `createFinding`;\n3. prove valid references do not report;\n4. prove malformed operational state stays in the error channel;\n5. run focused tests and the current full Ally gate; and\n6. record output parity against the donor fixture without changing WCAG Auditor.\n\nAfter that, port crawl options independently. Heuristic rules should be grouped behind one explicit\nreview-candidate producer rather than creating 17 unrelated pseudo-conformance checks.\n\n## Retirement gate\n\nWCAG Auditor is not ready to retire. Retirement requires accepted rule fixtures, crawl-option\nparity, any approved SARIF/WCAG-EM adapter, output migration guidance, clean source reconciliation,\nand an owner decision about repository archival. Passing Ally tests alone is insufficient.\n\n"
+}

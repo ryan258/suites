@@ -74,15 +74,15 @@
       "objective": "Create the WCAG Auditor to Ally rule, crawl, finding, and deliverable parity matrix.",
       "runtime_followup": "Execute the parity matrix's port decisions against the real allys-tools runtime so each ported behavior carries donor-vs-destination output parity rather than a decision record.",
       "acceptance": "Every unique behavior has an owner, fixture, and port or reject decision.",
-      "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md",
+      "evidence": "accessibility/evidence/A1-WCAG-AUDITOR-PARITY.json",
       "recovery_claim": {
         "kind": "analysis",
         "level": "reviewed_historical_analysis",
         "real_runtime": false,
         "evidence_basis": [
-          "## Rule-by-rule decision",
-          "## Source fingerprints and preservation boundary",
-          "## Retirement gate"
+          "source_fingerprints",
+          "rule_decisions",
+          "retirement_gate"
         ]
       }
     },
