@@ -70,9 +70,39 @@ class ArtifactTests(unittest.TestCase):
                 )
 
         from portfolio_suites.recovery_policy import RECOVERY_TIERS
-        for tier_name, tier in RECOVERY_TIERS.items():
-            target_str = f"{tier['target_score']:.1f}/10"
-            self.assertIn(target_str, roadmap, f"roadmap missing target score {target_str} for {tier_name}")
+
+        tier_rows = {}
+        for line in roadmap.splitlines():
+            if not line.startswith("|") or "---" in line:
+                continue
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            if len(cells) != 3:
+                continue
+            tier_ids = [
+                tier_id for tier_id in re.findall(r"`([^`]+)`", cells[0])
+                if tier_id in RECOVERY_TIERS
+            ]
+            if len(tier_ids) != 1:
+                continue
+            score = re.fullmatch(r"(\d+(?:\.\d+)?)/10", cells[2])
+            self.assertIsNotNone(score, f"roadmap recovery tier has an invalid score: {line}")
+            tier_rows[tier_ids[0]] = {
+                "suites": re.findall(r"`([^`]+)`", cells[1]),
+                "target_score": float(score.group(1)),
+            }
+
+        expected_tiers = {
+            tier_name: {
+                "suites": tier["suites"],
+                "target_score": float(tier["target_score"]),
+            }
+            for tier_name, tier in RECOVERY_TIERS.items()
+        }
+        self.assertEqual(
+            tier_rows,
+            expected_tiers,
+            "roadmap recovery tier, suite membership, or score mapping is stale",
+        )
 
         for token in (
             f"{len(CONTRACTS)} Shared contracts",

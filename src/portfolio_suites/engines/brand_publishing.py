@@ -362,6 +362,10 @@ class BrandPublishingEngine:
             "phases_completed": completed_count,
             "intake_log": completed_phases,
             "resulting_package": validated_pkg,
+            # Authority consumption is an execution outcome, not something callers may
+            # infer from approval metadata such as a timestamp. A real authority record
+            # may legitimately share any historical timestamp used by a fixture.
+            "approval_verified": bool(approval),
             # "ported" named an outcome this gate cannot reach: the phases it drives are
             # suite-local fixture inputs and Brand Workshop is never opened. What the gate
             # does establish is that the nine-phase state machine accepts a complete intake

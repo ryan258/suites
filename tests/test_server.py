@@ -7,6 +7,7 @@ import urllib.request
 from unittest.mock import patch
 
 from portfolio_suites.server import create_server
+from portfolio_suites.waves import WaveRunResult
 
 
 class ServerTests(unittest.TestCase):
@@ -142,20 +143,55 @@ class ServerTests(unittest.TestCase):
         self.assertFalse(any("prototype_passed" in row for row in data))
 
     def test_wave_post_is_ephemeral_and_classified(self):
-        data = self._post_json("/api/waves/model-behavior-lab/M1/run")
-        self.assertFalse(data["recorded"])
-        self.assertTrue(data["passed"])
-        self.assertEqual(data["execution_kind"], "verified_analysis")
-        self.assertEqual(data["claim_kind"], "analysis")
-        self.assertEqual(data["claim_level"], "source_inspected")
-        self.assertIsNone(data["evidence_path"])
-        self.assertIsNotNone(data["data"])
+        ephemeral = WaveRunResult(
+            "model-behavior-lab",
+            "M1",
+            True,
+            "hermetic server dispatch fixture",
+            data={"fixture": "server-dispatch"},
+            execution_kind="verified_analysis",
+            claim_kind="analysis",
+            claim_level="source_inspected",
+        )
+        read_only_record = WaveRunResult(
+            "accessibility",
+            "A1",
+            True,
+            "reviewed historical analysis",
+            evidence_path="accessibility/evidence/A1-WCAG-AUDITOR-PARITY.md",
+            data={"fixture": "read-only-record"},
+            execution_kind="verified_analysis",
+            claim_kind="analysis",
+            claim_level="reviewed_historical_analysis",
+            record_note="read-only evidence cannot be replaced by this runner",
+            record_status="read_only",
+        )
+        with patch(
+            "portfolio_suites.server.WaveRunner.run_wave",
+            side_effect=[ephemeral, read_only_record],
+        ) as run_wave:
+            data = self._post_json("/api/waves/model-behavior-lab/M1/run")
+            self.assertFalse(data["recorded"])
+            self.assertTrue(data["passed"])
+            self.assertEqual(data["execution_kind"], "verified_analysis")
+            self.assertEqual(data["claim_kind"], "analysis")
+            self.assertEqual(data["claim_level"], "source_inspected")
+            self.assertIsNone(data["evidence_path"])
+            self.assertIsNotNone(data["data"])
 
-        a1_data = self._post_json("/api/waves/accessibility/A1/run?record=true")
-        self.assertFalse(a1_data["recorded"])
-        self.assertTrue(a1_data["passed"])
-        self.assertIsNotNone(a1_data["record_note"])
-        self.assertIn("read-only", a1_data["record_note"])
+            a1_data = self._post_json("/api/waves/accessibility/A1/run?record=true")
+            self.assertFalse(a1_data["recorded"])
+            self.assertTrue(a1_data["passed"])
+            self.assertIsNotNone(a1_data["record_note"])
+            self.assertIn("read-only", a1_data["record_note"])
+
+        self.assertEqual(run_wave.call_count, 2)
+        run_wave.assert_any_call(
+            "model-behavior-lab", "M1", write_evidence=False, full=False
+        )
+        run_wave.assert_any_call(
+            "accessibility", "A1", write_evidence=True, full=False
+        )
 
     def test_unknown_wave_post_returns_not_found(self):
         req = urllib.request.Request(

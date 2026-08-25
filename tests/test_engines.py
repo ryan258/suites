@@ -634,7 +634,7 @@ class EngineTests(unittest.TestCase):
         import datetime, os, tempfile
         from portfolio_suites.approvals import STORE_ENV, canonical_digest
         from portfolio_suites.engines.brand_publishing import SIMULATED_PACKAGE_APPROVED_AT
-        issued_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        current_issued_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
         inputs = {
             1: {"one_liner": "A", "enemy": "B", "brand_name": "Late Brand"},
             2: {"primary_operator": "Ryan", "pain_points": ["drift"], "target_audience": "Devs"},
@@ -660,25 +660,32 @@ class EngineTests(unittest.TestCase):
         })
         self.addCleanup(os.environ.pop, STORE_ENV, None)
         with tempfile.TemporaryDirectory() as tmpdir:
-            store, token = self._issue_approval(
-                tmpdir,
-                approval_id="apr-late",
-                operation="brand_maker_package_approval",
-                package_id="pkg-bm-late-brand-1.0.0",
-                package_version="1.0.0",
-                decision="approved",
-                payload_sha256=digest,
-                issued_at=issued_at,
-            )
-            result = BrandPublishingEngine.execute_brand_maker_intake("late-brand", inputs, operator_approval_token=token)["resulting_package"]
-            self.assertEqual(result["provenance"][0]["decision_source"], "verified_operator_approval")
-            self.assertEqual(result["approved_at"], issued_at)
-            self.assertEqual(result["provenance"][0]["timestamp"], issued_at)
-            self.assertNotEqual(result["approved_at"], SIMULATED_PACKAGE_APPROVED_AT)
-            self.assertGreater(
-                datetime.datetime.fromisoformat(result["approved_at"]),
-                datetime.datetime.fromisoformat(SIMULATED_PACKAGE_APPROVED_AT),
-            )
+            for label, issued_at in (
+                ("current", current_issued_at),
+                ("fixture-timestamp-collision", SIMULATED_PACKAGE_APPROVED_AT),
+            ):
+                with self.subTest(label=label):
+                    store, token = self._issue_approval(
+                        tmpdir,
+                        approval_id=f"apr-late-{label}",
+                        operation="brand_maker_package_approval",
+                        package_id="pkg-bm-late-brand-1.0.0",
+                        package_version="1.0.0",
+                        decision="approved",
+                        payload_sha256=digest,
+                        issued_at=issued_at,
+                    )
+                    outcome = BrandPublishingEngine.execute_brand_maker_intake(
+                        "late-brand", inputs, operator_approval_token=token
+                    )
+                    self.assertTrue(outcome["approval_verified"])
+                    result = outcome["resulting_package"]
+                    self.assertEqual(
+                        result["provenance"][0]["decision_source"],
+                        "verified_operator_approval",
+                    )
+                    self.assertEqual(result["approved_at"], issued_at)
+                    self.assertEqual(result["provenance"][0]["timestamp"], issued_at)
 
     def test_arbitrary_approver_signoff_cannot_mint_human_confirmation(self):
         for name in ("Ryan", "Ryan Johnson", "operator", "simulated_fixture_operator"):
@@ -1344,4 +1351,3 @@ class AdversarialFixtureTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

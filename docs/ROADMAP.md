@@ -55,11 +55,11 @@ evidenced final disposition and every one of the eight user promises is genuinel
 The purpose-fit targets already established by the project bible remain the minimum release bars.
 They are recovery-quality scores, not percentages of files copied.
 
-| Suite class | Suites | Minimum v1 recovery target |
+| Suite class | Suite IDs | Minimum v1 recovery target |
 |---|---|---:|
-| Flagships | Accessibility, Operator OS, Brand + Publishing | 9.0/10 |
-| Production systems | Production House, Discovery + Decision | 8.0/10 |
-| Constrained labs | Model Behavior Lab, Agent Reliability Lab, Game Design + Simulation | 7.0/10 |
+| Flagships (`flagship`) | `accessibility`, `operator-os`, `brand-publishing` | 9.0/10 |
+| Production systems (`production`) | `production-house`, `discovery-decision` | 8.0/10 |
+| Constrained labs (`lab`) | `model-behavior-lab`, `agent-reliability`, `game-design` | 7.0/10 |
 
 A lower lab target does not make a lab a preview. It reflects its narrower supported promise and
 the decision not to reproduce low-value or obsolete donor behavior. Every lab still must meet its
@@ -195,7 +195,9 @@ without converting plans or fixtures into implementation evidence.
   persistent data.
 - Create migration fixtures for every pre-v1 format that can appear in retained evidence or local
   operator state.
-- Freeze v1 schemas at release candidate; breaking changes thereafter require a new major version.
+- Freeze v1 contracts and persistent state formats at the Phase 1 exit, before authentic runtime
+  integration. Later additive compatible changes and security fixes remain possible; any breaking
+  change reopens the freeze and invalidates the affected runtime/adoption evidence until repeated.
 
 **Exit:** schemas, runtime validation, CLI inspection, examples, real producers/consumers, and
 upgrade fixtures agree.
@@ -584,9 +586,12 @@ release status cannot be derived from milestone counts.
 - Add compatibility, migration, adversarial, transaction, and packaging tests before broad ports.
 - Freeze the architecture for authentic suite integration; new frameworks require evidence that a
   contract, adapter, action, pack, or skill is insufficient.
+- Freeze the six v1 contracts, receipt schemas, configuration boundary, and persistent state
+  formats. Record the exact versions that all later runtime and adoption evidence must use.
 
 **Exit:** clean install runs deterministic validation/read-only actions; mutations recover safely;
-real suite ports can produce versioned receipts that v1 will continue to read.
+real suite ports can produce versioned receipts that v1 will continue to read; the v1
+interoperability/state boundary is frozen before any authentic-use evidence is collected.
 
 ### Phase 2 — Flagship implementation (`0.4.0-alpha`)
 
@@ -601,7 +606,9 @@ no unresolved completion criterion.
 
 - Complete Production House and Discovery + Decision runtime follow-ups.
 - Verify real creative artifacts, budgeted investigations, resumability, failure, and recovery.
-- Complete any shared-contract changes before the v1 contract freeze.
+- Begin authentic use for both suites as soon as their end-to-end paths pass.
+- Keep shared-contract changes additive and compatible. A necessary breaking change explicitly
+  reopens the Phase 1 freeze and requires affected runtime evidence to be repeated.
 
 **Exit:** both production-system promises run end to end once and meet their completion criteria
 except repeated-use adoption.
@@ -611,13 +618,15 @@ except repeated-use adoption.
 - Complete Model Behavior Lab, Agent Reliability Lab, and Game Design runtime follow-ups.
 - Finish shared-kernel/two-consumer decisions, full live workloads, pack generation, and authored
   game dispositions.
+- Begin authentic use for each suite as soon as its end-to-end path passes.
 
 **Exit:** all eight suite promises run end to end; all 42 original runtime follow-ups have verified
 resolutions; no suite remains fixture-only or source-inspection-only for its supported promise.
 
 ### Phase 5 — Adoption and convergence beta (`0.8.0-beta`)
 
-- Accumulate three authentic accepted uses per suite across distinct inputs/days.
+- Complete the three-authentic-use threshold for every suite, carrying forward qualifying uses
+  begun in Phases 2–4 and repeating any evidence invalidated by a reopened contract freeze.
 - Correct operational friction, false success, recovery gaps, inaccessible workflows, and evidence
   ambiguity found in use.
 - Score every suite against its target and close weak dimensions with real evidence.
@@ -630,7 +639,8 @@ behavior or unresolved release obligation.
 
 ### Phase 6 — Release candidate (`0.9.0-rc.1` and later)
 
-- Freeze v1 contracts, supported CLI/API shapes, configuration, and state formats.
+- Confirm the Phase 1 contract/state freeze and freeze the supported CLI/API presentation surface;
+  do not introduce a first or breaking data-contract freeze at release-candidate time.
 - Build from the exact candidate and run deterministic, adversarial, full donor/runtime,
   packaging, browser, accessibility, clean-room docs, backup/restore, and upgrade/rollback gates.
 - Independently review the exact candidate, not a neighboring worktree or manifest summary.

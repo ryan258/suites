@@ -6,6 +6,7 @@ from portfolio_suites.engine_actions import (
     EngineActionError,
     get_action_spec,
     list_actions,
+    result_consumes_authority,
     run_action,
 )
 from portfolio_suites.engines import ENGINES
@@ -143,6 +144,30 @@ class TestActionPolicyTruthfulness(unittest.TestCase):
         self.assertTrue(step0["replayable"])
         self.assertNotEqual(step0["side_effect_class"], "single_use_authority_consumed")
 
+    def test_brand_intake_consumption_uses_explicit_outcome_not_timestamp(self):
+        from portfolio_suites.engines.brand_publishing import SIMULATED_PACKAGE_APPROVED_AT
+
+        arguments = {"operator_approval_token": "opa1.apr-1.secret"}
+        package = {
+            "approved_at": SIMULATED_PACKAGE_APPROVED_AT,
+            "provenance": [{
+                "decision_source": "verified_operator_approval",
+                "human_confirmation_claimed": True,
+            }],
+        }
+        self.assertTrue(result_consumes_authority(
+            arguments,
+            {"approval_verified": True, "resulting_package": package},
+        ))
+
+        # Timestamps are artifact metadata, not authority outcomes. A non-fixture
+        # timestamp without the explicit verified result must not manufacture a
+        # consumption claim.
+        self.assertFalse(result_consumes_authority(
+            arguments,
+            {"resulting_package": {"approved_at": "2099-01-01T00:00:00+00:00"}},
+        ))
+
 
 class TestEngineActionDiscovery(unittest.TestCase):
     def test_every_suite_exposes_at_least_one_action(self):
@@ -279,4 +304,3 @@ class TestChains(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

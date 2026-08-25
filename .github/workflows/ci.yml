@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,8 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Deterministic Gates & Unit Tests
+  hermetic:
+    name: Hermetic Control-Plane Gates
     runs-on: ubuntu-latest
 
     steps:
@@ -36,9 +37,7 @@ jobs:
           node-version: "20"
 
       - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install . pytest
+        run: python -m pip install --no-deps .
 
       - name: Check git diff whitespace
         if: github.event_name == 'pull_request'
@@ -52,7 +51,52 @@ jobs:
       - name: Run fast portfolio validation
         run: PYTHONPATH=src python3 -m portfolio_suites validate --fast
 
-      - name: Run test suite
+      - name: Run hermetic unit and boundary tests
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m unittest \
+            tests.test_approvals \
+            tests.test_chain_preflight \
+            tests.test_contract_keyword_validation \
+            tests.test_contracts \
+            tests.test_docs \
+            tests.test_engine_action_json_boundary \
+            tests.test_engine_actions \
+            tests.test_lab_engine_hardening \
+            tests.test_mutation_confinement \
+            tests.test_provenance \
+            tests.test_provenance_strictness \
+            tests.test_recovery_lifecycle_receipts \
+            tests.test_server \
+            tests.test_source_root \
+            tests.test_txn \
+            tests.test_web_security
+
+  portfolio-integration:
+    name: Portfolio Integration (Manual, Provisioned Runner)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, suites-portfolio]
+
+    steps:
+      - name: Checkout suites beside the provisioned donor portfolio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: suites
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify the provisioned portfolio and run the complete milestone matrix
+        working-directory: suites
         env:
           SUITES_WHEEL_SMOKE: "1"
-        run: PYTHONPATH=src pytest
+        run: |
+          PYTHONPATH=src python -m portfolio_suites validate
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m unittest discover -s tests
