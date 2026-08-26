@@ -6,11 +6,19 @@ import datetime
 import json
 import subprocess
 import sys
+import time
+import uuid
 from pathlib import Path
 from typing import Any
 
 from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
 from ..engines.operator_os import OperatorOSEngine
+from ..execution_trace import validate_execution_trace
+from ..recovery_program import (
+    RecoveryProgramError,
+    get_recovery_trace_context,
+    load_recovery_program,
+)
 from .common import (
     SUITES_ROOT,
     donor_env,
@@ -30,6 +38,212 @@ OBSERVER_DIR = get_repo_path("obsidian-observer", "OBSERVER_DIR")
 JARVIS_DIR = get_repo_path("jarvis", "JARVIS_DIR")
 RYOS_DIR = get_repo_path("ryos", "RYOS_DIR")
 MASTER_UPGRADE_PLAN_DIR = get_repo_path("master-upgrade-plan", "MASTER_UPGRADE_PLAN_DIR")
+
+
+def _o1_ungoverned_candidate(
+    operational_errors: list[dict[str, Any]],
+    error: RecoveryProgramError,
+) -> dict[str, Any]:
+    """Fail closed when the governed recovery route cannot be resolved at all."""
+    candidate_errors = list(operational_errors) + [{
+        "stage": "recovery_trace_context",
+        "command": "get_recovery_trace_context",
+        "error_kind": "recovery_program_unavailable",
+        "message": str(error),
+        "environment_blocked": True,
+    }]
+    return {
+        "candidate_only": True,
+        "promotion_eligible": False,
+        "status": "source_unverified",
+        "all_stages_passed": False,
+        "blocked_owner_gate": None,
+        "blocked_requirements": ["governed_recovery_route_unavailable"],
+        "receipt_contract": None,
+        "receipt_contract_candidate": {
+            "receipt_version": None,
+            "status": "source_unverified",
+            "all_stages_passed": False,
+            "operational_errors": candidate_errors,
+        },
+        "execution_trace": None,
+        "execution_trace_errors": [str(error)],
+    }
+
+
+def _o1_runtime_candidate(
+    *,
+    started_at: str,
+    finished_at: str,
+    command: list[str],
+    invocation_attempted: bool,
+    exit_code: int | None,
+    duration_ms: float,
+    all_stages_passed: bool,
+    dotfiles_fingerprint: dict[str, Any],
+    pkos_fingerprint: dict[str, Any],
+    observer_fingerprint: dict[str, Any],
+    source_record: dict[str, Any],
+    cas_acquisition: dict[str, Any],
+    normalize_counts: dict[str, int],
+    operational_errors: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build an ephemeral runtime candidate without promoting or recording O1."""
+    try:
+        recovery_program = load_recovery_program()
+        trace_context = get_recovery_trace_context(
+            recovery_program,
+            adapter="OperatorOSSourceAdapter",
+            action="execute_o1_source_record_observer_gate",
+        )
+    except RecoveryProgramError as error:
+        # An unreadable program or a route that stopped being unique is a governance
+        # failure, not a gate crash. Every other failure in this adapter lands in
+        # operational_errors, and a traceback here would report it as a broken runner.
+        return _o1_ungoverned_candidate(operational_errors, error)
+    trace_route = trace_context["trace_route"]
+    plan_document = {
+        "obligation_id": trace_context["obligation_id"],
+        "planned_command": command,
+        "adapter": trace_route["adapter"],
+        "action": trace_route["action"],
+        "mutation_mode": "temporary_workspace_only",
+    }
+    plan_sha256 = compute_sha256(
+        json.dumps(plan_document, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    source_invocation = (
+        {
+            "command": command,
+            "exit_code": exit_code,
+            "duration_ms": round(duration_ms, 2),
+            "working_directory": str(PKOS_DIR),
+            "environment_policy": "donor_env_with_explicit_pkos_pythonpath",
+        }
+        if invocation_attempted
+        else None
+    )
+    candidate_errors = list(operational_errors)
+    runtime_receipt = {
+        "receipt_version": trace_context["receipt_contract"],
+        "status": "source_executed" if all_stages_passed else "source_unverified",
+        "all_stages_passed": all_stages_passed,
+        "source_invocation_status": (
+            "invoked" if invocation_attempted else "not_invoked"
+        ),
+        "source_invocation": source_invocation,
+        "planned_source_invocation": {
+            "command": command,
+            "working_directory": str(PKOS_DIR),
+            "environment_policy": "donor_env_with_explicit_pkos_pythonpath",
+        },
+        "source_fingerprints": {"dotfiles": dotfiles_fingerprint},
+        "dependency_fingerprints": {
+            "PKos": pkos_fingerprint,
+            "obsidian-observer": observer_fingerprint,
+        },
+        "reproducible_commands": [command],
+        "host_recomputed_claims": {
+            "source_sha256": source_record.get("sha256"),
+            "cas_sha256": cas_acquisition.get("sha256"),
+            "cas_sha256_matches_source": bool(source_record.get("sha256"))
+            and source_record.get("sha256") == cas_acquisition.get("sha256"),
+            "normalized_items": normalize_counts.get("items", 0),
+            "normalized_chunks": normalize_counts.get("chunks", 0),
+        },
+        "recovery_behavior": {
+            "runtime_mutation_mode": "temporary_workspace_only",
+            "permanent_vault_written": False,
+            "partial_permanent_state_possible": False,
+            "rerun_safe": True,
+            "environment_failures_fail_closed": True,
+            "evidence_write_requires_explicit_record": True,
+        },
+        "privacy_redaction": {
+            "raw_source_content_retained": False,
+            "credentials_retained": False,
+            "command_arguments_reviewed": True,
+        },
+        "operational_errors": candidate_errors,
+    }
+    outcome = "passed" if all_stages_passed else "failed"
+    error_class = None
+    if not all_stages_passed:
+        error_class = str(
+            (operational_errors[0].get("error_kind") if operational_errors else None)
+            or "source_verification_failed"
+        )
+    execution_trace = {
+        "trace_version": "portfolio-execution-trace-v1",
+        "trace_id": str(uuid.uuid4()),
+        "request_id": str(uuid.uuid4()),
+        "obligation_id": trace_context["obligation_id"],
+        "journey_id": trace_context["journey_id"],
+        "actor_class": "control_plane",
+        "purpose": "runtime_recovery_verification",
+        "ontology_version": trace_route["ontology_version"],
+        "mapping_version": trace_route["mapping_version"],
+        "resolved_mappings": trace_route["resolved_mappings"],
+        "candidate_authorities": trace_route["candidate_authorities"],
+        "selected_authority": trace_route["selected_authority"],
+        "policy_decisions": trace_route["policy_decisions"],
+        "adapter": trace_route["adapter"],
+        "plan_sha256": plan_sha256,
+        "source_fingerprints": {
+            "dotfiles": dotfiles_fingerprint,
+            "PKos": pkos_fingerprint,
+            "obsidian-observer": observer_fingerprint,
+        },
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "outcome": outcome,
+        "error_class": error_class,
+        "fallback_used": False,
+        "receipt_ref": None,
+        "privacy": {
+            "redacted": True,
+            "raw_source_retained": False,
+            "secrets_retained": False,
+        },
+    }
+    trace_errors = validate_execution_trace(
+        execution_trace,
+        recovery_program,
+    )
+    candidate_passed = all_stages_passed and not trace_errors
+    if trace_errors:
+        candidate_errors.append({
+            "stage": "execution_trace_validation",
+            "command": "validate_execution_trace",
+            "error_kind": "invalid_execution_trace",
+            "message": "; ".join(trace_errors),
+            "environment_blocked": False,
+        })
+        execution_trace["outcome"] = "failed"
+        execution_trace["error_class"] = "invalid_execution_trace"
+        runtime_receipt["status"] = "source_unverified"
+        runtime_receipt["all_stages_passed"] = False
+    owner_gate = trace_context["owner_gate"]
+    blocked_requirements = [
+        "day_to_day_intake_adoption_not_accumulated",
+        "runtime_receipt_not_recorded",
+    ]
+    if owner_gate:
+        blocked_requirements.insert(
+            0, f"{owner_gate}_not_authorized_or_attempted"
+        )
+    return {
+        "candidate_only": True,
+        "promotion_eligible": False,
+        "status": "source_executed" if candidate_passed else "source_unverified",
+        "all_stages_passed": candidate_passed,
+        "blocked_owner_gate": owner_gate,
+        "blocked_requirements": blocked_requirements,
+        "receipt_contract": trace_context["receipt_contract"],
+        "receipt_contract_candidate": runtime_receipt,
+        "execution_trace": execution_trace,
+        "execution_trace_errors": trace_errors,
+    }
 
 RYOS_DISPOSITION_CATALOG: list[dict[str, str]] = [
     {
@@ -101,6 +315,7 @@ class OperatorOSSourceAdapter:
         pkos_fp = get_git_fingerprint(PKOS_DIR)
         observer_fp = get_git_fingerprint(OBSERVER_DIR)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        started_at = now_iso
 
         # Verify live files on disk in PKos and Observer
         has_pkos_normalize = (PKOS_DIR / "pkos" / "normalize.py").is_file()
@@ -113,6 +328,10 @@ class OperatorOSSourceAdapter:
         normalize_counts: dict[str, int] = {}
         operational_errors: list[dict[str, Any]] = []
         cas_verified = False
+        donor_cas_cmd = [sys.executable, str(DONOR_PKOS_CAS_PROBE), str(agents_path)]
+        donor_exit_code: int | None = None
+        donor_duration_ms = 0.0
+        donor_invocation_attempted = False
 
         if not has_agents:
             operational_errors.append({
@@ -132,7 +351,8 @@ class OperatorOSSourceAdapter:
             })
 
         if has_agents and has_pkos_storage and has_pkos_normalize:
-            donor_cas_cmd = [sys.executable, str(DONOR_PKOS_CAS_PROBE), str(agents_path)]
+            donor_started = time.perf_counter()
+            donor_invocation_attempted = True
             try:
                 proc = subprocess.run(
                     donor_cas_cmd,
@@ -142,6 +362,8 @@ class OperatorOSSourceAdapter:
                     text=True,
                     timeout=15,
                 )
+                donor_duration_ms = (time.perf_counter() - donor_started) * 1000.0
+                donor_exit_code = proc.returncode
                 if proc.returncode == 0 and proc.stdout.strip():
                     last_line = proc.stdout.strip().splitlines()[-1]
                     payload = json.loads(last_line)
@@ -179,6 +401,7 @@ class OperatorOSSourceAdapter:
                         "environment_blocked": import_failed,
                     })
             except Exception as exc:
+                donor_duration_ms = (time.perf_counter() - donor_started) * 1000.0
                 # A silent False here would report a red wave with no way to tell a PKos API
                 # change from a broken donor file. Record why, the way A2 does.
                 cas_verified = False
@@ -275,19 +498,43 @@ class OperatorOSSourceAdapter:
             "sqlite_normalized_chunks": normalize_counts.get("chunks", 0),
             "sensitivity_test_passed": sensitivity_passed,
         }
+        finished_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        runtime_candidate = _o1_runtime_candidate(
+            started_at=started_at,
+            finished_at=finished_at,
+            command=donor_cas_cmd,
+            invocation_attempted=donor_invocation_attempted,
+            exit_code=donor_exit_code,
+            duration_ms=donor_duration_ms,
+            all_stages_passed=all_stages_passed,
+            dotfiles_fingerprint=dotfiles_fp,
+            pkos_fingerprint=pkos_fp,
+            observer_fingerprint=observer_fp,
+            source_record=src_record,
+            cas_acquisition=cas_acquisition,
+            normalize_counts=normalize_counts,
+            operational_errors=operational_errors,
+        )
+        candidate_passed = runtime_candidate["all_stages_passed"]
+        reported_operational_errors = runtime_candidate[
+            "receipt_contract_candidate"
+        ]["operational_errors"]
 
         return {
             "schema_version": SCHEMA_VERSION,
             "wave_id": "O1",
             "executed_at": now_iso,
-            "status": "cas_projection_verified" if all_stages_passed else "source_unverified",
+            "status": (
+                "cas_projection_verified" if candidate_passed else "source_unverified"
+            ),
             "source_record": src_record,
             "cas_acquisition": cas_acquisition,
             "observer_projection_preview": projection,
             "source_derived_assertions": source_derived_assertions,
-            "all_stages_passed": all_stages_passed,
+            "runtime_candidate": runtime_candidate,
+            "all_stages_passed": candidate_passed,
             "cas_verified": cas_verified,
-            "operational_errors": operational_errors,
+            "operational_errors": reported_operational_errors,
             "source_verification_passed": sources_verified,
             "mutation_protection_passed": mutation_checks_passed,
             "mutation_cases": {
