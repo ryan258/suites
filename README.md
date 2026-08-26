@@ -1,5 +1,27 @@
 # Ryan Project Suites
 
+## Start here (2 minutes)
+
+```bash
+cd /Users/ryanjohnson/Projects/suites
+
+PYTHONPATH=src python3 -m portfolio_suites status   # what exists, and how well each claim is proven
+PYTHONPATH=src python3 -m portfolio_suites next     # what to work on
+PYTHONPATH=src python3 -m portfolio_suites engine   # the 50 runnable actions
+
+# Now try to make it lie:
+PYTHONPATH=src python3 -m portfolio_suites engine agent-reliability verify_path_confinement \
+  --args '{"workspace_root":"/tmp/ws","target_path":"/tmp/ws/../../etc/passwd"}'
+```
+
+That last one refuses. So does demanding a filesystem mutation without an owner approval
+(`blocked_missing_approval`), and so does claiming you were approved when you were not
+(`error_unverified_approval`) — [demos 94–96](docs/100-demos.md). The refusals are the design:
+this control plane cannot mint its own authority, and it will not record an intention as evidence.
+Everything below explains why. [ELI5](docs/ELI5.md) is the plain-language version.
+
+---
+
 This is the clean portfolio control plane for the systems worth carrying forward from
 `/Users/ryanjohnson/Projects`. It does not duplicate every historical checkout and it does not
 pretend that a directory move is a product merge. It gives every durable capability one owner,

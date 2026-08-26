@@ -2,9 +2,16 @@
 
 This protocol provides step-by-step instructions, copy-pasteable CLI commands, Toolbench JSON payloads, and structured AI prompts to manually test and verify all 8 product suites, the cross-suite contracts, the action chain engine, and the free OpenRouter AI assistant.
 
+**Bandwidth.** Each section is tagged with what it costs to run, so you can pick one that fits the
+day: **[LOW BW]** is copy-paste CLI with no server and no browser; **[HIGH BW]** needs the
+dashboard running, a network round-trip, or a payload you compose yourself. High-bandwidth
+sections end with a **State safe** block naming what is still running and how to pick the thread
+back up. Section 2 is the whole engine surface at low bandwidth — every test there has a CLI
+command, so the server in section 1 is only required for sections 3, 4, and 5.
+
 ---
 
-## 1. Prerequisites & Server Launch
+## 1. Prerequisites & Server Launch **[HIGH BW]**
 
 Ensure your local virtual environment is active and launch the control plane:
 
@@ -21,7 +28,7 @@ PYTHONPATH=src python3 -m portfolio_suites ai --status --json
 
 ---
 
-## 2. Interactive Toolbench & Suite Engine Verification
+## 2. Interactive Toolbench & Suite Engine Verification **[LOW BW]**
 
 Every action can be executed through the Web UI (**Toolbench** tab at `http://127.0.0.1:8383`) or directly via the CLI:
 `PYTHONPATH=src python3 -m portfolio_suites engine <suite_id> <action_name> --args '<json>'`
@@ -367,7 +374,7 @@ Every action can be executed through the Web UI (**Toolbench** tab at `http://12
 
 ---
 
-## 3. Action Chains & Result Tray Verification
+## 3. Action Chains & Result Tray Verification **[HIGH BW]**
 
 Action chains allow handing output from one suite engine directly into another using `$from` references.
 
@@ -424,9 +431,14 @@ Expected trace:
 [1] accessibility.create_ai_assisted_finding -> A11yFinding <- step 0
 ```
 
+> **State safe.** A chain retains nothing; only a chain file you saved yourself survives. The
+> server from section 1 is still up on 8383. Returning:
+> `PYTHONPATH=src python3 -m portfolio_suites engine` reprints the actions a chain composes.
+
+
 ---
 
-## 4. Free OpenRouter AI Assistant Testing
+## 4. Free OpenRouter AI Assistant Testing **[HIGH BW]**
 
 Test the 5 specialized roles in the **Free AI Assistant** tab (`http://127.0.0.1:8383/#ai`) or via CLI:
 `PYTHONPATH=src python3 -m portfolio_suites ai --suite <suite> --role <role> "<prompt>"`
@@ -525,7 +537,7 @@ Model-assisted via OpenRouter: <model> | suite=<suite> | role=<role> | human rev
 
 ---
 
-## 5. Security & Negative-Path Testing
+## 5. Security & Negative-Path Testing **[HIGH BW]**
 
 ### Test 5.1: Secret Redaction in Prompts
 - **Action:** Paste a fake API key into the AI Prompt:
@@ -546,11 +558,18 @@ Model-assisted via OpenRouter: <model> | suite=<suite> | role=<role> | human rev
 - **Expected Result:** Action fails closed, returning a receipt with `state: "blocked_missing_approval"`
   and no filesystem mutation. This is a structured refusal, not a raised error — the command still exits 0.
 
+> **State safe.** Nothing in sections 4 and 5 writes evidence or mutates the filesystem — a
+> provider answer cannot become a receipt, and 5.2 is a refusal by design. The server is still
+> running; Ctrl-C its terminal or leave it. Returning:
+> `PYTHONPATH=src python3 -m portfolio_suites status`, then `./start.sh` if you want the UI back.
+
+
 ---
 
-## 6. Full Automated Test Battery
+## 6. Full Automated Test Battery **[LOW BW]**
 
-Run the deterministic validation and unit test suites:
+Run the deterministic validation and unit test suites. Low bandwidth in the sense that matters:
+four commands, no browser, no judgement calls — start it and walk away for a couple of minutes.
 
 ```bash
 # 1. Fast schema and registry validation (~0.2s)

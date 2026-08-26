@@ -24,9 +24,20 @@ pushes, or publishes anything, and nothing reaches the network except the AI dem
 Demo 100 ends by checking `git status` is clean, so you can confirm all of that for yourself
 rather than taking this paragraph's word for it.
 
+**Bandwidth.** Every act header carries the cost of running it, so you can match the act to the
+day rather than discovering halfway through that it needed a browser and a Node runtime:
+
+- **[LOW BW]** — one-line commands, no setup, no external runtime, each returning in under a
+  second. Stop after any demo; nothing is left running.
+- **[HIGH BW]** — needs something spun up first (a server, Node + Playwright), a file you
+  authored, network access, or a multi-step sequence that has to be held in your head.
+
+Acts tagged **[HIGH BW]** end with a **State safe** block: what is still running or on disk, and
+the one command that reorients you when you come back. Low-bandwidth acts do not need one.
+
 ---
 
-## Act I — First Contact
+## Act I — First Contact **[LOW BW]**
 
 You have just cloned a control plane governing eight suites and 43 migration waves. Get oriented.
 
@@ -120,7 +131,7 @@ Look for: a single consolidated document. Everything the dashboard renders comes
 
 ---
 
-## Act II — The Contract Workbench
+## Act II — The Contract Workbench **[LOW BW]**
 
 Six versioned JSON contracts carry all cross-suite data: `SourceRecord`, `BrandPackage`,
 `ProductionJob`, `ExperimentRun`, `InvestigationRecord`, `A11yFinding`. This act is about learning
@@ -229,7 +240,7 @@ are shaped.
 
 ---
 
-## Act III — Meet the Engines
+## Act III — Meet the Engines **[LOW BW]**
 
 50 reviewed actions across eight suites. `engine` with no arguments prints the whole catalog with
 signatures; every action below came from that list.
@@ -475,7 +486,7 @@ guessing, and a guessed plan is worse than no plan.
 
 ---
 
-## Act IV — Chain Reactions
+## Act IV — Chain Reactions **[HIGH BW]**
 
 A chain feeds one action's output into a later action's argument using `{"$from": <step>}`, with an
 optional `"path"` to select part of it. The CLI reads a chain from a file; `/dev/stdin` lets you
@@ -598,9 +609,14 @@ A long chain should tell you where it broke and what survived, not merely that i
 failure is caught at *execution*, not preflight: preflight checks that `inputs` is present, and
 only the engine knows it has to be a list of artifact objects.
 
+> **State safe.** Chains are stdin-fed and retain nothing. If you wrote a chain to a file, that
+> file is the only thing left. Returning: `PYTHONPATH=src python3 -m portfolio_suites engine`
+> reprints the action catalog a chain is built from.
+
+
 ---
 
-## Act V — The Wave Runner
+## Act V — The Wave Runner **[HIGH BW]**
 
 43 migration waves, each with an objective, an acceptance condition, and — if it is complete — a
 retained evidence receipt. Running a wave is *ephemeral* by default: it re-derives the result and
@@ -742,9 +758,15 @@ PYTHONPATH=src python3 -m portfolio_suites baseline --dry-run
 Writes: nothing, with `--dry-run`. Look for what *would* be fingerprinted. Only add `--accept` when
 you have read that list and agree with it.
 
+> **State safe.** `wave --all --no-record` takes about ten seconds and retains nothing; `--full`
+> needs Node plus the Playwright runtime and is the only genuinely slow demo here. Demos 63, 67,
+> and 70 touch evidence files. Returning: `PYTHONPATH=src python3 -m portfolio_suites validate`
+> re-reads every retained receipt, and `git status` shows anything a recording demo left behind.
+
+
 ---
 
-## Act VI — The Launchpad in a Browser
+## Act VI — The Launchpad in a Browser **[HIGH BW]**
 
 A loopback-only dashboard. Everything the CLI does, plus an evidence viewer and a Toolbench.
 
@@ -840,9 +862,14 @@ curl -s -X POST http://127.0.0.1:8383/api/engines/operator-os/preview_jarvis_act
 Look for: `[REDACTED: supply a new one-time secret]` where your key was. Then `curl` the same
 endpoint with the key under a plain `token` field and confirm that is caught too.
 
+> **State safe.** Demo 71 left a server running on port 8383 — Ctrl-C the terminal it owns, or
+> leave it up, since Act VIII's last three demos need it again. Returning: `./start.sh` restarts
+> it, and `PYTHONPATH=src python3 -m portfolio_suites status` reorients you without the browser.
+
+
 ---
 
-## Act VII — Your Free AI Sidekick
+## Act VII — Your Free AI Sidekick **[HIGH BW]**
 
 Explicitly provider-assisted, free-only by default, and structurally unable to create evidence.
 These demos reach OpenRouter over the network.
@@ -919,12 +946,20 @@ PYTHONPATH=src python3 -m portfolio_suites ai --suite operator-os \
 Look for: refusal naming the credential *type* without echoing the value. Failing closed is the
 point; so is not repeating the secret in the error.
 
+> **State safe.** The AI demos retain nothing locally and write no evidence — a provider answer
+> cannot become a receipt. Nothing to clean up; your `.env` is where you left it.
+
+
 ---
 
-## Act VIII — Try to Break It
+## Act VIII — Try to Break It **[LOW BW]**
 
 The most useful act. Every demo here should *fail*, and the interesting part is the shape of the
 refusal. A system's boundaries are the part you can actually trust.
+
+Almost all of these are one-liners you can run cold. Two exceptions: 94–96 create and then remove
+a `mktemp -d` directory and want the same shell kept open across all three, and 98–100 need the
+server from demo 71 running.
 
 ### 89. Ask for a suite that does not exist
 
