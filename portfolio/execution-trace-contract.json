@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0.0",
+  "contract_id": "portfolio-execution-trace-v1",
+  "description": "Redacted routing trace for reconstructing a recovery execution without storing source payloads or credentials.",
+  "required_fields": [
+    "trace_version",
+    "trace_id",
+    "request_id",
+    "obligation_id",
+    "journey_id",
+    "actor_class",
+    "purpose",
+    "ontology_version",
+    "mapping_version",
+    "resolved_mappings",
+    "candidate_authorities",
+    "selected_authority",
+    "policy_decisions",
+    "adapter",
+    "plan_sha256",
+    "source_fingerprints",
+    "started_at",
+    "finished_at",
+    "outcome",
+    "error_class",
+    "fallback_used",
+    "receipt_ref",
+    "privacy"
+  ],
+  "mapping_relationships": [
+    "representedBy",
+    "authoritativeFor",
+    "derivedFrom",
+    "fallbackTo"
+  ],
+  "policy_outcomes": ["allowed", "denied"],
+  "execution_outcomes": [
+    "passed",
+    "failed",
+    "blocked_environment",
+    "blocked_owner",
+    "denied",
+    "unmapped",
+    "ambiguous"
+  ],
+  "forbidden_payload_keys": [
+    "api_key",
+    "authorization",
+    "credential",
+    "password",
+    "secret",
+    "token",
+    "raw_input",
+    "raw_output",
+    "source_content"
+  ],
+  "policy": {
+    "source_authority_is_hard_constraint": true,
+    "fallback_requires_explicit_mapping": true,
+    "unmapped_or_ambiguous_fails_closed": true,
+    "credentials_belong_to_adapters": true,
+    "raw_source_payloads_retained": false,
+    "receipt_recording_requires_explicit_request": true
+  }
+}
