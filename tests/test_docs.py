@@ -273,6 +273,7 @@ class CITestCoverageTests(unittest.TestCase):
         "test_cli",
         "test_engines",
         "test_flagship_semantic_guards",
+        "test_operator_o1_runtime_candidate",
         "test_registry",
         "test_source_waves",
         "test_wave_recording_hardening",

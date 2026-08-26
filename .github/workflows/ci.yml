@@ -66,7 +66,12 @@ jobs:
             tests.test_mutation_confinement \
             tests.test_provenance \
             tests.test_provenance_strictness \
+            tests.test_execution_trace \
+            tests.test_recovery_api \
+            tests.test_recovery_cli \
             tests.test_recovery_lifecycle_receipts \
+            tests.test_recovery_program \
+            tests.test_recovery_registry_integration \
             tests.test_server \
             tests.test_source_root \
             tests.test_txn \
