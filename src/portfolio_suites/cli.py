@@ -21,8 +21,13 @@ from .engine_actions import EngineActionError, list_actions, run_action
 from .paths import PROJECTS_ROOT, CommitUnverified
 from .provenance import is_sensitive_path
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
+from .recovery_program import (
+    RecoveryProgramError,
+    load_recovery_program,
+    recovery_program_summary,
+    resolve_recovery_obligations,
+)
 from .registry import (
-    RECOVERY_PROMOTION_LEVELS,
     LedgerConflict,
     fingerprint_baselines,
     get_live_drift_report,
@@ -110,53 +115,81 @@ def _status() -> int:
 
 
 def _next() -> int:
+    suites = load_suites()
     candidates = []
-    for manifest in load_suites().values():
+    for manifest in suites.values():
         for wave in manifest["waves"]:
             if wave["status"] != "complete":
                 candidates.append((wave["order"], manifest["id"], wave))
                 break
     if not candidates:
-        outstanding = [
-            (manifest["id"], wave)
-            for manifest in load_suites().values()
-            for wave in manifest["waves"]
-            if wave.get("runtime_followup")
-        ]
         print("All migration waves across all 8 suites are scheduled complete.")
-        if outstanding:
-            # A flat list of 42 follow-up strings is a debt count wearing a list's clothes:
-            # nothing in it says which one to do. Ranking is by the lowest promotion level
-            # first (a prototype claim has the furthest to climb), then by manifest order,
-            # so `next` can name one move and the command that runs it.
-            rank = {level: index for index, level in enumerate(RECOVERY_PROMOTION_LEVELS)}
-            ordered = sorted(
-                outstanding,
-                key=lambda item: (
-                    rank.get((item[1].get("recovery_claim") or {}).get("level"), len(rank)),
-                    item[1].get("order", 0),
-                ),
-            )
-            head_suite, head_wave = ordered[0]
-            head_level = (head_wave.get("recovery_claim") or {}).get("level", "specified")
-            print()
-            print(f"NEXT RECOVERY MOVE: {head_suite} / {head_wave['id']} (currently {head_level})")
-            print(f"  owes: {head_wave['runtime_followup']}")
-            command = WaveRunner.full_depth_command(head_suite, head_wave["id"])
+        try:
+            program = load_recovery_program()
+            obligations = resolve_recovery_obligations(program, suites)
+            summary = recovery_program_summary(program, suites)
+        except RecoveryProgramError as error:
+            print(f"ERROR recovery program is invalid: {error}")
+            return EXIT_FAILED
+
+        ready = [
+            obligation
+            for obligation in obligations
+            if obligation["effective_state"] == "ready"
+        ]
+        blocked_count = summary["states"].get("blocked_dependency", 0)
+        print(
+            f"Recovery program: {summary['obligations']} obligations "
+            f"({summary['wave_runtime_followups']} wave follow-ups + "
+            f"{summary['lifecycle_obligations']} lifecycle)."
+        )
+        print(
+            f"Dependency state: {len(ready)} ready, {blocked_count} blocked by "
+            "undischarged dependencies."
+        )
+        if not ready:
+            print("No recovery obligation is dependency-ready; inspect blocked dependencies.")
+            return EXIT_INCOMPLETE
+
+        head = ready[0]
+        print()
+        print(f"NEXT RECOVERY OBLIGATION: {head['id']}")
+        print(
+            "  state: dependency-ready; environment and owner availability not inferred"
+        )
+        print(
+            f"  target: {head['target_claim_kind']} / "
+            f"{head['target_level'] or 'resolved'}"
+        )
+        print(f"  runtime: {head['runtime_environment']}")
+        print(f"  owner gate: {head['owner_gate'] or 'none'}")
+        print(f"  receipt: {head['receipt_contract']}")
+        print(f"  acceptance: {', '.join(head['acceptance_checks'])}")
+        if head["runtime_followup"]:
+            print(f"  owes: {head['runtime_followup']}")
+        if head["wave_id"]:
+            command = WaveRunner.full_depth_command(head["suite_id"], head["wave_id"])
             if command:
-                print(f"  run:  {command}")
+                print(f"  run: {command}")
             else:
-                # The wave's own runner has no deeper mode, so `--full` would be silently
-                # dropped and reproduce the retained preview. Naming a command that cannot
-                # discharge the debt is worse than naming none.
-                print("  run:  no command discharges this yet — the wave's runner has no")
-                print("        deeper mode, so `--full` would re-run the existing preview.")
-                print("        This is hands-on work against the real runtime named above.")
-            print()
-            print(f"{len(outstanding)} completed wave(s) still owe runtime follow-up, lowest promotion first:")
-            for suite_id, wave in ordered:
-                level = (wave.get("recovery_claim") or {}).get("level", "specified")
-                print(f"  [{level:<28}] {suite_id} / {wave['id']}: {wave['runtime_followup']}")
+                print(
+                    "  run: no existing command can discharge this obligation; "
+                    "the current wave runner has no authentic full-depth mode"
+                )
+        else:
+            print(
+                "  run: no one-shot command; accumulate the governed authentic-use "
+                "receipt without manufacturing adoption"
+            )
+
+        print()
+        print("DEPENDENCY-READY QUEUE (program priority and sequence):")
+        for obligation in ready:
+            owner = obligation["owner_gate"] or "none"
+            print(
+                f"  [{obligation['priority']:<13}] {obligation['id']:<34} "
+                f"target={obligation['target_level'] or 'resolved':<16} owner={owner}"
+            )
         return 0
     for _, suite_id, wave in sorted(candidates):
         print(f"{suite_id} / {wave['id']}: {wave['objective']}")

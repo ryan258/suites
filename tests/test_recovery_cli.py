@@ -1,0 +1,55 @@
+import io
+import unittest
+from contextlib import redirect_stdout
+from unittest.mock import patch
+
+from portfolio_suites.cli import main
+from portfolio_suites.recovery_program import RecoveryProgramError
+
+
+class RecoveryCLIIntegrationTests(unittest.TestCase):
+    def test_next_uses_dependency_aware_recovery_program(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main(["next"])
+
+        self.assertEqual(code, 0)
+        rendered = output.getvalue()
+        self.assertIn(
+            "Recovery program: 43 obligations (42 wave follow-ups + 1 lifecycle).",
+            rendered,
+        )
+        self.assertIn(
+            "Dependency state: 18 ready, 25 blocked by undischarged dependencies.",
+            rendered,
+        )
+        self.assertIn(
+            "NEXT RECOVERY OBLIGATION: accessibility/A2-adoption",
+            rendered,
+        )
+        self.assertIn(
+            "state: dependency-ready; environment and owner availability not inferred",
+            rendered,
+        )
+        self.assertIn("receipt: portfolio-adoption-v1", rendered)
+        self.assertIn("operator-os/O1", rendered)
+        self.assertIn("owner=permanent_vault_write", rendered)
+        self.assertNotIn("lowest promotion first", rendered)
+
+    def test_next_fails_closed_when_recovery_program_cannot_load(self):
+        output = io.StringIO()
+        with patch(
+            "portfolio_suites.cli.load_recovery_program",
+            side_effect=RecoveryProgramError("broken program"),
+        ), redirect_stdout(output):
+            code = main(["next"])
+
+        self.assertEqual(code, 1)
+        self.assertIn(
+            "ERROR recovery program is invalid: broken program",
+            output.getvalue(),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

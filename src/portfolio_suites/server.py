@@ -21,6 +21,12 @@ from .engine_actions import (
     redact_sensitive_arguments,
     run_action,
 )
+from .recovery_program import (
+    RecoveryProgramError,
+    load_recovery_program,
+    recovery_program_summary,
+    resolve_recovery_obligations,
+)
 from .registry import (
     SUITES_ROOT,
     build_evidence_ownership_index,
@@ -212,6 +218,26 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         try:
             if path == "/api/summary":
                 self._send_json(200, get_portfolio_summary())
+            elif path == "/api/recovery":
+                try:
+                    suites = load_suites()
+                    program = load_recovery_program()
+                    obligations = resolve_recovery_obligations(program, suites)
+                    summary = recovery_program_summary(program, suites)
+                except RecoveryProgramError as error:
+                    self._send_json(500, {
+                        "ok": False,
+                        "error": "recovery_program_invalid",
+                        "message": str(error),
+                    })
+                    return
+                self._send_json(200, {
+                    "ok": True,
+                    "program_id": program["program_id"],
+                    "schema_version": program["schema_version"],
+                    "summary": summary,
+                    "obligations": obligations,
+                })
             elif path == "/api/suites":
                 self._send_json(200, list(load_suites().values()))
             elif path.startswith("/api/suites/"):

@@ -17,6 +17,10 @@ from typing import Any
 
 from .contracts import CONTRACTS, SCHEMA_VERSION
 from .adapters.common import run_donor_git
+from .execution_trace import (
+    load_execution_trace_contract,
+    validate_execution_trace_contract,
+)
 from .paths import (
     PROJECTS_ROOT,
     SUITES_ROOT,
@@ -24,6 +28,7 @@ from .paths import (
     open_confined_directory,
 )
 from .provenance import is_meaningful_git_fingerprint, is_sensitive_path  # noqa: F401 -- predicate identity is asserted by tests
+from .recovery_program import load_recovery_program, validate_recovery_program
 from .recovery_policy import (
     EXECUTED_LEVELS_BY_KIND,
     EXECUTED_PROMOTION_LEVELS,
@@ -700,12 +705,18 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
         ledger = load_ledger()
         nested = load_nested_ledger()
         standard = load_recovery_standard()
+        recovery_program = load_recovery_program()
+        execution_trace_contract = load_execution_trace_contract()
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as error:
         report.errors.append(f"registry load failed: {error}")
         return report
 
     if len(suites) != len(SUITE_DIRS):
         report.errors.append("suite IDs are missing or duplicated")
+    for error in validate_recovery_program(recovery_program, suites):
+        report.errors.append(f"recovery program: {error}")
+    for error in validate_execution_trace_contract(execution_trace_contract):
+        report.errors.append(f"execution trace contract: {error}")
 
     if standard.get("schema_version") != SCHEMA_VERSION:
         report.errors.append("recovery standard schema version is invalid")
