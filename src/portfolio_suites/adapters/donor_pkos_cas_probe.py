@@ -36,14 +36,17 @@ def _module_records(modules: dict[str, object]) -> dict[str, dict[str, str]]:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("usage: donor_pkos_cas_probe.py <source-file-path>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print("usage: donor_pkos_cas_probe.py <source-file-path> [<label>]", file=sys.stderr)
         return EXIT_USAGE
 
     source_path = Path(sys.argv[1]).resolve()
     if not source_path.is_file():
         print(f"source file not found: {source_path}", file=sys.stderr)
         return EXIT_USAGE
+    # Optional donor-side label for the acquired record. O1 keeps the historical default;
+    # a later wave can acquire a different donor file without mislabeling it as dotfiles.
+    label = sys.argv[2] if len(sys.argv) == 3 else "dotfiles/AGENTS.md"
 
     try:
         from pkos import normalize as normalize_module
@@ -62,7 +65,7 @@ def main() -> int:
         acquired_record = ws.acquire_file(
             source_path,
             kind="operator_policy",
-            label="dotfiles/AGENTS.md",
+            label=label,
         )
         cas_object_path = ws.root / acquired_record["raw_object"]
         raw_bytes_match = (

@@ -136,7 +136,7 @@ class ServerTests(unittest.TestCase):
     def test_waves_endpoint(self):
         data = self._get_json("/api/waves")
         self.assertEqual(len(data), 43)
-        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_analysis"), 41)
+        self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_analysis"), 40)
         self.assertEqual(sum(1 for row in data if row["execution_kind"] == "verified_runtime_recovery"), 1)
         self.assertEqual(sum(1 for row in data if row["execution_kind"] == "prototype_check"), 0)
         self.assertTrue(all("runner_available" in row for row in data))

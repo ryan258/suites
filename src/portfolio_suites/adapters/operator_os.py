@@ -75,7 +75,7 @@ def _verified_module_fingerprints(reported: Any) -> dict[str, dict[str, Any]]:
     return verified
 
 
-def _o1_ungoverned_candidate(
+def _ungoverned_runtime_candidate(
     operational_errors: list[dict[str, Any]],
     error: RecoveryProgramError,
 ) -> dict[str, Any]:
@@ -106,7 +106,7 @@ def _o1_ungoverned_candidate(
     }
 
 
-def _o1_runtime_candidate(
+def _runtime_source_candidate(
     *,
     started_at: str,
     finished_at: str,
@@ -117,27 +117,35 @@ def _o1_runtime_candidate(
     module_fingerprints: dict[str, dict[str, Any]],
     donor_interpreter: dict[str, Any],
     all_stages_passed: bool,
-    dotfiles_fingerprint: dict[str, Any],
-    pkos_fingerprint: dict[str, Any],
-    observer_fingerprint: dict[str, Any],
     source_record: dict[str, Any],
     cas_acquisition: dict[str, Any],
     normalize_counts: dict[str, int],
     operational_errors: list[dict[str, Any]],
+    action: str,
+    source_fingerprints: dict[str, Any],
+    dependency_fingerprints: dict[str, Any],
+    trace_fingerprints: dict[str, Any],
+    extra_host_claims: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build an ephemeral runtime candidate without promoting or recording O1."""
+    """Build an ephemeral runtime candidate without promoting or recording the wave.
+
+    Shared by every Operator OS `source_executed` gate: the governed trace route and the
+    portfolio-runtime-source-v1 receipt shape are identical across waves, so only the
+    action that owns the route, the fingerprints per donor, and the host-recomputed
+    extras differ.
+    """
     try:
         recovery_program = load_recovery_program()
         trace_context = get_recovery_trace_context(
             recovery_program,
             adapter="OperatorOSSourceAdapter",
-            action="execute_o1_source_record_observer_gate",
+            action=action,
         )
     except RecoveryProgramError as error:
         # An unreadable program or a route that stopped being unique is a governance
         # failure, not a gate crash. Every other failure in this adapter lands in
         # operational_errors, and a traceback here would report it as a broken runner.
-        return _o1_ungoverned_candidate(operational_errors, error)
+        return _ungoverned_runtime_candidate(operational_errors, error)
     trace_route = trace_context["trace_route"]
     plan_document = {
         "obligation_id": trace_context["obligation_id"],
@@ -174,11 +182,8 @@ def _o1_runtime_candidate(
             "working_directory": str(PKOS_DIR),
             "environment_policy": "donor_env_with_explicit_pkos_pythonpath",
         },
-        "source_fingerprints": {"dotfiles": dotfiles_fingerprint},
-        "dependency_fingerprints": {
-            "PKos": pkos_fingerprint,
-            "obsidian-observer": observer_fingerprint,
-        },
+        "source_fingerprints": source_fingerprints,
+        "dependency_fingerprints": dependency_fingerprints,
         "module_fingerprints": module_fingerprints,
         "tool_dependencies": {
             "host_python": platform.python_version(),
@@ -199,6 +204,7 @@ def _o1_runtime_candidate(
             and source_record.get("sha256") == cas_acquisition.get("sha256"),
             "normalized_items": normalize_counts.get("items", 0),
             "normalized_chunks": normalize_counts.get("chunks", 0),
+            **(extra_host_claims or {}),
         },
         "recovery_behavior": {
             "runtime_mutation_mode": "temporary_workspace_only",
@@ -238,11 +244,7 @@ def _o1_runtime_candidate(
         "policy_decisions": trace_route["policy_decisions"],
         "adapter": trace_route["adapter"],
         "plan_sha256": plan_sha256,
-        "source_fingerprints": {
-            "dotfiles": dotfiles_fingerprint,
-            "PKos": pkos_fingerprint,
-            "obsidian-observer": observer_fingerprint,
-        },
+        "source_fingerprints": trace_fingerprints,
         "started_at": started_at,
         "finished_at": finished_at,
         "outcome": outcome,
@@ -293,6 +295,55 @@ def _o1_runtime_candidate(
         "execution_trace": execution_trace,
         "execution_trace_errors": trace_errors,
     }
+
+
+def _o1_runtime_candidate(
+    *,
+    started_at: str,
+    finished_at: str,
+    command: list[str],
+    invocation_attempted: bool,
+    exit_code: int | None,
+    duration_ms: float,
+    module_fingerprints: dict[str, dict[str, Any]],
+    donor_interpreter: dict[str, Any],
+    all_stages_passed: bool,
+    dotfiles_fingerprint: dict[str, Any],
+    pkos_fingerprint: dict[str, Any],
+    observer_fingerprint: dict[str, Any],
+    source_record: dict[str, Any],
+    cas_acquisition: dict[str, Any],
+    normalize_counts: dict[str, int],
+    operational_errors: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """O1's runtime candidate: the shared builder bound to the O1 trace route and donors."""
+    return _runtime_source_candidate(
+        started_at=started_at,
+        finished_at=finished_at,
+        command=command,
+        invocation_attempted=invocation_attempted,
+        exit_code=exit_code,
+        duration_ms=duration_ms,
+        module_fingerprints=module_fingerprints,
+        donor_interpreter=donor_interpreter,
+        all_stages_passed=all_stages_passed,
+        source_record=source_record,
+        cas_acquisition=cas_acquisition,
+        normalize_counts=normalize_counts,
+        operational_errors=operational_errors,
+        action="execute_o1_source_record_observer_gate",
+        source_fingerprints={"dotfiles": dotfiles_fingerprint},
+        dependency_fingerprints={
+            "PKos": pkos_fingerprint,
+            "obsidian-observer": observer_fingerprint,
+        },
+        trace_fingerprints={
+            "dotfiles": dotfiles_fingerprint,
+            "PKos": pkos_fingerprint,
+            "obsidian-observer": observer_fingerprint,
+        },
+    )
+
 
 RYOS_DISPOSITION_CATALOG: list[dict[str, str]] = [
     {
@@ -773,6 +824,7 @@ class OperatorOSSourceAdapter:
     def execute_o4_pkos_stream_intake(cls) -> dict[str, Any]:
         """Execute O4 wave gate: widen PKOS intake stream to multi-source stream with fenced Observer projections."""
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        started_at = now_iso
         pkos_fp = get_git_fingerprint(PKOS_DIR)
         observer_fp = get_git_fingerprint(OBSERVER_DIR)
         dotfiles_fp = get_git_fingerprint(DOTFILES_DIR)
@@ -797,6 +849,123 @@ class OperatorOSSourceAdapter:
                 "sha256": record["sha256"],
             })
 
+        # The stream alone cannot earn `source_executed`: the batch proves capture reads
+        # three donors, but nothing in it proves the live PKos capture *path* executed.
+        # Prove the same acquisition-and-normalize path O1 owns by running the PKos CAS
+        # probe against this wave's own donor README in the same isolated subprocess.
+        pkos_readme = PKOS_DIR / "README.md"
+        has_pkos_normalize = (PKOS_DIR / "pkos" / "normalize.py").is_file()
+        has_pkos_storage = (PKOS_DIR / "pkos" / "storage.py").is_file()
+        cas_acquisition: dict[str, Any] = {}
+        normalize_counts: dict[str, int] = {}
+        operational_errors: list[dict[str, Any]] = []
+        cas_verified = False
+        donor_cas_cmd = [
+            sys.executable, str(DONOR_PKOS_CAS_PROBE), str(pkos_readme), "pkos/README.md"
+        ]
+        donor_exit_code: int | None = None
+        donor_duration_ms = 0.0
+        donor_invocation_attempted = False
+        module_fingerprints: dict[str, dict[str, Any]] = {}
+        donor_interpreter: dict[str, Any] = {}
+
+        if not pkos_readme.is_file():
+            operational_errors.append({
+                "stage": "donor_acquisition",
+                "command": f"read {pkos_readme}",
+                "error_kind": "missing_donor_file",
+                "message": "pkos/README.md is not present; nothing to acquire into CAS.",
+                "environment_blocked": False,
+            })
+        if not (has_pkos_storage and has_pkos_normalize):
+            operational_errors.append({
+                "stage": "cas_acquisition",
+                "command": f"import pkos.storage, pkos.normalize from {PKOS_DIR}",
+                "error_kind": "missing_destination_module",
+                "message": "PKos storage or normalize module is not present on disk.",
+                "environment_blocked": False,
+            })
+
+        if pkos_readme.is_file() and has_pkos_storage and has_pkos_normalize:
+            donor_started = time.perf_counter()
+            donor_invocation_attempted = True
+            try:
+                proc = subprocess.run(
+                    donor_cas_cmd,
+                    cwd=PKOS_DIR,
+                    env=donor_env({"PYTHONPATH": str(PKOS_DIR)}),
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                donor_duration_ms = (time.perf_counter() - donor_started) * 1000.0
+                donor_exit_code = proc.returncode
+                if proc.returncode == 0 and proc.stdout.strip():
+                    last_line = proc.stdout.strip().splitlines()[-1]
+                    payload = json.loads(last_line)
+                    cas_acquisition = payload.get("acquired_record") or {}
+                    normalize_counts = payload.get("counts", {})
+                    raw_bytes_match = payload.get("raw_bytes_match", False)
+                    module_fingerprints = _verified_module_fingerprints(
+                        payload.get("modules")
+                    )
+                    reported_interpreter = payload.get("interpreter")
+                    donor_interpreter = (
+                        reported_interpreter
+                        if isinstance(reported_interpreter, dict)
+                        else {}
+                    )
+                    modules_agree = bool(module_fingerprints) and all(
+                        record["agrees"] for record in module_fingerprints.values()
+                    )
+                    if not modules_agree:
+                        operational_errors.append({
+                            "stage": "module_fingerprints",
+                            "command": "host recompute of imported pkos modules",
+                            "error_kind": "module_fingerprint_disagreement",
+                            "message": (
+                                "donor-attested module digests do not match the host "
+                                "recomputation, or no imported module was reported."
+                            ),
+                            "environment_blocked": False,
+                        })
+
+                    # Independent parent-side cross-check: donor CAS sha256 matches actual bytes.
+                    parent_sha = compute_sha256(pkos_readme.read_bytes())
+                    sha_cross_check = (
+                        bool(cas_acquisition.get("sha256"))
+                        and cas_acquisition.get("sha256") == parent_sha
+                    )
+                    cas_verified = (
+                        raw_bytes_match
+                        and sha_cross_check
+                        and modules_agree
+                        and normalize_counts.get("acquisitions", 0) >= 1
+                        and normalize_counts.get("items", 0) >= 1
+                        and normalize_counts.get("chunks", 0) >= 1
+                        and normalize_counts.get("failures", 0) == 0
+                    )
+                else:
+                    cas_verified = False
+                    import_failed = proc.returncode == PROBE_EXIT_IMPORT_FAILED
+                    operational_errors.append({
+                        "stage": "cas_acquisition",
+                        "command": f"{sys.executable} {DONOR_PKOS_CAS_PROBE.name} {pkos_readme}",
+                        "error_kind": "donor_import_failed" if import_failed else "non_zero_exit",
+                        "message": (proc.stderr or proc.stdout)[:500],
+                        "environment_blocked": import_failed,
+                    })
+            except Exception as exc:
+                donor_duration_ms = (time.perf_counter() - donor_started) * 1000.0
+                cas_verified = False
+                operational_errors.append({
+                    "stage": "cas_acquisition",
+                    "command": f"{sys.executable} {DONOR_PKOS_CAS_PROBE.name} {pkos_readme}",
+                    "error_kind": type(exc).__name__,
+                    "message": str(exc),
+                    "environment_blocked": isinstance(exc, (ImportError, ModuleNotFoundError)),
+                })
+
         stream_results = OperatorOSEngine.capture_live_pkos_stream(
             notes_stream, collector="portfolio_suites.adapters.operator_os.o4_stream"
         )
@@ -815,13 +984,50 @@ class OperatorOSSourceAdapter:
             and is_meaningful_git_fingerprint(observer_fp)
             and is_meaningful_git_fingerprint(dotfiles_fp)
         )
-        all_stages_passed = (
+        stream_ok = (
             len(notes_stream) >= 3
             and len(stream_results) >= 3
             and all_fenced
             and all_cited
             and sources_verified
         )
+        all_stages_passed = stream_ok and cas_verified
+
+        pkos_readme_record = donor_file_record(pkos_readme, PKOS_DIR) or {}
+        finished_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        runtime_candidate = _runtime_source_candidate(
+            started_at=started_at,
+            finished_at=finished_at,
+            command=donor_cas_cmd,
+            invocation_attempted=donor_invocation_attempted,
+            exit_code=donor_exit_code,
+            duration_ms=donor_duration_ms,
+            module_fingerprints=module_fingerprints,
+            donor_interpreter=donor_interpreter,
+            all_stages_passed=all_stages_passed,
+            source_record={"sha256": pkos_readme_record.get("sha256")},
+            cas_acquisition=cas_acquisition,
+            normalize_counts=normalize_counts,
+            operational_errors=operational_errors,
+            action="execute_o4_pkos_stream_intake",
+            source_fingerprints={"pkos": pkos_fp},
+            dependency_fingerprints={
+                "dotfiles": dotfiles_fp,
+                "obsidian-observer": observer_fp,
+            },
+            trace_fingerprints={
+                "dotfiles": dotfiles_fp,
+                "PKos": pkos_fp,
+                "obsidian-observer": observer_fp,
+            },
+            extra_host_claims={
+                "batch_sources": [rec["source_id"] for rec, _ in stream_results],
+                "batch_size": len(stream_results),
+                "all_fenced_from_reingestion": all_fenced,
+                "all_sources_cited": all_cited,
+            },
+        )
+        candidate_passed = runtime_candidate["all_stages_passed"]
 
         return {
             "schema_version": SCHEMA_VERSION,
@@ -836,9 +1042,28 @@ class OperatorOSSourceAdapter:
             "all_sources_cited": all_cited,
             "processed_records": [rec for rec, _ in stream_results],
             "observer_projections_count": len(stream_results),
-            "all_stages_passed": all_stages_passed,
+            "cas_verified": cas_verified,
+            "runtime_candidate": runtime_candidate,
+            "operational_errors": runtime_candidate["receipt_contract_candidate"]["operational_errors"],
+            "all_stages_passed": candidate_passed,
             "source_verification_passed": sources_verified,
-            "status": "stream_intake_verified" if all_stages_passed else "source_unverified",
+            "donor": {
+                "name": "pkos",
+                "path": str(PKOS_DIR),
+                "fingerprint": pkos_fp,
+                "source_file": "README.md",
+            },
+            "target": {
+                "dotfiles_name": "dotfiles",
+                "dotfiles_path": str(DOTFILES_DIR),
+                "dotfiles_fingerprint": dotfiles_fp,
+                "observer_name": "obsidian-observer",
+                "observer_path": str(OBSERVER_DIR),
+                "observer_fingerprint": observer_fp,
+            },
+            "status": (
+                "stream_intake_verified" if candidate_passed else "source_unverified"
+            ),
         }
 
     @classmethod

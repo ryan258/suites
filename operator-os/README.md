@@ -21,5 +21,6 @@ require an independently issued, exact-payload, single-use approval from the con
 `PORTFOLIO_OPERATOR_APPROVAL_STORE`. This repository verifies and consumes those approvals but
 cannot mint them.
 
-Verified: O1, O2, O3, O4, O5, O6 (6/6) analysis milestones. Runtime adoption of the donor ports
-and real-world JARVIS workflows remains outstanding.
+Verified: O1, O2, O3, O4, O5, O6 (6/6); O1 and O4 hold `source_executed` runtime receipts over the
+live PKos capture path, and O2, O3, O5, O6 are analysis milestones. Runtime adoption of the donor
+ports and real-world JARVIS workflows remains outstanding.

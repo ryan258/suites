@@ -241,6 +241,38 @@
       "runtime_environment": "permanent-operator-environment",
       "owner_gate": "permanent_vault_write",
       "receipt_contract": "portfolio-runtime-source-v1",
+      "trace_route": {
+        "adapter": "OperatorOSSourceAdapter",
+        "action": "execute_o4_pkos_stream_intake",
+        "ontology_version": "1.0.0",
+        "mapping_version": "1.0.0",
+        "resolved_mappings": [
+          {
+            "concept": "CapturedSource",
+            "relationship": "derivedFrom",
+            "authority": "dotfiles"
+          },
+          {
+            "concept": "KnowledgeProjection",
+            "relationship": "representedBy",
+            "authority": "PKos"
+          }
+        ],
+        "candidate_authorities": ["dotfiles", "PKos"],
+        "selected_authority": "PKos",
+        "policy_decisions": [
+          {
+            "policy_id": "ephemeral-local-runtime",
+            "outcome": "allowed",
+            "reason_code": "temporary_workspace_no_permanent_vault_write"
+          },
+          {
+            "policy_id": "evidence-recording",
+            "outcome": "allowed",
+            "reason_code": "candidate_recorded_on_explicit_request"
+          }
+        ]
+      },
       "acceptance_checks": ["source_invocation", "representative_inputs", "source_fingerprints", "host_recomputed_claims", "state_resume", "recovery_behavior", "privacy_redaction"],
       "priority": "critical_path",
       "sequence": 6,

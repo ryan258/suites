@@ -1,100 +1,133 @@
 {
-  "schema_version": "1.0.0",
-  "wave_id": "O4",
-  "executed_at": "2026-08-24T20:37:33.226773+00:00",
-  "pkos_fingerprint": {
-    "branch": "main",
-    "head": "6c861b6e032f91f6289c36a859241e363583d5d3",
-    "short": "main@6c861b6",
-    "is_dirty": false,
-    "dirty_files_count": 0,
-    "dirty_files": [],
-    "patch_sha256": "",
-    "lockfile_sha256": "ef27bcda45539816e025a98aa07943ea1c151cd7c32702ec93c1cbeb641c543b",
-    "tested_files_fingerprint": {
-      "pyproject.toml": "4299f4a5453d649a9e605e6fd2776fb222f6eb4c662c1b20b9b48bc9a5ea9ffe",
-      "README.md": "f6766ace2460bbaf8b243077ea2a0ff4ae0f35f20673781766f8ee36b64b6482"
-    },
-    "target_state": "clean_commit"
-  },
-  "observer_fingerprint": {
-    "branch": "main",
-    "head": "5ea72135f1efb0296b9fa493fc11dd3775255f89",
-    "short": "main@5ea7213",
-    "is_dirty": false,
-    "dirty_files_count": 0,
-    "dirty_files": [],
-    "patch_sha256": "",
-    "lockfile_sha256": "",
-    "tested_files_fingerprint": {
-      "README.md": "256df082fce9a6c02726ee81392f44604c0c65eb0dccdb1ae8b06de405d6ad99"
-    },
-    "target_state": "clean_commit"
-  },
-  "dotfiles_fingerprint": {
-    "branch": "main",
-    "head": "43f56c88a1dfd39fa5e7f10b21d5d7385babd550",
-    "short": "main@43f56c8",
-    "is_dirty": false,
-    "dirty_files_count": 0,
-    "dirty_files": [],
-    "patch_sha256": "",
-    "lockfile_sha256": "",
-    "tested_files_fingerprint": {
-      "README.md": "66891b28700a21beb2671a9baf4c35891018605d2b918a31e495c03349414e42"
-    },
-    "target_state": "clean_commit"
-  },
-  "donor_notes_read": 3,
-  "batch_size": 3,
-  "all_fenced_from_reingestion": true,
-  "all_sources_cited": true,
-  "processed_records": [
-    {
-      "schema_version": "1.0.0",
-      "source_id": "src-pkos-readme",
-      "acquired_at": "2026-08-24T20:37:33.356894+00:00",
-      "sha256": "f6766ace2460bbaf8b243077ea2a0ff4ae0f35f20673781766f8ee36b64b6482",
-      "size_bytes": 7698,
-      "media_type": "text/markdown",
-      "origin": "pkos://README.md",
-      "provenance": {
-        "author": "Ryan",
-        "collector": "portfolio_suites.adapters.operator_os.o4_stream",
-        "intake_method": "source_capture"
-      }
-    },
-    {
-      "schema_version": "1.0.0",
-      "source_id": "src-dotfiles-readme",
-      "acquired_at": "2026-08-24T20:37:33.357650+00:00",
-      "sha256": "66891b28700a21beb2671a9baf4c35891018605d2b918a31e495c03349414e42",
-      "size_bytes": 4968,
-      "media_type": "text/markdown",
-      "origin": "dotfiles://README.md",
-      "provenance": {
-        "author": "Ryan",
-        "collector": "portfolio_suites.adapters.operator_os.o4_stream",
-        "intake_method": "source_capture"
-      }
-    },
-    {
-      "schema_version": "1.0.0",
-      "source_id": "src-observer-readme",
-      "acquired_at": "2026-08-24T20:37:33.357728+00:00",
-      "sha256": "256df082fce9a6c02726ee81392f44604c0c65eb0dccdb1ae8b06de405d6ad99",
-      "size_bytes": 11561,
-      "media_type": "text/markdown",
-      "origin": "observer://README.md",
-      "provenance": {
-        "author": "Ryan",
-        "collector": "portfolio_suites.adapters.operator_os.o4_stream",
-        "intake_method": "source_capture"
-      }
-    }
-  ],
-  "observer_projections_count": 3,
+  "receipt_version": "portfolio-runtime-source-v1",
+  "status": "source_executed",
   "all_stages_passed": true,
-  "source_verification_passed": true,
-  "status": "stream_intake_verified"
+  "source_invocation_status": "invoked",
+  "source_invocation": {
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_pkos_cas_probe.py",
+      "/Users/ryanjohnson/Projects/PKos/README.md",
+      "pkos/README.md"
+    ],
+    "exit_code": 0,
+    "duration_ms": 78.93,
+    "working_directory": "/Users/ryanjohnson/Projects/PKos",
+    "environment_policy": "donor_env_with_explicit_pkos_pythonpath"
+  },
+  "planned_source_invocation": {
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_pkos_cas_probe.py",
+      "/Users/ryanjohnson/Projects/PKos/README.md",
+      "pkos/README.md"
+    ],
+    "working_directory": "/Users/ryanjohnson/Projects/PKos",
+    "environment_policy": "donor_env_with_explicit_pkos_pythonpath"
+  },
+  "source_fingerprints": {
+    "pkos": {
+      "branch": "main",
+      "head": "6c861b6e032f91f6289c36a859241e363583d5d3",
+      "short": "main@6c861b6",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "ef27bcda45539816e025a98aa07943ea1c151cd7c32702ec93c1cbeb641c543b",
+      "tested_files_fingerprint": {
+        "pyproject.toml": "4299f4a5453d649a9e605e6fd2776fb222f6eb4c662c1b20b9b48bc9a5ea9ffe",
+        "README.md": "f6766ace2460bbaf8b243077ea2a0ff4ae0f35f20673781766f8ee36b64b6482"
+      },
+      "target_state": "clean_commit"
+    }
+  },
+  "dependency_fingerprints": {
+    "dotfiles": {
+      "branch": "main",
+      "head": "43f56c88a1dfd39fa5e7f10b21d5d7385babd550",
+      "short": "main@43f56c8",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "README.md": "66891b28700a21beb2671a9baf4c35891018605d2b918a31e495c03349414e42"
+      },
+      "target_state": "clean_commit"
+    },
+    "obsidian-observer": {
+      "branch": "main",
+      "head": "5ea72135f1efb0296b9fa493fc11dd3775255f89",
+      "short": "main@5ea7213",
+      "is_dirty": false,
+      "dirty_files_count": 0,
+      "dirty_files": [],
+      "patch_sha256": "",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "README.md": "256df082fce9a6c02726ee81392f44604c0c65eb0dccdb1ae8b06de405d6ad99"
+      },
+      "target_state": "clean_commit"
+    }
+  },
+  "module_fingerprints": {
+    "pkos.storage": {
+      "path": "pkos/storage.py",
+      "donor_attested_sha256": "28ec41fdc02b18c5a10c468b4e45eb4fbfeecd81222595236d3bb2bc70b89431",
+      "host_recomputed_sha256": "28ec41fdc02b18c5a10c468b4e45eb4fbfeecd81222595236d3bb2bc70b89431",
+      "agrees": true
+    },
+    "pkos.normalize": {
+      "path": "pkos/normalize.py",
+      "donor_attested_sha256": "59c1d21aadaeff253851e35d38d20830dd2666007b177ca97220994275f79859",
+      "host_recomputed_sha256": "59c1d21aadaeff253851e35d38d20830dd2666007b177ca97220994275f79859",
+      "agrees": true
+    }
+  },
+  "tool_dependencies": {
+    "host_python": "3.14.6",
+    "host_implementation": "CPython",
+    "donor_python": "3.14.6",
+    "donor_implementation": "CPython",
+    "donor_probe_sha256": "7b9fda92e72d4d03464aa480d93bb32696cda0cc5c5c48d9bb6e6307564df781"
+  },
+  "reproducible_commands": [
+    [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_pkos_cas_probe.py",
+      "/Users/ryanjohnson/Projects/PKos/README.md",
+      "pkos/README.md"
+    ]
+  ],
+  "host_recomputed_claims": {
+    "source_sha256": "f6766ace2460bbaf8b243077ea2a0ff4ae0f35f20673781766f8ee36b64b6482",
+    "cas_sha256": "f6766ace2460bbaf8b243077ea2a0ff4ae0f35f20673781766f8ee36b64b6482",
+    "cas_sha256_matches_source": true,
+    "normalized_items": 1,
+    "normalized_chunks": 6,
+    "batch_sources": [
+      "src-pkos-readme",
+      "src-dotfiles-readme",
+      "src-observer-readme"
+    ],
+    "batch_size": 3,
+    "all_fenced_from_reingestion": true,
+    "all_sources_cited": true
+  },
+  "recovery_behavior": {
+    "runtime_mutation_mode": "temporary_workspace_only",
+    "permanent_vault_written": false,
+    "partial_permanent_state_possible": false,
+    "rerun_safe": true,
+    "environment_failures_fail_closed": true,
+    "evidence_write_requires_explicit_record": true
+  },
+  "privacy_redaction": {
+    "raw_source_content_retained": false,
+    "credentials_retained": false,
+    "command_arguments_reviewed": true
+  },
+  "operational_errors": []
 }

@@ -54,7 +54,8 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(len(results), 43)
 
         verified = [r for r in results if r.passed]
-        # 42 verified analysis milestones, plus A2 runtime recovery when probe environment is available.
+        # Every complete wave passes when the environment has what its gate needs; A2's
+        # browser-driven gate is the one run that can legitimately come up short.
         self.assertIn(len(verified), {42, 43})
         a1 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A1")
         self.assertEqual(a1.execution_kind, "verified_analysis")
@@ -77,13 +78,18 @@ class WaveTests(unittest.TestCase):
         self.assertTrue(a4.passed)
 
         verified_analysis = [r for r in results if r.execution_kind == "verified_analysis"]
-        self.assertEqual(len(verified_analysis), 41)
+        self.assertEqual(len(verified_analysis), 40)
 
-        # O1 left the analysis census when it started retaining proof of the PKos invocation
-        # rather than a parse of what the invocation produced.
-        o1 = next(r for r in results if r.suite_id == "operator-os" and r.wave_id == "O1")
-        self.assertEqual(o1.execution_kind, "verified_source_execution")
-        self.assertTrue(o1.passed)
+        # O1 and O4 left the analysis census when they started retaining proof of the PKos
+        # invocation rather than a parse of what the invocation produced.
+        for o_wave_id, expectation in (("O1", "verified_source_execution"), ("O4", "verified_source_execution")):
+            with self.subTest(wave_id=o_wave_id):
+                wave = next(
+                    r for r in results
+                    if r.suite_id == "operator-os" and r.wave_id == o_wave_id
+                )
+                self.assertEqual(wave.execution_kind, expectation)
+                self.assertTrue(wave.passed)
         for r in verified_analysis:
             self.assertTrue(r.passed, f"Verified analysis for {r.suite_id}/{r.wave_id} failed: {r.message}")
 
@@ -123,7 +129,7 @@ class WaveTests(unittest.TestCase):
 
         # All waves across all other suites are verified analysis milestones.
         for suite_id, wave_ids in (
-            ("operator-os", ("O2", "O3", "O4", "O5", "O6")),
+            ("operator-os", ("O2", "O3", "O5", "O6")),
             ("brand-publishing", ("B1", "B2", "B3", "B4", "B5", "B6")),
             ("production-house", ("P1", "P2", "P3", "P4", "P5")),
             ("model-behavior-lab", ("M1", "M2", "M3", "M4", "M5")),

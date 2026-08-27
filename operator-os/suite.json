@@ -129,17 +129,23 @@
       "status": "complete",
       "objective": "Ingest three authentic donor README sources through PKOS capture with fenced Observer projections.",
       "acceptance": "A batch of at least three donor README sources produces content-addressed SourceRecords, each cited and fenced from re-ingestion.",
-      "runtime_followup": "Run the real day-to-day daily-notes stream through the live PKos capture path into the permanent vault.",
+      "runtime_followup": "Scale the real day-to-day daily-notes stream through the live PKos capture path into the permanent personal vault, and accumulate the authentic accepted uses that an adoption claim requires. The intake stream's capture path is now proven: the receipt retains the argv, exit code, duration, and host-recomputed digests of the PKos modules that ran over the three donor README sources.",
       "evidence": "operator-os/evidence/O4-PKOS-DAILY-INTAKE-STREAM.json",
       "recovery_claim": {
-        "kind": "analysis",
-        "level": "source_inspected",
-        "real_runtime": false,
+        "kind": "runtime",
+        "level": "source_executed",
+        "real_runtime": true,
+        "receipt_contract": "portfolio-runtime-source-v1",
         "evidence_basis": [
-          "pkos_fingerprint",
-          "observer_fingerprint",
-          "processed_records",
-          "all_fenced_from_reingestion"
+          "source_invocation",
+          "source_fingerprints",
+          "dependency_fingerprints",
+          "module_fingerprints",
+          "tool_dependencies",
+          "reproducible_commands",
+          "host_recomputed_claims",
+          "recovery_behavior",
+          "privacy_redaction"
         ]
       }
     },

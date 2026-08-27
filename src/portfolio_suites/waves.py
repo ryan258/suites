@@ -951,17 +951,27 @@ class WaveRunner:
         result = OperatorOSSourceAdapter.execute_o4_pkos_stream_intake()
         passed = (
             result.get("status") == "stream_intake_verified"
+            and result.get("cas_verified") is True
+            and result.get("all_stages_passed") is True
             and result.get("all_fenced_from_reingestion") is True
             and result.get("all_sources_cited") is True
             and result.get("batch_size", 0) >= 3
         )
+        # O4 is a runtime claim now, so the retained document is the
+        # portfolio-runtime-source-v1 receipt, exactly as O1 retained one. The full gate
+        # result stays available to callers; an evidence file must be the thing its
+        # contract validates, not the analysis envelope that used to carry it.
+        runtime_receipt = (result.get("runtime_candidate") or {}).get(
+            "receipt_contract_candidate"
+        ) or result
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
             passed,
-            result,
-            f"Widened PKOS intake stream across {result.get('batch_size', 0)} donor README sources with verified Observer projection fences.",
+            runtime_receipt,
+            "Widened PKOS intake across three donor README sources through the live PKos CAS "
+            "capture path with verified Observer projection fences.",
             {"batch_size": result.get("batch_size")},
         )
 

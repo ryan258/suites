@@ -144,17 +144,6 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "strings": ["recovery_path"],
         "fingerprints": ["jarvis_runtime"],
     },
-    "operator-os/O4": {
-        "equals": {
-            "wave_id": "O4",
-            "status": "stream_intake_verified",
-            "all_fenced_from_reingestion": True,
-            "all_sources_cited": True,
-        },
-        "lists": ["processed_records"],
-        "fingerprints": ["pkos_fingerprint", "observer_fingerprint", "dotfiles_fingerprint"],
-        "minimums": {"batch_size": 3, "observer_projections_count": 1, "donor_notes_read": 3},
-    },
     "operator-os/O5": {
         "equals": {
             "wave_id": "O5",
@@ -186,9 +175,9 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["fail_closed_test", "preview_test"],
         "fingerprints": ["jarvis_fingerprint"],
     },
-    # operator-os/O1 was here. It is a runtime claim now, retaining a
-    # portfolio-runtime-source-v1 receipt that proves the invocation, so it is validated by
-    # _portfolio_runtime_receipt_errors and never reaches an analysis spec.
+    # operator-os/O1 and O4 were here. They are runtime claims now, retaining a
+    # portfolio-runtime-source-v1 receipt that proves the invocation, so they are validated by
+    # _portfolio_runtime_receipt_errors and never reach an analysis spec.
     "brand-publishing/B1": {
         "equals": {
             "wave": "B1",
@@ -779,12 +768,6 @@ def _analysis_receipt_semantic_errors(
                 validate_contract("A11yFinding", finding)
             except (ContractError, TypeError) as error:
                 errors.append(f"catalog_evaluation.evaluations.{index}.finding violates A11yFinding: {error}")
-    elif spec_key == "operator-os/O4":
-        for index, record in enumerate(document.get("processed_records", [])):
-            try:
-                validate_contract("SourceRecord", record)
-            except (ContractError, TypeError) as error:
-                errors.append(f"processed_records.{index} violates SourceRecord: {error}")
     elif spec_key == "brand-publishing/B1":
         mutation_tests = document.get("mutation_tests", [])
         if any(not isinstance(test, dict) or test.get("passed") is not True for test in mutation_tests):
