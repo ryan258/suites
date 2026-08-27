@@ -493,14 +493,21 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 wave_id = parts[4]
                 query_params = urllib.parse.parse_qs(parsed.query)
                 record_param = query_params.get("record", ["false"])[0].lower() in ("true", "1")
+                # Evidence recording is an exclusive CLI concern guarded by delegation; the web
+                # surface must never mutate evidence files, even from the trusted loopback.
+                if record_param:
+                    self._send_json(403, {
+                        "error": "recording is CLI-only; run 'suites wave <suite> <wave> --record'"
+                    })
+                    return
                 # Loopback binding does not stop another site blind-POSTing here. Execution
                 # itself launches local subprocesses, even when evidence recording is disabled.
                 if not self._execution_request_is_trusted():
                     self._send_json(403, {"error": "cross-origin wave execution is refused"})
                     return
                 full_param = query_params.get("full", ["false"])[0].lower() in ("true", "1")
-                # Ephemeral execution by default; only mutate evidence files on explicit record request
-                res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=record_param, full=full_param)
+                # Ephemeral execution only; the CLI `--record` flag is the sole evidence writer
+                res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False, full=full_param)
                 status_code = 404 if res.execution_kind == "error" else 200
                 # A gate outcome alone does not say how much the wave claims to have shown,
                 # so the run result carries the promotion level the caller should display

@@ -153,22 +153,9 @@ class ServerTests(unittest.TestCase):
             claim_kind="analysis",
             claim_level="source_inspected",
         )
-        read_only_record = WaveRunResult(
-            "accessibility",
-            "A1",
-            True,
-            "reviewed historical analysis",
-            evidence_path="accessibility/evidence/A1-WCAG-AUDITOR-PARITY.json",
-            data={"fixture": "read-only-record"},
-            execution_kind="verified_analysis",
-            claim_kind="analysis",
-            claim_level="reviewed_historical_analysis",
-            record_note="read-only evidence cannot be replaced by this runner",
-            record_status="read_only",
-        )
         with patch(
             "portfolio_suites.server.WaveRunner.run_wave",
-            side_effect=[ephemeral, read_only_record],
+            return_value=ephemeral,
         ) as run_wave:
             data = self._post_json("/api/waves/model-behavior-lab/M1/run")
             self.assertFalse(data["recorded"])
@@ -178,20 +165,26 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(data["claim_level"], "source_inspected")
             self.assertIsNone(data["evidence_path"])
             self.assertIsNotNone(data["data"])
+            self.assertEqual(data["record_requested"], False)
 
-            a1_data = self._post_json("/api/waves/accessibility/A1/run?record=true")
-            self.assertFalse(a1_data["recorded"])
-            self.assertTrue(a1_data["passed"])
-            self.assertIsNotNone(a1_data["record_note"])
-            self.assertIn("read-only", a1_data["record_note"])
-
-        self.assertEqual(run_wave.call_count, 2)
-        run_wave.assert_any_call(
+        run_wave.assert_called_once_with(
             "model-behavior-lab", "M1", write_evidence=False, full=False
         )
-        run_wave.assert_any_call(
-            "accessibility", "A1", write_evidence=True, full=False
+
+    def test_wave_recording_over_http_is_cli_only(self):
+        # Recording mutates evidence files, so the web surface refuses it before dispatch
+        # even from a trusted loopback client; the CLI `--record` flag is the sole writer.
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/api/waves/accessibility/A1/run?record=true",
+            data=b"",
+            method="POST",
         )
+        with patch("portfolio_suites.server.WaveRunner.run_wave") as run_wave:
+            with self.assertRaises(urllib.error.HTTPError) as context:
+                urllib.request.urlopen(request)
+        self.assertEqual(context.exception.code, 403)
+        self.assertIn("CLI-only", context.exception.read().decode("utf-8"))
+        run_wave.assert_not_called()
 
     def test_unknown_wave_post_returns_not_found(self):
         req = urllib.request.Request(
