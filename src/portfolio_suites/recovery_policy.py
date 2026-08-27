@@ -77,6 +77,23 @@ RUNTIME_PARITY_EVIDENCE = {
     "dependency_fingerprints",
     "reproducible_commands",
 }
+# Marker set a `source_executed` runtime claim must name in `evidence_basis`. Unlike the
+# parity set it stops short of the destination: it does not require `destination_invocation`,
+# `representative_inputs`, `output_parity`, or `failure_parity`, which can only be substantiated
+# once the destination runs. It instead demands the host-recomputed provenance claims
+# (`module_fingerprints`, `host_recomputed_claims`) and privacy handling that a parity receipt
+# assumes the destination already proved at the source rung.
+RUNTIME_SOURCE_EVIDENCE = {
+    "source_invocation",
+    "source_fingerprints",
+    "dependency_fingerprints",
+    "module_fingerprints",
+    "tool_dependencies",
+    "reproducible_commands",
+    "host_recomputed_claims",
+    "recovery_behavior",
+    "privacy_redaction",
+}
 RECOVERY_RECEIPT_CONTRACTS = {
     "accessibility-wcag-331-v1",
     "portfolio-runtime-source-v1",

@@ -23,6 +23,7 @@ from portfolio_suites.registry import (
     load_recovery_standard,
     load_suites,
     validate_registry,
+    RUNTIME_SOURCE_EVIDENCE,
 )
 from portfolio_suites.registry import evidence_errors as registry_evidence_errors
 from portfolio_suites import registry as _registry_module
@@ -741,6 +742,43 @@ class AnalysisPromotionLevelTests(unittest.TestCase):
         self.assertTrue(
             any("cannot occupy the runtime promotion level" in error for error in errors),
             f"source_executed was accepted for an analysis claim: {errors}",
+        )
+
+    def _source_claim(self, basis=None):
+        suite = self._suite_with_claim("source_executed", kind="runtime")
+        claim = suite["waves"][0]["recovery_claim"]
+        claim["evidence_basis"] = sorted(RUNTIME_SOURCE_EVIDENCE if basis is None else basis)
+        claim["receipt_contract"] = "portfolio-runtime-source-v1"
+        return suite
+
+    def test_source_executed_runtime_claim_requires_its_declared_evidence_basis(self):
+        """Parity is enforced on its marker set; `source_executed` must be too."""
+        suite = self._source_claim(
+            basis=RUNTIME_SOURCE_EVIDENCE - {"module_fingerprints"}
+        )
+        with patch(
+            "portfolio_suites.registry.load_suites",
+            return_value={"accessibility": suite},
+        ):
+            report = validate_registry(check_live=False)
+        self.assertTrue(
+            any(
+                "source_executed runtime evidence is missing module_fingerprints" in error
+                for error in report.errors
+            ),
+            report.errors,
+        )
+
+    def test_source_executed_complete_evidence_basis_is_not_flagged(self):
+        suite = self._source_claim()
+        with patch(
+            "portfolio_suites.registry.load_suites",
+            return_value={"accessibility": suite},
+        ):
+            report = validate_registry(check_live=False)
+        self.assertFalse(
+            any("runtime evidence is missing" in error for error in report.errors),
+            report.errors,
         )
 
     def test_source_inspected_is_the_highest_analysis_rung(self):

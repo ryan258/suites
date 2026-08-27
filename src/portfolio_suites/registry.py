@@ -41,6 +41,7 @@ from .recovery_policy import (
     RECOVERY_TIERS,
     RUNTIME_PARITY_EVIDENCE,
     RUNTIME_PROMOTION_LEVELS,
+    RUNTIME_SOURCE_EVIDENCE,
 )
 from .receipts import (  # noqa: F401 -- compatibility surface for tests and callers
     ANALYSIS_RECEIPT_SPECS,
@@ -953,6 +954,12 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
                     "accessibility-wcag-331-v1", "portfolio-runtime-parity-v1"
                 }:
                     report.errors.append(f"{suite_id}/{wave.get('id')}: runtime parity receipt contract is missing or unsupported")
+            if claim_kind == "runtime" and claim_level == "source_executed":
+                missing_basis = sorted(RUNTIME_SOURCE_EVIDENCE - evidence_basis_set)
+                if missing_basis:
+                    report.errors.append(
+                        f"{suite_id}/{wave.get('id')}: source_executed runtime evidence is missing {', '.join(missing_basis)}"
+                    )
             if claim_kind == "runtime" and claim_level == "source_executed" and claim.get("receipt_contract") != "portfolio-runtime-source-v1":
                 report.errors.append(
                     f"{suite_id}/{wave.get('id')}: source_executed runtime requires portfolio-runtime-source-v1"
