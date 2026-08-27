@@ -219,6 +219,52 @@ class ArtifactTests(unittest.TestCase):
                     )
 
 
+class WaveDemoTaxonomyTests(unittest.TestCase):
+    def test_wave_all_demo_counts_match_registry_and_runner_classification(self):
+        """Demo 58/59 counts are projections of the registry, not hand-maintained folklore."""
+        from portfolio_suites.registry import load_suites
+        from portfolio_suites.waves import classify_wave_spec
+
+        demos = (ROOT / "docs" / "100-demos.md").read_text(encoding="utf-8")
+        taxonomy_demos = demos.split("### 58.", 1)[1].split("### 60.", 1)[0]
+        normalized_demos = " ".join(taxonomy_demos.split())
+        classified = [
+            (classify_wave_spec(wave), (wave.get("recovery_claim") or {}).get("level"))
+            for manifest in load_suites().values()
+            for wave in manifest.get("waves", [])
+        ]
+
+        prototypes = sum(level == "prototype" for _, level in classified)
+        historical = sum(level == "reviewed_historical_analysis" for _, level in classified)
+        inspected = sum(level == "source_inspected" for _, level in classified)
+        source_runs = sum(kind == "verified_source_execution" for kind, _ in classified)
+        verified_analyses = sum(
+            kind == "verified_analysis" and level != "prototype"
+            for kind, level in classified
+        )
+        runtime_slots = sum(kind == "verified_runtime_recovery" for kind, _ in classified)
+
+        self.assertEqual(runtime_slots, 1, "demo wording assumes one depth-dependent runtime slot")
+        self.assertIn(
+            f"{verified_analyses} verified analyses, {source_runs} source execution, and "
+            f"{prototypes} prototype checks passed",
+            normalized_demos,
+        )
+        for displayed_count in (
+            f"{prototypes} [PROTOTYPE]",
+            f"{inspected} [INSPECTED]",
+            f"{historical} [HISTORICAL]",
+            f"{source_runs} [SOURCE-RUN]",
+            f"{runtime_slots} [FAST-PROBE]",
+            f"{runtime_slots} [UNVERIFIABLE]",
+        ):
+            self.assertIn(
+                displayed_count,
+                taxonomy_demos,
+                f"wave demo taxonomy is stale: {displayed_count}",
+            )
+
+
 class DocumentedCommandTests(unittest.TestCase):
     """The README teaches the CLI. A command it teaches has to exist.
 

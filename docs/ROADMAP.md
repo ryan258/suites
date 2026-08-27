@@ -99,8 +99,9 @@ Milestone completion and evidence depth are separate axes:
 - **4/43 prototype-level claims** — suite-owned fixtures or reference logic only (`A5`, `B3`,
   `B4`, `B6`).
 - **1/43 reviewed historical analysis** — `A1`, a hand-authored decision whose structure is checked.
-- **37/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
-- **0/43 source-executed claims** — no retained runtime receipt currently proves this rung.
+- **36/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
+- **1/43 source-executed claims** — `O1`, whose receipt retains the argv, exit code, duration,
+  and host-recomputed digests of the PKos modules that ran.
 - **1/43 parity-verified runtime recoveries** — `A2`.
 - **0 adopted, 0 converged, 0 resolved.**
 - **42/43 completed waves still owe a live run** recorded in `runtime_followup`.

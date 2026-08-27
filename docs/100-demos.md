@@ -628,7 +628,7 @@ throws it away, leaving the retained receipt untouched.
 PYTHONPATH=src python3 -m portfolio_suites wave game-design G1
 ```
 
-Look for: a `[PROTOTYPE]` tag and a one-line result. Nothing was written.
+Look for: an `[INSPECTED]` tag and a one-line result. Nothing was written.
 
 ### 58. Run every wave in the portfolio
 
@@ -637,10 +637,10 @@ PYTHONPATH=src python3 -m portfolio_suites wave --all
 ```
 
 Look for: 43 results in about ten seconds, ending in a summary line that counts each outcome kind
-separately. Without `--full` you should see 4 prototype checks passed, 38 verified analyses, and one fast probe — the fast
-probe is `A2`, which is the only wave with a runtime claim and declines to assert it from a
-shallow run. If your machine cannot open the browser runtime `A2` needs, that line instead reports
-an unverifiable environment, which is an honest "cannot check" rather than a failure.
+separately. Without `--full` you should see 37 verified analyses, 1 source execution, and 4
+prototype checks passed. `A2` occupies the remaining slot: its shallow run reports 1 fast probe
+when the browser runtime is available, or 1 environment-unverifiable when that runtime cannot be
+opened. The latter is an honest "cannot check" rather than a failure.
 
 ### 59. Read the tag vocabulary
 
@@ -648,9 +648,10 @@ an unverifiable environment, which is an honest "cannot check" rather than a fai
 PYTHONPATH=src python3 -m portfolio_suites wave --all | grep -oE '^\[[A-Z-]+\]' | sort | uniq -c
 ```
 
-Look for: `34 [PROTOTYPE]`, `7 [INSPECTED]`, `1 [HISTORICAL]`, and `1 [FAST-PROBE]`. Each tag is a different strength of claim and they
-are deliberately not interchangeable — `[RECOVERED]` does not appear here at all, because earning
-it requires the full-depth run in demo 61.
+Look for: `4 [PROTOTYPE]`, `36 [INSPECTED]`, `1 [HISTORICAL]`, `1 [SOURCE-RUN]`, and one
+`A2` depth tag: either `1 [FAST-PROBE]` or `1 [UNVERIFIABLE]`. Each tag is a different strength
+of claim and they are deliberately not interchangeable — `[RECOVERED]` does not appear here at
+all, because earning it requires the full-depth run in demo 61.
 
 ### 60. Run the one real runtime-recovery wave
 
@@ -658,8 +659,9 @@ it requires the full-depth run in demo 61.
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2
 ```
 
-Look for: without `--full` this reports `[FAST-PROBE]`, not `[RECOVERED]`. A probe that skipped the
-expensive stages says so rather than inheriting the manifest's historical claim.
+Look for: without `--full` this reports `[FAST-PROBE]` when its shallow browser stages run, or
+`[UNVERIFIABLE]` when that runtime cannot be opened — never `[RECOVERED]`. A probe that skipped
+the expensive stages says so rather than inheriting the manifest's historical claim.
 
 ### 61. Demand full depth
 
@@ -667,8 +669,8 @@ expensive stages says so rather than inheriting the manifest's historical claim.
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2 --full
 ```
 
-Look for: either a genuine `[RECOVERED]` or an environment-blocked result. Depth is requested
-explicitly and never implied by `--record`.
+Look for: either a genuine `[RECOVERED]` or an environment-blocked `[UNVERIFIABLE]` result. Depth
+is requested explicitly and never implied by `--record`.
 
 ### 62. Ask a wave to record, and be told why it will not
 

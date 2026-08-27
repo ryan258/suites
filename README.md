@@ -47,8 +47,8 @@ BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
-WORK STATE: 43/43 waves complete (42 analysis milestones + 1 runtime wave)
-EVIDENCE PROMOTION: 4 prototype | 1 reviewed historical | 37 source inspected | 0 source executed
+WORK STATE: 43/43 waves complete (41 analysis milestones + 1 runtime wave)
+EVIDENCE PROMOTION: 4 prototype | 1 reviewed historical | 36 source inspected | 1 source executed
                     1 parity verified | 0 adopted | 0 converged | 0 resolved
 OUTSTANDING: 42/43 completed waves still owe a live run
 ```
@@ -56,7 +56,8 @@ OUTSTANDING: 42/43 completed waves still owe a live run
 Those are two independent axes and both are load-bearing. The first says every scheduled analysis
 milestone is finished. The second says what those milestones demonstrated: most waves now parse
 authentic donor artifacts (`source_inspected`), four remain suite-local fixtures (`A5`, `B3`,
-`B4`, `B6`), and one runtime recovery (`A2`) is at `parity_verified`. A completed wave at
+`B4`, `B6`), one wave (`O1`) is at `source_executed`, and one runtime recovery (`A2`) is at
+`parity_verified`. A completed wave at
 `prototype` is a finished piece of work and is not a recovery; nothing here has reached adoption,
 convergence, or retirement approval.
 
@@ -64,13 +65,18 @@ convergence, or retirement approval.
 the runner — `reviewed_historical_analysis`, not an executed donor or runtime gate. `A2` is the
 single `parity_verified` runtime recovery.
 
-`source_executed` and above are runtime-only rungs, and the count is `0` for a specific reason.
-`O1`'s gate does import and run authentic donor PKos code, but its retained analysis receipt
-records what that code produced, never the invocation itself — no argv, no exit code, no source
-fingerprint of the module that ran. An analysis receipt has no field that can carry that proof, so
-the claim is capped at `source_inspected` and the gap is written down in `O1`'s `runtime_followup`.
-Reaching the rung means re-declaring `O1` as a runtime claim behind a `portfolio-runtime-source-v1`
-receipt, not raising a boolean in its manifest.
+`source_executed` and above are runtime-only rungs, and `O1` is the first wave to hold one. Its
+gate imports and runs authentic donor PKos code, and it now retains a `portfolio-runtime-source-v1`
+receipt that records the invocation itself: argv, exit code, duration, and a SHA-256 of every PKos
+module that ran — each one recomputed by this process and required to match the digest the donor
+reported for itself. Scaling real day-to-day intake into the permanent vault is a separate,
+owner-gated claim (`operator-os/O1-adoption`), not a footnote on this receipt.
+
+The remaining 41 waves reach `source_inspected` at best for the reason `O1` used to: an analysis
+receipt has no field that can carry an argv, an exit code, or a fingerprint of the module that ran,
+so the claim is capped at what the receipt can prove and the gap is written down in each wave's
+`runtime_followup`. Reaching the rung means re-declaring the wave as a runtime claim behind a
+receipt that proves the invocation, not raising a boolean in its manifest.
 
 ## The eight suites
 
@@ -127,7 +133,7 @@ PYTHONPATH=src python3 -m portfolio_suites contract A11yFinding sample
 PYTHONPATH=src python3 -m portfolio_suites contract BrandPackage spec
 PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.json>
 
-# Ephemeral wave checks (42 analysis milestones + 1 runtime wave; all 43 verified)
+# Ephemeral wave checks (41 analysis milestones + 2 runtime waves; all 43 verified)
 # Without --full, A2 runs a fast probe and is reported as [FAST-PROBE], not a runtime recovery.
 PYTHONPATH=src python3 -m portfolio_suites wave --all --no-record
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2
