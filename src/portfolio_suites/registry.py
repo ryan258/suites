@@ -212,8 +212,37 @@ def _git_value(path: Path, *args: str) -> str:
     return result.stdout.strip() if result.returncode == 0 else "unavailable"
 
 
+def _is_finder_junk_path(path: str) -> bool:
+    """True for a macOS Finder ``.DS_Store`` entry at any depth (segment-exact).
+
+    A segment-exact match (``.DS_Store`` or ``dir/.DS_Store``) keeps look-alike names
+    like ``backup.DS_Store`` visible, so only real Finder junk is excluded. Deliberately
+    dropped entries remain fully covered by ``patch_sha256`` (``git diff HEAD``), which
+    hashes tracked file content, staged adds, and deletions, so excluding these from the
+    porcelain digest cannot hide a real change.
+    """
+    return path == ".DS_Store" or path.endswith("/.DS_Store")
+
+
+def _is_ignored_junk_line(porcelain_line: str) -> bool:
+    """True for a macOS Finder .DS_Store porcelain line so it cannot fake a dirty tree.
+
+    Porcelain lines carry an ``XY path`` shape; the path portion is what matters.
+    Finder recreates ``.DS_Store`` spuriously on folder touches, so entries that are
+    Finder junk are excluded from both the dirty-line count and the status digest that
+    baselines compare against. A repo that deliberately tracks ``.DS_Store`` should pin
+    it via its own gitignore/disposition instead.
+    """
+    path = porcelain_line[3:].strip() if len(porcelain_line) >= 4 else porcelain_line
+    return _is_finder_junk_path(path)
+
+
 def _git_untracked_paths(source: Path) -> tuple[list[str], bool]:
-    """Return NUL-delimited untracked paths plus whether Git enumerated them successfully."""
+    """Return NUL-delimited untracked paths plus whether Git enumerated them successfully.
+
+    macOS Finder junk (``.DS_Store``) is excluded from the enumeration before any content
+    digest is computed, so touching a folder in Finder cannot re-drift a clean baseline.
+    """
     try:
         result = run_donor_git(
             source,
@@ -234,7 +263,7 @@ def _git_untracked_paths(source: Path) -> tuple[list[str], bool]:
     for entry in entries:
         if entry.startswith(b"?? "):
             rel_name = entry[3:].decode("utf-8", errors="replace")
-            if rel_name:
+            if rel_name and not _is_finder_junk_path(rel_name):
                 untracked.append(rel_name)
     return untracked, True
 
@@ -426,7 +455,12 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
     current_head = _git_value(source, "rev-parse", "--short", "HEAD")
     current_branch = _git_value(source, "branch", "--show-current") or "DETACHED"
     current_status = _git_value(source, "status", "--porcelain")
-    current_lines = len(current_status.splitlines()) if current_status and current_status != "unavailable" else 0
+    porcelain_lines = (
+        [line for line in current_status.splitlines() if not _is_ignored_junk_line(line)]
+        if current_status and current_status != "unavailable"
+        else []
+    )
+    current_lines = len(porcelain_lines)
     untracked_paths, untracked_enumeration_complete = _git_untracked_paths(source)
     untracked_digest, untracked_incomplete = _untracked_content_digest(source, untracked_paths)
     status_readable = current_status != "unavailable"
@@ -438,7 +472,7 @@ def check_project_git_drift(name: str, row: dict[str, Any]) -> dict[str, Any] | 
     if untracked_incomplete:
         untracked_incomplete_reasons.append("untracked_content_fingerprint_incomplete")
 
-    status_fragments = [current_status if current_status != "unavailable" else ""]
+    status_fragments = ["\n".join(porcelain_lines) if status_readable else ""]
     if untracked_digest:
         status_fragments.append(untracked_digest)
     if not untracked_enumeration_complete:

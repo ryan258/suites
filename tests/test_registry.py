@@ -15,6 +15,7 @@ from portfolio_suites.registry import (
     _analysis_receipt_semantic_errors,
     _git_untracked_paths,
     _git_value,
+    _is_ignored_junk_line,
     _runtime_parity_receipt_errors,
     _untracked_content_digest,
     check_project_git_drift,
@@ -510,6 +511,47 @@ class WorktreeDriftTests(unittest.TestCase):
                 drift = check_project_git_drift("donor", {"source_snapshot": {"git": True}})
         self.assertTrue(drift["patch_unfingerprinted"], "must be reported so `baseline` backfills it")
         self.assertFalse(drift["patch_drift"], "an absent baseline field cannot itself be drift")
+
+    def test_ignored_junk_line_detects_dot_store_at_any_depth(self):
+        self.assertFalse(_is_ignored_junk_line("?? real-file.json"))
+        self.assertTrue(_is_ignored_junk_line("?? .DS_Store"))
+        self.assertTrue(_is_ignored_junk_line("?? sub/dir/.DS_Store"))
+        self.assertTrue(_is_ignored_junk_line(" M sub/.DS_Store"))
+        self.assertFalse(_is_ignored_junk_line("?? backup.DS_Store"))
+        self.assertFalse(_is_ignored_junk_line("?? .DS_Store.tmp"))
+
+    def test_finder_dot_store_cannot_fake_a_dirty_tree(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "donor"
+            repo.mkdir()
+            self._git(repo, "init", "-q", "-b", "main")
+            self._git(repo, "config", "user.email", "t@example.com")
+            self._git(repo, "config", "user.name", "t")
+            (repo / "f.txt").write_text("committed\n", encoding="utf-8")
+            (repo / "lib").mkdir()
+            (repo / "lib" / "keep.txt").write_text("tracked\n", encoding="utf-8")
+            self._git(repo, "add", "f.txt", "lib/keep.txt")
+            self._git(repo, "commit", "-qm", "init")
+            with patch("portfolio_suites.registry.PROJECTS_ROOT", root):
+                from portfolio_suites.registry import check_project_git_drift
+
+                clean = check_project_git_drift("donor", {"source_snapshot": {"git": True}})
+                baseline = {
+                    "git": True,
+                    "branch": clean["current_branch"],
+                    "head": clean["current_head"],
+                    "status_lines": clean["current_lines"],
+                    "status_sha256": clean["current_status_sha256"],
+                    "patch_sha256": clean["current_patch_sha256"],
+                }
+                (repo / ".DS_Store").write_text("Finder touch\n", encoding="utf-8")
+                (repo / "lib" / ".DS_Store").write_text("Finder touch\n", encoding="utf-8")
+                after = check_project_git_drift("donor", {"source_snapshot": baseline})
+
+        self.assertFalse(after["has_drift"], ".DS_Store must not re-drift a clean baseline")
+        self.assertEqual(after["current_lines"], 0)
+        self.assertEqual(after["current_status_sha256"], baseline["status_sha256"])
 
     def test_untracked_enumeration_timeout_is_explicitly_incomplete(self):
         with patch(
