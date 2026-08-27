@@ -137,7 +137,8 @@
       "acceptance_checks": ["accepted_uses", "recovery_behavior", "source_fingerprints", "privacy_redaction"],
       "priority": "critical_path",
       "sequence": 1,
-      "state": "planned"
+      "evidence": "accessibility/evidence/A2-ADOPTION.json",
+      "state": "discharged"
     },
     {
       "id": "operator-os/O1",

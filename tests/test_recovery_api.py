@@ -36,14 +36,14 @@ class RecoveryAPIIntegrationTests(unittest.TestCase):
         self.assertEqual(data["summary"]["wave_runtime_followups"], 42)
         self.assertEqual(data["summary"]["lifecycle_obligations"], 2)
         self.assertEqual(data["summary"]["states"], {
-            "ready": 19,
+            "ready": 18,
             "blocked_dependency": 24,
-            "discharged": 1,
+            "discharged": 2,
         })
         obligations = {item["id"]: item for item in data["obligations"]}
         self.assertEqual(
             obligations["accessibility/A2-adoption"]["effective_state"],
-            "ready",
+            "discharged",
         )
         self.assertEqual(
             obligations["brand-publishing/B3"]["effective_state"],

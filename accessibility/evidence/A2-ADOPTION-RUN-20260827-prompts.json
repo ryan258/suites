@@ -1,0 +1,16 @@
+{
+  "record_kind": "accessible-aria-run-transcript",
+  "transcript_version": 1,
+  "tool": "allys-tools aria-validator",
+  "rule_focus": "WCAG 3.3.1 error association (ported at f2b4c6e)",
+  "source_commit": "f2b4c6e",
+  "source_module": "a11y-tools/aria-validator/index.ts",
+  "source_sha256": "54d05f407f01aaeb624d4af0364cfbc2633f299a8fd84e8123fd9ba8889227d6",
+  "target": "https://ryanleej.com/prompts",
+  "occurred_at": "2026-08-27T20:56:02Z",
+  "command": "npx --no-install tsx a11y-tools/cli.ts aria-validator run https://ryanleej.com/prompts --out <retained>",
+  "finding_count": 0,
+  "error_count": 0,
+  "findings": [],
+  "errors": []
+}

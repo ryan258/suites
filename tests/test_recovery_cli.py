@@ -20,18 +20,20 @@ class RecoveryCLIIntegrationTests(unittest.TestCase):
             rendered,
         )
         self.assertIn(
-            "Dependency state: 19 ready, 24 blocked by undischarged dependencies.",
+            "Dependency state: 18 ready, 24 blocked by undischarged dependencies.",
             rendered,
         )
         self.assertIn(
-            "NEXT RECOVERY OBLIGATION: accessibility/A2-adoption",
+            "NEXT RECOVERY OBLIGATION: brand-publishing/B1",
             rendered,
         )
         self.assertIn(
             "state: dependency-ready; environment and owner availability not inferred",
             rendered,
         )
-        self.assertIn("receipt: portfolio-adoption-v1", rendered)
+        self.assertIn("receipt: portfolio-runtime-parity-v1", rendered)
+        # The adoption contract surfaces in the dependency-ready queue rows.
+        self.assertIn("portfolio-adoption-v1", rendered)
         # O1 is discharged, so the queue names its adoption follow-on and not O1 itself.
         self.assertIn("operator-os/O1-adoption", rendered)
         self.assertNotIn("operator-os/O1  ", rendered)

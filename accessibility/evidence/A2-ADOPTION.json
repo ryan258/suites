@@ -1,0 +1,34 @@
+{
+  "receipt_version": "portfolio-adoption-v1",
+  "status": "adopted",
+  "obligation_id": "accessibility/A2-adoption",
+  "operational_errors": [],
+  "parity_receipt_sha256": "d65237a3fa97b92459b088eaf1faa16e70bf1bffaa3841523e1805979c3f00d7",
+  "accepted_uses": [
+    {
+      "use_id": "aria-validator/ryanleej-learn-20260827",
+      "input_sha256": "70cbbdb6a47e3b14635a9e27cad49f220132314a9e8cd0528e9d9a152ee07321",
+      "accepted": true,
+      "evidence_ref": "accessibility/evidence/A2-ADOPTION-RUN-20260827-learn.json",
+      "occurred_at": "2026-08-27T20:55:57Z",
+      "input_descriptor": "Live run of the ported aria-validator against https://ryanleej.com/learn; findings/errors (0/0)."
+    },
+    {
+      "use_id": "aria-validator/thesagemages-20260827",
+      "input_sha256": "e09bd8211b83de829312a9b40ff3f1fefa05df4fa61993b52330e80651848530",
+      "accepted": true,
+      "evidence_ref": "accessibility/evidence/A2-ADOPTION-RUN-20260827-sagemages.json",
+      "occurred_at": "2026-08-27T20:56:05Z",
+      "input_descriptor": "Live run of the ported aria-validator against https://thesagemages.com; findings/errors (3/0), all wcagRule 4.1.2."
+    },
+    {
+      "use_id": "aria-validator/wcag-fixture-20260827",
+      "input_sha256": "125309768d0df4c7f3ba3a426eb55d39dfbb3234a15fa3eb759df518d63a0726",
+      "accepted": true,
+      "evidence_ref": "accessibility/evidence/A2-ADOPTION-RUN-20260827-fixture.json",
+      "occurred_at": "2026-08-27T21:16:23.669Z",
+      "input_descriptor": "Live run against a local deterministic HTML fixture (bytes retained at accessibility/evidence/A2-ADOPTION-FIXTURE-20260827.html, sha-256 874c7bd5...) with aria-invalid=\"true\" and no error-text association: the ported rule fires (1 finding, wcagRule 3.3.1, severity serious, selector #card)."
+    }
+  ],
+  "fingerprint_basis": "input_sha256 is the content-address (sha-256) of each retained run transcript; validate_recovery_program re-derives it from the artifact at evidence_ref on every validation, so tampering with either the receipt or the transcript turns the registry red. Transcripts are the false-if-untrue record of a real invocation: target, occurred_at, the exact tool command, the donor source commit (f2b4c6e) and module sha-256, and the tool's real findings/errors output. The fixture use is self-evidencing: its single WCAG 3.3.1 finding proves the guard at index.ts:119 executed and fired, so the adopted behavior cannot be deleted without the transcript diverging. parity_receipt_sha256 is the sha-256 of the A2-WCAG-331-EVIDENCE.json artifact declared on the A2 wave, enforced atomically with the binding above."
+}

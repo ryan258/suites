@@ -10,6 +10,7 @@ second source of truth.
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from collections import Counter
 from pathlib import Path
@@ -127,6 +128,164 @@ def _dependency_cycle(nodes: dict[str, dict[str, Any]]) -> list[str] | None:
         if cycle:
             return cycle
     return None
+
+
+def _obligation_evidence_ref(
+    obligation: dict[str, Any],
+    suites: dict[str, dict[str, Any]],
+) -> tuple[str | None, str | None]:
+    """Return ``(evidence_ref, error)`` for an obligation's retained receipt.
+
+    A ``wave_runtime_followup`` obligation's evidence is *derived* from the wave it
+    follows, never copied onto the obligation: the manifests stay authoritative for
+    evidence paths, and a second recorded copy can drift from the one it mirrors. A
+    copied ``evidence`` key is refused for that reason. ``lifecycle`` obligations have
+    no wave, so they declare their own path and it is read as written.
+    """
+    obligation_id = obligation.get("id") or "?"
+    declared = obligation.get("evidence")
+    has_declared = isinstance(declared, str) and bool(declared.strip())
+    if obligation.get("source") != "wave_runtime_followup":
+        return (declared if has_declared else None), None
+    if has_declared:
+        return None, (
+            f"{obligation_id}: wave_runtime_followup evidence is derived from its wave; "
+            "remove the copied 'evidence' key"
+        )
+    suite_id, _, wave_id = obligation_id.partition("/")
+    for wave in (suites.get(suite_id) or {}).get("waves", []):
+        if isinstance(wave, dict) and wave.get("id") == wave_id:
+            wave_evidence = wave.get("evidence")
+            if isinstance(wave_evidence, str) and wave_evidence.strip():
+                return wave_evidence, None
+            break
+    return None, None
+
+
+def _obligation_retained_evidence_errors(
+    obligation: dict[str, Any],
+    suites: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Fail-closed contract enforcement for obligation retained evidence.
+
+    Waves are validated by :func:`portfolio_suites.receipts.evidence_errors`, driven by
+    the wave's declared ``recovery_claim``. An obligation's retained receipt is resolved
+    by :func:`_obligation_evidence_ref` -- declared for lifecycle obligations, derived
+    from the wave for runtime follow-ups -- and without this bridge that path would
+    otherwise never be read. The bridge: every discharged obligation must resolve to
+    retained evidence, the evidence must resolve to a declared artifact inside its suite,
+    and the artifact must pass the same contract dispatcher a wave would use. Adoption
+    receipts additionally bind twice: each ``accepted_uses[i].evidence_ref`` must resolve
+    to a retained artifact whose content address equals that use's ``input_sha256``, and
+    ``parity_receipt_sha256`` must equal the content address of the parity evidence
+    declared on the obligation's own wave (identified by the short id prefix of the
+    obligation id), not any arbitrary parity artifact in the suite.
+    """
+    errors: list[str] = []
+    obligation_id = obligation.get("id") or "?"
+    suite_id = obligation_id.partition("/")[0]
+    state = obligation.get("state")
+    evidence_ref, ref_error = _obligation_evidence_ref(obligation, suites)
+    if ref_error:
+        return [ref_error]
+    # Only a discharged obligation asserts retained evidence. An open one targets a level
+    # its wave has not reached, so checking the wave's current receipt against the
+    # obligation's *target* contract would report the outstanding work as a defect.
+    if state != "discharged":
+        return errors
+    if not evidence_ref:
+        errors.append(
+            f"{obligation_id}: discharged obligation requires retained evidence at 'evidence'"
+        )
+        return errors
+
+    from .receipts import SHA256_HEX, evidence_errors
+    from .registry import resolve_declared_evidence_path
+
+    path = resolve_declared_evidence_path(evidence_ref, suite_id)
+    if path is None:
+        errors.append(
+            f"{obligation_id}: obligation evidence path is invalid or escapes its suite: {evidence_ref!r}"
+        )
+        return errors
+    if not path.is_file():
+        errors.append(
+            f"{obligation_id}: declared obligation evidence is missing at {evidence_ref}"
+        )
+        return errors
+
+    contract = obligation.get("receipt_contract")
+    if not isinstance(contract, str):
+        return errors
+    wave = {
+        "id": obligation_id.split("/", 1)[-1],
+        "recovery_claim": {
+            "kind": obligation.get("target_claim_kind"),
+            "level": obligation.get("target_level"),
+            "receipt_contract": contract,
+        },
+    }
+    for receipt_error in evidence_errors(wave, path, suite_id):
+        errors.append(f"{obligation_id}: {receipt_error}")
+
+    if obligation.get("target_claim_kind") == "adoption" and contract == "portfolio-adoption-v1":
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return errors
+        if not isinstance(document, dict):
+            return errors
+        for index, use in enumerate(document.get("accepted_uses") or []):
+            ref = use.get("evidence_ref")
+            run_path = (
+                resolve_declared_evidence_path(ref, suite_id) if isinstance(ref, str) else None
+            )
+            if run_path is None or not run_path.is_file():
+                errors.append(
+                    f"{obligation_id}: accepted_uses.{index}.evidence_ref does not "
+                    f"resolve to a retained artifact"
+                )
+                continue
+            try:
+                resolved_digest = hashlib.sha256(run_path.read_bytes()).hexdigest()
+            except OSError:
+                errors.append(
+                    f"{obligation_id}: accepted_uses.{index}.evidence_ref is unreadable at {ref}"
+                )
+                continue
+            if resolved_digest != use.get("input_sha256"):
+                errors.append(
+                    f"{obligation_id}: accepted_uses.{index}.input_sha256 does not match {ref}"
+                )
+        stated = document.get("parity_receipt_sha256")
+        if isinstance(stated, str) and SHA256_HEX.fullmatch(stated):
+            suffix_token = obligation_id.rsplit("/", 1)[-1].split("-", 1)[0]
+            parity_evidence_levels = frozenset({"parity_verified", "adopted", "converged"})
+            suite_artifacts: dict[str, str] = {}
+            for wave_candidate in (suites.get(suite_id) or {}).get("waves", []):
+                if not isinstance(wave_candidate, dict):
+                    continue
+                claim = wave_candidate.get("recovery_claim") or {}
+                if wave_candidate.get("id") != suffix_token:
+                    continue
+                if claim.get("level") not in parity_evidence_levels:
+                    continue
+                declared_path = resolve_declared_evidence_path(
+                    wave_candidate.get("evidence"), suite_id
+                )
+                if declared_path is None or not declared_path.is_file():
+                    continue
+                try:
+                    digest = hashlib.sha256(declared_path.read_bytes()).hexdigest()
+                except OSError:
+                    continue
+                suite_artifacts.setdefault(digest, str(declared_path))
+            if stated not in suite_artifacts:
+                errors.append(
+                    f"{obligation_id}: parity_receipt_sha256 does not bind to a declared "
+                    f"runtime-parity evidence artifact in {suite_id}"
+                )
+    return errors
 
 
 def validate_recovery_program(
@@ -445,6 +604,9 @@ def validate_recovery_program(
                         errors.append(
                             f"{obligation_id}: trace_route policy decision {decision_index} has unknown outcome {outcome!r}"
                         )
+
+        for evidence_error in _obligation_retained_evidence_errors(obligation, suites):
+            errors.append(evidence_error)
 
     for obligation_id, obligation in obligation_by_id.items():
         dependencies = obligation.get("dependencies")

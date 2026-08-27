@@ -1,0 +1,43 @@
+{
+  "record_kind": "accessible-aria-run-transcript",
+  "transcript_version": 1,
+  "tool": "allys-tools aria-validator",
+  "rule_focus": "WCAG 3.3.1 error association (ported at f2b4c6e)",
+  "source_commit": "f2b4c6e",
+  "source_module": "a11y-tools/aria-validator/index.ts",
+  "source_sha256": "54d05f407f01aaeb624d4af0364cfbc2633f299a8fd84e8123fd9ba8889227d6",
+  "target": "http://127.0.0.1:49456/fixture.html",
+  "fixture": "Local deterministic HTML fixture served via python3 http.server: single input with aria-invalid=\"true\" and no aria-errormessage/aria-describedby association. Exit code 1 (findings present).",
+  "occurred_at": "2026-08-27T21:16:23.669Z",
+  "command": "npx --no-install tsx a11y-tools/cli.ts aria-validator run http://127.0.0.1:49456/fixture.html --out <retained>",
+  "finding_count": 1,
+  "error_count": 0,
+  "findings": [
+    {
+      "id": "63ae542c2ea84db6",
+      "tool": "aria-validator",
+      "timestamp": "2026-08-27T21:16:23.669Z",
+      "url": "http://127.0.0.1:49456/fixture.html",
+      "selector": "#card",
+      "html": "<input id=\"card\" name=\"card\" type=\"text\" aria-invalid=\"true\">",
+      "wcagRule": "3.3.1",
+      "severity": "serious",
+      "status": "unverified",
+      "description": "This control is marked aria-invalid=\"true\" but has no aria-errormessage or aria-describedby error text association.",
+      "suggestedFix": {
+        "description": "Point aria-errormessage or aria-describedby to visible text that identifies the input error."
+      },
+      "evidence": [
+        {
+          "kind": "generic",
+          "label": "ARIA error association",
+          "detail": {
+            "errorReferences": [],
+            "resolvedText": ""
+          }
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

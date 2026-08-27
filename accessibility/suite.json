@@ -64,6 +64,36 @@
       "path": "accessibility/evidence/A3-KEYBOARD-OVERLAY-RECONCILIATION.md",
       "role": "historical",
       "reason": "Superseded 2026-08-20 narrative. Its consolidation and permission claims were never executed; A3-KEYBOARD-OVERLAY-RECONCILIATION.json is canonical."
+    },
+    {
+      "path": "accessibility/evidence/A2-ADOPTION.json",
+      "role": "ancillary",
+      "reason": "portfolio-adoption-v1 receipt for the accessibility/A2-adoption recovery obligation: 3 accepted authentic uses of the ported ARIA 3.3.1 rule, all exercised at or after its port commit f2b4c6e (2026-08-20). Retained evidence bindings (input_sha256 vs transcript, parity_receipt_sha256 vs A2 wave artifact) are re-enforced by validate_recovery_program on every validation."
+    },
+    {
+      "path": "accessibility/evidence/A2-ADOPTION-RUN-20260827-learn.json",
+      "role": "ancillary",
+      "reason": "Falsifiable live-run transcript of the ported aria-validator against https://ryanleej.com/learn (2026-08-27), cited by accepted_uses[0]."
+    },
+    {
+      "path": "accessibility/evidence/A2-ADOPTION-RUN-20260827-sagemages.json",
+      "role": "ancillary",
+      "reason": "Falsifiable live-run transcript of the ported aria-validator against https://thesagemages.com (2026-08-27), cited by accepted_uses[1]."
+    },
+    {
+      "path": "accessibility/evidence/A2-ADOPTION-FIXTURE-20260827.html",
+      "role": "ancillary",
+      "reason": "Retained input fixture for the self-evidencing aria-invalid=\"true\" run (sha-256 874c7bd5...): exact bytes served and audited by the ported aria-validator on 2026-08-27, cited by accepted_uses[2]. Makes the fixture use reproducible."
+    },
+    {
+      "path": "accessibility/evidence/A2-ADOPTION-RUN-20260827-fixture.json",
+      "role": "ancillary",
+      "reason": "Falsifiable live-run transcript of the ported aria-validator against a local deterministic aria-invalid=\"true\" fixture: the 3.3.1 rule fires (1 serious finding, selector #card), cited by accepted_uses[2]. Self-evidencing that the adopted guard at index.ts:119 executes."
+    },
+    {
+      "path": "accessibility/evidence/A2-ADOPTION-RUN-20260827-prompts.json",
+      "role": "ancillary",
+      "reason": "Falsifiable live-run transcript of the ported aria-validator against https://ryanleej.com/prompts (2026-08-27); clean run retained for completeness, not cited by the current receipt."
     }
   ],
   "waves": [

@@ -1,0 +1,65 @@
+{
+  "record_kind": "accessible-aria-run-transcript",
+  "transcript_version": 1,
+  "tool": "allys-tools aria-validator",
+  "rule_focus": "WCAG 3.3.1 error association (ported at f2b4c6e)",
+  "source_commit": "f2b4c6e",
+  "source_module": "a11y-tools/aria-validator/index.ts",
+  "source_sha256": "54d05f407f01aaeb624d4af0364cfbc2633f299a8fd84e8123fd9ba8889227d6",
+  "target": "https://thesagemages.com",
+  "occurred_at": "2026-08-27T20:56:05Z",
+  "command": "npx --no-install tsx a11y-tools/cli.ts aria-validator run https://thesagemages.com --out <retained>",
+  "finding_count": 3,
+  "error_count": 0,
+  "findings": [
+    {
+      "id": "b86d3d7234490ebd",
+      "tool": "aria-validator",
+      "timestamp": "2026-08-27T20:56:11.545Z",
+      "url": "https://www.thesagemages.com/",
+      "selector": "html > body.responsive > div:nth-of-type(1) > div.main_MF > div.site-root:nth-of-type(2) > div.masterPage > div.Y3K28_:nth-of-type(1) > div.ETqrjz > div:nth-of-type(2) > div.c1dmp-overflow-wrapper > div.c1dmp-container > header.comp-kbgakxea > section.ke5pl1 > div.HFEOE3:nth-of-type(2) > div.comp-kbgakxea_r_comp-moxert01-container:nth-of-type(2) > div.i4P7Vt > a.YX2qkL",
+      "html": "<a data-motion-part=\"BG_LAYER comp-kbgakxea_r_comp-moa3wy3y\" data-testid=\"linkElement\" href=\"https://www.thesagemages.com\" target=\"_self\" class=\"YX2qkL\"></a>",
+      "wcagRule": "4.1.2",
+      "severity": "serious",
+      "status": "unverified",
+      "description": "This interactive element has no accessible name.",
+      "suggestedFix": {
+        "description": "Provide visible label text or a concise accessible name."
+      },
+      "evidence": []
+    },
+    {
+      "id": "af5af7f95bc35ef7",
+      "tool": "aria-validator",
+      "timestamp": "2026-08-27T20:56:11.545Z",
+      "url": "https://www.thesagemages.com/",
+      "selector": "html > body.responsive > div:nth-of-type(1) > div.main_MF > div.site-root:nth-of-type(2) > div.masterPage > div.Y3K28_:nth-of-type(1) > div.ETqrjz > div:nth-of-type(2) > div.c1dmp-overflow-wrapper > div.c1dmp-container > footer.comp-kbgakxmn > section.ke5pl1 > div.HFEOE3:nth-of-type(5) > div.comp-kbgakxmn_r_comp-mp1o8134-container:nth-of-type(2) > div.i4P7Vt:nth-of-type(1) > a.YX2qkL",
+      "html": "<a data-motion-part=\"BG_LAYER comp-kbgakxmn_r_comp-mp1odl8m\" data-testid=\"linkElement\" href=\"https://www.thesagemages.com\" target=\"_self\" class=\"YX2qkL\"></a>",
+      "wcagRule": "4.1.2",
+      "severity": "serious",
+      "status": "unverified",
+      "description": "This interactive element has no accessible name.",
+      "suggestedFix": {
+        "description": "Provide visible label text or a concise accessible name."
+      },
+      "evidence": []
+    },
+    {
+      "id": "0b8d77231734aa07",
+      "tool": "aria-validator",
+      "timestamp": "2026-08-27T20:56:11.545Z",
+      "url": "https://www.thesagemages.com/",
+      "selector": "#comp-kd5px9q0_r_comp-kkmqi5tc",
+      "html": "<button id=\"comp-kd5px9q0_r_comp-kkmqi5tc\" class=\"comp-kd5px9q0_r_comp-kkmqi5tc wixui-vector-image\"></button>",
+      "wcagRule": "4.1.2",
+      "severity": "serious",
+      "status": "unverified",
+      "description": "This interactive element has no accessible name.",
+      "suggestedFix": {
+        "description": "Provide visible label text or a concise accessible name."
+      },
+      "evidence": []
+    }
+  ],
+  "errors": []
+}

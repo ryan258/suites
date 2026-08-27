@@ -188,7 +188,8 @@ def _next() -> int:
             owner = obligation["owner_gate"] or "none"
             print(
                 f"  [{obligation['priority']:<13}] {obligation['id']:<34} "
-                f"target={obligation['target_level'] or 'resolved':<16} owner={owner}"
+                f"target={obligation['target_level'] or 'resolved':<16} "
+                f"receipt={obligation['receipt_contract']} owner={owner}"
             )
         return 0
     for _, suite_id, wave in sorted(candidates):

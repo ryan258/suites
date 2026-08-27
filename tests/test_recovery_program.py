@@ -1,6 +1,9 @@
+import hashlib
+import json
 import unittest
 from copy import deepcopy
 
+from portfolio_suites.paths import SUITES_ROOT
 from portfolio_suites.recovery_program import (
     load_recovery_program,
     recovery_program_summary,
@@ -14,6 +17,183 @@ class RecoveryProgramTests(unittest.TestCase):
     def setUp(self):
         self.program = load_recovery_program()
         self.suites = load_suites()
+
+    def _adoption_obligation(self, program):
+        return next(
+            obligation
+            for obligation in program["obligations"]
+            if obligation["id"] == "accessibility/A2-adoption"
+        )
+
+    def _write_receipt(self, name, payload):
+        path = SUITES_ROOT / "accessibility" / "evidence" / name
+        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        self.addCleanup(path.unlink)
+        return path
+
+    def test_discharged_obligation_requires_retained_evidence(self):
+        program = deepcopy(self.program)
+        obligation = self._adoption_obligation(program)
+        obligation["state"] = "discharged"
+        obligation.pop("evidence", None)
+        errors = validate_recovery_program(program, self.suites)
+        self.assertIn(
+            "accessibility/A2-adoption: discharged obligation requires retained evidence at 'evidence'",
+            errors,
+        )
+
+    def test_lifecycle_obligation_evidence_is_contract_validated(self):
+        path = self._write_receipt(
+            "TMP-A2-ADOPTION-CORRUPT.json",
+            {"receipt_version": "portfolio-adoption-v1", "status": "NOT-ADOPTED", "accepted_uses": []},
+        )
+        program = deepcopy(self.program)
+        obligation = self._adoption_obligation(program)
+        obligation["state"] = "discharged"
+        obligation["evidence"] = f"accessibility/evidence/{path.name}"
+        errors = validate_recovery_program(program, self.suites)
+        self.assertIn(
+            "accessibility/A2-adoption: adoption receipt status must be 'adopted'",
+            errors,
+        )
+
+    def test_adoption_parity_binding_must_correspond_to_a_declared_artifact(self):
+        uses = [
+            {
+                "use_id": f"use-{index}",
+                "input_sha256": f"{index}" * 64,
+                "accepted": True,
+                "evidence_ref": f"runs/use-{index}.json",
+                "occurred_at": f"2026-08-2{index}T12:00:00Z",
+            }
+            for index in range(1, 4)
+        ]
+        path = self._write_receipt(
+            "TMP-A2-ADOPTION-PARITY.json",
+            {
+                "receipt_version": "portfolio-adoption-v1",
+                "status": "adopted",
+                "operational_errors": [],
+                "parity_receipt_sha256": "0" * 64,
+                "accepted_uses": uses,
+            },
+        )
+        program = deepcopy(self.program)
+        obligation = self._adoption_obligation(program)
+        obligation["state"] = "discharged"
+        obligation["evidence"] = f"accessibility/evidence/{path.name}"
+        errors = validate_recovery_program(program, self.suites)
+        self.assertIn(
+            "accessibility/A2-adoption: parity_receipt_sha256 does not bind to a declared "
+            "runtime-parity evidence artifact in accessibility",
+            errors,
+        )
+        self.assertNotIn(
+            "adoption receipt requires at least three accepted authentic uses",
+            errors,
+        )
+
+    def test_accepted_use_evidence_ref_must_resolve_to_a_retained_artifact(self):
+        path = self._write_receipt(
+            "TMP-A2-ADOPTION-NO-REF.json",
+            {
+                "receipt_version": "portfolio-adoption-v1",
+                "status": "adopted",
+                "operational_errors": [],
+                "parity_receipt_sha256": "d65237a3fa97b92459b088eaf1faa16e70bf1bffaa3841523e1805979c3f00d7",
+                "accepted_uses": [
+                    {
+                        "use_id": "u1",
+                        "input_sha256": "1" * 64,
+                        "accepted": True,
+                        "evidence_ref": "accessibility/evidence/DOES-NOT-EXIST.json",
+                        "occurred_at": "2026-08-27T12:00:00Z",
+                    }
+                ],
+            },
+        )
+        program = deepcopy(self.program)
+        obligation = self._adoption_obligation(program)
+        obligation["state"] = "discharged"
+        obligation["evidence"] = f"accessibility/evidence/{path.name}"
+        errors = validate_recovery_program(program, self.suites)
+        self.assertIn(
+            "accessibility/A2-adoption: accepted_uses.0.evidence_ref does not "
+            "resolve to a retained artifact",
+            errors,
+        )
+
+    def test_accepted_use_input_sha256_must_match_the_retained_transcript(self):
+        transcript_path = SUITES_ROOT / "accessibility" / "evidence" / "TMP-A2-ADOPTION-USE.json"
+        original = {"record_kind": "x", "findings": [], "errors": []}
+        digest = hashlib.sha256(
+            json.dumps(original, indent=2).encode("utf-8")
+        ).hexdigest()
+        self.addCleanup(transcript_path.unlink)
+        tampered = dict(original)
+        tampered["target"] = "totally-different.example"
+        tampered["finding_count"] = 999
+        transcript_path.write_text(json.dumps(tampered, indent=2), encoding="utf-8")
+        path = self._write_receipt(
+            "TMP-A2-ADOPTION-TAMPER.json",
+            {
+                "receipt_version": "portfolio-adoption-v1",
+                "status": "adopted",
+                "operational_errors": [],
+                "parity_receipt_sha256": "d65237a3fa97b92459b088eaf1faa16e70bf1bffaa3841523e1805979c3f00d7",
+                "accepted_uses": [
+                    {
+                        "use_id": "u1",
+                        "input_sha256": digest,
+                        "accepted": True,
+                        "evidence_ref": f"accessibility/evidence/{transcript_path.name}",
+                        "occurred_at": "2026-08-27T12:00:00Z",
+                    }
+                ],
+            },
+        )
+        program = deepcopy(self.program)
+        obligation = self._adoption_obligation(program)
+        obligation["state"] = "discharged"
+        obligation["evidence"] = f"accessibility/evidence/{path.name}"
+        errors = validate_recovery_program(program, self.suites)
+        self.assertIn(
+            "accessibility/A2-adoption: accepted_uses.0.input_sha256 does not match "
+            f"accessibility/evidence/{transcript_path.name}",
+            errors,
+        )
+
+    def test_wave_followup_may_not_copy_its_wave_evidence_path(self):
+        program = deepcopy(self.program)
+        obligation = next(
+            item for item in program["obligations"] if item["id"] == "operator-os/O1"
+        )
+        obligation["evidence"] = "operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json"
+        errors = validate_recovery_program(program, self.suites)
+        self.assertIn(
+            "operator-os/O1: wave_runtime_followup evidence is derived from its wave; "
+            "remove the copied 'evidence' key",
+            errors,
+        )
+
+    def test_discharged_wave_followup_evidence_is_derived_from_its_wave(self):
+        suites = deepcopy(self.suites)
+        wave = next(item for item in suites["operator-os"]["waves"] if item["id"] == "O1")
+        wave["evidence"] = "operator-os/evidence/DOES-NOT-EXIST.json"
+        errors = validate_recovery_program(deepcopy(self.program), suites)
+        self.assertIn(
+            "operator-os/O1: declared obligation evidence is missing at "
+            "operator-os/evidence/DOES-NOT-EXIST.json",
+            errors,
+        )
+
+    def test_open_obligation_is_not_held_to_its_unreached_target_contract(self):
+        program = deepcopy(self.program)
+        obligation = next(
+            item for item in program["obligations"] if item["id"] == "brand-publishing/B1"
+        )
+        self.assertEqual(obligation["state"], "planned")
+        self.assertEqual(validate_recovery_program(program, self.suites), [])
 
     def test_current_program_is_valid_and_covers_every_runtime_followup_once(self):
         self.assertEqual(validate_recovery_program(self.program, self.suites), [])

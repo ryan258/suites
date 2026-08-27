@@ -1076,7 +1076,7 @@ def evidence_ineligibility_reason(wave: dict[str, Any]) -> str | None:
     """
     claim = wave.get("recovery_claim") or {}
     kind = claim.get("kind")
-    if not kind:
+    if not isinstance(kind, str) or not kind:
         return "wave declares no recovery evidence contract, so --record cannot write a verifiable receipt"
     if kind == "analysis":
         return None
