@@ -12,6 +12,14 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-27 — Nested recording fail-closed, contract object-item enforcement, source_executed evidence basis
+
+- **Web wave recording is now unconditionally refused.** `/api/waves/<suite>/<wave>/run?record=true` returns 403 before dispatch, even for the trusted loopback; the CLI `--record` flag is the sole evidence writer (`src/portfolio_suites/server.py`). Recording remains "an explicit CLI-only operation" as documented in `index.html`.
+- **Contract object-item enforcement.** `ProductionJob.inputs/outputs/events`, `ExperimentRun.iterations/evidence/errors`, `InvestigationRecord.premises/evidence/stages/decisions`, and `A11yFinding.evidence` now require each array item to be a non-empty JSON object in both the published schemas and the Python validator (`ContractSpec.item_object_fields`), closing the gap where scalar or empty items passed validation.
+- **`source_executed` runtime claims now require their declared evidence basis.** `registry.py` enforces the marker set in `RUNTIME_SOURCE_EVIDENCE` (`recovery_policy.py`) for source-executed runtime claims, mirroring the existing parity-basis guard. Operator OS O1's manifest already satisfies the nine markers.
+
+---
+
 ## 2026-08-25 — Trust-boundary digest CAS, non-blocking storage reads, hermetic CI, test port isolation
 
 Hardened the trust and transaction layer beneath approvals and engines, added CI automation, and resolved server test port collisions.
