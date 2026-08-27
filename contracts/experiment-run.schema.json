@@ -15,9 +15,9 @@
     "scorer": {"type": "string", "minLength": 1},
     "scorer_version": {"type": "string", "minLength": 1},
     "status": {"enum": ["planned", "running", "partial", "failed", "completed"]},
-    "iterations": {"type": "array"},
-    "evidence": {"type": "array"},
-    "errors": {"type": "array"}
+    "iterations": {"type": "array", "items": {"type": "object", "minProperties": 1}},
+    "evidence": {"type": "array", "items": {"type": "object", "minProperties": 1}},
+    "errors": {"type": "array", "items": {"type": "object", "minProperties": 1}}
   },
   "additionalProperties": true
 }

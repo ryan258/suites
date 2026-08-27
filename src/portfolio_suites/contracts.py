@@ -29,6 +29,7 @@ class ContractSpec:
     required: frozenset[str]
     list_fields: frozenset[str] = frozenset()
     mapping_fields: frozenset[str] = frozenset()
+    item_object_fields: frozenset[str] = frozenset()
     enums: Mapping[str, frozenset[str]] | None = None
     description: str = ""
 
@@ -40,6 +41,7 @@ CONTRACTS: dict[str, ContractSpec] = {
              "evidence", "evidence_kind", "needs_review", "status"}
         ),
         list_fields=frozenset({"evidence"}),
+        item_object_fields=frozenset({"evidence"}),
         enums={
             "severity": frozenset({"info", "minor", "moderate", "serious", "critical"}),
             "evidence_kind": frozenset({"deterministic", "ai-assisted", "manual"}),
@@ -70,6 +72,7 @@ CONTRACTS: dict[str, ContractSpec] = {
              "events", "created_at", "updated_at"}
         ),
         list_fields=frozenset({"inputs", "outputs", "events"}),
+        item_object_fields=frozenset({"inputs", "outputs", "events"}),
         enums={"status": frozenset({"queued", "running", "blocked", "failed", "completed", "cancelled"})},
         description="Resumable production job state machine tracking multi-step creative tasks.",
     ),
@@ -79,6 +82,7 @@ CONTRACTS: dict[str, ContractSpec] = {
              "parameters", "scorer", "scorer_version", "status", "iterations", "evidence", "errors"}
         ),
         list_fields=frozenset({"iterations", "evidence", "errors"}),
+        item_object_fields=frozenset({"iterations", "evidence", "errors"}),
         mapping_fields=frozenset({"parameters"}),
         enums={"status": frozenset({"planned", "running", "partial", "failed", "completed"})},
         description="Reproducible model evaluation run with parameter matrix and scoring evidence.",
@@ -89,6 +93,7 @@ CONTRACTS: dict[str, ContractSpec] = {
              "evidence", "stages", "decisions", "budget", "created_at", "updated_at"}
         ),
         list_fields=frozenset({"premises", "evidence", "stages", "decisions"}),
+        item_object_fields=frozenset({"premises", "evidence", "stages", "decisions"}),
         mapping_fields=frozenset({"budget"}),
         enums={
             "mode": frozenset({"preview", "quick", "standard", "deep", "manual"}),
@@ -352,6 +357,15 @@ def validate_contract(name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         value = payload.get(field)
         if not isinstance(value, str) or value not in values:
             raise ContractError(f"{name}.{field} must be one of {', '.join(sorted(values))}")
+    for field in spec.item_object_fields:
+        items = payload.get(field)
+        if not isinstance(items, list):
+            raise ContractError(f"{name}.{field} must be a list")
+        for index, item in enumerate(items):
+            if not isinstance(item, Mapping):
+                raise ContractError(f"{name}.{field}[{index}] must be a JSON object")
+            if not item:
+                raise ContractError(f"{name}.{field}[{index}] must contain at least 1 property")
 
     id_field = {
         "A11yFinding": "finding_id",

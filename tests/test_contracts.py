@@ -139,6 +139,13 @@ class ContractTests(unittest.TestCase):
         schema_files = sorted(CONTRACTS_DIR.glob("*.schema.json"))
         self.assertTrue(schema_files, "expected at least one contracts/*.schema.json file")
         found_titles = set()
+        for contract_name in CONTRACTS:
+            spec = CONTRACTS[contract_name]
+            self.assertEqual(
+                spec.item_object_fields,
+                spec.item_object_fields & spec.list_fields,
+                f"{contract_name}: item_object_fields must be a subset of list_fields",
+            )
         for schema_file in schema_files:
             schema = json.loads(schema_file.read_text(encoding="utf-8"))
             name = schema["title"]
@@ -149,7 +156,48 @@ class ContractTests(unittest.TestCase):
                 self.assertEqual(
                     set(schema["properties"][field]["enum"]), set(enum_values), f"{name}.{field}"
                 )
+            for field_name, prop_schema in (schema.get("properties") or {}).items():
+                items_schema = prop_schema.get("items")
+                inline_object_items = (
+                    isinstance(items_schema, dict)
+                    and items_schema.get("type") == "object"
+                    and items_schema.get("minProperties", 0) >= 1
+                )
+                if field_name in spec.item_object_fields:
+                    self.assertTrue(
+                        inline_object_items,
+                        f"{name}.{field_name} must declare object items in the published schema",
+                    )
+                elif inline_object_items:
+                    self.assertIn(
+                        field_name,
+                        spec.list_fields,
+                        f"{name}.{field_name} declares object items but is not a list field",
+                    )
         self.assertEqual(found_titles, set(CONTRACTS), "schema files do not cover all CONTRACTS")
+
+    def test_object_item_fields_enforce_non_empty_json_objects(self):
+        cases = (
+            ("A11yFinding", "evidence"),
+            ("ProductionJob", "inputs"),
+            ("ProductionJob", "outputs"),
+            ("ProductionJob", "events"),
+            ("ExperimentRun", "iterations"),
+            ("ExperimentRun", "evidence"),
+            ("ExperimentRun", "errors"),
+            ("InvestigationRecord", "premises"),
+            ("InvestigationRecord", "evidence"),
+            ("InvestigationRecord", "stages"),
+            ("InvestigationRecord", "decisions"),
+        )
+        for contract_name, field in cases:
+            with self.subTest(contract=contract_name, field=field):
+                sample = generate_sample(contract_name)
+                for bad_items in (["not-an-object"], [{}]):
+                    with self.assertRaisesRegex(
+                        ContractError, "must be a JSON object|at least 1 propert"
+                    ):
+                        validate_contract(contract_name, {**sample, field: bad_items})
 
     def test_validator_rejects_types_the_published_schema_forbids(self):
         """The Python validator and the advertised JSON Schema must not disagree on field types."""

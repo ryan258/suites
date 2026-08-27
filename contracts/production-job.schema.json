@@ -10,9 +10,9 @@
     "domain": {"type": "string", "minLength": 1},
     "task": {"type": "string", "minLength": 1},
     "status": {"enum": ["queued", "running", "blocked", "failed", "completed", "cancelled"]},
-    "inputs": {"type": "array"},
-    "outputs": {"type": "array"},
-    "events": {"type": "array"},
+    "inputs": {"type": "array", "items": {"type": "object", "minProperties": 1}},
+    "outputs": {"type": "array", "items": {"type": "object", "minProperties": 1}},
+    "events": {"type": "array", "items": {"type": "object", "minProperties": 1}},
     "created_at": {"type": "string", "format": "date-time"},
     "updated_at": {"type": "string", "format": "date-time"}
   },
