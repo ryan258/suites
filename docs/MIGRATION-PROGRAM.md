@@ -1,11 +1,14 @@
 # Migration Program
 
 Tranche 0's control-plane foundation is complete and all 43 migration wave milestones are verified:
-one runtime recovery (`A2`) and 42 analysis milestones. Not every wave gate reads donor content:
+three runtime waves (`O1` and `O4` source-executed, `A2` parity-verified) and 40 analysis
+milestones. Not every wave gate reads donor content:
 4 claims sit at `prototype` (`A5`, `B3`, `B4`, `B6`), meaning their runner exercised a suite-owned
 fixture or reference logic and read nothing donor-side. Donor content is read from
 `source_inspected` upward. Each
-analysis milestone carries an undischarged `runtime_followup` obligation in its wave manifest. A verified milestone proves what its runner exercised, not a completed migration.
+analysis milestone carries an undischarged `runtime_followup` obligation in its wave manifest; the
+two source-executed waves and the runtime recovery retain it too, as their receipts bound adoption
+behind an owner gate. A verified milestone proves what its runner exercised, not a completed migration.
 Real ports, adoption, retirement, and single-runtime convergence follow the
 [9/10 recovery standard](RECOVERY-STANDARD.md) and the [roadmap](ROADMAP.md); the portfolio reads
 0 adopted and 0 converged.

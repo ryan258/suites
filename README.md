@@ -47,8 +47,8 @@ BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
-WORK STATE: 43/43 waves complete (41 analysis milestones + 1 runtime wave)
-EVIDENCE PROMOTION: 4 prototype | 1 reviewed historical | 36 source inspected | 1 source executed
+WORK STATE: 43/43 waves complete (40 analysis milestones + 1 runtime wave)
+EVIDENCE PROMOTION: 4 prototype | 1 reviewed historical | 35 source inspected | 2 source executed
                     1 parity verified | 0 adopted | 0 converged | 0 resolved
 OUTSTANDING: 42/43 completed waves still owe a live run
 ```
@@ -56,7 +56,7 @@ OUTSTANDING: 42/43 completed waves still owe a live run
 Those are two independent axes and both are load-bearing. The first says every scheduled analysis
 milestone is finished. The second says what those milestones demonstrated: most waves now parse
 authentic donor artifacts (`source_inspected`), four remain suite-local fixtures (`A5`, `B3`,
-`B4`, `B6`), one wave (`O1`) is at `source_executed`, and one runtime recovery (`A2`) is at
+`B4`, `B6`), two waves (`O1`, `O4`) are at `source_executed`, and one runtime recovery (`A2`) is at
 `parity_verified`. A completed wave at
 `prototype` is a finished piece of work and is not a recovery; nothing here has reached adoption,
 convergence, or retirement approval.
@@ -133,7 +133,7 @@ PYTHONPATH=src python3 -m portfolio_suites contract A11yFinding sample
 PYTHONPATH=src python3 -m portfolio_suites contract BrandPackage spec
 PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.json>
 
-# Ephemeral wave checks (41 analysis milestones + 2 runtime waves; all 43 verified)
+# Ephemeral wave checks (40 analysis milestones + 3 runtime waves; all 43 verified)
 # Without --full, A2 runs a fast probe and is reported as [FAST-PROBE], not a runtime recovery.
 PYTHONPATH=src python3 -m portfolio_suites wave --all --no-record
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2

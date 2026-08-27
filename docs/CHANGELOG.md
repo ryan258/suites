@@ -12,6 +12,14 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-27 — Operator OS O4 promoted to source_executed runtime evidence
+
+- **O4 now retains proof of the live PKos capture path instead of a parse of its output.** `execute_o4_pkos_stream_intake` acquires `pkos/README.md` through the same isolated donor CAS probe O1 uses (`donor_pkos_cas_probe.py`, label `pkos/README.md`), normalized counts and module digests are host-recomputed for agreement, and the wave settles with a `portfolio-runtime-source-v1` receipt. The stream envelope is preserved, so drift from the earlier analysis contract is rejected by the registry's runtime basis gate.
+- **Shared builder extracted.** O1 and O4 now meet at `_runtime_source_candidate` in `operator_os.py`, with `_o1_runtime_candidate` as a thin wrapper; both waves carry the two `runtime_followup` obligations (vault-gated adoption) so OUTSTANDING stays 42/43.
+- **Promotion census moved.** `source_inspected` 36 → 35, `source_executed` 1 → 2; completed analysis milestones 41 → 40 (`tests/test_waves.py`, `test_cli.py`, `test_server.py`, `test_registry.py` pins updated, `test_operator_o4_runtime_candidate.py` added to `DONOR_DEPENDENT`).
+
+---
+
 ## 2026-08-27 — Nested recording fail-closed, contract object-item enforcement, source_executed evidence basis
 
 - **Web wave recording is now unconditionally refused.** `/api/waves/<suite>/<wave>/run?record=true` returns 403 before dispatch, even for the trusted loopback; the CLI `--record` flag is the sole evidence writer (`src/portfolio_suites/server.py`). Recording remains "an explicit CLI-only operation" as documented in `index.html`.
@@ -217,10 +225,10 @@ The `/Users/ryanjohnson/Projects/suites` control plane foundation and verified m
 4. **`A4` — Accessibility (Analysis Milestone)**: Batch evaluation of 20 candidate WCAG Auditor rules with live donor rule AST parsing, zero contract drift on `A11yFinding`, and zero false positives on compliant markup ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A4-WCAG-RULE-CANDIDATES-EVIDENCE.json)).
 5. **`A5` — Accessibility (Analysis Milestone)**: Projected `A11yFinding` through the suite-local teaching view with zero field loss; the `a11y-kitchen` runtime was not invoked ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A5-A11Y-KITCHEN-ROUNDTRIP.json)).
 6. **`A6` — Accessibility (Analysis Milestone)**: Measured full overlay permission surface and proposed `kb-overlay` consolidation ([evidence](file:///Users/ryanjohnson/Projects/suites/accessibility/evidence/A6-KEYBOARD-OVERLAY-PROTOTYPE.json)).
-7. **`O1` — Operator OS (Analysis Milestone)**: Authentic `dotfiles` capture into `PKos` Content-Addressed Storage (`pkos.storage.Workspace`), SQLite normalization, and fenced `obsidian-observer` vault projection ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json)).
+7. **`O1` — Operator OS (Runtime: source_executed)**: Authentic `dotfiles` capture into `PKos` Content-Addressed Storage (`pkos.storage.Workspace`), SQLite normalization, and fenced `obsidian-observer` vault projection ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json)).
 8. **`O2` — Operator OS (Analysis Milestone)**: Full feature inventory and spec mapping of `ryos` and `master-upgrade-plan` against `dotfiles` and `obsidian-observer` ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O2-RYOS-INVENTORY.json)).
 9. **`O3` — Operator OS (Analysis Milestone)**: Verified JARVIS action preview receipt with human approval boundary and zero duplicate state ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O3-JARVIS-ACTION-RECEIPT.json)).
-10. **`O4` — Operator OS (Analysis Milestone)**: Widened PKOS intake stream across 3 sources with verified Observer projection fences ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O4-PKOS-DAILY-INTAKE-STREAM.json)).
+10. **`O4` — Operator OS (Runtime: source_executed)**: Widened PKOS intake stream across 3 sources with verified Observer projection fences; the same live PKos CAS capture path the receipt proves ran over the three donor README sources ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O4-PKOS-DAILY-INTAKE-STREAM.json)).
 11. **`O5` — Operator OS (Analysis Milestone)**: Reconciled Ryos and master-plan inventory with port targets assigned to dotfiles and PKos anchors ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O5-RYOS-DISPOSITION-REPORT.json)).
 12. **`O6` — Operator OS (Analysis Milestone)**: Verified multi-action JARVIS checkpoint lifecycle with strict fail-closed boundary on unapproved execution ([evidence](file:///Users/ryanjohnson/Projects/suites/operator-os/evidence/O6-JARVIS-CHECKPOINT-RECEIPT.json)).
 13. **`B1` — Brand + Publishing (Analysis Milestone)**: Built a suite-local `BrandPackage` projection from inspected `brand-maker-spec` sources with AST-parsed donor assertions, multi-case mutation protection, and dry-run consumer-boundary checks against downstream `cyborg`; the Brand Maker runtime was not invoked ([evidence](file:///Users/ryanjohnson/Projects/suites/brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json)).

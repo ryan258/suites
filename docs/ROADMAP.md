@@ -82,8 +82,9 @@ completion criteria, run authentic workloads, and support documented recovery.
 The foundation and scheduled analysis program are complete. The eight-suite implementation and
 adoption program is not.
 
-- **Completed foundation and milestones:** 43/43 waves verified: 42 analysis milestones and one
-  runtime recovery (`A2`). Completed work is recorded in [CHANGELOG.md](CHANGELOG.md).
+- **Completed foundation and milestones:** 43/43 waves verified: 40 analysis milestones and three
+  runtime waves (`O1` and `O4` source-executed, `A2` parity-verified). Completed work is recorded
+  in [CHANGELOG.md](CHANGELOG.md).
 - **70 Top-level projects** dispositioned across 8 suite boundaries and independent/archive
   containers.
 - **43 Migration wave specifications** defined; wave milestone progress is 43/43.
@@ -99,17 +100,17 @@ Milestone completion and evidence depth are separate axes:
 - **4/43 prototype-level claims** — suite-owned fixtures or reference logic only (`A5`, `B3`,
   `B4`, `B6`).
 - **1/43 reviewed historical analysis** — `A1`, a hand-authored decision whose structure is checked.
-- **36/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
-- **1/43 source-executed claims** — `O1`, whose receipt retains the argv, exit code, duration,
-  and host-recomputed digests of the PKos modules that ran.
+- **35/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
+- **2/43 source-executed claims** — `O1` and `O4`, whose receipts retain the argv, exit code,
+  duration, and host-recomputed digests of the PKos modules that ran.
 - **1/43 parity-verified runtime recoveries** — `A2`.
 - **0 adopted, 0 converged, 0 resolved.**
 - **42/43 completed waves still owe a live run** recorded in `runtime_followup`.
 
-The release cannot be declared complete until all 42 current follow-ups are discharged and the one
-existing runtime recovery is carried through authentic adoption. “Discharged” means verified
-implementation or an evidence-backed final disposition allowed by the recovery standard—not a
-documentation edit that removes the obligation.
+The release cannot be declared complete until all 42 current follow-ups are discharged and the two
+existing source-executed waves and the one runtime recovery are carried through authentic adoption.
+“Discharged” means verified implementation or an evidence-backed final disposition allowed by the
+recovery standard—not a documentation edit that removes the obligation.
 
 ### Current milestone register
 
