@@ -8,6 +8,7 @@ sees it, and contract-labelled results are validated against their published con
 
 from __future__ import annotations
 
+import hashlib
 import inspect
 import json
 import math
@@ -15,7 +16,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from .contracts import ContractError, validate_contract
+from .contracts import SCHEMA_VERSION, ContractError, validate_contract
 from .engines import ENGINES
 
 
@@ -466,14 +467,77 @@ def _json_detach(value: Any, path: str) -> Any:
         raise EngineActionError(f"{path} is not strict JSON: {error}") from error
 
 
-def run_action(suite_id: str, action: str, arguments: dict[str, Any] | None = None) -> Any:
-    """Invoke one reviewed action and return a detached, strict-JSON result."""
+def registered_action_spec(suite_id: str, action: str) -> ActionSpec:
+    """The reviewed spec for one registered action, for callers deciding how to invoke it."""
+    return _registered_method(suite_id, action)[1]
+
+
+def action_cache_key(suite_id: str, action: str, arguments: dict[str, Any]) -> str:
+    """Content address for one invocation: identity, canonical arguments, contract version.
+
+    The schema version is in the key because a result is only interchangeable with a fresh
+    invocation while the contract that shaped it is the same one. Bumping the schema has to
+    miss, not serve the previous shape.
+    """
+    payload = json.dumps(
+        {
+            "action": f"{suite_id}.{action}",
+            "arguments": arguments,
+            "contract_schema_version": SCHEMA_VERSION,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def action_is_cacheable(spec: ActionSpec, arguments: dict[str, Any]) -> bool:
+    """Whether repeating this invocation is the same thing as reusing its answer.
+
+    `read_only` is the only class that qualifies: it is the one that promises no state
+    change at all. An `in_memory_mutation` is replayable without consuming authority but
+    still advances suite-local state, so a chain that calls it twice wants two advances and
+    a cache would silently hand back one. The authority checks are belt and braces -- a
+    factory override can set `replayable` on any spec, and serving a cached answer for an
+    invocation that spent a one-time approval token would report an authority consumption
+    that never happened.
+    """
+    if spec.side_effect_class != "read_only":
+        return False
+    policy = effective_policy(spec, arguments)
+    return bool(policy["replayable"]) and not policy["authority_consumed"]
+
+
+def run_action(
+    suite_id: str,
+    action: str,
+    arguments: dict[str, Any] | None = None,
+    cache: dict[str, Any] | None = None,
+) -> Any:
+    """Invoke one reviewed action and return a detached, strict-JSON result.
+
+    `cache` is an optional caller-owned map of :func:`action_cache_key` to prior results.
+    ponytail: the caller owns the map, so its lifetime is the caller's problem and this
+    stays a dict. `run_chain` scopes one to a single chain run, which is the only window
+    where reuse is unambiguously safe -- a `read_only` action is a pure function of its
+    arguments *and the filesystem it read*, so a longer-lived cache would need file
+    fingerprints in the key before it could serve the same answer an hour later.
+    """
     func, spec = _registered_method(suite_id, action)
     if arguments is None:
         arguments = {}
     if not isinstance(arguments, dict) or any(not isinstance(key, str) for key in arguments):
         raise EngineActionError("arguments must be a JSON object with string keys")
     arguments = _json_detach(arguments, "arguments")
+    # Keyed on the strict-JSON arguments the caller supplied, before any input adapter --
+    # an adapter may produce shapes (integer map keys) that do not survive canonical JSON.
+    cache_key = (
+        action_cache_key(suite_id, action, arguments)
+        if cache is not None and action_is_cacheable(spec, arguments)
+        else None
+    )
+    if cache_key is not None and cache_key in cache:
+        return _json_detach(cache[cache_key], f"cached result from {suite_id}.{action}")
     if spec.input_adapter is not None:
         arguments = spec.input_adapter(arguments)
 
@@ -505,4 +569,7 @@ def run_action(suite_id: str, action: str, arguments: dict[str, Any] | None = No
                 result = validate_contract(spec.contract, result)
         except ContractError as error:
             raise EngineActionError(f"'{action}' returned invalid {spec.contract}: {error}") from error
-    return _json_detach(result, f"result from {suite_id}.{action}")
+    detached = _json_detach(result, f"result from {suite_id}.{action}")
+    if cache_key is not None:
+        cache[cache_key] = detached
+    return detached

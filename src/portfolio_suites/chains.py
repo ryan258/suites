@@ -6,7 +6,15 @@ import copy
 import math
 from typing import Any
 
-from .engine_actions import EngineActionError, get_action_spec, list_actions, run_action
+from .engine_actions import (
+    EngineActionError,
+    action_cache_key,
+    action_is_cacheable,
+    get_action_spec,
+    list_actions,
+    registered_action_spec,
+    run_action,
+)
 
 REFERENCE_KEY = "$from"
 REFERENCE_FIELDS = frozenset({REFERENCE_KEY, "path"})
@@ -233,13 +241,23 @@ def run_chain(steps: list[dict[str, Any]]) -> dict[str, Any]:
     prepared = preflight_chain(steps)
     outputs: list[Any] = []
     records: list[dict[str, Any]] = []
+    # Scoped to this run on purpose. A read-only action is a pure function of its arguments
+    # *and* whatever it read off disk, so two identical steps inside one chain are the same
+    # question asked twice, while the same pair an hour apart is not.
+    cache: dict[str, Any] = {}
 
     for index, step in enumerate(prepared):
         suite = step["suite"]
         action = step["action"]
         try:
             resolved = resolve_references(step["arguments"], outputs, index)
-            result = run_action(suite, action, resolved)
+            cache_key = (
+                action_cache_key(suite, action, resolved)
+                if action_is_cacheable(registered_action_spec(suite, action), resolved)
+                else None
+            )
+            served_from_cache = cache_key is not None and cache_key in cache
+            result = run_action(suite, action, resolved, cache=cache)
         except (EngineActionError, ChainError) as error:
             raise ChainError(
                 f"step {index} ({suite}.{action}): {error}",
@@ -277,6 +295,7 @@ def run_chain(steps: list[dict[str, Any]]) -> dict[str, Any]:
             "replayable": metadata.get("replayable"),
             "authority_use": metadata.get("authority_use"),
             "authority_consumed": bool(metadata.get("authority_consumed")),
+            "served_from_cache": served_from_cache,
             "references": sorted(_referenced_steps(step["arguments"], index)),
             "result": result,
         })

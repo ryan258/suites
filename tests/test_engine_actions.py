@@ -1,11 +1,17 @@
 """Engine action surface: discovery, invocation, and the allowlist boundary."""
 
 import unittest
+from copy import deepcopy
 
+from portfolio_suites.chains import run_chain
 from portfolio_suites.engine_actions import (
+    ActionSpec,
     EngineActionError,
+    action_cache_key,
+    action_is_cacheable,
     get_action_spec,
     list_actions,
+    registered_action_spec,
     result_consumes_authority,
     run_action,
 )
@@ -309,3 +315,65 @@ class TestChains(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ActionCacheTests(unittest.TestCase):
+    """A cache that serves an action which spent authority reports a use that never happened."""
+
+    def test_read_only_action_is_served_from_a_caller_owned_cache(self):
+        cache: dict[str, object] = {}
+        args = {"workspace_root": "/tmp/ws", "target_path": "/tmp/ws/notes.md"}
+        first = run_action("agent-reliability", "verify_path_confinement", args, cache=cache)
+        self.assertEqual(len(cache), 1)
+        second = run_action("agent-reliability", "verify_path_confinement", args, cache=cache)
+        self.assertEqual(first, second)
+        self.assertEqual(len(cache), 1)
+        # Detached on the way out: a caller mutating its result cannot poison the cache.
+        second.append("injected")
+        third = run_action("agent-reliability", "verify_path_confinement", args, cache=cache)
+        self.assertNotIn("injected", third)
+        self.assertEqual(third, first)
+
+    def test_cache_key_separates_arguments_and_contract_version(self):
+        base = action_cache_key("s", "a", {"x": 1})
+        self.assertNotEqual(base, action_cache_key("s", "a", {"x": 2}))
+        self.assertNotEqual(base, action_cache_key("s", "b", {"x": 1}))
+        # Key order is not identity: the same arguments hash the same either way round.
+        self.assertEqual(
+            action_cache_key("s", "a", {"x": 1, "y": 2}),
+            action_cache_key("s", "a", {"y": 2, "x": 1}),
+        )
+
+    def test_only_read_only_actions_are_cacheable(self):
+        for suite_id, action, expected in (
+            ("agent-reliability", "verify_path_confinement", True),
+            ("brand-publishing", "execute_brand_maker_intake", False),
+        ):
+            with self.subTest(action=f"{suite_id}.{action}"):
+                spec = registered_action_spec(suite_id, action)
+                self.assertEqual(action_is_cacheable(spec, {}), expected)
+
+    def test_an_authority_consuming_invocation_is_never_cacheable(self):
+        spec = ActionSpec(
+            output_kind="report",
+            side_effect_class="read_only",
+            approval_required=True,
+            evidence_eligible=True,
+            replayable=True,
+            authority_use="parameter_dependent",
+        )
+        self.assertTrue(action_is_cacheable(spec, {}))
+        self.assertFalse(
+            action_is_cacheable(spec, {"operator_approval_token": "one-time-token"})
+        )
+
+    def test_chain_marks_which_steps_were_served_from_cache(self):
+        step = {
+            "suite": "agent-reliability",
+            "action": "verify_path_confinement",
+            "arguments": {"workspace_root": "/tmp/ws", "target_path": "/tmp/ws/a.md"},
+        }
+        outcome = run_chain([step, deepcopy(step)])
+        self.assertFalse(outcome["steps"][0]["served_from_cache"])
+        self.assertTrue(outcome["steps"][1]["served_from_cache"])
+        self.assertEqual(outcome["steps"][0]["result"], outcome["steps"][1]["result"])
