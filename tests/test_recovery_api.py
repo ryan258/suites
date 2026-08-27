@@ -32,12 +32,13 @@ class RecoveryAPIIntegrationTests(unittest.TestCase):
 
         self.assertTrue(data["ok"])
         self.assertEqual(data["program_id"], "portfolio-runtime-recovery-v2")
-        self.assertEqual(data["summary"]["obligations"], 43)
+        self.assertEqual(data["summary"]["obligations"], 44)
         self.assertEqual(data["summary"]["wave_runtime_followups"], 42)
-        self.assertEqual(data["summary"]["lifecycle_obligations"], 1)
+        self.assertEqual(data["summary"]["lifecycle_obligations"], 2)
         self.assertEqual(data["summary"]["states"], {
-            "ready": 18,
-            "blocked_dependency": 25,
+            "ready": 19,
+            "blocked_dependency": 24,
+            "discharged": 1,
         })
         obligations = {item["id"]: item for item in data["obligations"]}
         self.assertEqual(
@@ -49,7 +50,11 @@ class RecoveryAPIIntegrationTests(unittest.TestCase):
             "blocked_dependency",
         )
         self.assertEqual(
-            obligations["operator-os/O1"]["owner_gate"],
+            obligations["operator-os/O1"]["effective_state"],
+            "discharged",
+        )
+        self.assertEqual(
+            obligations["operator-os/O1-adoption"]["owner_gate"],
             "permanent_vault_write",
         )
         self.assertNotIn("api_key", json.dumps(data).lower())

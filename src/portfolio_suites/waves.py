@@ -892,12 +892,20 @@ class WaveRunner:
             and result.get("status") == "cas_projection_verified"
             and result.get("source_record", {}).get("schema_version") == "1.0.0"
         )
+        # O1 is a runtime claim now, so the document that gets retained is the
+        # portfolio-runtime-source-v1 receipt itself -- the full gate result stays available
+        # to callers, but an evidence file has to be the thing its contract validates. A gate
+        # that produced no receipt at all hands the recorder the raw result and lets the
+        # contract reject it, rather than raising out of the runner.
+        runtime_receipt = (result.get("runtime_candidate") or {}).get(
+            "receipt_contract_candidate"
+        ) or result
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
             passed,
-            result,
+            runtime_receipt,
             "Acquired live dotfiles into authentic PKos CAS, normalized into SQLite, and generated fenced Observer projection.",
             result.get("source_record"),
         )

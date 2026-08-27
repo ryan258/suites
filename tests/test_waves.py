@@ -77,7 +77,13 @@ class WaveTests(unittest.TestCase):
         self.assertTrue(a4.passed)
 
         verified_analysis = [r for r in results if r.execution_kind == "verified_analysis"]
-        self.assertEqual(len(verified_analysis), 42)
+        self.assertEqual(len(verified_analysis), 41)
+
+        # O1 left the analysis census when it started retaining proof of the PKos invocation
+        # rather than a parse of what the invocation produced.
+        o1 = next(r for r in results if r.suite_id == "operator-os" and r.wave_id == "O1")
+        self.assertEqual(o1.execution_kind, "verified_source_execution")
+        self.assertTrue(o1.passed)
         for r in verified_analysis:
             self.assertTrue(r.passed, f"Verified analysis for {r.suite_id}/{r.wave_id} failed: {r.message}")
 
@@ -117,7 +123,7 @@ class WaveTests(unittest.TestCase):
 
         # All waves across all other suites are verified analysis milestones.
         for suite_id, wave_ids in (
-            ("operator-os", ("O1", "O2", "O3", "O4", "O5", "O6")),
+            ("operator-os", ("O2", "O3", "O4", "O5", "O6")),
             ("brand-publishing", ("B1", "B2", "B3", "B4", "B5", "B6")),
             ("production-house", ("P1", "P2", "P3", "P4", "P5")),
             ("model-behavior-lab", ("M1", "M2", "M3", "M4", "M5")),

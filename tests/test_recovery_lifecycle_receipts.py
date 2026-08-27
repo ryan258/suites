@@ -36,12 +36,85 @@ class RecoveryLifecycleReceiptTests(unittest.TestCase):
             "status": "source_executed",
             "all_stages_passed": True,
             "operational_errors": [],
-            "source_invocation": {"command": ["tool", "verify"], "exit_code": 0},
+            "source_invocation": {
+                "command": ["tool", "verify"],
+                "exit_code": 0,
+                "duration_ms": 12.5,
+            },
             "source_fingerprints": {"donor": fingerprint("a")},
+            "module_fingerprints": {
+                "donor.runtime": {
+                    "path": "src/runtime.py",
+                    "donor_attested_sha256": "b" * 64,
+                    "host_recomputed_sha256": "b" * 64,
+                    "agrees": True,
+                }
+            },
+            "tool_dependencies": {"host_python": "3.14.6", "donor_python": "3.14.6"},
             "reproducible_commands": [["tool", "verify"]],
         }
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(evidence_errors(wave, write_receipt(tmp, payload)), [])
+
+    def test_source_executed_receipt_must_prove_the_invocation_it_names(self):
+        wave = {
+            "id": "X1",
+            "recovery_claim": {
+                "kind": "runtime",
+                "level": "source_executed",
+                "receipt_contract": "portfolio-runtime-source-v1",
+            },
+        }
+        base = {
+            "receipt_version": "portfolio-runtime-source-v1",
+            "status": "source_executed",
+            "all_stages_passed": True,
+            "operational_errors": [],
+            "source_invocation": {
+                "command": ["tool", "verify"],
+                "exit_code": 0,
+                "duration_ms": 12.5,
+            },
+            "source_fingerprints": {"donor": fingerprint("a")},
+            "module_fingerprints": {
+                "donor.runtime": {
+                    "path": "src/runtime.py",
+                    "donor_attested_sha256": "b" * 64,
+                    "host_recomputed_sha256": "b" * 64,
+                    "agrees": True,
+                }
+            },
+            "tool_dependencies": {"host_python": "3.14.6"},
+            "reproducible_commands": [["tool", "verify"]],
+        }
+        # A digest the host could not reproduce means the receipt names a file other than the
+        # one that ran, which is the whole claim.
+        disagreeing = json.loads(json.dumps(base))
+        disagreeing["module_fingerprints"]["donor.runtime"]["host_recomputed_sha256"] = "c" * 64
+        cases = {
+            "missing duration": ({"source_invocation": {"command": ["t"], "exit_code": 0}}, "duration_ms"),
+            "no modules": ({"module_fingerprints": {}}, "module_fingerprints"),
+            "unpinned tools": ({"tool_dependencies": {}}, "tool_dependencies"),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            for label, (override, expected) in cases.items():
+                with self.subTest(case=label):
+                    payload = json.loads(json.dumps(base))
+                    payload.update(override)
+                    errors = evidence_errors(wave, write_receipt(tmp, payload))
+                    self.assertTrue(any(expected in error for error in errors), errors)
+            with self.subTest(case="donor digest the host cannot reproduce"):
+                errors = evidence_errors(wave, write_receipt(tmp, disagreeing))
+                self.assertTrue(
+                    any("module_fingerprints" in error for error in errors), errors
+                )
+            with self.subTest(case="agrees flag cannot substitute for agreement"):
+                lying = json.loads(json.dumps(base))
+                lying["module_fingerprints"]["donor.runtime"]["donor_attested_sha256"] = "e" * 64
+                errors = evidence_errors(wave, write_receipt(tmp, lying))
+                self.assertTrue(
+                    any("module_fingerprints" in error for error in errors), errors
+                )
 
     def test_adoption_requires_three_distinct_accepted_uses_bound_to_parity(self):
         wave = {

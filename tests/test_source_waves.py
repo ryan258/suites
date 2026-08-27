@@ -10,7 +10,9 @@ from portfolio_suites.waves import WaveRunner
 # Waves that parse authentic donor artifacts and must declare `source_inspected`.
 SOURCE_INSPECTED = {
     "accessibility": ["A3", "A4", "A6"],
-    "operator-os": ["O1", "O2", "O3", "O4", "O5", "O6"],
+    # O1 left this census when it earned `source_executed`: it retains a
+    # portfolio-runtime-source-v1 receipt proving the PKos invocation, not a parse of it.
+    "operator-os": ["O2", "O3", "O4", "O5", "O6"],
     "brand-publishing": ["B1", "B2", "B5"],
     "production-house": ["P1", "P2", "P3", "P4", "P5"],
     "model-behavior-lab": ["M1", "M2", "M3", "M4", "M5"],

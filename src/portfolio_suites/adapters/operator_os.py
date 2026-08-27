@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import platform
 import subprocess
 import sys
 import time
@@ -40,6 +41,40 @@ RYOS_DIR = get_repo_path("ryos", "RYOS_DIR")
 MASTER_UPGRADE_PLAN_DIR = get_repo_path("master-upgrade-plan", "MASTER_UPGRADE_PLAN_DIR")
 
 
+def _verified_module_fingerprints(reported: Any) -> dict[str, dict[str, Any]]:
+    """Re-hash each module the donor says it imported, host-side, and record whether it agrees.
+
+    The donor computing and attesting its own digest proves nothing (AGENTS.md 3.7), so the
+    digest that counts is the one this process computes. A path outside PKos is dropped
+    rather than hashed: the donor names the file, it does not get to choose which file the
+    host opens.
+    """
+    verified: dict[str, dict[str, Any]] = {}
+    if not isinstance(reported, dict):
+        return verified
+    for name, record in reported.items():
+        if not isinstance(name, str) or not isinstance(record, dict):
+            continue
+        raw_path = record.get("path")
+        if not isinstance(raw_path, str) or not raw_path:
+            continue
+        path = Path(raw_path)
+        try:
+            relative = path.resolve().relative_to(PKOS_DIR.resolve())
+        except (OSError, ValueError):
+            continue
+        host_record = donor_file_record(path, PKOS_DIR)
+        attested = record.get("sha256")
+        host_sha = host_record.get("sha256") if host_record else None
+        verified[name] = {
+            "path": str(relative).replace("\\", "/"),
+            "donor_attested_sha256": attested if isinstance(attested, str) else None,
+            "host_recomputed_sha256": host_sha,
+            "agrees": bool(host_sha) and host_sha == attested,
+        }
+    return verified
+
+
 def _o1_ungoverned_candidate(
     operational_errors: list[dict[str, Any]],
     error: RecoveryProgramError,
@@ -53,12 +88,12 @@ def _o1_ungoverned_candidate(
         "environment_blocked": True,
     }]
     return {
-        "candidate_only": True,
+        "candidate_only": False,
         "promotion_eligible": False,
         "status": "source_unverified",
         "all_stages_passed": False,
         "blocked_owner_gate": None,
-        "blocked_requirements": ["governed_recovery_route_unavailable"],
+        "adoption_ceiling": ["governed_recovery_route_unavailable"],
         "receipt_contract": None,
         "receipt_contract_candidate": {
             "receipt_version": None,
@@ -79,6 +114,8 @@ def _o1_runtime_candidate(
     invocation_attempted: bool,
     exit_code: int | None,
     duration_ms: float,
+    module_fingerprints: dict[str, dict[str, Any]],
+    donor_interpreter: dict[str, Any],
     all_stages_passed: bool,
     dotfiles_fingerprint: dict[str, Any],
     pkos_fingerprint: dict[str, Any],
@@ -141,6 +178,18 @@ def _o1_runtime_candidate(
         "dependency_fingerprints": {
             "PKos": pkos_fingerprint,
             "obsidian-observer": observer_fingerprint,
+        },
+        "module_fingerprints": module_fingerprints,
+        "tool_dependencies": {
+            "host_python": platform.python_version(),
+            "host_implementation": platform.python_implementation(),
+            "donor_python": str(donor_interpreter.get("python") or "unreported"),
+            "donor_implementation": str(
+                donor_interpreter.get("implementation") or "unreported"
+            ),
+            "donor_probe_sha256": compute_sha256(
+                DONOR_PKOS_CAS_PROBE.read_bytes()
+            ),
         },
         "reproducible_commands": [command],
         "host_recomputed_claims": {
@@ -224,21 +273,21 @@ def _o1_runtime_candidate(
         runtime_receipt["status"] = "source_unverified"
         runtime_receipt["all_stages_passed"] = False
     owner_gate = trace_context["owner_gate"]
-    blocked_requirements = [
+    # These bound the *adoption* rung, not this one. The invocation is proven by the argv,
+    # exit code, duration, and host-recomputed module digests the receipt retains; scaling
+    # real intake into the permanent vault is what the next claim needs, and it has its own
+    # owner-gated obligation now rather than living as a footnote on this receipt.
+    adoption_ceiling = [
+        "permanent_vault_write_not_authorized_or_attempted",
         "day_to_day_intake_adoption_not_accumulated",
-        "runtime_receipt_not_recorded",
     ]
-    if owner_gate:
-        blocked_requirements.insert(
-            0, f"{owner_gate}_not_authorized_or_attempted"
-        )
     return {
-        "candidate_only": True,
-        "promotion_eligible": False,
+        "candidate_only": False,
+        "promotion_eligible": candidate_passed,
         "status": "source_executed" if candidate_passed else "source_unverified",
         "all_stages_passed": candidate_passed,
         "blocked_owner_gate": owner_gate,
-        "blocked_requirements": blocked_requirements,
+        "adoption_ceiling": adoption_ceiling,
         "receipt_contract": trace_context["receipt_contract"],
         "receipt_contract_candidate": runtime_receipt,
         "execution_trace": execution_trace,
@@ -332,6 +381,8 @@ class OperatorOSSourceAdapter:
         donor_exit_code: int | None = None
         donor_duration_ms = 0.0
         donor_invocation_attempted = False
+        module_fingerprints: dict[str, dict[str, Any]] = {}
+        donor_interpreter: dict[str, Any] = {}
 
         if not has_agents:
             operational_errors.append({
@@ -370,6 +421,32 @@ class OperatorOSSourceAdapter:
                     cas_acquisition = payload.get("acquired_record") or {}
                     normalize_counts = payload.get("counts", {})
                     raw_bytes_match = payload.get("raw_bytes_match", False)
+                    module_fingerprints = _verified_module_fingerprints(
+                        payload.get("modules")
+                    )
+                    reported_interpreter = payload.get("interpreter")
+                    donor_interpreter = (
+                        reported_interpreter
+                        if isinstance(reported_interpreter, dict)
+                        else {}
+                    )
+                    modules_agree = bool(module_fingerprints) and all(
+                        record["agrees"] for record in module_fingerprints.values()
+                    )
+                    if not modules_agree:
+                        # The receipt's whole claim is "these modules ran". A digest the host
+                        # cannot reproduce means the receipt would name a file that is not the
+                        # one that executed, which is worse than recording no claim at all.
+                        operational_errors.append({
+                            "stage": "module_fingerprints",
+                            "command": "host recompute of imported pkos modules",
+                            "error_kind": "module_fingerprint_disagreement",
+                            "message": (
+                                "donor-attested module digests do not match the host "
+                                "recomputation, or no imported module was reported."
+                            ),
+                            "environment_blocked": False,
+                        })
 
                     # Independent parent-side cross-check: donor CAS sha256 matches actual file bytes
                     agents_bytes = agents_path.read_bytes() if has_agents else b""
@@ -382,6 +459,7 @@ class OperatorOSSourceAdapter:
                     cas_verified = (
                         raw_bytes_match
                         and sha_cross_check
+                        and modules_agree
                         and normalize_counts.get("acquisitions", 0) >= 1
                         and normalize_counts.get("items", 0) >= 1
                         and normalize_counts.get("chunks", 0) >= 1
@@ -506,6 +584,8 @@ class OperatorOSSourceAdapter:
             invocation_attempted=donor_invocation_attempted,
             exit_code=donor_exit_code,
             duration_ms=donor_duration_ms,
+            module_fingerprints=module_fingerprints,
+            donor_interpreter=donor_interpreter,
             all_stages_passed=all_stages_passed,
             dotfiles_fingerprint=dotfiles_fp,
             pkos_fingerprint=pkos_fp,

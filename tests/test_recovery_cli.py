@@ -16,11 +16,11 @@ class RecoveryCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(code, 0)
         rendered = output.getvalue()
         self.assertIn(
-            "Recovery program: 43 obligations (42 wave follow-ups + 1 lifecycle).",
+            "Recovery program: 44 obligations (42 wave follow-ups + 2 lifecycle).",
             rendered,
         )
         self.assertIn(
-            "Dependency state: 18 ready, 25 blocked by undischarged dependencies.",
+            "Dependency state: 19 ready, 24 blocked by undischarged dependencies.",
             rendered,
         )
         self.assertIn(
@@ -32,7 +32,9 @@ class RecoveryCLIIntegrationTests(unittest.TestCase):
             rendered,
         )
         self.assertIn("receipt: portfolio-adoption-v1", rendered)
-        self.assertIn("operator-os/O1", rendered)
+        # O1 is discharged, so the queue names its adoption follow-on and not O1 itself.
+        self.assertIn("operator-os/O1-adoption", rendered)
+        self.assertNotIn("operator-os/O1  ", rendered)
         self.assertIn("owner=permanent_vault_write", rendered)
         self.assertNotIn("lowest promotion first", rendered)
 

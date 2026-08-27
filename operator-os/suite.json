@@ -63,18 +63,23 @@
       "status": "complete",
       "objective": "Acquire live dotfiles into authentic PKos CAS, normalize into SQLite, and generate fenced Observer projection.",
       "acceptance": "The source is acquired into authentic PKos raw object storage, normalized into SQLite items and chunks, projected into a fenced Observer note, and mutation protection holds.",
-      "runtime_followup": "Scale real day-to-day intake stream through the live PKos capture path into the permanent personal vault, and re-declare O1 as a runtime claim carrying a portfolio-runtime-source-v1 receipt: the gate does import and invoke live PKos storage and normalize modules, but the retained analysis receipt records only what it produced, never the invocation itself, so the claim is capped at what that receipt can prove.",
+      "runtime_followup": "Scale real day-to-day intake stream through the live PKos capture path into the permanent personal vault, and accumulate the authentic accepted uses that an adoption claim requires. The invocation itself is now proven: the receipt retains the argv, exit code, duration, and host-recomputed digests of the PKos modules that ran, so the claim is no longer capped at what the projection could show.",
       "evidence": "operator-os/evidence/O1-SOURCE-RECORD-OBSERVER-PROJECTION.json",
       "recovery_claim": {
-        "kind": "analysis",
-        "level": "source_inspected",
-        "real_runtime": false,
+        "kind": "runtime",
+        "level": "source_executed",
+        "real_runtime": true,
+        "receipt_contract": "portfolio-runtime-source-v1",
         "evidence_basis": [
-          "source_record",
-          "cas_acquisition",
-          "source_derived_assertions",
-          "target",
-          "donor"
+          "source_invocation",
+          "source_fingerprints",
+          "dependency_fingerprints",
+          "module_fingerprints",
+          "tool_dependencies",
+          "reproducible_commands",
+          "host_recomputed_claims",
+          "recovery_behavior",
+          "privacy_redaction"
         ]
       }
     },

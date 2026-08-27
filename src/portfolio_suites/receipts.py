@@ -186,31 +186,9 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "objects": ["fail_closed_test", "preview_test"],
         "fingerprints": ["jarvis_fingerprint"],
     },
-    "operator-os/O1": {
-        "equals": {
-            "wave_id": "O1",
-            "status": "cas_projection_verified",
-            "all_stages_passed": True,
-            "cas_verified": True,
-            "mutation_protection_passed": True,
-            "operational_errors": [],
-            "source_derived_assertions.sensitivity_test_passed": True,
-        },
-        "objects": ["source_record", "cas_acquisition", "source_derived_assertions", "target", "donor"],
-        "strings": [
-            "observer_projection_preview",
-            "source_derived_assertions.donor_source_path",
-            "source_derived_assertions.donor_sha256",
-            "source_derived_assertions.cas_object_path",
-        ],
-        "minimums": {
-            "source_derived_assertions.donor_bytes": 100,
-            "source_derived_assertions.sqlite_normalized_items": 1,
-            "source_derived_assertions.sqlite_normalized_chunks": 1,
-        },
-        "fingerprints": ["donor.fingerprint", "target.pkos_fingerprint", "target.observer_fingerprint"],
-        "contracts": {"source_record": "SourceRecord"},
-    },
+    # operator-os/O1 was here. It is a runtime claim now, retaining a
+    # portfolio-runtime-source-v1 receipt that proves the invocation, so it is validated by
+    # _portfolio_runtime_receipt_errors and never reaches an analysis spec.
     "brand-publishing/B1": {
         "equals": {
             "wave": "B1",
@@ -924,6 +902,26 @@ def _meaningful_fingerprint_collection(value: Any) -> bool:
     return bool(values) and all(is_meaningful_git_fingerprint(item) for item in values)
 
 
+def _agreeing_module_fingerprints(value: Any) -> bool:
+    """Whether every invoked module carries a host digest that reproduced the donor's.
+
+    A digest the donor both computes and attests is self-attestation, so the receipt has to
+    retain the host's own recomputation alongside it and the two have to agree. A receipt
+    naming no module at all fails here: `source_executed` asserts specific code ran.
+    """
+    if not isinstance(value, dict) or not value:
+        return False
+    for record in value.values():
+        if not isinstance(record, dict):
+            return False
+        host = record.get("host_recomputed_sha256")
+        if not isinstance(host, str) or not SHA256_HEX.fullmatch(host):
+            return False
+        if record.get("agrees") is not True or host != record.get("donor_attested_sha256"):
+            return False
+    return True
+
+
 def _portfolio_runtime_receipt_errors(path: Path, contract_id: str, level: str) -> list[str]:
     document, errors = _receipt_document(path, contract_id)
     if document is None:
@@ -939,6 +937,19 @@ def _portfolio_runtime_receipt_errors(path: Path, contract_id: str, level: str) 
         and source.get("exit_code") == 0
     ):
         errors.append("source_invocation must retain an argv command and zero exit code")
+    duration = source.get("duration_ms") if isinstance(source, dict) else None
+    if not isinstance(duration, (int, float)) or isinstance(duration, bool) or duration < 0:
+        errors.append("source_invocation must retain a non-negative duration_ms")
+    if not _agreeing_module_fingerprints(document.get("module_fingerprints")):
+        errors.append(
+            "module_fingerprints must record a host-recomputed SHA-256 per invoked donor "
+            "module that agrees with the donor's own digest"
+        )
+    tools = document.get("tool_dependencies")
+    if not isinstance(tools, dict) or not tools or any(
+        not isinstance(item, str) or not item.strip() for item in tools.values()
+    ):
+        errors.append("tool_dependencies must pin the tool versions the invocation used")
     if not _meaningful_fingerprint_collection(document.get("source_fingerprints")):
         errors.append("source_fingerprints must contain meaningful Git and content fingerprints")
     commands = document.get("reproducible_commands")

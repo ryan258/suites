@@ -33,6 +33,8 @@
     "recovery_behavior",
     "source_fingerprints",
     "dependency_fingerprints",
+    "module_fingerprints",
+    "tool_dependencies",
     "reproducible_commands",
     "host_recomputed_claims",
     "consumer_boundary",
@@ -145,7 +147,7 @@
       "target_level": "source_executed",
       "dependencies": [],
       "runtime_environment": "provisioned-local-portfolio",
-      "owner_gate": "permanent_vault_write",
+      "owner_gate": null,
       "receipt_contract": "portfolio-runtime-source-v1",
       "trace_route": {
         "adapter": "OperatorOSSourceAdapter",
@@ -175,14 +177,14 @@
           {
             "policy_id": "evidence-recording",
             "outcome": "allowed",
-            "reason_code": "candidate_not_recorded"
+            "reason_code": "candidate_recorded_on_explicit_request"
           }
         ]
       },
-      "acceptance_checks": ["source_invocation", "source_fingerprints", "dependency_fingerprints", "reproducible_commands", "host_recomputed_claims", "recovery_behavior", "privacy_redaction"],
+      "acceptance_checks": ["source_invocation", "source_fingerprints", "dependency_fingerprints", "module_fingerprints", "tool_dependencies", "reproducible_commands", "host_recomputed_claims", "recovery_behavior", "privacy_redaction"],
       "priority": "critical_path",
       "sequence": 2,
-      "state": "planned"
+      "state": "discharged"
     },
     {
       "id": "brand-publishing/B1",
@@ -797,6 +799,21 @@
       "acceptance_checks": ["source_fingerprints", "owner_decision"],
       "priority": "conditional",
       "sequence": 43,
+      "state": "planned"
+    },
+    {
+      "id": "operator-os/O1-adoption",
+      "source": "lifecycle",
+      "journey_id": "operator-source-to-safe-action",
+      "target_claim_kind": "adoption",
+      "target_level": "adopted",
+      "dependencies": ["operator-os/O1"],
+      "runtime_environment": "provisioned-local-portfolio",
+      "owner_gate": "permanent_vault_write",
+      "receipt_contract": "portfolio-adoption-v1",
+      "acceptance_checks": ["accepted_uses", "recovery_behavior", "source_fingerprints", "privacy_redaction"],
+      "priority": "critical_path",
+      "sequence": 44,
       "state": "planned"
     }
   ]

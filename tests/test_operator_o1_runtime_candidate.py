@@ -22,17 +22,38 @@ class OperatorO1RuntimeCandidateTests(unittest.TestCase):
     def setUpClass(cls):
         cls.result = OperatorOSSourceAdapter.execute_o1_source_record_observer_gate()
 
-    def test_existing_analysis_gate_stays_truthfully_classified(self):
+    def test_gate_proves_source_execution_and_names_the_adoption_ceiling(self):
         self.assertEqual(self.result["status"], "cas_projection_verified")
         self.assertTrue(self.result["all_stages_passed"])
         candidate = self.result["runtime_candidate"]
-        self.assertTrue(candidate["candidate_only"])
-        self.assertFalse(candidate["promotion_eligible"])
-        self.assertEqual(candidate["blocked_owner_gate"], "permanent_vault_write")
+        self.assertFalse(candidate["candidate_only"])
+        self.assertTrue(candidate["promotion_eligible"])
+        self.assertEqual(candidate["status"], "source_executed")
+        # The vault write gates adoption, not this rung, and it is carried by its own
+        # obligation rather than by an owner gate on the source_executed claim.
+        self.assertIsNone(candidate["blocked_owner_gate"])
         self.assertIn(
             "permanent_vault_write_not_authorized_or_attempted",
-            candidate["blocked_requirements"],
+            candidate["adoption_ceiling"],
         )
+
+    def test_gate_verifies_donor_module_digests_host_side(self):
+        receipt = self.result["runtime_candidate"]["receipt_contract_candidate"]
+        modules = receipt["module_fingerprints"]
+        self.assertEqual(
+            set(modules), {"pkos.storage", "pkos.normalize"}
+        )
+        for name, record in modules.items():
+            with self.subTest(module=name):
+                self.assertTrue(record["agrees"])
+                self.assertEqual(
+                    record["host_recomputed_sha256"], record["donor_attested_sha256"]
+                )
+                self.assertFalse(record["path"].startswith("/"))
+        tools = receipt["tool_dependencies"]
+        self.assertTrue(tools["host_python"])
+        self.assertTrue(tools["donor_python"])
+        self.assertNotEqual(tools["donor_probe_sha256"], "")
 
     def test_candidate_retains_authentic_invocation_and_recovery_metadata(self):
         receipt = self.result["runtime_candidate"]["receipt_contract_candidate"]
@@ -106,6 +127,15 @@ class OperatorO1RuntimeCandidateBoundaryTests(unittest.TestCase):
             "invocation_attempted": True,
             "exit_code": 0,
             "duration_ms": 1.0,
+            "module_fingerprints": {
+                "pkos.storage": {
+                    "path": "pkos/storage.py",
+                    "donor_attested_sha256": "d" * 64,
+                    "host_recomputed_sha256": "d" * 64,
+                    "agrees": True,
+                }
+            },
+            "donor_interpreter": {"python": "3.13.1", "implementation": "CPython"},
             "all_stages_passed": True,
             "dotfiles_fingerprint": fingerprint,
             "pkos_fingerprint": fingerprint,

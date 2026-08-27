@@ -7,7 +7,9 @@ host Python process.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import platform
 import sys
 import tempfile
 from pathlib import Path
@@ -15,6 +17,22 @@ from pathlib import Path
 # Read by the calling adapter to classify the failure; keep in sync with operator_os.py.
 EXIT_USAGE = 2
 EXIT_IMPORT_FAILED = 3
+
+
+def _module_records(modules: dict[str, object]) -> dict[str, dict[str, str]]:
+    """Path and digest of each imported donor module, skipping any without a real file."""
+    records: dict[str, dict[str, str]] = {}
+    for name, module in modules.items():
+        origin = getattr(module, "__file__", None)
+        if not origin:
+            continue
+        path = Path(origin).resolve()
+        try:
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            continue
+        records[name] = {"path": str(path), "sha256": digest}
+    return records
 
 
 def main() -> int:
@@ -28,6 +46,8 @@ def main() -> int:
         return EXIT_USAGE
 
     try:
+        from pkos import normalize as normalize_module
+        from pkos import storage as storage_module
         from pkos.storage import Workspace, checksum_file
         from pkos.normalize import normalize
     except Exception as exc:
@@ -57,6 +77,16 @@ def main() -> int:
                     "acquired_record": acquired_record,
                     "raw_bytes_match": raw_bytes_match,
                     "counts": counts,
+                    # What this process actually imported, so the caller can recompute the
+                    # digests itself. These are the donor's own claims about the donor --
+                    # the adapter re-hashes the same paths host-side and requires agreement.
+                    "modules": _module_records(
+                        {"pkos.storage": storage_module, "pkos.normalize": normalize_module}
+                    ),
+                    "interpreter": {
+                        "python": platform.python_version(),
+                        "implementation": platform.python_implementation(),
+                    },
                 }
             )
         )

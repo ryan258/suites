@@ -1,60 +1,30 @@
 {
-  "schema_version": "1.0.0",
-  "wave_id": "O1",
-  "executed_at": "2026-08-22T16:55:05.778058+00:00",
-  "status": "cas_projection_verified",
-  "source_record": {
-    "schema_version": "1.0.0",
-    "source_id": "src-dotfiles-agents-md",
-    "acquired_at": "2026-08-22T16:55:05.826964+00:00",
-    "sha256": "ffcafe28a5ec687185cb5456e5e16b3f55a0a890a854f823450a533135708034",
-    "size_bytes": 11784,
-    "media_type": "text/markdown",
-    "origin": "dotfiles://AGENTS.md",
-    "provenance": {
-      "author": "Ryan",
-      "collector": "pkos.storage.Workspace",
-      "intake_method": "source_capture",
-      "raw_preview": "# AGENTS.md - AI Development Guidelines for Dotfiles System\n\n> **For AI Coding Assistants:** Quick operational checklist"
-    }
-  },
-  "cas_acquisition": {
-    "id": "806dffde-22ee-4f91-a626-84306e313ad3",
-    "acquired_at": "2026-08-22T16:55:05.787333+00:00",
-    "kind": "operator_policy",
-    "original_path": "/Users/ryanjohnson/Projects/dotfiles/AGENTS.md",
-    "raw_object": "data/raw/objects/ff/ffcafe28a5ec687185cb5456e5e16b3f55a0a890a854f823450a533135708034",
-    "sha256": "ffcafe28a5ec687185cb5456e5e16b3f55a0a890a854f823450a533135708034",
-    "bytes": 11784,
-    "media_type": "application/octet-stream",
-    "label": "dotfiles/AGENTS.md"
-  },
-  "observer_projection_preview": "---\ntitle: \"Dotfiles Operator Policy Projection\"\ntype: observer_projection\nsource_id: \"src-dotfiles-agents-md\"\nsource_sha256: \"ffcafe28a5ec687185cb5456e5e16b3f55a0a890a854f823450a533135708034\"\nprojected_at: \"2026-08-22T16:55:05.828253+00:00\"\ngenerator: \"portfolio_suites.operator_os\"\nstatus: derived\nfenced_from_reingestion: true\n---\n\n<!-- FENCE: DO NOT RE-INGEST INTO PKOS CANONICAL CORPUS -->\n\n# Dotfiles Operator Policy Projection\n\n> **Source Citation:** `src-dotfiles-agents-md` (SHA: `ffcafe28a5ec...`)\n> **Acquired Origin:** `dotfiles://AGENTS.md`\n\n## Summary\nCanonical agent rules and operator boundaries captured from dotfiles/AGENTS.md into PKos CAS.\n\n## Extracted Analysis\n# AGENTS.md - AI Development Guidelines for Dotfiles System\n\n> **For AI Coding Assistants:** Quick operational checklist aligned to `CLAUDE.md` (the canonical spec). Read this before making changes.\n\n---\n\n## Directive Zero: Operating Context\n\nThis is a personal productivity system for a developer with MS (multiple sclerosis). The system provides:\n\n- Cognitive support and brain-fog-friendly workflows\n- Energy management via spoon theory tracking\n- Daily automation (startday, goodevening, status)\n- AI-powered assistants via OpenRouter API\n- Task, journal, and health tracking\n\n**Design priority:** Reliability and graceful degradation over features. Prefer `A/B/C/D/E` short-choice prompts over freeform input.\n\n---\n\n## Scope and Precedence\n\n1. Read `GUARDRAILS.md` first to confirm scope (`dotfiles` root vs `ai-staff-hq/`).\n2. For root (`dotfiles`) work, `CLAUDE.md` is the canonical specification.\n3. `AGENTS.md` is the quick operational checklist aligned to `CLAUDE.md`.\n4. For `ai-staff-hq/`, use the local guides in that submodule.\n\n---\n\n## Critical Rules Summary\n\n1. **Executed scripts:** Always use `#!/usr/bin/env bash` and `set -euo pipefail`\n2. **Sourced libraries:** NEVER use `set -euo pipefail` (caller controls shell options)\n3. **Sourced files:** Use `return`, not `exit` \u2014 exit kills the parent shell\n4. **Data files:** All in `~/.config/dotfiles-data/` with pipe-delimited format\n5. **User input:** ALWAYS sanitize with `sanitize_input()` before use\n6. **Paths:** ALWAYS validate with `validate_path()`\n7. **Aliases:** `copy` = clipboard (pbcopy), `aicopy` = AI copywriter dispatcher\n8. **Config loading:** Only `scripts/lib/config.sh` may source `.env` (except `scripts/validate_env.sh`)\n9. **DATA_DIR ownership:** Never redefine `DATA_DIR` with per-script home-path fallbacks after sourcing `config.sh`\n10. **Library dependencies:** `scripts/lib/*.sh` must not self-source sibling libs (transitional compat exception: `common.sh` bootstrap only; do not add new self-sourcing)\n11. **Shell intelligence:** Use `scripts/bash_intel.sh` (LSP-backed) for symbols/definitions/references and `scripts/bash_graph.sh` for shell dependency/source topology, plus `rg`, manual sourced-vs-executed boundary tracing, and bats tests. See `docs/products/bash-intel.md`.\n\n---\n\n## Directory Structure\n\n```\ndotfiles/\n\u251c\u2500\u2500 scripts/           # Core CLI utilities (executed)\n\u2502   \u251c\u2500\u2500 lib/          # Shared libraries (sourced - NO set -euo pipefail)\n\u2502   \u2514\u2500\u2500 tools/        # Lower-frequency file/media/maintenance utilities (executed)\n\u251c\u2500\u2500 bin/              # AI dispatchers (dhp-*.sh)\n\u251c\u2500\u2500 zsh/              # Shell config (aliases.zsh loader - sourced; zsh/aliases/*.zsh opt-in groups)\n\u251c\u2500\u2500 docs/             # Documentation\n\u251c\u2500\u2500 tests/            # Test suites\n\u251c\u2500\u2500 templates/        # AI dispatcher templates\n\u251c\u2500\u2500 ai-staff-hq/      # AI workforce definitions (submodule)\n\u2514\u2500\u2500 .env              # Configuration (never commit)\n```\n\n---\n\n## Execution Protocols\n\n### Pre-Flight: Before Writing or Modifying Any Shell File\n\nYou MUST determine the file's type before writing a single line:\n\n1. **Is the file in `scripts/lib/`?** Or is it `zsh/aliases.zsh`, `scripts/g.sh`, `bin/dhp-context.sh`, or `scripts/spec_helper.sh`? If yes \u2192 **sourced file**.\n2. **Does the header say \"must be sourced\"?** If yes \u2192 **sourced file**.\n3. **Everything else** \u2192 **executed script**.\n\nApplying the wrong type breaks the system: sourced files with `set -euo pipefail` crash the user's shell; executed files without it swallow errors silently.\n\n### Executed Scripts (standalone utilities, dispatchers)\n\n```bash\n# scripts/*.sh\n#!/usr/bin/env bash\nset -euo pipefail\nSCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\nsource \"$SCRIPT_DIR/lib/common.sh\"\n\n# bin/dhp-*.sh\n#!/usr/bin/env bash\nset -euo pipefail\nsource \"$(dirname \"$0\")/dhp-shared.sh\"\n```\n\n- `#!/usr/bin/env bash` (NOT `#!/bin/bash`)\n- Avoid Bash 4-only features unless explicit runtime requirement. If unavoidable, add a runtime guard and document in `CLAUDE.md`, `AGENTS.md`, `scripts/README.md`, and `CHANGELOG.md`.\n- Bootstrap wrappers for launchd/cron may use POSIX `sh`; keep narrow and documented inline.\n- Use `exit` for termination.\n\n### Sourced Files (libraries, must-be-sourced scripts)\n\n**Files:** All `scripts/lib/*.sh`, `scripts/g.sh`, `zsh/aliases.zsh`, `bin/dhp-context.sh`, `scripts/spec_helper.sh`\n\n```bash\n#!/usr/bin/env bash\n# library-name.sh - Description\n# NOTE: SOURCED file. Do NOT use set -euo pipefail.\n\nif [[ -n \"${_LIBRARY_NAME_LOADED:-}\" ]]; then\n    return 0\nfi\nreadonly _LIBRARY_NAME_LOADED=true\n\nmy_function() {\n    return 0  # NOT exit\n}\n```\n\n---\n\n## Core Libraries Reference\n\n| Library           | Purpose                                    | Location       |\n| ----------------- | ------------------------------------------ | -------------- |\n| `common.sh`       | Validation, logging, errors                | `scripts/lib/` |\n| `config.sh`       | Paths, models, feature flags               | `scripts/lib/` |\n| `file_ops.sh`     | Atomic writes, file validation             | `scripts/lib/` |\n| `date_utils.sh`   | Cross-platform dates                       | `scripts/lib/` |\n| `health_ops.sh`   | Shared health + wearable helpers           | `scripts/lib/` |\n| `spoon_budget.sh` | Energy tracking                            | `scripts/lib/` |\n| `oauth.sh`        | OAuth token parsing, refresh, secure writes | `scripts/lib/` |\n| `coaching.sh`     | Stable facade over coach libraries         | `scripts/lib/` |\n| `coach_ops.sh`    | Dependency guard for coach runtime config  | `scripts/lib/` |\n| `coach_metrics.sh` | Tactical, pattern, and digest metrics    | `scripts/lib/` |\n| `coach_brief.sh`  | Deterministic brief renderer (primary ground-truth path) | `scripts/lib/` |\n| `coach_prompts.sh` | Framing-prompt assembly over the deterministic brief | `scripts/lib/` |\n| `coach_prebrief.sh` | Interactive pre-brief A/B/C/D/E questions | `scripts/lib/` |\n| `coach_scoring.sh` | Coaching scoring and classification      | `scripts/lib/` |\n| `coach_chat.sh`   | Menu-driven post-briefing control surface  | `scripts/lib/` |\n| `github_ops.sh`   | GitHub API helpers                         | `scripts/lib/` |\n| `focus_relevance.sh` | Focus keyword extraction and relevance  | `scripts/lib/` |\n| `wrapper_common.sh` | Shared helpers for sibling-product wrappers | `scripts/lib/` |\n\nUse `scripts/lib/date_utils.sh` for all date/time operations \u2014 no inline `date -v`, `date -d`, `gdate -d`.\n\n---\n\n## Data Conventions\n\nAll data in `~/.config/dotfiles-data/` (access via `$DATA_DIR` from config.sh).\n\n| File            | Format                                                                   |\n| --------------- | ------------------------------------------------------------------------ |\n| `todo.txt`      | `ID\\|YYYY-MM-DD\\|task text`                                              |\n| `todo_done.txt` | `YYYY-MM-DD HH:MM:SS\\|task text`                                         |\n| `journal.txt`   | `YYYY-MM-DD HH:MM:SS\\|entry`                                             |\n| `health.txt`    | `TYPE\\|DATE\\|field1\\|field2...`                                          |\n| `spoons.txt`    | `BUDGET\\|DATE\\|count` or `SPEND\\|DATE\\|TIME\\|count\\|activity\\|remaining` |\n\nAlways sanitize before writing: `sanitized=$(sanitize_input \"$user_input\")`\n\n---\n\n## Error Handling\n\nUse named exit codes from `common.sh` (`EXIT_SUCCESS=0` through `EXIT_SERVICE_ERROR=5`). Use `die()` for fatal errors, `log_error/log_warn/log_info` for non-fatal. Validate with `validate_numeric`, `validate_range`, `validate_file_exists`, `validate_path`. Check deps with `require_cmd`, `require_file`.\n\n---\n\n## AI Dispatcher Architecture\n\nRegistry-backed one-shot dispatchers MUST use `bin/dhp-shared.sh` and call `dhp_dispatch`. Do not bypass this framework for simple prompt dispatchers \u2014 it handles argument parsing, streaming, model selection, and standard flags. Custom orchestration entries in `config/dhp-dispatchers.tsv` may use shared primitives directly when `dhp_dispatch` is not the right shape.\n\n```bash\n#!/usr/bin/env bash\nset -euo pipefail\nsource \"$(dirname \"$0\")/dhp-shared.sh\"\n\ndhp_dispatch \\\n    \"Dispatcher Name\" \"MODEL_TYPE\" \"\" \"MODEL_ENV_VAR\" \\\n    \"DHP_<TYPE>_OUTPUT_DIR\" \"System prompt\" \"0.5\" \"$@\"\n```\n\n- Naming: `dhp-<type>.sh`, alias short form, model var `<TYPE>_MODEL`\n- Standard flags: `--stream`, `--verbose`, `--temperature <float>`\n\n### Standalone Agents\n\n- **`bin/cyborg`** \u2014 Cyborg Lab ingest/resume agent. `cyborg auto` for hands-free; `cyborg auto --iterate` for incremental growth; `cyborg auto --build` for market validation + scaffold + build-verify-fix. Add `--publish` to push before docs. See `bin/autopilot-readme.md` and `MORPHLING.md`.\n- **`bin/morphling.sh`** \u2014 LangChain ReAct agent with `read_file`, `write_file`, `list_directory`, `run_command`. The `morphling` alias points to swarm mode (`bin/dhp-morphling.sh`). See `MORPHLING.md`.\n- **`bin/coach-chat.py`** \u2014 Multi-turn coach chat handler. Invoked by `scripts/lib/coach_chat.sh`, not directly. Supports `init` and `turn`.\n\n---\n\n## Alias Conventions\n\n`zsh/aliases.zsh` is a loader: daily-core and compatibility-wrapper aliases live directly in it, then it conditionally sources `zsh/aliases/convenience.zsh` (`ENABLE_CONVENIENCE_ALIASES`, default `true`; includes safety-net overrides like `rm -i`/`cp -i`/`mv -i`), `zsh/aliases/risky.zsh` (`ENABLE_RISKY_ALIASES`, default `false`; genuinely destructive, no-confirmation aliases only), and `zsh/aliases/fabric-ai.zsh` (`ENABLE_FABRIC_AI_ALIASES`, default `false`). Spoon aliases (`spoons`, `s-check`, `s-spend`) only exist when `SPOONS_ENABLED=true` (default `false`).\n\n| Category       | Pattern     | Examples                       |\n| -------------- | ----------- | ------------------------------ |\n| Git            | `g` prefix  | `gs`, `ga`, `gc`, `gp`         |\n| AI Dispatchers | Type name   | `tech`, `creative`, `strategy` |\n| Repo Agents    | Project name | `cyborg`                      |\n| Scripts        | Full/abbrev | `todo`, `journal`, `j`         |\n| Spoons         | `s-` prefix | `s-check`, `s-spend` (opt-in via `SPOONS_ENABLED`) |\n| Correlations   | `corr-` prefix | `corr-sleep`, `corr-rhr`    |\n\nNever shadow system commands. `copy` = `pbcopy`, `aicopy` = AI copywriter.\n\n---\n\n## Cross-Platform\n\n- Guard macOS-only features with `[[ \"$OSTYPE\" == \"darwin\"* ]]`.\n- Use `date_utils.sh` helpers, not inline date commands.\n- Check command availability with `require_cmd`.\n\n---\n\n## Testing\n\nWhen adding or modifying functionality, you MUST write the bats test first, run it to confirm it fails, implement the change, then run it again.\n\n- Framework: `bats-core`\n- Files: `tests/test_<module>.sh` with `#!/usr/bin/env bats`\n- Helpers: always load `tests/helpers/test_helpers.sh` and `tests/helpers/assertions.sh`\n- `setup()` calls `setup_test_environment` (creates isolated `$TEST_DIR`); `teardown()` calls `teardown_test_environment`\n- Run single: `bats tests/test_<module>.sh`\n- Run suite: `bats tests/*.sh` (check for regressions)\n\n---\n\n## Quick Checklist\n\n### New Executed Script\n\n- [ ] `#!/usr/bin/env bash` + `set -euo pipefail`\n- [ ] Source `common.sh` (scripts) or `dhp-shared.sh` (dispatchers)\n- [ ] Add alias if needed\n- [ ] Document in README, update `CHANGELOG.md`\n\n### New Library (Sourced)\n\n- [ ] NO `set -euo pipefail`\n- [ ] Double-source guard\n- [ ] Use `return` not `exit`\n\n### New Registry Dispatcher\n\n- [ ] Use `dhp-shared.sh` framework and `dhp_dispatch`\n- [ ] Add alias (`zsh/aliases.zsh`)\n- [ ] Add model config to `.env.example`\n- [ ] Document in `bin/README.md`\n\n---\n\n_Refer to `CLAUDE.md` for canonical root-project guidance and `GUARDRAILS.md` for scope selection._\n\n\n---\n*Derived via Operator OS projection engine. Immutable canonical truth lives in PKOS.*\n",
-  "source_derived_assertions": {
-    "donor_source_path": "dotfiles/AGENTS.md",
-    "donor_sha256": "ffcafe28a5ec687185cb5456e5e16b3f55a0a890a854f823450a533135708034",
-    "donor_bytes": 11784,
-    "cas_object_path": "data/raw/objects/ff/ffcafe28a5ec687185cb5456e5e16b3f55a0a890a854f823450a533135708034",
-    "sqlite_normalized_items": 1,
-    "sqlite_normalized_chunks": 9,
-    "sensitivity_test_passed": true
-  },
+  "receipt_version": "portfolio-runtime-source-v1",
+  "status": "source_executed",
   "all_stages_passed": true,
-  "cas_verified": true,
-  "operational_errors": [],
-  "source_verification_passed": true,
-  "mutation_protection_passed": true,
-  "mutation_cases": {
-    "corrupt_sha_rejected": true,
-    "no_fence_rejected": true,
-    "no_citation_rejected": true,
-    "anti_reingestion_fence_detected": true,
-    "reingestion_intake_blocked": true
+  "source_invocation_status": "invoked",
+  "source_invocation": {
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_pkos_cas_probe.py",
+      "/Users/ryanjohnson/Projects/dotfiles/AGENTS.md"
+    ],
+    "exit_code": 0,
+    "duration_ms": 64.17,
+    "working_directory": "/Users/ryanjohnson/Projects/PKos",
+    "environment_policy": "donor_env_with_explicit_pkos_pythonpath"
   },
-  "donor": {
-    "name": "dotfiles",
-    "path": "/Users/ryanjohnson/Projects/dotfiles",
-    "fingerprint": {
+  "planned_source_invocation": {
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_pkos_cas_probe.py",
+      "/Users/ryanjohnson/Projects/dotfiles/AGENTS.md"
+    ],
+    "working_directory": "/Users/ryanjohnson/Projects/PKos",
+    "environment_policy": "donor_env_with_explicit_pkos_pythonpath"
+  },
+  "source_fingerprints": {
+    "dotfiles": {
       "branch": "main",
       "head": "43f56c88a1dfd39fa5e7f10b21d5d7385babd550",
       "short": "main@43f56c8",
@@ -67,13 +37,10 @@
         "README.md": "66891b28700a21beb2671a9baf4c35891018605d2b918a31e495c03349414e42"
       },
       "target_state": "clean_commit"
-    },
-    "source_file": "AGENTS.md"
+    }
   },
-  "target": {
-    "pkos_name": "PKos",
-    "pkos_path": "/Users/ryanjohnson/Projects/PKos",
-    "pkos_fingerprint": {
+  "dependency_fingerprints": {
+    "PKos": {
       "branch": "main",
       "head": "6c861b6e032f91f6289c36a859241e363583d5d3",
       "short": "main@6c861b6",
@@ -88,9 +55,7 @@
       },
       "target_state": "clean_commit"
     },
-    "observer_name": "obsidian-observer",
-    "observer_path": "/Users/ryanjohnson/Projects/obsidian-observer",
-    "observer_fingerprint": {
+    "obsidian-observer": {
       "branch": "main",
       "head": "5ea72135f1efb0296b9fa493fc11dd3775255f89",
       "short": "main@5ea7213",
@@ -104,5 +69,54 @@
       },
       "target_state": "clean_commit"
     }
-  }
+  },
+  "module_fingerprints": {
+    "pkos.storage": {
+      "path": "pkos/storage.py",
+      "donor_attested_sha256": "28ec41fdc02b18c5a10c468b4e45eb4fbfeecd81222595236d3bb2bc70b89431",
+      "host_recomputed_sha256": "28ec41fdc02b18c5a10c468b4e45eb4fbfeecd81222595236d3bb2bc70b89431",
+      "agrees": true
+    },
+    "pkos.normalize": {
+      "path": "pkos/normalize.py",
+      "donor_attested_sha256": "59c1d21aadaeff253851e35d38d20830dd2666007b177ca97220994275f79859",
+      "host_recomputed_sha256": "59c1d21aadaeff253851e35d38d20830dd2666007b177ca97220994275f79859",
+      "agrees": true
+    }
+  },
+  "tool_dependencies": {
+    "host_python": "3.14.6",
+    "host_implementation": "CPython",
+    "donor_python": "3.14.6",
+    "donor_implementation": "CPython",
+    "donor_probe_sha256": "c2faaf11bf3036f50b4e8ffe30d13c095fb84e65dd20577516fe63cbe52c434b"
+  },
+  "reproducible_commands": [
+    [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_pkos_cas_probe.py",
+      "/Users/ryanjohnson/Projects/dotfiles/AGENTS.md"
+    ]
+  ],
+  "host_recomputed_claims": {
+    "source_sha256": "ffcafe28a5ec687185cb5456e5e16b3f55a0a890a854f823450a533135708034",
+    "cas_sha256": "ffcafe28a5ec687185cb5456e5e16b3f55a0a890a854f823450a533135708034",
+    "cas_sha256_matches_source": true,
+    "normalized_items": 1,
+    "normalized_chunks": 9
+  },
+  "recovery_behavior": {
+    "runtime_mutation_mode": "temporary_workspace_only",
+    "permanent_vault_written": false,
+    "partial_permanent_state_possible": false,
+    "rerun_safe": true,
+    "environment_failures_fail_closed": true,
+    "evidence_write_requires_explicit_record": true
+  },
+  "privacy_redaction": {
+    "raw_source_content_retained": false,
+    "credentials_retained": false,
+    "command_arguments_reviewed": true
+  },
+  "operational_errors": []
 }

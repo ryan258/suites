@@ -31,7 +31,7 @@ class RecoveryProgramTests(unittest.TestCase):
         self.assertEqual(covered, wave_followups)
         self.assertEqual(len(covered), 42)
 
-    def test_program_has_one_journey_per_suite_and_one_explicit_lifecycle_obligation(self):
+    def test_program_has_one_journey_per_suite_and_explicit_lifecycle_obligations(self):
         self.assertEqual(
             {journey["suite_id"] for journey in self.program["journeys"]},
             set(self.suites),
@@ -41,8 +41,25 @@ class RecoveryProgramTests(unittest.TestCase):
             for obligation in self.program["obligations"]
             if obligation["source"] == "lifecycle"
         ]
-        self.assertEqual([item["id"] for item in lifecycle], ["accessibility/A2-adoption"])
-        self.assertEqual(lifecycle[0]["receipt_contract"], "portfolio-adoption-v1")
+        self.assertEqual(
+            [item["id"] for item in lifecycle],
+            ["accessibility/A2-adoption", "operator-os/O1-adoption"],
+        )
+        for obligation in lifecycle:
+            with self.subTest(obligation=obligation["id"]):
+                self.assertEqual(obligation["receipt_contract"], "portfolio-adoption-v1")
+
+    def test_adoption_obligation_carries_the_owner_gate_its_source_rung_does_not(self):
+        by_id = {item["id"]: item for item in self.program["obligations"]}
+        # source_executed is earned by invoking the donor; the permanent vault write is a
+        # human decision that gates adoption, so it hangs off the adoption obligation.
+        self.assertIsNone(by_id["operator-os/O1"]["owner_gate"])
+        self.assertEqual(
+            by_id["operator-os/O1-adoption"]["owner_gate"], "permanent_vault_write"
+        )
+        self.assertEqual(
+            by_id["operator-os/O1-adoption"]["dependencies"], ["operator-os/O1"]
+        )
 
     def test_duplicate_suite_journey_fails_exactly_once_coverage(self):
         program = deepcopy(self.program)
@@ -230,7 +247,12 @@ class RecoveryProgramTests(unittest.TestCase):
             item["id"]: item
             for item in resolve_recovery_obligations(self.program, self.suites)
         }
-        self.assertEqual(obligations["operator-os/O1"]["effective_state"], "ready")
+        self.assertEqual(obligations["operator-os/O1"]["effective_state"], "discharged")
+        # O1 is discharged, so its adoption follow-on is dependency-satisfied and waits only
+        # on its owner gate -- which readiness does not claim to know anything about.
+        self.assertEqual(
+            obligations["operator-os/O1-adoption"]["effective_state"], "ready"
+        )
         self.assertEqual(
             obligations["brand-publishing/B3"]["effective_state"],
             "blocked_dependency",
@@ -242,7 +264,7 @@ class RecoveryProgramTests(unittest.TestCase):
                 "brand-publishing/B5": "planned",
             },
         )
-        self.assertEqual(obligations["operator-os/O1"]["owner_gate"], "permanent_vault_write")
+        self.assertIsNone(obligations["operator-os/O1"]["owner_gate"])
 
     def test_progress_states_cannot_bypass_unsatisfied_dependencies(self):
         for stored_state in (
@@ -305,9 +327,9 @@ class RecoveryProgramTests(unittest.TestCase):
         before = deepcopy(self.suites)
         summary = recovery_program_summary(self.program, self.suites)
         self.assertEqual(summary["journeys"], 8)
-        self.assertEqual(summary["obligations"], 43)
+        self.assertEqual(summary["obligations"], 44)
         self.assertEqual(summary["wave_runtime_followups"], 42)
-        self.assertEqual(summary["lifecycle_obligations"], 1)
+        self.assertEqual(summary["lifecycle_obligations"], 2)
         self.assertGreater(len(summary["ready"]), 0)
         self.assertEqual(self.suites, before)
 
