@@ -47,9 +47,11 @@ BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
-WORK STATE: 43/43 waves complete (40 analysis milestones + 1 runtime wave)
-EVIDENCE PROMOTION: 4 prototype | 1 reviewed historical | 35 source inspected | 2 source executed
-                    1 parity verified | 0 adopted | 0 converged | 0 resolved
+WORK STATE: 43/43 waves complete (40 analysis milestones + 3 runtime waves)
+WAVE EVIDENCE: 4 prototype | 1 reviewed historical | 35 source inspected | 2 source executed
+               1 parity verified | 0 adopted | 0 converged | 0 resolved
+RECOVERY PROGRAM: 2/44 obligations discharged | 42 open
+LIFECYCLE: 1 adopted capability | 0 converged | 0 resolved
 OUTSTANDING: 42/43 completed waves still owe a live run
 ```
 
@@ -58,8 +60,9 @@ milestone is finished. The second says what those milestones demonstrated: most 
 authentic donor artifacts (`source_inspected`), four remain suite-local fixtures (`A5`, `B3`,
 `B4`, `B6`), two waves (`O1`, `O4`) are at `source_executed`, and one runtime recovery (`A2`) is at
 `parity_verified`. A completed wave at
-`prototype` is a finished piece of work and is not a recovery; nothing here has reached adoption,
-convergence, or retirement approval.
+`prototype` is a finished piece of work and is not a recovery. A2 has one discharged lifecycle
+adoption obligation backed by three accepted uses; no wave claim has reached adoption, and no
+capability has reached convergence or retirement approval.
 
 `A1` is a reviewed, hand-authored parity decision whose required document structure is checked by
 the runner — `reviewed_historical_analysis`, not an executed donor or runtime gate. `A2` is the

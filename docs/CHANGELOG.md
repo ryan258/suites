@@ -12,6 +12,32 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-08-27 — Cache, runtime-receipt, and release-truth stabilization
+
+- **Chain caching is explicit and argument-pure.** Read-only actions no longer qualify merely
+  because they avoid mutation: filesystem and donor reads fail closed from caching unless a spec
+  explicitly opts in. Cache storage is detached from the first returned result as well as later
+  hits, closing both caller-aliasing directions. Adversarial regressions repoint a symlink during
+  one cache lifetime and mutate the first uncached result.
+- **PKos runtime claims require the whole invoked module set.** O1 and O4 now fail promotion unless
+  both `pkos.storage` and `pkos.normalize` are present with agreeing host-recomputed fingerprints;
+  omission of either module is covered independently.
+- **Promotional runtime receipts fail closed on provenance shape.** The shared validator requires
+  `source_invocation_status: invoked`, argv-shaped commands, safe relative module paths, host and
+  donor interpreter identities, meaningful dependency fingerprints, and valid SHA-256 tool
+  fingerprints. Planned, fabricated, traversal-shaped, or partially pinned receipts cannot
+  substantiate execution.
+- **Portfolio reporting separates its axes.** Status, API/export summaries, README, roadmap, and
+  migration prose now distinguish 40 analysis plus 3 runtime wave milestones, wave promotion
+  levels, 2/44 discharged recovery obligations, and A2's one discharged lifecycle adoption. An
+  adopted capability is no longer hidden, and it is not inflated into an adopted wave or suite.
+
+Verification: 547 tests passed with 4 environment/opt-in skips; `validate --fast` returned 0 errors
+and 0 warnings; the isolated wheel/install smoke passed 4/4 under Python 3.14.6. No donor repository
+was modified, no evidence was recorded, and the final candidate has no staged or committed changes.
+
+---
+
 ## 2026-08-27 — Operator OS O4 promoted to source_executed runtime evidence
 
 - **O4 now retains proof of the live PKos capture path instead of a parse of its output.** `execute_o4_pkos_stream_intake` acquires `pkos/README.md` through the same isolated donor CAS probe O1 uses (`donor_pkos_cas_probe.py`, label `pkos/README.md`), normalized counts and module digests are host-recomputed for agreement, and the wave settles with a `portfolio-runtime-source-v1` receipt. The stream envelope is preserved, so drift from the earlier analysis contract is rejected by the registry's runtime basis gate.

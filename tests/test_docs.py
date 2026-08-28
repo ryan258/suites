@@ -130,17 +130,16 @@ class ArtifactTests(unittest.TestCase):
         summary = get_portfolio_summary()
         levels = summary["promotion_counts"]
         total_actions = sum(len(c["actions"]) for c in list_actions().values())
-        # Both halves of the split, not `completed_waves` relabelled: 43 completed waves are
-        # 42 analysis milestones plus one runtime wave, and calling all 43 "analysis
-        # milestones" is the same overstatement the promotion axis exists to prevent.
+        # Both halves of the split, not `completed_waves` relabelled: the explicit claim
+        # kind is the source of truth for analysis versus runtime milestones.
         self.assertIn(
             f"WORK STATE: {summary['completed_waves']}/{summary['total_waves']} waves complete "
             f"({summary['completed_analysis_milestones']} analysis milestones "
-            f"+ {summary['recovered_runtime_behaviors']} runtime wave)",
+            f"+ {summary['completed_runtime_milestones']} runtime waves)",
             readme,
         )
         self.assertIn(
-            f"EVIDENCE PROMOTION: {levels['prototype']} prototype "
+            f"WAVE EVIDENCE: {levels['prototype']} prototype "
             f"| {levels['reviewed_historical_analysis']} reviewed historical "
             f"| {levels['source_inspected']} source inspected "
             f"| {levels['source_executed']} source executed",
@@ -154,6 +153,18 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn(
             f"OUTSTANDING: {summary['waves_owing_runtime_followup']}/{summary['total_waves']} "
             "completed waves still owe a live run",
+            readme,
+        )
+        program = summary["recovery_program"]
+        self.assertIn(
+            f"RECOVERY PROGRAM: {program['discharged']}/{program['total']} obligations discharged "
+            f"| {program['open']} open",
+            readme,
+        )
+        self.assertIn(
+            f"LIFECYCLE: {summary['adopted_capabilities']} adopted capability "
+            f"| {summary['converged_runtime_behaviors']} converged "
+            f"| {summary['resolved_capabilities']} resolved",
             readme,
         )
         self.assertIn(f"{summary['total_projects']} Projects Dispositioned", readme)

@@ -104,11 +104,14 @@ Milestone completion and evidence depth are separate axes:
 - **2/43 source-executed claims** — `O1` and `O4`, whose receipts retain the argv, exit code,
   duration, and host-recomputed digests of the PKos modules that ran.
 - **1/43 parity-verified runtime recoveries** — `A2`.
-- **0 adopted, 0 converged, 0 resolved.**
+- **Wave claims:** 0 adopted, 0 converged, 0 resolved.
+- **Lifecycle outcomes:** A2 has one discharged adoption obligation backed by three accepted
+  uses; no capability is converged or resolved.
 - **42/43 completed waves still owe a live run** recorded in `runtime_followup`.
 
-The release cannot be declared complete until all 42 current follow-ups are discharged and the two
-existing source-executed waves and the one runtime recovery are carried through authentic adoption.
+The release cannot be declared complete until all 42 open obligations are discharged. A2 has
+authentic adoption evidence, while the two source-executed Operator OS waves still need their
+owner-gated adoption work; an adopted capability does not make its whole suite release-complete.
 “Discharged” means verified implementation or an evidence-backed final disposition allowed by the
 recovery standard—not a documentation edit that removes the obligation.
 

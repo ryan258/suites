@@ -10,8 +10,10 @@ analysis milestone carries an undischarged `runtime_followup` obligation in its 
 two source-executed waves and the runtime recovery retain it too, as their receipts bound adoption
 behind an owner gate. A verified milestone proves what its runner exercised, not a completed migration.
 Real ports, adoption, retirement, and single-runtime convergence follow the
-[9/10 recovery standard](RECOVERY-STANDARD.md) and the [roadmap](ROADMAP.md); the portfolio reads
-0 adopted and 0 converged.
+[9/10 recovery standard](RECOVERY-STANDARD.md) and the [roadmap](ROADMAP.md). The wave-promotion
+axis reads 0 adopted and 0 converged; separately, A2 has one discharged lifecycle adoption
+obligation backed by three accepted uses. No suite is release-complete and no capability is
+converged.
 
 ## Destination rule
 
