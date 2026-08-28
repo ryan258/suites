@@ -59,12 +59,15 @@ def redact_sensitive_arguments(value: Any) -> Any:
 class ActionSpec:
     """The reviewed policy for one exposed action.
 
-    The four policy fields have no defaults on purpose. A defaulted ``read_only`` /
+    The authority policy fields have no defaults on purpose. A defaulted ``read_only`` /
     ``approval_required=False`` / ``replayable=True`` bundle is how an action that can
     consume a one-time approval token ends up advertised as replayable: the default reads
     as a reviewed decision when it is only an absence of one. Every spec states its policy
     through one of the factories below (or passes all four fields itself), so what the
     catalog claims about authority is always something somebody wrote.
+
+    ``cacheable`` is separate and fail-closed by default: read-only actions that consult
+    mutable filesystem or donor state are replayable but are not argument-pure cache entries.
 
     ``authority_use`` says how the action relates to operator authority:
     - ``"none"`` -- the action never touches an approval token.
@@ -78,6 +81,10 @@ class ActionSpec:
     approval_required: bool
     evidence_eligible: bool
     replayable: bool
+    # Cache reuse is stricter than replayability. A read-only action may still read
+    # mutable filesystem or donor state, so it must opt in only when its result is a
+    # pure function of the canonical JSON arguments and the contract version.
+    cacheable: bool = False
     contract: str | None = None
     authority_use: str = "none"
     input_adapter: Callable[[dict[str, Any]], dict[str, Any]] | None = None
@@ -265,7 +272,9 @@ def _fen_output(value: Any) -> Any:
 # every entry visibly declares its authority behavior.
 ACTION_SPECS: dict[str, dict[str, ActionSpec]] = {
     "accessibility": {
-        "audit_html_snippet": read_only_action("contract-list", "A11yFinding"),
+        "audit_html_snippet": read_only_action(
+            "contract-list", "A11yFinding", cacheable=True
+        ),
         "audit_rule_families": read_only_action("contract-list", "A11yFinding"),
         "create_ai_assisted_finding": simulated_action("contract", "A11yFinding"),
         "evaluate_wcag_auditor_backlog_catalog": read_only_action("receipt"),
@@ -312,7 +321,9 @@ ACTION_SPECS: dict[str, dict[str, ActionSpec]] = {
         "create_experiment_run": simulated_action("contract", "ExperimentRun"),
         "execute_chess_benchmark_run": simulated_action("contract", "ExperimentRun"),
         "execute_ethics_scenario_run": simulated_action("contract", "ExperimentRun"),
-        "parse_fen_board": read_only_action("data", output_adapter=_fen_output),
+        "parse_fen_board": read_only_action(
+            "data", output_adapter=_fen_output, cacheable=True
+        ),
     },
     "discovery-decision": {
         "advance_stage": simulated_action("contract", "InvestigationRecord"),
@@ -494,15 +505,14 @@ def action_cache_key(suite_id: str, action: str, arguments: dict[str, Any]) -> s
 def action_is_cacheable(spec: ActionSpec, arguments: dict[str, Any]) -> bool:
     """Whether repeating this invocation is the same thing as reusing its answer.
 
-    `read_only` is the only class that qualifies: it is the one that promises no state
-    change at all. An `in_memory_mutation` is replayable without consuming authority but
-    still advances suite-local state, so a chain that calls it twice wants two advances and
-    a cache would silently hand back one. The authority checks are belt and braces -- a
-    factory override can set `replayable` on any spec, and serving a cached answer for an
-    invocation that spent a one-time approval token would report an authority consumption
-    that never happened.
+    Cacheability is an explicit purity decision, not a synonym for read-only. Filesystem
+    and donor reads can change while a chain is running even though they do not mutate
+    state themselves, so only argument-pure actions opt in. An `in_memory_mutation` is
+    replayable without consuming authority but still advances suite-local state, and
+    serving a cached answer for an invocation that spent a one-time approval token would
+    report an authority consumption that never happened.
     """
-    if spec.side_effect_class != "read_only":
+    if spec.side_effect_class != "read_only" or not spec.cacheable:
         return False
     policy = effective_policy(spec, arguments)
     return bool(policy["replayable"]) and not policy["authority_consumed"]
@@ -517,11 +527,9 @@ def run_action(
     """Invoke one reviewed action and return a detached, strict-JSON result.
 
     `cache` is an optional caller-owned map of :func:`action_cache_key` to prior results.
-    ponytail: the caller owns the map, so its lifetime is the caller's problem and this
-    stays a dict. `run_chain` scopes one to a single chain run, which is the only window
-    where reuse is unambiguously safe -- a `read_only` action is a pure function of its
-    arguments *and the filesystem it read*, so a longer-lived cache would need file
-    fingerprints in the key before it could serve the same answer an hour later.
+    The caller owns the map, so its lifetime is the caller's problem and this stays a
+    dict. Only actions explicitly reviewed as argument-pure can populate it; read-only
+    actions that consult mutable filesystem or donor state are never cacheable.
     """
     func, spec = _registered_method(suite_id, action)
     if arguments is None:
@@ -571,5 +579,9 @@ def run_action(
             raise EngineActionError(f"'{action}' returned invalid {spec.contract}: {error}") from error
     detached = _json_detach(result, f"result from {suite_id}.{action}")
     if cache_key is not None:
-        cache[cache_key] = detached
+        # The first caller must not share an object with cache storage. Cache-hit results
+        # are already detached above; copy on store closes the inverse aliasing direction.
+        cache[cache_key] = _json_detach(
+            detached, f"cached result from {suite_id}.{action}"
+        )
     return detached

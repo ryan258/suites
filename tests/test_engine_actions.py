@@ -1,7 +1,9 @@
 """Engine action surface: discovery, invocation, and the allowlist boundary."""
 
+import tempfile
 import unittest
 from copy import deepcopy
+from pathlib import Path
 
 from portfolio_suites.chains import run_chain
 from portfolio_suites.engine_actions import (
@@ -320,19 +322,59 @@ if __name__ == "__main__":
 class ActionCacheTests(unittest.TestCase):
     """A cache that serves an action which spent authority reports a use that never happened."""
 
-    def test_read_only_action_is_served_from_a_caller_owned_cache(self):
+    def test_argument_pure_action_is_served_from_a_caller_owned_cache(self):
         cache: dict[str, object] = {}
-        args = {"workspace_root": "/tmp/ws", "target_path": "/tmp/ws/notes.md"}
-        first = run_action("agent-reliability", "verify_path_confinement", args, cache=cache)
+        args = {"html_content": "<img src=hero.png>"}
+        first = run_action("accessibility", "audit_html_snippet", args, cache=cache)
         self.assertEqual(len(cache), 1)
-        second = run_action("agent-reliability", "verify_path_confinement", args, cache=cache)
+        second = run_action("accessibility", "audit_html_snippet", args, cache=cache)
         self.assertEqual(first, second)
         self.assertEqual(len(cache), 1)
         # Detached on the way out: a caller mutating its result cannot poison the cache.
         second.append("injected")
-        third = run_action("agent-reliability", "verify_path_confinement", args, cache=cache)
+        third = run_action("accessibility", "audit_html_snippet", args, cache=cache)
         self.assertNotIn("injected", third)
         self.assertEqual(third, first)
+
+    def test_first_uncached_result_does_not_alias_cache_storage(self):
+        cache: dict[str, object] = {}
+        args = {"html_content": "<img src=hero.png>"}
+        first = run_action("accessibility", "audit_html_snippet", args, cache=cache)
+        first.append("poisoned-by-first-caller")
+
+        second = run_action("accessibility", "audit_html_snippet", args, cache=cache)
+
+        self.assertNotIn("poisoned-by-first-caller", second)
+
+    def test_filesystem_sensitive_read_is_not_cached_across_symlink_change(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            workspace = base / "workspace"
+            inside = workspace / "inside"
+            outside = base / "outside"
+            inside.mkdir(parents=True)
+            outside.mkdir()
+            link = workspace / "target"
+            link.symlink_to(inside, target_is_directory=True)
+            args = {
+                "workspace_root": str(workspace),
+                "target_path": "target/note.md",
+            }
+            cache: dict[str, object] = {}
+
+            first = run_action(
+                "agent-reliability", "verify_path_confinement", args, cache=cache
+            )
+            link.unlink()
+            link.symlink_to(outside, target_is_directory=True)
+            second = run_action(
+                "agent-reliability", "verify_path_confinement", args, cache=cache
+            )
+
+        self.assertTrue(first[0])
+        self.assertFalse(second[0])
+        self.assertIn("SECURITY VIOLATION", second[1])
+        self.assertEqual(cache, {})
 
     def test_cache_key_separates_arguments_and_contract_version(self):
         base = action_cache_key("s", "a", {"x": 1})
@@ -344,9 +386,10 @@ class ActionCacheTests(unittest.TestCase):
             action_cache_key("s", "a", {"y": 2, "x": 1}),
         )
 
-    def test_only_read_only_actions_are_cacheable(self):
+    def test_only_explicitly_argument_pure_read_only_actions_are_cacheable(self):
         for suite_id, action, expected in (
-            ("agent-reliability", "verify_path_confinement", True),
+            ("accessibility", "audit_html_snippet", True),
+            ("agent-reliability", "verify_path_confinement", False),
             ("brand-publishing", "execute_brand_maker_intake", False),
         ):
             with self.subTest(action=f"{suite_id}.{action}"):
@@ -360,6 +403,7 @@ class ActionCacheTests(unittest.TestCase):
             approval_required=True,
             evidence_eligible=True,
             replayable=True,
+            cacheable=True,
             authority_use="parameter_dependent",
         )
         self.assertTrue(action_is_cacheable(spec, {}))
@@ -369,9 +413,9 @@ class ActionCacheTests(unittest.TestCase):
 
     def test_chain_marks_which_steps_were_served_from_cache(self):
         step = {
-            "suite": "agent-reliability",
-            "action": "verify_path_confinement",
-            "arguments": {"workspace_root": "/tmp/ws", "target_path": "/tmp/ws/a.md"},
+            "suite": "accessibility",
+            "action": "audit_html_snippet",
+            "arguments": {"html_content": "<img src=hero.png>"},
         }
         outcome = run_chain([step, deepcopy(step)])
         self.assertFalse(outcome["steps"][0]["served_from_cache"])
