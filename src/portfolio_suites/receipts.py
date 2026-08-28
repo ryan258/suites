@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .contracts import ContractError, validate_contract
@@ -894,8 +894,17 @@ def _agreeing_module_fingerprints(value: Any) -> bool:
     """
     if not isinstance(value, dict) or not value:
         return False
-    for record in value.values():
+    for module_name, record in value.items():
+        if not isinstance(module_name, str) or not module_name.strip():
+            return False
         if not isinstance(record, dict):
+            return False
+        raw_path = record.get("path")
+        if not isinstance(raw_path, str) or not raw_path or "\\" in raw_path:
+            return False
+        path_parts = raw_path.split("/")
+        path = PurePosixPath(raw_path)
+        if path.is_absolute() or any(part in {"", ".", ".."} for part in path_parts):
             return False
         host = record.get("host_recomputed_sha256")
         if not isinstance(host, str) or not SHA256_HEX.fullmatch(host):
@@ -912,11 +921,14 @@ def _portfolio_runtime_receipt_errors(path: Path, contract_id: str, level: str) 
     expected_status = "source_executed" if level == "source_executed" else "parity_verified"
     if document.get("status") != expected_status or document.get("all_stages_passed") is not True:
         errors.append(f"runtime receipt must retain status {expected_status!r} and all_stages_passed true")
+    if document.get("source_invocation_status") != "invoked":
+        errors.append("source_invocation_status must be 'invoked' for a promotional runtime receipt")
     source = document.get("source_invocation")
     if not (
         isinstance(source, dict)
         and isinstance(source.get("command"), list)
         and source.get("command")
+        and all(isinstance(item, str) and item.strip() for item in source["command"])
         and source.get("exit_code") == 0
     ):
         errors.append("source_invocation must retain an argv command and zero exit code")
@@ -929,14 +941,40 @@ def _portfolio_runtime_receipt_errors(path: Path, contract_id: str, level: str) 
             "module that agrees with the donor's own digest"
         )
     tools = document.get("tool_dependencies")
-    if not isinstance(tools, dict) or not tools or any(
-        not isinstance(item, str) or not item.strip() for item in tools.values()
+    required_tool_roles = {"host_python", "donor_python"}
+    if (
+        not isinstance(tools, dict)
+        or not required_tool_roles.issubset(tools)
+        or any(
+            not isinstance(name, str)
+            or not name.strip()
+            or not isinstance(item, str)
+            or not item.strip()
+            for name, item in tools.items()
+        )
+        or any(
+            name.endswith("_sha256") and not SHA256_HEX.fullmatch(item)
+            for name, item in tools.items()
+        )
     ):
-        errors.append("tool_dependencies must pin the tool versions the invocation used")
+        errors.append(
+            "tool_dependencies must pin host_python, donor_python, and valid tool fingerprints"
+        )
     if not _meaningful_fingerprint_collection(document.get("source_fingerprints")):
         errors.append("source_fingerprints must contain meaningful Git and content fingerprints")
+    if not _meaningful_fingerprint_collection(document.get("dependency_fingerprints")):
+        errors.append("dependency_fingerprints must contain meaningful Git and content fingerprints")
     commands = document.get("reproducible_commands")
-    if not isinstance(commands, list) or not commands or any(not isinstance(item, list) or not item for item in commands):
+    if (
+        not isinstance(commands, list)
+        or not commands
+        or any(
+            not isinstance(command, list)
+            or not command
+            or any(not isinstance(item, str) or not item.strip() for item in command)
+            for command in commands
+        )
+    ):
         errors.append("reproducible_commands must retain at least one argv command")
     if level != "source_executed":
         destination = document.get("destination_invocation")

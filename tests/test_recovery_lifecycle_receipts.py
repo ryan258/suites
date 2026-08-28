@@ -36,12 +36,14 @@ class RecoveryLifecycleReceiptTests(unittest.TestCase):
             "status": "source_executed",
             "all_stages_passed": True,
             "operational_errors": [],
+            "source_invocation_status": "invoked",
             "source_invocation": {
                 "command": ["tool", "verify"],
                 "exit_code": 0,
                 "duration_ms": 12.5,
             },
             "source_fingerprints": {"donor": fingerprint("a")},
+            "dependency_fingerprints": {"runtime": fingerprint("c")},
             "module_fingerprints": {
                 "donor.runtime": {
                     "path": "src/runtime.py",
@@ -70,12 +72,14 @@ class RecoveryLifecycleReceiptTests(unittest.TestCase):
             "status": "source_executed",
             "all_stages_passed": True,
             "operational_errors": [],
+            "source_invocation_status": "invoked",
             "source_invocation": {
                 "command": ["tool", "verify"],
                 "exit_code": 0,
                 "duration_ms": 12.5,
             },
             "source_fingerprints": {"donor": fingerprint("a")},
+            "dependency_fingerprints": {"runtime": fingerprint("c")},
             "module_fingerprints": {
                 "donor.runtime": {
                     "path": "src/runtime.py",
@@ -84,7 +88,7 @@ class RecoveryLifecycleReceiptTests(unittest.TestCase):
                     "agrees": True,
                 }
             },
-            "tool_dependencies": {"host_python": "3.14.6"},
+            "tool_dependencies": {"host_python": "3.14.6", "donor_python": "3.14.6"},
             "reproducible_commands": [["tool", "verify"]],
         }
         # A digest the host could not reproduce means the receipt names a file other than the
@@ -93,8 +97,12 @@ class RecoveryLifecycleReceiptTests(unittest.TestCase):
         disagreeing["module_fingerprints"]["donor.runtime"]["host_recomputed_sha256"] = "c" * 64
         cases = {
             "missing duration": ({"source_invocation": {"command": ["t"], "exit_code": 0}}, "duration_ms"),
+            "not invoked": ({"source_invocation_status": "not_invoked"}, "source_invocation_status"),
             "no modules": ({"module_fingerprints": {}}, "module_fingerprints"),
             "unpinned tools": ({"tool_dependencies": {}}, "tool_dependencies"),
+            "invented tool roles": ({"tool_dependencies": {"x": "y"}}, "tool_dependencies"),
+            "missing dependencies": ({"dependency_fingerprints": {}}, "dependency_fingerprints"),
+            "shell-shaped reproduction": ({"reproducible_commands": ["tool verify"]}, "reproducible_commands"),
         }
         with tempfile.TemporaryDirectory() as tmp:
             for label, (override, expected) in cases.items():
@@ -108,6 +116,14 @@ class RecoveryLifecycleReceiptTests(unittest.TestCase):
                 self.assertTrue(
                     any("module_fingerprints" in error for error in errors), errors
                 )
+            for unsafe_path in ("/src/runtime.py", "../runtime.py", "src/../runtime.py", "src\\runtime.py"):
+                with self.subTest(case=f"unsafe module path {unsafe_path}"):
+                    payload = json.loads(json.dumps(base))
+                    payload["module_fingerprints"]["donor.runtime"]["path"] = unsafe_path
+                    errors = evidence_errors(wave, write_receipt(tmp, payload))
+                    self.assertTrue(
+                        any("module_fingerprints" in error for error in errors), errors
+                    )
             with self.subTest(case="agrees flag cannot substitute for agreement"):
                 lying = json.loads(json.dumps(base))
                 lying["module_fingerprints"]["donor.runtime"]["donor_attested_sha256"] = "e" * 64

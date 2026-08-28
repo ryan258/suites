@@ -40,6 +40,8 @@ JARVIS_DIR = get_repo_path("jarvis", "JARVIS_DIR")
 RYOS_DIR = get_repo_path("ryos", "RYOS_DIR")
 MASTER_UPGRADE_PLAN_DIR = get_repo_path("master-upgrade-plan", "MASTER_UPGRADE_PLAN_DIR")
 
+EXPECTED_PKOS_RUNTIME_MODULES = frozenset({"pkos.storage", "pkos.normalize"})
+
 
 def _verified_module_fingerprints(reported: Any) -> dict[str, dict[str, Any]]:
     """Re-hash each module the donor says it imported, host-side, and record whether it agrees.
@@ -169,6 +171,22 @@ def _runtime_source_candidate(
         else None
     )
     candidate_errors = list(operational_errors)
+    reported_modules = frozenset(module_fingerprints)
+    if reported_modules != EXPECTED_PKOS_RUNTIME_MODULES:
+        missing = sorted(EXPECTED_PKOS_RUNTIME_MODULES - reported_modules)
+        unexpected = sorted(reported_modules - EXPECTED_PKOS_RUNTIME_MODULES)
+        candidate_errors.append({
+            "stage": "module_fingerprints",
+            "command": "verify complete imported PKos module set",
+            "error_kind": "incomplete_runtime_module_set",
+            "message": (
+                "runtime source claim requires exactly "
+                f"{sorted(EXPECTED_PKOS_RUNTIME_MODULES)}; "
+                f"missing={missing}, unexpected={unexpected}."
+            ),
+            "environment_blocked": False,
+        })
+        all_stages_passed = False
     runtime_receipt = {
         "receipt_version": trace_context["receipt_contract"],
         "status": "source_executed" if all_stages_passed else "source_unverified",

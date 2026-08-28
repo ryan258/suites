@@ -137,6 +137,12 @@ class OperatorO4RuntimeCandidateBoundaryTests(unittest.TestCase):
                     "donor_attested_sha256": "d" * 64,
                     "host_recomputed_sha256": "d" * 64,
                     "agrees": True,
+                },
+                "pkos.normalize": {
+                    "path": "pkos/normalize.py",
+                    "donor_attested_sha256": "e" * 64,
+                    "host_recomputed_sha256": "e" * 64,
+                    "agrees": True,
                 }
             },
             "donor_interpreter": {"python": "3.13.1", "implementation": "CPython"},
@@ -160,6 +166,37 @@ class OperatorO4RuntimeCandidateBoundaryTests(unittest.TestCase):
         }
         arguments.update(overrides)
         return _runtime_source_candidate(**arguments)
+
+    def test_each_missing_required_module_invalidates_candidate(self):
+        records = {
+            "pkos.storage": {
+                "path": "pkos/storage.py",
+                "donor_attested_sha256": "d" * 64,
+                "host_recomputed_sha256": "d" * 64,
+                "agrees": True,
+            },
+            "pkos.normalize": {
+                "path": "pkos/normalize.py",
+                "donor_attested_sha256": "e" * 64,
+                "host_recomputed_sha256": "e" * 64,
+                "agrees": True,
+            },
+        }
+        for omitted in records:
+            with self.subTest(omitted=omitted):
+                candidate = self._candidate(
+                    module_fingerprints={
+                        name: record for name, record in records.items() if name != omitted
+                    }
+                )
+                self.assertFalse(candidate["promotion_eligible"])
+                self.assertEqual(candidate["status"], "source_unverified")
+                self.assertEqual(
+                    candidate["receipt_contract_candidate"]["operational_errors"][-1][
+                        "error_kind"
+                    ],
+                    "incomplete_runtime_module_set",
+                )
 
     def test_trace_validation_error_invalidates_candidate_and_receipt(self):
         with patch(
