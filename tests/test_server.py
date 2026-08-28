@@ -45,6 +45,10 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(len(data["suites"]), 8)
         self.assertEqual(data["recovery_target_score"], 9.0)
         self.assertEqual(data["recovered_runtime_behaviors"], 1)
+        self.assertEqual(data["completed_runtime_milestones"], 3)
+        self.assertEqual(data["recovery_program"]["discharged"], 2)
+        self.assertEqual(data["recovery_program"]["open"], 42)
+        self.assertEqual(data["adopted_capabilities"], 1)
 
     def test_suites_endpoint(self):
         data = self._get_json("/api/suites")

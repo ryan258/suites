@@ -69,11 +69,13 @@ def _status() -> int:
     # portfolio, which is why both lines are here and the second is the longer one.
     levels = summary["promotion_counts"]
     print(
-        f"Completed analysis milestones: {summary['completed_analysis_milestones']} "
-        f"(evidence promotion below, not recovery)"
+        "Completed wave milestones: "
+        f"{summary['completed_analysis_milestones']} analysis, "
+        f"{summary['completed_runtime_milestones']} runtime "
+        "(evidence promotion below, not release completion)"
     )
     print(
-        "Evidence promotion: "
+        "Wave evidence promotion: "
         f"{levels['prototype']} prototype, "
         f"{levels['reviewed_historical_analysis']} reviewed historical, "
         f"{levels['source_inspected']} source inspected, "
@@ -81,6 +83,19 @@ def _status() -> int:
         f"{levels['parity_verified']} parity verified, "
         f"{levels['adopted']} adopted, "
         f"{levels['converged']} converged, "
+        f"{summary['resolved_capabilities']} resolved"
+    )
+    program = summary["recovery_program"]
+    print(
+        "Recovery program: "
+        f"{program['discharged']}/{program['total']} discharged, "
+        f"{program['open']} open "
+        f"({program['ready']} ready, {program['blocked_dependency']} blocked by dependency)"
+    )
+    print(
+        "Lifecycle outcomes: "
+        f"{summary['adopted_capabilities']} adopted capability, "
+        f"{summary['converged_runtime_behaviors']} converged, "
         f"{summary['resolved_capabilities']} resolved"
     )
     print(

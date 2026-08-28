@@ -29,10 +29,18 @@ class CLITests(unittest.TestCase):
         # Both axes, and specifically the prototype count: the milestone line alone reads
         # as a recovered portfolio, which is the reporting defect this asserts against.
         self.assertIn("Wave milestone progress: 43/43", output)
-        self.assertIn("Completed analysis milestones: 40", output)
+        self.assertIn("Completed wave milestones: 40 analysis, 3 runtime", output)
         self.assertIn(
-            "Evidence promotion: 4 prototype, 1 reviewed historical, 35 source inspected, "
+            "Wave evidence promotion: 4 prototype, 1 reviewed historical, 35 source inspected, "
             "2 source executed, 1 parity verified, 0 adopted, 0 converged, 0 resolved",
+            output,
+        )
+        self.assertIn(
+            "Recovery program: 2/44 discharged, 42 open (18 ready, 24 blocked by dependency)",
+            output,
+        )
+        self.assertIn(
+            "Lifecycle outcomes: 1 adopted capability, 0 converged, 0 resolved",
             output,
         )
 

@@ -28,7 +28,11 @@ from .paths import (
     open_confined_directory,
 )
 from .provenance import is_meaningful_git_fingerprint, is_sensitive_path  # noqa: F401 -- predicate identity is asserted by tests
-from .recovery_program import load_recovery_program, validate_recovery_program
+from .recovery_program import (
+    load_recovery_program,
+    resolve_recovery_obligations,
+    validate_recovery_program,
+)
 from .recovery_policy import (
     EXECUTED_LEVELS_BY_KIND,
     EXECUTED_PROMOTION_LEVELS,
@@ -582,6 +586,7 @@ def get_portfolio_summary() -> dict[str, Any]:
     # A single number that mixes them can only be wrong in one direction, and it was: every
     # completed analysis was reported as verified regardless of the level it claimed.
     completed_analysis_milestones = 0
+    completed_runtime_milestones = 0
     promotion_counts = {level: 0 for level in RECOVERY_PROMOTION_LEVELS}
     recovered_runtime_behaviors = 0
     adopted_runtime_behaviors = 0
@@ -628,6 +633,8 @@ def get_portfolio_summary() -> dict[str, Any]:
                 completed_analysis_milestones += 1
                 if level == "prototype":
                     prototype_in_suite += 1
+            if kind == "runtime":
+                completed_runtime_milestones += 1
             if kind == "runtime" and level in RUNTIME_PROMOTION_LEVELS:
                 recovered_runtime_behaviors += 1
             if kind in {"runtime", "adoption"} and level in {"adopted", "converged"}:
@@ -659,6 +666,32 @@ def get_portfolio_summary() -> dict[str, Any]:
 
     independent_count = sum(1 for p in projects if p.get("primary_suite") is None)
     nested_count = len(nested.get("repositories", []))
+    obligations = resolve_recovery_obligations(load_recovery_program(), suites)
+    obligation_states: dict[str, int] = {}
+    for obligation in obligations:
+        state = obligation["effective_state"]
+        obligation_states[state] = obligation_states.get(state, 0) + 1
+    discharged_obligations = obligation_states.get("discharged", 0)
+    adopted_capabilities = sum(
+        obligation["effective_state"] == "discharged"
+        and obligation.get("target_level") == "adopted"
+        for obligation in obligations
+    )
+    recovery_program_counts = {
+        "total": len(obligations),
+        "discharged": discharged_obligations,
+        "open": len(obligations) - discharged_obligations,
+        "ready": obligation_states.get("ready", 0),
+        "blocked_dependency": obligation_states.get("blocked_dependency", 0),
+        "wave_runtime_followups": sum(
+            obligation.get("source") == "wave_runtime_followup"
+            for obligation in obligations
+        ),
+        "lifecycle": sum(
+            obligation.get("source") == "lifecycle" for obligation in obligations
+        ),
+        "states": obligation_states,
+    }
 
     return {
         "snapshot_at": ledger.get("snapshot_at"),
@@ -674,12 +707,16 @@ def get_portfolio_summary() -> dict[str, Any]:
         "recovery_standard_id": standard.get("standard_id"),
         "recovery_target_score": standard.get("target_score"),
         "completed_analysis_milestones": completed_analysis_milestones,
+        "completed_runtime_milestones": completed_runtime_milestones,
         "promotion_counts": promotion_counts,
+        "wave_claim_counts": dict(promotion_counts),
         "prototype_level_claims": promotion_counts["prototype"],
         "recovered_runtime_behaviors": recovered_runtime_behaviors,
         "adopted_runtime_behaviors": adopted_runtime_behaviors,
         "converged_runtime_behaviors": converged_runtime_behaviors,
         "resolved_capabilities": resolved_capabilities,
+        "recovery_program": recovery_program_counts,
+        "adopted_capabilities": adopted_capabilities,
         # The adopted 9/10 rubric is dimension-weighted. Existing receipts do not yet carry
         # per-dimension scores, so manufacturing a numeric recovery score from milestone count
         # would be false precision. The status is explicit until those receipts exist.

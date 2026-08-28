@@ -266,9 +266,28 @@ class RegistryTests(unittest.TestCase):
         summary = get_portfolio_summary()
         self.assertEqual(summary["recovery_target_score"], 9.0)
         self.assertEqual(summary["completed_analysis_milestones"], 40)
+        self.assertEqual(summary["completed_runtime_milestones"], 3)
         self.assertEqual(summary["recovered_runtime_behaviors"], 1)
         self.assertEqual(summary["adopted_runtime_behaviors"], 0)
+        self.assertEqual(summary["adopted_capabilities"], 1)
         self.assertEqual(summary["converged_runtime_behaviors"], 0)
+        self.assertEqual(
+            summary["recovery_program"],
+            {
+                "total": 44,
+                "discharged": 2,
+                "open": 42,
+                "ready": 18,
+                "blocked_dependency": 24,
+                "wave_runtime_followups": 42,
+                "lifecycle": 2,
+                "states": {
+                    "discharged": 2,
+                    "ready": 18,
+                    "blocked_dependency": 24,
+                },
+            },
+        )
 
     def test_summary_reports_promotion_level_as_its_own_axis(self):
         """Milestone completion must not be able to stand in for evidence depth.
@@ -289,6 +308,7 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(levels["converged"], 0)
         self.assertEqual(summary["resolved_capabilities"], 0)
         self.assertEqual(sum(levels.values()), summary["total_waves"])
+        self.assertEqual(summary["wave_claim_counts"], levels)
         self.assertEqual(summary["prototype_level_claims"], levels["prototype"])
 
     def test_validate_rejects_a_corrupted_prototype_receipt(self):
@@ -1519,4 +1539,3 @@ class LedgerTransactionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
