@@ -1,12 +1,36 @@
 # Ryan Project Suites
 
-## Start here (2 minutes)
+## Find and resume a project
+
+```sh
+./s serve          # Your projects & Now at http://127.0.0.1:8383
+./s p carmen       # find a project by name or purpose
+./s project carmen # purpose, owner, attention, next action, and resume target
+./s n             # your chosen Now items; no priorities are inferred
+./s a             # one bounded operator action
+```
+
+Choose attention and save a return point in the web form, or use `./s n PROJECT`
+to choose a Now item. The ceiling is three. `./s r PROJECT --open` deliberately opens
+a verified document or folder. Independent Projects and containers remain visible.
+See [the control-layer guide and real-use walkthrough](docs/CONTROL-LAYER.md).
+Actual resumption acceptance remains pending Ryan's use. `./s next` continues to
+show release/migration work, independently of attention.
+
+Use `./s doctor` for offline setup checks, `./s release candidate` to identify the
+source under review, and `./s state backup` to preserve saved return points.
+Restore previews and undo instructions are in [platform operations](docs/PLATFORM-OPERATIONS.md).
+`./s release blockers --json` includes every governed recovery obligation and its
+prerequisites. Candidate/release/stabilization exit gates remain explicitly pending.
+
+## Release and engine tools
+
 
 ```bash
 cd /Users/ryanjohnson/Projects/suites
 
 PYTHONPATH=src python3 -m portfolio_suites status   # what exists, and how well each claim is proven
-PYTHONPATH=src python3 -m portfolio_suites next     # what to work on
+PYTHONPATH=src python3 -m portfolio_suites next     # release/migration work and dependency gates
 PYTHONPATH=src python3 -m portfolio_suites engine   # the 50 runnable actions
 
 # Now try to make it lie:
@@ -86,13 +110,13 @@ receipt that proves the invocation, not raising a boolean in its manifest.
 | Suite | User promise | Canonical anchor |
 |---|---|---|
 | [Accessibility](accessibility/README.md) | Find, explain, repair, teach, and track accessibility without overstating evidence. | `allys-tools` |
-| [Operator OS](operator-os/README.md) | Preserve context and make the next safe move available at low bandwidth. | `dotfiles` + `PKos` |
-| [Brand + Publishing](brand-publishing/README.md) | Turn governed brand truth and sourced ideas into approved, traceable publications. | `brand-maker-spec` + `cyborg` |
-| [Production House](production-house/README.md) | Move creative work through resumable jobs to verified deliverables. | `production-house` |
-| [Model Behavior Lab](model-behavior-lab/README.md) | Produce reproducible, evidence-linked model capability profiles. | `ai-strength-comparator` |
-| [Discovery + Decision](discovery-decision/README.md) | Turn a hard question and typed evidence into a resumable decision record. | `breaking-chains` |
-| [Agent Reliability Lab](agent-reliability/README.md) | Teach and test bounded agent behavior with deterministic gates. | `looping-box` |
-| [Game Design + Simulation](game-design/README.md) | Turn game rules into simulations, balance evidence, and playable artifacts. | `storyweaver` |
+| [Home Base](operator-os/README.md) | Preserve context and make the next safe move available at low bandwidth. | `dotfiles` + `PKos` |
+| [Voice & Publishing](brand-publishing/README.md) | Turn governed brand truth and sourced ideas into approved, traceable publications. | `brand-maker-spec` + `cyborg` |
+| [Story & Audio](production-house/README.md) | Move creative work through resumable jobs to verified deliverables. | `production-house` |
+| [Model Lab](model-behavior-lab/README.md) | Produce reproducible, evidence-linked model capability profiles. | `ai-strength-comparator` |
+| [Thinking & Discovery](discovery-decision/README.md) | Turn a hard question and typed evidence into a resumable decision record. | `breaking-chains` |
+| [Agent Workshop](agent-reliability/README.md) | Teach and test bounded agent behavior with deterministic gates. | `looping-box` |
+| [Games & Worlds](game-design/README.md) | Turn game rules into simulations, balance evidence, and playable artifacts. | `storyweaver` |
 
 The suites are product boundaries, not necessarily deployment or repository boundaries. A source
 project may remain separately versioned when that preserves a clean runtime, independent release,
@@ -201,7 +225,7 @@ Every response is labeled `model_assisted`, names the resolved model, and requir
 it cannot satisfy deterministic gates, create retained evidence, approve a release, or authorize a
 filesystem mutation.
 
-### Operator actions
+### Operator OS engine actions
 
 The Operator OS engine exposes four JARVIS handlers: bounded secret auditing, content-addressed ZIP
 backup, conflict-refusing additive Markdown sync, and reversible cache rotation. Every handler has

@@ -1,11 +1,28 @@
-# v1.0 Official Release Roadmap
+# Suites Shared Control Layer Roadmap
+
+**Direction updated:** October 5, 2026. The organization below is the accepted roadmap direction;
+C0–C2 are implemented locally and focused engineering verification is recorded in
+[CONTROL-LAYER.md](CONTROL-LAYER.md). C3 real-use acceptance remains pending. Catalog navigation
+and synthetic verification do not establish runtime integration or adoption.
 
 ## Mission
 
-The first official release is the complete implementation of the eight suites already defined in
-this repository. `v1.0.0` is not a control-plane-only release, a collection of prototypes, or three
-finished flagships surrounded by five previews. All eight suite promises must work end to end
-through authentic runtimes, owned contracts, recoverable state, and truthful evidence.
+Make `suites` the shared control layer for Ryan's project system: one place to find a project,
+understand its purpose and owner, see its evidence and attention state, and resume one useful next
+action. The system serves Ryan's personal accessibility, available energy, creative work, and
+everyday use. Commercialization, hosting, and multi-user operation are not requirements of this
+organization plan.
+
+Projects retain their own files, state, launchers, and runtime ownership. The eight existing suite
+boundaries provide stable homes; independent projects receive catalog entries without being forced
+into a suite runtime. Shared contracts support deliberate cooperation where it helps. The
+[Cyborg manual](../../cyborg/MANUAL.md) remains canonical for cross-system operator policy.
+
+Deliver a useful personal control layer before completing the wider integration program. Ryan can
+find, use, and resume a working project while other suites remain unfinished. This earlier
+operating milestone does not change the official `v1.0.0` release bar: all eight suite promises
+must work end to end through authentic runtimes, owned contracts, recoverable state, and truthful
+evidence. A usable catalog does not establish suite adoption or release readiness.
 
 The release is evidence-gated, not date-gated. A calendar target may organize the work, but it
 cannot waive runtime proof, repeated use, recovery, accessibility, security, provenance, or
@@ -15,9 +32,144 @@ and completion claims.
 
 ---
 
+## Shared Control Model
+
+The fishbone view has one shared spine (`suites`), eight suite branches, and the projects attached
+to those branches. Its outcome is one clear next action for Ryan. It describes navigation and
+ownership; branches are not a claim that every planned runtime integration already works.
+
+| Layer | Owns | Boundary |
+|---|---|---|
+| Ryan and Cyborg operator policy | Intent, priorities, approvals, and operating rules | `suites` cannot grant itself authority or replace the manual. |
+| `suites` shared control layer | Project catalog, suite relationships, attention/resume metadata, and projections of release/evidence state | Reuse existing ledgers and manifests; reference project content at its owner. |
+| Suite and project owners | Domain behavior, source content, runtime state, launchers, and supported outputs | A suite home does not require moving, merging, or retiring a repository. |
+| Independent projects | Their own purpose, implementation, and lifecycle | Catalog and link them; require integration only for an explicitly chosen shared capability. |
+
+### Stable homes: eight suites
+
+Every cataloged project has one primary home: an existing suite or Independent Projects. Related
+suite links can expose supporting tools and consumers without copying the project record. Preserve
+the existing suite IDs, receipt references, and contract names; the everyday labels below are
+display aliases.
+
+| Everyday label | Existing suite ID | Recorded anchors | Purpose |
+|---|---|---|---|
+| Home Base | `operator-os` | `dotfiles`, `PKos` | Capture, remember, retrieve, and resume with less input. |
+| Accessibility | `accessibility` | `allys-tools`, `a11y kitchen`, `kb-overlay` | Audit, assist, repair, and teach. |
+| Voice & Publishing | `brand-publishing` | `brand-maker-spec`, `cyborg` | Develop ideas and prepare reviewed work to share. |
+| Story & Audio | `production-house` | `production-house` | Carry creative work through resumable production. |
+| Model Lab | `model-behavior-lab` | `ai-strength-comparator` | Investigate model behavior with retained evidence. |
+| Thinking & Discovery | `discovery-decision` | `breaking-chains` | Explore questions and preserve decisions. |
+| Agent Workshop | `agent-reliability` | `looping-box` | Build, teach, and test bounded agent behavior. |
+| Games & Worlds | `game-design` | `storyweaver` | Develop rules, simulations, and playable artifacts. |
+
+The first catalog reconciliation must account for the following planned additions. These are
+navigation placements to verify and record, not new runtime ports or automatic v1 release
+obligations. Existing manifest members and their recorded relationships remain in scope.
+
+| Project or collection | Planned home | Initial relationship |
+|---|---|---|
+| `jev-a11y` | Accessibility | Related triage tool; preserve its evidence and review limits. |
+| `jev-box` | Model Lab | Model evaluation tool; link to its Accessibility consumer. |
+| `audio-house` | Story & Audio | Related production tool; inspect its boundary with Production House before choosing any integration. |
+| `ming` | Agent Workshop | Independently runnable agent harness. |
+| `the-website-factory` | Voice & Publishing | Site creation tool; sites retain their own state and publishing decisions. |
+| `in-the-age-of-ai` | Voice & Publishing | Authored collection, with a related Thinking & Discovery link. |
+| `nonsense/carmen`, `lewis-and-clark-dnd` | Games & Worlds | Independently owned playable/authored works. |
+| `glowforge-it`, `Tally`, `open-pickleball-tourney` | Independent Projects | Personal utilities and community work with their own entry paths. |
+| Individual parody and other standalone sites | Independent Projects | Separate works; link to publishing or brand tools when actually used. |
+
+Keep `nonsense` and `vaults` visible as containers where appropriate, and identify the projects
+inside them separately. Resolve identity by canonical path and ownership, not display name alone.
+App project entries, nested repositories, containers, and top-level ledger records are different
+inventory units; do not subtract their counts to infer missing projects.
+
+### Attention states and the resume record
+
+Attention is independent of suite membership, evidence depth, release lifecycle, and project
+disposition. Moving a project between attention states changes none of those facts and never
+closes a release obligation.
+
+| Attention state | Meaning | Required behavior |
+|---|---|---|
+| Now | Ryan has chosen to change it during the current burst. | Default ceiling of three: one main project, one small practical improvement, and optional play. This is a ceiling, not a quota; changes remain Ryan's choice. |
+| In use | The project currently helps Ryan do something. | Keep its launcher available; usage alone does not create a development task or prove adoption. |
+| Waiting | Progress depends on a named event, decision, or prerequisite. | Record an observable trigger and resume step; no repeated reconsideration or automatic promotion. |
+| Parked | Preserve it without a present work commitment. | Retain a short restart note and a clear stopping point; do not infer retirement or archive files. |
+
+Plan one small, versioned operator record keyed to each canonical project identity. Extend or
+reference the existing project ledger after inspecting its schema; do not build another competing
+inventory. Store only:
+
+- primary home, related suites, and the owning repository or external location;
+- one sentence describing what the project gives Ryan;
+- a resume target: existing chat, document, or verified launcher;
+- attention state and, for Now, Ryan's selected order;
+- one concrete next action or an explicit unknown; Waiting also requires its trigger;
+- a bounded "done for now" condition and a short restart note where needed; and
+- observation date, provenance, and links to the existing evidence/release records.
+
+An unreviewed record remains attention-unassigned and visibly incomplete until reconciled. Do not
+silently assign Now or Parked from recency, repository activity, or an AI judgment. Missing or stale
+resume information remains visible; a launcher recommendation does not execute it.
+
+### First delivery: the personal control layer
+
+These milestones precede broad integration work and reuse the existing CLI and Toolbench. Each
+leaves a useful stopping point. C0–C2 and independently verifiable C3 engineering work are complete;
+Ryan’s actual resumption acceptance remains pending. No attention selections were made for Ryan.
+
+| Order | Work | Acceptance evidence |
+|---|---|---|
+| C0 — Reconcile the catalog — implemented | Compare the dated project ledger, eight manifests, actual project paths, and available app entries. Record the planned homes, independent projects, containers, supporting relationships, and unresolved identities. Preserve existing IDs and provenance. | Every discovered in-scope entry maps to one canonical record or an explicit unresolved item; proposed placements become reviewed catalog relationships without implying integration. |
+| C1 — Add attention and resume metadata — implemented | Version the minimal operator record, preserve existing ledger compatibility, and capture Ryan's chosen Now items. Keep attention separate from release and recovery states. | A project survives an interrupted session with its home, next action, resume target, and stopping point intact; unknowns and Waiting triggers are visible; state changes cannot close release obligations. |
+| C2 — Expose one usable view — implemented | Add stable suite labels and Independent Projects to the existing CLI/Toolbench, with a small Now view and accessible project details. Show outputs with links to the tools that support them. | Ryan can reach a selected project's next action or launcher with minimal input; keyboard, large-text, narrow-layout, offline, and missing-target paths work. No new service or duplicate dashboard is required. |
+| C3 — Prove resumption in actual use — acceptance pending | Exercise a main project, a small practical improvement, and an optional creative project across actual interruptions. Return finished bursts to In use or Parked by Ryan's choice. | Retain accepted resumption observations and fix friction; these prove the control-layer workflow only, not suite runtime parity or adoption. |
+
+The existing `next` command retains its release/migration meaning and dependency gates.
+`./s p` finds a project, `./s project NAME` shows or updates its return record, `./s n` shows
+Ryan's chosen Now order, `./s a` offers one bounded operator action, and `./s r NAME --open`
+deliberately opens a verified local target. The same records power Your projects & Now in the
+existing Toolbench. Unselected attention and unknown actions stay explicit; no work is invented.
+Release blockers remain independently visible.
+
+**Implementation evidence (October 5, 2026):** the original 70 migration rows and their source
+fingerprints remain intact. The same ledger now owns versioned operator metadata and 67 catalog
+additions; 81 app entries are mapped or explicitly accounted for. These dated observations cover
+different inventory units and imply no new runtime enrollment. Existing nested entries reference
+the canonical catalog records. Fast validation, 34 focused checks, JavaScript syntax checks, and browser
+navigation/interruption observations are described in [the control-layer guide](CONTROL-LAYER.md).
+
+**Next personal milestone:** Ryan chooses a project and tries the short real-use walkthrough in
+that guide. Main, practical, and optional creative resumption observations are still pending actual
+use. No synthetic result is recorded as Ryan's acceptance. The eight-suite v1 requirements below
+remain in force.
+
+**Platform continuation (October 5, 2026):** the release queue now references every
+governed recovery obligation exactly once, preserves recovery-program prerequisites,
+and holds new runtime work behind the contract/state freeze. Phase 0–5 coverage is
+explicit; Phase 6–8 exit gates remain outside the executable closure model and cannot
+be mistaken for release readiness. The candidate command fingerprints staged,
+unstaged, tracked, and non-ignored untracked source with bounded confined reads and
+two matching observations. Offline diagnostics, return-point backup/preview/restore
+with undo, and offline-only wheel-gate options are implemented. See
+[platform operations and the exact limitations](PLATFORM-OPERATIONS.md).
+These are platform capabilities, not accepted authentic suite uses. Contract freeze,
+all-format upgrade fixtures, independent trust review, clean-install/build matrix,
+dimension scoring, personal acceptance, and later release gates remain open.
+Focused verification for this continuation passed 96 checks across candidate/
+diagnostics, release state/CLI, operator recovery, documentation, and CI coverage.
+Fast validation reported zero errors/warnings; JavaScript syntax and diff whitespace
+checks passed. After restarting the local preview, catalog and release endpoints both
+returned HTTP 200. The full suite and opt-in wheel gate remain owner-run; the current
+interpreter lacks the declared setuptools >=68 build prerequisite. No authentic
+donor run, approval, publication, or personal-use acceptance was recorded.
+
+---
+
 ## What “Complete” Means for v1.0
 
-All eight suites ship as supported product surfaces:
+All eight suites ship as supported suite surfaces for the personal operator:
 
 1. Accessibility
 2. Operator OS
@@ -77,16 +229,24 @@ completion criteria, run authentic workloads, and support documented recovery.
 
 ---
 
-## Current Baseline
+## Recorded Baseline and Implementation Gaps
 
 The foundation and scheduled analysis program are complete. The eight-suite implementation and
 adoption program is not.
 
+The figures below restate the registry and retained evidence, not a fresh census of the filesystem.
+The project ledger's inventory snapshot is dated August 19, 2026; C0 must reconcile later projects
+without treating catalog membership as recovered functionality. On October 5, source inspection
+also found in-progress release-ledger implementation in the working tree. Workstream 1 must build
+on that implementation and verify its coverage rather than create a second ledger. The attention
+record, everyday suite labels, and operator-action view now extend that implementation, while
+actual personal resumption acceptance remains pending.
+
 - **Completed foundation and milestones:** 43/43 waves verified: 40 analysis milestones and three
   runtime waves (`O1` and `O4` source-executed, `A2` parity-verified). Completed work is recorded
   in [CHANGELOG.md](CHANGELOG.md).
-- **70 Top-level projects** dispositioned across 8 suite boundaries and independent/archive
-  containers.
+- **70 Top-level projects** in the recorded ledger, dispositioned across 8 suite boundaries and
+  independent/archive containers; this is not the current total of app entries or local projects.
 - **43 Migration wave specifications** defined; wave milestone progress is 43/43.
 - **6 Shared contracts implemented:** `A11yFinding`, `BrandPackage`, `ExperimentRun`, `InvestigationRecord`, `ProductionJob`, and `SourceRecord`.
 - **Current promotion target:** `allys-tools`, clean at `f2b4c6e` in retained historical evidence.
@@ -139,6 +299,7 @@ Every required row must have retained, reviewable evidence on the exact release 
 
 | Area | Required outcome | Minimum release evidence |
 |---|---|---|
+| Personal control layer | C0–C3 are complete: accurate project homes, independent entries, attention/resume metadata, and a minimal-input next-action view. | Reconciled records, preserved identity/provenance, targeted compatibility and accessible-navigation checks, and accepted interruption/resumption observations. |
 | Eight suite promises | Every suite completes its documented end-to-end user journey. | Clean-room walkthrough, authentic inputs and runtimes, typed outputs, failure and recovery exercise. |
 | Recovery program | Every current runtime follow-up has a verified implementation or approved final disposition; no unowned capability remains. | Updated runtime receipts, disposition decisions, provenance, and machine-checked zero outstanding release obligations. |
 | Adoption | Every suite has at least three authentic accepted uses across distinct inputs or days. | Adoption receipts that identify distinct uses without exposing private content. |
@@ -172,14 +333,17 @@ Release-blocking severity policy:
 
 **Goal:** make “ready for v1” a machine-checkable claim that cannot be derived from wave counts.
 
-- Add a release ledger that maps every suite criterion, wave follow-up, unique capability, runtime,
-  canonical owner, contract, evidence artifact, adoption record, recovery score, and final
-  disposition.
+- Complete and verify the existing release-ledger implementation so it maps every suite criterion,
+  wave follow-up, unique capability, runtime, canonical owner, contract, evidence artifact,
+  adoption record, recovery score, and final disposition. Extend its current coverage where needed;
+  do not infer completion from the presence of the file or staged source.
 - Keep release lifecycle (`alpha`, `beta`, `release candidate`, `supported`, `deprecated`,
   `retired`) separate from recovery depth (`prototype` through `converged`).
 - Require each obligation to close as implemented, already covered, independently retained, or
   rejected. Forbid silent deletion, blanket deferral, and “resolved” without evidence/owner.
 - Derive CLI, Toolbench, export, and documentation summaries from the same ledger.
+- Link the project catalog to these summaries without copying release truth into attention fields.
+  Verify that Now, In use, Waiting, and Parked do not promote evidence or suppress blockers.
 - Add negative tests for impossible promotions, self-comparison parity, stale receipts, missing
   provenance, incomplete untracked fingerprints, and status copied from the wave objective.
 
@@ -231,6 +395,13 @@ confinement, race, or false-success defect at release-blocking severity.
 
 **Goal:** make the portfolio operable without source-code archaeology.
 
+- Deliver C0–C2 through the existing catalog, CLI, and Toolbench: stable suite homes, Independent
+  Projects, one small resume record per project, and a distinct operator-action view.
+- Support short aliases, text expansions, and voice-friendly labels through the existing launcher
+  owner. Inspect command collisions before adding aliases; keep canonical commands available.
+- Offer pins or shortcuts to current work while projects stay in stable homes. Any Codex sidebar
+  arrangement is an optional projection of the same map, not a second source of truth or a
+  prerequisite for the offline control layer.
 - Freeze supported CLI command names, argument semantics, JSON shapes, exit codes, and error
   categories; document which human-readable output may evolve.
 - Keep CLI, server, Toolbench, action registry, chain preflight, and redaction behavior aligned.
@@ -252,6 +423,9 @@ runtime, and recover without reading implementation code.
 
 - Provide complete keyboard operation, semantic structure, labeled controls, visible focus,
   accessible error/status announcements, large-text support, and reduced-motion behavior.
+- Lead with the small Now view and clear resume actions; make In use, Waiting, and Parked easy to
+  retrieve without presenting every project as urgent. Use the eight display labels consistently
+  and keep existing IDs available in project details.
 - Show evidence depth, execution depth, model assistance, mutation scope, required approval,
   partial failure, and recovery instructions before or alongside an action.
 - Keep remote scripts/fonts disabled and prevent credentials, approvals, private content, and
@@ -572,20 +746,30 @@ authored games remain independently owned unless a proven shared mechanic justif
 ## Release Sequence
 
 Version numbers are internal promotion checkpoints. Publication of any checkpoint remains an
-explicit owner decision.
+explicit owner decision. C0–C3 deliver the personal control layer during Phases 0–1; the later
+phases retain the existing full-suite release obligations. Catalog-only inspection can proceed
+while a runtime gate is blocked. No catalog or attention milestone waives an execution gate.
 
 ### Phase 0 — Integrity baseline (`0.1.x`)
 
+- Complete C0: reconcile the catalog, retain the eight suite IDs, record independent entries and
+  supporting relationships, and leave uncertain identities explicitly unresolved for review.
 - Resolve or explicitly disposition current trust-core review findings.
 - Establish exact candidate identity across tracked and untracked content.
-- Implement the release/completion ledger and map all 42 follow-ups to concrete work/evidence.
+- Complete and verify the in-progress release/completion ledger and map all 42 follow-ups to
+  concrete work/evidence. Reuse its existing schema, implementation, and retained work.
 - Reconfirm live drift, donor ownership, prerequisites, and recovery boundaries.
 
-**Exit:** no known P0/P1 integrity defect; every suite has an approved implementation sequence;
-release status cannot be derived from milestone counts.
+**Exit:** C0 is accepted with known inventory gaps visible; no known P0/P1 integrity defect; every
+suite has an approved implementation sequence; release status cannot be derived from milestone
+counts or attention state.
 
 ### Phase 1 — Platform alpha (`0.2.0-alpha`)
 
+- Complete C1–C2: version the attention/resume metadata, expose the eight homes and Independent
+  Projects through existing surfaces, and keep the operator-action view distinct from release work.
+- Complete C3 using actual project resumption. Make this a useful stopping point for daily use;
+  keep runtime integration and suite-adoption evidence separate.
 - Complete contract/state-format policy, trust core, stable CLI/API boundary, root/workspace model,
   diagnostics, and upgrade fixtures.
 - Add compatibility, migration, adversarial, transaction, and packaging tests before broad ports.
@@ -594,12 +778,16 @@ release status cannot be derived from milestone counts.
 - Freeze the six v1 contracts, receipt schemas, configuration boundary, and persistent state
   formats. Record the exact versions that all later runtime and adoption evidence must use.
 
-**Exit:** clean install runs deterministic validation/read-only actions; mutations recover safely;
-real suite ports can produce versioned receipts that v1 will continue to read; the v1
-interoperability/state boundary is frozen before any authentic-use evidence is collected.
+**Exit:** Ryan can find and resume chosen work with minimal input; clean install runs deterministic
+validation/read-only actions; mutations recover safely; real suite ports can produce versioned
+receipts that v1 will continue to read; the v1 interoperability/state boundary is frozen before
+collecting new qualifying suite runtime/adoption evidence.
 
 ### Phase 2 — Flagship implementation (`0.4.0-alpha`)
 
+- Select bounded integration work through the Now view. Prefer a current project's concrete need;
+  retain the three-item attention ceiling and all prerequisite gates instead of activating every
+  suite at once.
 - Complete Accessibility, Operator OS, and Brand + Publishing runtime follow-ups.
 - Establish all flagship authentic producer/consumer seams and parity gates.
 - Begin authentic use; do not claim adoption until repeated-use requirements are met.
@@ -682,27 +870,40 @@ candidate, not a published release.
 ## Critical Path
 
 ```text
-release truth + exact candidate identity
+C0: reconciled catalog + stable homes + independent projects
         |
-        +--> trust core + versioned state/upgrade policy
-        |             |
-        |             +--> stable CLI/API/Toolbench boundaries
-        |                           |
-        +--> contract freeze -------+--> authentic suite runtime ports
-                                            |
-                                            +--> all 8 end-to-end journeys
-                                            |
-                                            +--> repeated use + recovery scores
-                                            |
-distribution matrix + upgrade drills -------+--> exact release candidate
-                                                     |
-docs + accessibility + independent review ----------+--> owner-approved v1.0
+        +--> C1: versioned attention and resume records
+                        |
+                        +--> C2: existing CLI/Toolbench + one operator action
+                                        |
+                                        +--> C3: accepted interruption/resumption
+                                                        |
+                                                        +--> useful daily control layer
+
+release truth + exact candidate identity + trust core
+        |
+        +--> contract/state freeze + stable runtime boundaries
+                        |
+                        +--> bounded integrations selected through Now
+                                        |
+                                        +--> all 8 end-to-end journeys
+                                                        |
+                                                        +--> repeated use + recovery scores
+                                                                        |
+distribution + upgrade + accessibility + review ------------------------+--> v1.0
 ```
 
-The trust core and versioned state model precede broad authentic use so beta does not create
-receipts or local state the official release cannot read safely. Within the suite work, the planned
-order is flagship contracts first, then production systems, then constrained labs; independent
-suite work may run in parallel only after its shared boundaries are stable.
+The first path makes the project system useful before the second path is complete. Both share the
+same owners, versioned metadata, and evidence rules. Independent projects can be used and improved
+without becoming required suite integrations. A tool serving one project stays with that owner;
+promote shared runtime code only when two real consumers justify it.
+
+The trust core and versioned state model precede broad authentic suite use so beta does not create
+receipts or local state the official release cannot read safely. The release sequence remains
+flagship contracts, production systems, then constrained labs, subject to dependency gates.
+Attention selection chooses among eligible work; it cannot override those gates or turn Parked
+into a final disposition. The full v1 program may span several bursts while daily operation remains
+useful between them.
 
 ### Cross-suite dependencies
 
@@ -725,15 +926,25 @@ Use the cheapest relevant gate during development. Full matrices and donor runti
 exits and on the exact release candidate, not reflexively after documentation-only edits. Retained
 evidence changes only through an intentional reviewed record operation.
 
+For C0–C3, target the changed catalog/schema, project identity and relationship validation,
+attention transitions, resume persistence, and the affected CLI/Toolbench paths. Check that missing
+targets and stale observations remain visible, and that attention changes do not alter recovery or
+release truth. Manual checks must cover Ryan's minimal-input resumption workflow. These checks do
+not require launching every donor or rerunning every suite.
+
 ### Routine documentation and registry gates
 
 ```bash
 cd /Users/ryanjohnson/Projects/suites
 PYTHONPATH=src python3 -m portfolio_suites validate --fast
-PYTHONPATH=src python3 -m unittest tests.test_docs
+PYTHONPATH=src python3 -m unittest tests.test_docs.ArtifactTests.test_roadmap_matches_machine_state tests.test_docs.ArtifactTests.test_local_markdown_links_resolve
 ```
 
 ### Phase-exit control-plane gates
+
+Ryan runs full suites, broad donor/runtime checks, and other long-running commands locally. Supply
+only the commands needed for the current phase and inspect his compact results; the list below is
+a phase-exit reference, not an instruction to run it after each roadmap or code edit.
 
 ```bash
 cd /Users/ryanjohnson/Projects/suites
@@ -770,6 +981,21 @@ the correct full-depth runtime.
 
 ## Official Release Checklist
 
+### Personal control layer
+
+- [x] C0 reconciles existing and newly discovered projects with primary homes, explicit independent
+  entries, source provenance, and visible unresolved identities.
+- [x] C1 persists attention state, chosen order, resume target, next action, Waiting trigger, and
+  stopping/restart information without duplicating project content or evidence state.
+- [x] C2 presents the eight stable homes and Independent Projects through existing surfaces, with
+  a minimal-input operator-action view separate from release blockers.
+- [ ] C3 records accepted use across interruptions and addresses observed accessibility/friction
+  issues without claiming suite parity or adoption from navigation evidence.
+- [x] Attention changes, sidebar projections, and project placement cannot promote evidence,
+  suppress obligations, run launchers implicitly, or grant authority.
+- [x] Existing independent tools remain reachable without requiring a new service or complete
+  migration of all eight suites.
+
 ### Eight-suite completion
 
 - [ ] Accessibility passes all criteria, reaches adoption, and scores at least 9.0/10.
@@ -787,7 +1013,8 @@ the correct full-depth runtime.
 
 - [ ] Six contracts are frozen, versioned, documented, migration-tested, and proven across real
   producer/consumer boundaries.
-- [ ] Exact candidate identity includes tracked, staged, unstaged, and untracked content.
+- [x] Source candidate identity includes tracked, staged, unstaged, and non-ignored untracked
+  content; ignored state/build artifacts require separate release evidence as documented.
 - [ ] Approval, transaction, provenance, evidence, path, redaction, rollback, and recovery negative
   paths pass.
 - [ ] CLI, API, Toolbench, exports, manifests, docs, and receipts agree on current truth.
@@ -815,10 +1042,10 @@ post-v1 candidates include:
 - more production formats, investigation modes, model benchmarks, harnesses, and game packs;
 - promotion of independently proven shared components after two consumers emerge;
 - later owner-approved physical rehoming of canonical anchors;
-- hosted or multi-user operation if local-first ownership and privacy remain intact;
+- hosted, commercial, or multi-user operation only if Ryan explicitly chooses that scope later;
 - new model providers or paid routing behind explicit cost/privacy policy;
 - breaking contract/API changes scheduled through the next major-version process.
 
-The official release succeeds when all eight existing suite promises are authentic, adopted,
-recoverable, and honestly reported—not when the repository merely contains eight directories or a
-green manifest.
+Daily success means Ryan can find useful work, resume it with little input, and stop without losing
+context. Official release success additionally requires all eight existing suite promises to be
+authentic, adopted, recoverable, and honestly reported.

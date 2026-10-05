@@ -12,6 +12,37 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-10-05 — Personal control layer (C0–C2), release ledger, and donor-drift repairs
+
+- **Release ledger and phase gates.** `portfolio/release-ledger.json` and
+  `release_state.py` model release blockers, recovery-program obligations, and dependencies;
+  `suites next` now reports `NEXT RELEASE BLOCKER` (exit 2) while blockers remain, and
+  `suites release blockers|summary --json` exposes the same state. Design notes live in
+  [DESIGN-release-ledger.md](DESIGN-release-ledger.md).
+- **Control layer C0–C2.** A reconciled catalog with eight stable homes plus Independent
+  Projects, versioned attention/resume records (Now ceiling of three), and the checkout-local
+  `./s` shortcut (`p`, `project`, `n`, `a`, `r`). The Toolbench opens on **Your projects & Now**.
+  C3 real-use acceptance remains pending. See [CONTROL-LAYER.md](CONTROL-LAYER.md).
+- **Platform operations.** `suites doctor` (offline prerequisite checks), `suites release
+  candidate` (read-only source identity), and `suites state backup|restore` (checksummed,
+  undoable return-point backups). See [PLATFORM-OPERATIONS.md](PLATFORM-OPERATIONS.md).
+- **Ledger lock hardening.** `_ledger_lock` retries a transient `ENOENT` from `openat(O_CREAT)`
+  that APFS can return during concurrent rename-exchange commits; the concurrent Now-writer
+  test had been flaky under load.
+- **Donor-drift repairs (no claims promoted).** Waves that had started failing because donors
+  moved now read the moved source: A3/A6 read archived overlay manifests under
+  `archive/original/`; B2/B5 read Brand Workshop phases from their ported home in
+  `brand-maker-spec`; B1 expects `section.strategy` after the donor renamed it. A2's fast parity
+  probe compares only unassociated-error findings, matching the donor rule's semantics, because
+  `allys-tools` now emits a needs-review finding for every invalid control. Retained receipts
+  were not re-recorded.
+
+Verification: targeted modules (catalog, candidate, operator state, release, CLI, recovery CLI,
+docs) pass; `validate --fast` returned 0 errors and 0 warnings; `wave --all --no-record` reports
+no failed gates. Wheel smoke remains opt-in (`SUITES_WHEEL_SMOKE=1`) and was not run.
+
+---
+
 ## 2026-08-27 — Cache, runtime-receipt, and release-truth stabilization
 
 - **Chain caching is explicit and argument-pure.** Read-only actions no longer qualify merely

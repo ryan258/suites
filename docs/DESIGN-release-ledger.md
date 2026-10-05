@@ -1,18 +1,19 @@
 # Design: Release / Completion Ledger (`0.2.0-alpha` increment)
 
-Status: **proposed** · Phase: 0 (roadmap item 1, ROADMAP.md:171)
+Status: **implemented, partial release coverage through Phase 5** · Updated October 5, 2026
 Goal: make "ready for v1" a machine-checkable claim that cannot be derived from wave counts.
 
 ## 1. Problem
 
-The CLI's "next" answer (`cli.py:_next`) and the portfolio summary (`registry.get_portfolio_summary`)
-answer solely from `resolve_recovery_obligations` + `recovery_program_summary`. That program covers
+Before this increment, the CLI's "next" answer and portfolio summary answered solely from
+`resolve_recovery_obligations` + `recovery_program_summary`. That program covers
 44 obligations but is not the full v1 blocker set: it has no release-lifecycle axis, no closure
 dispositions on the roadmap's terms, and no per-suite release-score computation. The roadmap names a
 release/completion ledger that maps every suite criterion, wave follow-up, unique capability, runtime,
 owner, contract, evidence artifact, adoption record, recovery score, and final disposition
 (ROADMAP.md:175-177), and requires "release status cannot be derived from milestone counts"
-(ROADMAP.md:584-585). That ledger exists nowhere under `src/`, `portfolio/`, or `tests/`.
+(ROADMAP.md:584-585 in the original design baseline). The implementation now lives in
+`release_state.py`, `portfolio/release-ledger.json`, and focused release tests.
 
 The existing `project-ledger.json` (`registry.load_ledger`, registry.py:181) is the **project**
 portfolio ledger (which projects exist, their dispositions). It is not the release ledger.
@@ -70,7 +71,7 @@ this increment.
     "silent_deletion": "forbidden",
     "blanket_deferral": "forbidden",
     "resolved_without_evidence_or_owner": "forbidden",
-    "phases_covered": ["0", "1", "2"]
+    "phases_covered": ["0", "1", "2", "3", "4", "5"]
   },
   "suites": {
     "brand-publishing": {
@@ -133,8 +134,29 @@ this increment.
 ```
 
 The schema shown is the **authored** ledger shape. `phases_covered` is the reviewed policy that
-truthfully identifies this as a Phase 0-2 partial ledger; blocker `phase` values are restricted to it
+truthfully identifies this as a Phase 0–5 partial ledger; blocker `phase` values are restricted to it
 and `phase_order` (next-queue ordering) is derived from it. Two blocker kinds, one openness rule:
+
+The example is an abbreviated shape, not a loadable ledger or closure receipt. The
+current exact frozen surface/path sets live in `GLOBAL_BLOCKER_SPECS`; the real ledger
+contains all registered suites and obligations. Every governed recovery obligation
+must appear in exactly one runtime queue entry, with its original predecessor
+dependencies and the Phase 1 contract/state gate. Runtime phases follow the roadmap's
+flagship/production/lab order; adoption is Phase 5. Recovery-program sequence breaks
+ties within a phase. Requirements are projected from the owning program, not copied
+into a second editable runtime specification.
+
+`unmodeled_exit_phases` explicitly lists the later candidate, distribution, and
+stabilization gates. An empty partial queue cannot assert release readiness. Dimension
+scoring and those later executable closure gates are still pending implementation and
+authentic evidence. `release blockers --json`, export, and the Toolbench use the same
+resolver. `release candidate` and `doctor` provide the bounded preparatory checks
+described in [platform operations](PLATFORM-OPERATIONS.md).
+
+The format freeze binds validators and compatibility policy instead of live project
+values, so saving an attention record does not invalidate a format boundary. The
+stable-surface freeze includes the server and catalog interfaces, recovery commands,
+candidate inspection, and diagnostics. No freeze closure was recorded in this increment.
 
 - A **release blocker** owns `obligation_refs`; it is open while any referenced obligation is not
   `discharged` and closes automatically once all its obligations discharge.
