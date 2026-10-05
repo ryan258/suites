@@ -70,7 +70,7 @@ class BrandPublishingSourceAdapter:
         expected_functions = {"export_draft_tokens", "export_developer_package", "build_brand_kit_zip"}
         expected_exports = {"tokens.css", "tokens.json", "tailwind.config.js", "rules.json", "patterns.json", "voice-context.json", "change-manifest.json"}
         expected_token_types = {"color", "font", "dimension", "duration"}
-        expected_voice_sections = {"section.voice", "section.messaging", "section.audience"}
+        expected_voice_sections = {"section.voice", "section.messaging", "section.strategy"}
 
         sensitivity_passed = (
             expected_functions.issubset(set(extracted_functions))
@@ -291,11 +291,15 @@ class BrandPublishingSourceAdapter:
         workshop_fp = get_git_fingerprint(BRAND_WORKSHOP_DIR)
         maker_fp = get_git_fingerprint(BRAND_MAKER_DIR)
 
-        # Inspect live brand_workshop/phases.py
+        # Inspect live brand_workshop/phases.py (or ported path in brand-maker-spec)
         phases_source_file = BRAND_WORKSHOP_DIR / "brand_workshop" / "phases.py"
         extracted_phase_ids: list[str] = []
+        content = ""
         if phases_source_file.is_file():
             content = phases_source_file.read_text(encoding="utf-8")
+        elif (BRAND_MAKER_DIR / "src" / "brand_workshop" / "phases.py").is_file():
+            content = (BRAND_MAKER_DIR / "src" / "brand_workshop" / "phases.py").read_text(encoding="utf-8")
+        if content:
             for line in content.splitlines():
                 if line.strip().startswith('"0') and '": {' in line:
                     p_id = line.strip().split('":')[0].strip('"')

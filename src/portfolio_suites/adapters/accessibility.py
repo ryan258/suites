@@ -405,6 +405,11 @@ console.log(JSON.stringify(result));
             if eval_proc.returncode == 0 and eval_proc.stdout.strip():
                 raw_result = json.loads(eval_proc.stdout.strip().splitlines()[-1])
                 for idx, raw_f in enumerate(raw_result.get("findings", []), start=1):
+                    # Filter to unassociated error findings (parity with donor wcag-auditor rule:
+                    # an input with valid error references is not an unassociated error defect).
+                    ev_details = (raw_f.get("evidence") or [{}])[0].get("detail") or {}
+                    if ev_details.get("errorReferences"):
+                        continue
                     # Preserve unverified source status and set needs_review: true (human confirmation boundary)
                     contract_finding = {
                         "schema_version": SCHEMA_VERSION,
@@ -613,6 +618,8 @@ console.log(JSON.stringify(result));
         for name, repo_path, default_role in dirs:
             source_available = repo_path.is_dir()
             manifest_file = repo_path / "manifest.json"
+            if not manifest_file.is_file() and (repo_path / "archive" / "original" / "manifest.json").is_file():
+                manifest_file = repo_path / "archive" / "original" / "manifest.json"
             manifest_valid = False
             manifest_error: str | None = None
             permissions: list[str] = []
