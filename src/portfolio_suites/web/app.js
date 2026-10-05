@@ -106,7 +106,8 @@ class SuitesApp {
       contracts: {},
       selectedContract: 'A11yFinding',
       waves: [],
-      aiStatus: null
+      aiStatus: null,
+      release: null
     };
     this.modalLastFocus = null;
     this.waveRunActive = false;
@@ -239,8 +240,10 @@ class SuitesApp {
 
   async refreshData() {
     this.announce('Refreshing saved suite manifests, evidence, and migration records…');
+    this.state.release = null;
+    this.renderNextMove();
     try {
-      const [sumRes, suitesRes, projRes, nestedRes, driftRes, contractsRes, valRes, wavesRes, aiRes] = await Promise.all([
+      const [sumRes, suitesRes, projRes, nestedRes, driftRes, contractsRes, valRes, wavesRes, aiRes, releaseRes] = await Promise.all([
         this.fetchJSON('/api/summary'),
         this.fetchJSON('/api/suites'),
         this.fetchJSON('/api/projects'),
@@ -251,7 +254,8 @@ class SuitesApp {
         this.fetchJSON('/api/waves'),
         this.fetchJSON('/api/ai/status').catch(error => ({
           provider: 'openrouter', configured: false, free_only: true, roles: {}, warnings: [error.message]
-        }))
+        })),
+        this.fetchJSON('/api/catalog/release').catch(error => ({error: error.message}))
       ]);
 
       this.state.summary = sumRes;
@@ -262,6 +266,7 @@ class SuitesApp {
       this.state.contracts = contractsRes;
       this.state.waves = wavesRes;
       this.state.aiStatus = aiRes;
+      this.state.release = releaseRes;
 
       this.renderHeaderMetrics(valRes);
       this.renderOverview();
@@ -357,49 +362,33 @@ class SuitesApp {
   renderNextMove() {
     const card = document.getElementById('next-move-card');
     if (!card) return;
-    // Same ranking the CLI uses: lowest promotion level first, then manifest order. A
-    // prototype-level claim has the furthest left to climb, so it is the move that moves
-    // the honest number rather than the completion percentage.
-    const rank = [
-      'specified', 'prototype', 'reviewed_historical_analysis', 'source_inspected',
-      'source_executed', 'parity_verified', 'adopted', 'converged',
-    ];
-    // `/api/waves` records, not `/api/suites` manifests. `claim_level` and
-    // `runtime_followup_command` are added by the server only to the enriched wave payload,
-    // so ranking the raw manifests read both as undefined: every wave scored 'specified'
-    // and no backend command could ever be shown.
-    const owing = [];
-    for (const wave of this.state.waves) {
-      if (wave.status === 'complete' && wave.runtime_followup) {
-        owing.push({ wave, level: wave.claim_level || 'specified' });
-      }
-    }
-    owing.sort((a, b) => (rank.indexOf(a.level) - rank.indexOf(b.level)) || ((a.wave.order || 0) - (b.wave.order || 0)));
     const target = document.getElementById('next-move-target');
     const level = document.getElementById('next-move-level');
     const owes = document.getElementById('next-move-owes');
     const command = document.getElementById('next-move-command');
-    if (!owing.length) {
-      target.textContent = 'No completed wave owes a live run.';
-      level.textContent = '';
-      owes.textContent = '';
-      command.textContent = '';
+    const release = this.state.release;
+    level.textContent = '';
+    owes.textContent = '';
+    command.textContent = './s next';
+    command.className = 'next-move-command mono-cell';
+    owes.className = 'subtext subtext-warn';
+    if (!release || release.error) {
+      target.textContent = 'Release state unavailable';
+      owes.textContent = release?.error || 'Reload to read the release queue.';
       return;
     }
-    const head = owing[0];
-    target.textContent = `${head.wave.suite_id} / ${head.wave.wave_id}`;
-    level.textContent = head.level.replace(/_/g, ' ');
-    owes.textContent = `Owes: ${head.wave.runtime_followup}`;
-    // Only a runner that declares a deeper mode gets a command. `--full` is silently
-    // dropped for every other wave, so advertising it here offered a move that reruns the
-    // retained preview and discharges nothing.
-    command.textContent = head.wave.runtime_followup_command
-      || 'No command discharges this yet — the wave\'s runner has no deeper mode. '
-       + 'This is hands-on work against the real runtime named above.';
-    command.className = head.wave.runtime_followup_command
-      ? 'next-move-command mono-cell'
-      : 'next-move-command subtext';
-    owes.className = 'subtext subtext-warn';
+    const head = release.actionable_blockers[0];
+    if (!head) {
+      target.textContent = release.open_blocker_count ? 'Release work is held by dependency gates' : 'No open blocker in the modeled queue';
+      owes.textContent = release.open_blocker_count
+        ? release.open_blockers.map(b => b.id).join(', ')
+        : 'An empty queue does not establish release readiness. Criteria, scores, and later exit gates still apply.';
+      return;
+    }
+    target.textContent = head.id;
+    level.textContent = `Phase ${head.phase} · actionable`;
+    owes.textContent = head.name || head.note || 'Close this release blocker before proceeding.';
+    if (head.residual_obligations?.length) owes.textContent += ` Owes: ${head.residual_obligations.join(', ')}.`;
   }
 
   renderOverview() {

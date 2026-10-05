@@ -8,6 +8,7 @@ class ProjectCatalog {
     this.draftPrefix = 'suites-operator-draft-v1:';
     this.storageAvailable = true;
     this.release = null;
+    this.saving = false;
   }
   message(text, error = false) {
     this.el('operator-status').textContent = text;
@@ -190,6 +191,7 @@ class ProjectCatalog {
     form.addEventListener('input', () => { this.attentionControls(); this.saveDraft(); });
     form.addEventListener('change', () => { this.attentionControls(); this.saveDraft(); });
     form.addEventListener('submit', event => { event.preventDefault(); this.save(form); });
+    this.setSaving(this.saving);
     if (focus) this.el('operator-project-title').focus();
   }
   renderProjectRelease() {
@@ -221,17 +223,33 @@ class ProjectCatalog {
     this.writeLocal(this.draftPrefix + this.detail.id, {revision:this.formRevision, values:this.values()});
     if (this.storageAvailable) this.el('operator-draft-status').textContent = 'Unsaved draft kept in this browser. Save return point to share it with the CLI.';
   }
+  setSaving(saving) {
+    this.saving = saving;
+    const form = this.el('operator-form');
+    if (!form) return;
+    form.setAttribute('aria-busy', String(saving));
+    form.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = saving; });
+    if (!saving) this.attentionControls();
+  }
   async save(form) {
-    const button = form.querySelector('[type="submit"]'); button.disabled = true;
+    if (this.saving) return;
     const name = this.detail.id;
+    const revision = this.formRevision;
+    const changes = this.values(); // Capture before disabling controls (FormData omits them).
     this.saveDraft();
+    const submittedDraft = JSON.stringify(this.readLocal(this.draftPrefix + name));
+    this.setSaving(true);
+    this.message('Saving return point… Editing resumes when the save finishes.');
     try {
-      const updated = await this.request('/api/catalog/update', {name,revision:this.formRevision,changes:this.values()});
-      this.writeLocal(this.draftPrefix + name, null);
+      const updated = await this.request('/api/catalog/update', {name,revision,changes});
+      // Another browser tab may have written a newer draft during this request.
+      if (JSON.stringify(this.readLocal(this.draftPrefix + name)) === submittedDraft) {
+        this.writeLocal(this.draftPrefix + name, null);
+      }
       this.data.projects = this.data.projects.map(p => p.id === name ? updated : p);
       const loaded = await this.refresh();
       if (!loaded) {
-        this.showDetail(name, false);
+        this.showDetail(name);
         this.message(`Saved ${updated.name}, but the full view could not reload. Reload saved records when the local service returns.`, true);
         return;
       }
@@ -239,7 +257,7 @@ class ProjectCatalog {
       this.message(`Saved ${updated.name}. Your return point is available in the CLI and after restart.`);
       this.el('operator-project-title')?.focus();
     } catch (error) { this.message('Save failed: '+error.message+' Your browser draft is retained.', true); }
-    finally { button.disabled = false; }
+    finally { this.setSaving(false); }
   }
   async openTarget(button) {
     button.disabled = true;
