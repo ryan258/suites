@@ -78,6 +78,7 @@ jobs:
             tests.test_recovery_registry_integration \
             tests.test_release_cli \
             tests.test_release_state \
+            tests.test_review_regressions \
             tests.test_server \
             tests.test_source_root \
             tests.test_txn \

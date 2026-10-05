@@ -40,7 +40,7 @@ from .approvals import (
 from .paths import ConfinementError, SUITES_ROOT, open_confined_directory
 from .receipts import SHA256_HEX
 from .recovery_policy import RECOVERY_PROMOTION_LEVELS, RECOVERY_TIERS
-from .recovery_program import resolve_recovery_obligations
+from .recovery_program import RecoveryProgramError, resolve_recovery_obligations
 
 
 RELEASE_LEDGER_PATH = SUITES_ROOT / "portfolio" / "release-ledger.json"
@@ -223,6 +223,8 @@ def validate_release_ledger(
 ) -> list[str]:
     """Return fail-closed structural and semantic errors for the release ledger."""
     errors: list[str] = []
+    if not isinstance(ledger, dict):
+        return ["release ledger must be an object"]
     if ledger.get("ledger_id") != RELEASE_LEDGER_ID:
         errors.append(f"release ledger id must be {RELEASE_LEDGER_ID!r}")
     if ledger.get("schema_version") != RELEASE_LEDGER_SCHEMA_VERSION:
@@ -323,6 +325,12 @@ def validate_release_ledger(
                     f"requires at least {MIN_SUPPORT_PROMISE_LEVEL}"
                 )
 
+        if (isinstance(phase, str) and phase in SUPPORT_PROMISE_PHASES
+                and isinstance(block_level, str) and block_level in RECOVERY_PROMOTION_LEVELS
+                and RECOVERY_PROMOTION_LEVELS.index(block_level)
+                >= RECOVERY_PROMOTION_LEVELS.index(MIN_SUPPORT_PROMISE_LEVEL)):
+            errors.extend(_support_promise_evidence_errors(suite_id, block_level, program, suites))
+
         # A support promise ("supported"/"beta"/"release-candidate") is never automatic:
         # it is an owner-backed declaration. Requiring an owner prevents an anonymous
         # suite from claiming a support promise, and mirrors the DESIGN §3 rule that any
@@ -398,7 +406,7 @@ def validate_release_ledger(
                                         f"does not match release_phase_owner {owner!r}"
                                     )
                                 decision = doc.get("decision")
-                                if decision not in {"retire", "retired"}:
+                                if not isinstance(decision, str) or decision not in {"retire", "retired"}:
                                     errors.append(
                                         f"{suite_id}: retirement evidence decision must be 'retire' or 'retired'; "
                                         f"found {decision!r}"
@@ -418,20 +426,32 @@ def validate_release_ledger(
                                         f"{suite_id}: retirement evidence requires a non-empty 'donor' identifier"
                                     )
                                 supporting = doc.get("supporting_evidence_refs")
-                                if not isinstance(supporting, list) or not supporting or any(
-                                    not isinstance(r, str) or not r.strip() for r in supporting
-                                ):
+                                valid_supporting = (
+                                    isinstance(supporting, list) and bool(supporting)
+                                    and all(isinstance(ref, str) and ref.strip() for ref in supporting)
+                                    and len(set(supporting)) == len(supporting)
+                                )
+                                support_hashes = doc.get("supporting_evidence_sha256")
+                                valid_hashes = (
+                                    valid_supporting and isinstance(support_hashes, dict)
+                                    and set(support_hashes) == set(supporting)
+                                    and all(isinstance(value, str) and SHA256_HEX.fullmatch(value)
+                                            for value in support_hashes.values())
+                                )
+                                if not valid_supporting:
                                     errors.append(
-                                        f"{suite_id}: retirement evidence requires a non-empty 'supporting_evidence_refs' "
-                                        "list of recovery/parity evidence"
+                                        f"{suite_id}: retirement evidence requires a non-empty, distinct "
+                                        "'supporting_evidence_refs' string list of recovery/parity evidence"
+                                    )
+                                if not valid_hashes:
+                                    errors.append(
+                                        f"{suite_id}: retirement supporting_evidence_sha256 must bind "
+                                        "exactly every supporting reference to a SHA-256 digest"
                                     )
                                 else:
-                                    for sup_ref in supporting:
-                                        sup_path = resolve_declared_evidence_path(sup_ref, suite_id)
-                                        if sup_path is None or not sup_path.is_file():
-                                            errors.append(
-                                                f"{suite_id}: retirement supporting evidence missing on disk: {sup_ref!r}"
-                                            )
+                                    errors.extend(_retirement_supporting_evidence_errors(
+                                        suite_id, support_hashes, program, suites
+                                    ))
 
                                 # Operator approval authority verification
                                 approval = doc.get("approval")
@@ -463,7 +483,7 @@ def validate_release_ledger(
                                             f"{suite_id}: retirement approval requires 'consumed_bindings'"
                                         )
                                     operation = approval.get("operation")
-                                    if operation not in {"suite-retirement", "retire"}:
+                                    if not isinstance(operation, str) or operation not in {"suite-retirement", "retire"}:
                                         errors.append(
                                             f"{suite_id}: retirement approval operation must be 'suite-retirement'; "
                                             f"found {operation!r}"
@@ -516,13 +536,15 @@ def validate_release_ledger(
                                             )
                                     # Validate bound payload canonical digest
                                     expected_digest = None
-                                    if isinstance(donor, str) and donor.strip() and isinstance(rec_disposition, str) and isinstance(supporting, list):
+                                    if (isinstance(donor, str) and donor.strip() and isinstance(rec_disposition, str)
+                                            and isinstance(decision, str) and valid_hashes):
                                         expected_payload = {
                                             "suite_id": suite_id,
                                             "donor": donor,
                                             "decision": decision,
                                             "disposition": rec_disposition,
                                             "supporting_evidence_refs": sorted(supporting),
+                                            "supporting_evidence_sha256": support_hashes,
                                         }
                                         expected_digest = canonical_digest(expected_payload)
                                         payload_sha256 = approval.get("payload_sha256")
@@ -567,7 +589,7 @@ def validate_release_ledger(
                                                 f"{suite_id}: retirement approval could not be verified against "
                                                 f"independent authority: {err}"
                                             )
-                        except (OSError, json.JSONDecodeError) as err:
+                        except (OSError, ValueError) as err:
                             errors.append(f"{suite_id}: retirement evidence is not readable JSON: {err}")
 
         score_status = suite_block.get("score_status")
@@ -683,11 +705,9 @@ def validate_release_ledger(
                 f"ledger covers roadmap phases {sorted(PHASES_COVERED)} only"
             )
         depends_on = blocker.get("depends_on")
-        if depends_on is not None and (
-            not isinstance(depends_on, list)
-            or any(not isinstance(item, str) or not item for item in depends_on)
-        ):
-            errors.append(f"{blocker_id}: depends_on must be a string list")
+        if (not isinstance(depends_on, list)
+                or any(not isinstance(item, str) or not item for item in depends_on)):
+            errors.append(f"{blocker_id}: depends_on must be an explicit string list")
         for field in ("name", "note"):
             value = blocker.get(field)
             if value is not None and not isinstance(value, str):
@@ -829,6 +849,92 @@ def validate_release_ledger(
     except CycleError as error:
         errors.append(f"blocker depends_on cycle: {' -> '.join(error.args[1])}")
 
+    return errors
+
+
+def _support_promise_evidence_errors(
+    suite_id: str,
+    declared_depth: str,
+    program: dict[str, Any],
+    suites: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Require retained, governed execution evidence for the promised depth."""
+    from .registry import build_evidence_ownership_index, get_wave_evidence_status
+
+    required_rank = RECOVERY_PROMOTION_LEVELS.index(declared_depth)
+    ownership = build_evidence_ownership_index(suites)
+    for wave in suites[suite_id].get("waves", []):
+        claim = wave.get("recovery_claim") or {}
+        level = claim.get("level")
+        if (wave.get("status") != "complete"
+                or claim.get("kind") not in ("runtime", "adoption", "convergence")
+                or not isinstance(level, str) or level not in RECOVERY_PROMOTION_LEVELS
+                or RECOVERY_PROMOTION_LEVELS.index(level) < required_rank):
+            continue
+        if get_wave_evidence_status(suite_id, wave, ownership)["evidence_valid"]:
+            return []
+
+    # Lifecycle receipts may prove a higher rung than the original wave. The owning
+    # program verifies their retained bindings and dependency state before use here.
+    try:
+        obligations = resolve_recovery_obligations(program, suites)
+    except RecoveryProgramError as error:
+        return [f"{suite_id}: support-promise evidence cannot be verified: {error}"]
+    for obligation in obligations:
+        level = obligation.get("target_level")
+        if (obligation["suite_id"] == suite_id and obligation["effective_state"] == "discharged"
+                and obligation.get("target_claim_kind") in ("runtime", "adoption", "convergence")
+                and isinstance(level, str) and level in RECOVERY_PROMOTION_LEVELS
+                and RECOVERY_PROMOTION_LEVELS.index(level) >= required_rank):
+            return []
+    return [f"{suite_id}: no validated retained execution evidence supports recovery_depth {declared_depth!r}"]
+
+
+def _retirement_supporting_evidence_errors(
+    suite_id: str,
+    hashes: dict[str, str],
+    program: dict[str, Any],
+    suites: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Bind retirement support to unchanged bytes and their owning receipt validators."""
+    from .registry import build_evidence_ownership_index, get_wave_evidence_status, resolve_declared_evidence_path
+
+    errors: list[str] = []
+    ownership = build_evidence_ownership_index(suites)
+    waves = suites[suite_id].get("waves", [])
+    for ref, expected in hashes.items():
+        if resolve_declared_evidence_path(ref, suite_id) is None:
+            errors.append(f"{suite_id}: retirement supporting evidence must stay in its canonical suite evidence directory: {ref}")
+            continue
+        before, read_error = _read_confined_suites_file(ref)
+        if before is None:
+            errors.append(f"{suite_id}: retirement supporting evidence cannot be read: {ref}: {read_error}")
+            continue
+        if hashlib.sha256(before).hexdigest() != expected:
+            errors.append(f"{suite_id}: retirement supporting evidence digest mismatch: {ref}")
+            continue
+        owners = [wave for wave in waves if wave.get("status") == "complete" and wave.get("evidence") == ref]
+        if len(owners) == 1:
+            status = get_wave_evidence_status(suite_id, owners[0], ownership)
+            errors.extend(f"{suite_id}: retirement supporting evidence {ref}: {error}"
+                          for error in status["evidence_errors"])
+        else:
+            lifecycle = [o for o in program.get("obligations", [])
+                         if isinstance(o, dict) and isinstance(o.get("id"), str)
+                         and o["id"].startswith(suite_id + "/")
+                         and o.get("source") == "lifecycle" and o.get("evidence") == ref]
+            if len(lifecycle) != 1:
+                errors.append(f"{suite_id}: retirement supporting evidence has no unique governed receipt owner: {ref}")
+            else:
+                try:
+                    resolved = resolve_recovery_obligations(program, suites)
+                    if not any(o["id"] == lifecycle[0]["id"] and o["effective_state"] == "discharged" for o in resolved):
+                        errors.append(f"{suite_id}: retirement supporting lifecycle evidence is not discharged: {ref}")
+                except RecoveryProgramError as error:
+                    errors.append(f"{suite_id}: retirement supporting lifecycle evidence is invalid: {error}")
+        after, read_error = _read_confined_suites_file(ref)
+        if after != before or read_error:
+            errors.append(f"{suite_id}: retirement supporting evidence changed during validation: {ref}")
     return errors
 
 
@@ -1081,7 +1187,7 @@ def _global_blocker_closure_errors(
         )
 
     outcome = closure.get("outcome")
-    if outcome is not None and outcome not in {"implemented", "already_covered", "independently_retained"}:
+    if outcome is not None and (not isinstance(outcome, str) or outcome not in {"implemented", "already_covered", "independently_retained"}):
         errors.append(
             f"global blocker {blocker_id}: closure outcome {outcome!r} is not valid"
         )

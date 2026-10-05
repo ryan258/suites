@@ -156,6 +156,8 @@ def validate_catalog(ledger):
     for entry in meta.get('app_entries', []):
         if not isinstance(entry, dict):
             errors.append('app entry must be an object'); continue
+        if not isinstance(entry.get('label'), str) or not entry['label'].strip():
+            errors.append('app entry requires a nonempty label')
         if entry.get('project') is not None and (not isinstance(entry['project'], str) or entry['project'] not in ids): errors.append('app entry refers to an unknown catalog identity')
     return errors
 
@@ -174,7 +176,9 @@ def resolve_project(query, ledger=None):
     query = query.strip().casefold()
     rows = catalog_rows(doc)
     exact = [r for r in rows if r['name'].casefold() == query or r['operator']['location'].casefold() == query]
-    aliases = {e['project'] for e in doc['catalog'].get('app_entries', []) if e.get('project') and e['label'].casefold() == query}
+    aliases = {e['project'] for e in doc['catalog'].get('app_entries', [])
+               if isinstance(e, dict) and isinstance(e.get('project'), str)
+               and isinstance(e.get('label'), str) and e['label'].strip().casefold() == query}
     matches = exact or [r for r in rows if r['name'] in aliases or Path(r['name']).name.casefold() == query]
     matches = matches or [r for r in rows if r['name'].casefold().startswith(query) or Path(r['name']).name.casefold().startswith(query)]
     if len(matches) != 1:

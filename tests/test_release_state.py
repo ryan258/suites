@@ -153,16 +153,12 @@ class ReleaseLedgerTests(unittest.TestCase):
 
     def test_owner_backed_support_promise_at_source_executed_is_accepted(self):
         ledger = deepcopy(self.ledger)
-        ledger["suites"]["brand-publishing"]["release_phase"] = "supported"
-        ledger["suites"]["brand-publishing"]["release_phase_owner"] = "ryan"
-        ledger["suites"]["brand-publishing"]["recovery_depth"] = "source_executed"
-        errors = validate_release_ledger(ledger, self.program, self.suites)
-        self.assertNotIn(
-            "cannot claim depth", " ".join(errors), errors,
-        )
-        self.assertNotIn(
-            "requires a release_phase_owner", " ".join(errors), errors,
-        )
+        ledger["suites"]["operator-os"]["release_phase"] = "supported"
+        ledger["suites"]["operator-os"]["release_phase_owner"] = "ryan"
+        ledger["suites"]["operator-os"]["recovery_depth"] = "source_executed"
+        # O1/O4 retain governed source-execution receipts; an authored string alone
+        # is no longer a positive control for this promise.
+        self.assertEqual(validate_release_ledger(ledger, self.program, self.suites), [])
 
     def test_closure_requires_owner_and_evidence(self):
         ledger = deepcopy(self.ledger)
@@ -945,6 +941,9 @@ class ReleaseLedgerTests(unittest.TestCase):
 
         if supporting is None:
             supporting = ["accessibility/evidence/A1-WCAG-AUDITOR-PARITY.json"]
+        from portfolio_suites.paths import SUITES_ROOT
+        support_hashes = {ref: hashlib.sha256((SUITES_ROOT / ref).read_bytes()).hexdigest()
+                          for ref in supporting}
         donor = suite_id
         decision = "retire"
         payload = {
@@ -953,6 +952,7 @@ class ReleaseLedgerTests(unittest.TestCase):
             "decision": decision,
             "disposition": disposition,
             "supporting_evidence_refs": sorted(supporting),
+            "supporting_evidence_sha256": support_hashes,
         }
         payload_digest = canonical_digest(payload)
         approval_id = "app-retire-001"
@@ -1003,6 +1003,7 @@ class ReleaseLedgerTests(unittest.TestCase):
             "decision": decision,
             "disposition": disposition,
             "supporting_evidence_refs": supporting,
+            "supporting_evidence_sha256": support_hashes,
             "approval": consumed_record,
         }
         return receipt, store_path
