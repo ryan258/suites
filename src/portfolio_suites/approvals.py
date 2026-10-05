@@ -291,3 +291,88 @@ def verify_operator_approval(token: str | None, bindings: dict[str, Any]) -> dic
     finally:
         os.close(dir_fd)
     return dict(record)
+
+
+def verify_consumed_operator_approval(
+    approval_id: str,
+    bindings: dict[str, Any],
+    store_path: Path | None = None,
+) -> dict[str, Any]:
+    """Read-only verification of an already consumed operator approval in the authority store.
+
+    Resolves against the out-of-band store (PORTFOLIO_OPERATOR_APPROVAL_STORE or store_path),
+    confirms the approval exists, was consumed, has valid timestamp chronology
+    (issued_at <= consumed_at <= expires_at), has all required authority fields,
+    and matches all expected bindings and consumed_bindings.
+    Raises ApprovalError on any failure.
+    """
+    if not isinstance(approval_id, str) or not approval_id.strip():
+        raise ApprovalError("approval_id must be a non-empty string")
+
+    path = store_path if store_path is not None else _store_path()
+    if path.is_symlink():
+        raise ApprovalError(f"approval store '{path}' cannot be a symlink")
+
+    dir_fd = _open_authority_dir(path)
+    try:
+        lock_name = path.name + ".lock"
+        try:
+            lock_fd = os.open(lock_name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
+        except OSError as error:
+            raise ApprovalError(f"approval lock unavailable: {error}") from error
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_SH)
+            try:
+                document, identity, digest, mode = _read_store_fd(path.name, dir_fd)
+                matches = [
+                    r for r in document.get("approvals", [])
+                    if isinstance(r, dict) and r.get("approval_id") == approval_id
+                ]
+                if len(matches) != 1:
+                    raise ApprovalError(f"approval '{approval_id}' was not found in the authority store")
+                record = matches[0]
+
+                for field in REQUIRED_STRINGS:
+                    value = record.get(field)
+                    if not isinstance(value, str) or not value.strip():
+                        raise ApprovalError(f"approval field '{field}' must be a non-empty string")
+                if record["schema"] != APPROVAL_SCHEMA:
+                    raise ApprovalError(f"approval schema must be {APPROVAL_SCHEMA}, not {record['schema']!r}")
+
+                if record.get("consumed") is not True:
+                    raise ApprovalError(f"approval '{approval_id}' has not been consumed by the authority")
+
+                consumed_bindings = record.get("consumed_bindings")
+                if not isinstance(consumed_bindings, dict):
+                    raise ApprovalError(f"approval '{approval_id}' is missing valid consumed_bindings")
+
+                for key, expected in bindings.items():
+                    if key not in record:
+                        raise ApprovalError(f"approval '{approval_id}' is not bound to {key}")
+                    if record[key] != expected:
+                        raise ApprovalError(
+                            f"approval '{approval_id}' {key} is bound to {record[key]!r}, not {expected!r}"
+                        )
+                    if key not in consumed_bindings or consumed_bindings[key] != str(expected):
+                        raise ApprovalError(
+                            f"approval '{approval_id}' consumed_bindings[{key!r}] is {consumed_bindings.get(key)!r}, not {str(expected)!r}"
+                        )
+
+                issued_at = _aware(record, "issued_at")
+                expires_at = _aware(record, "expires_at")
+                consumed_at = _aware(record, "consumed_at")
+
+                if expires_at <= issued_at:
+                    raise ApprovalError(f"approval '{approval_id}' expires at or before it was issued")
+                if consumed_at < issued_at:
+                    raise ApprovalError(f"approval '{approval_id}' was consumed before it was issued")
+                if consumed_at > expires_at:
+                    raise ApprovalError(f"approval '{approval_id}' was consumed after it expired")
+
+                return dict(record)
+            finally:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        finally:
+            os.close(lock_fd)
+    finally:
+        os.close(dir_fd)

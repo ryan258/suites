@@ -21,6 +21,12 @@ from .engine_actions import EngineActionError, list_actions, run_action
 from .paths import PROJECTS_ROOT, CommitUnverified
 from .provenance import is_sensitive_path
 from .contracts import CONTRACTS, ContractError, generate_sample, validate_json_str
+from .release_state import (
+    ReleaseLedgerError,
+    load_release_ledger,
+    release_state_summary,
+    resolve_release_state,
+)
 from .recovery_program import (
     RecoveryProgramError,
     load_recovery_program,
@@ -92,6 +98,15 @@ def _status() -> int:
         f"{program['open']} open "
         f"({program['ready']} ready, {program['blocked_dependency']} blocked by dependency)"
     )
+    release = summary["release_ledger"]
+    if release["error"]:
+        print(f"Release ledger: ERROR {release['error']}")
+    else:
+        print(
+            f"Release ledger: {release['open_blockers']} open release blocker(s), "
+            f"{release['actionable_blockers']} actionable "
+            f"({release['criteria_open']}/{release['criteria_total']} v1 criteria open)"
+        )
     print(
         "Lifecycle outcomes: "
         f"{summary['adopted_capabilities']} adopted capability, "
@@ -143,9 +158,82 @@ def _next() -> int:
             program = load_recovery_program()
             obligations = resolve_recovery_obligations(program, suites)
             summary = recovery_program_summary(program, suites)
-        except RecoveryProgramError as error:
-            print(f"ERROR recovery program is invalid: {error}")
+            ledger = load_release_ledger()
+            release_state = resolve_release_state(ledger, program, suites)
+        except (RecoveryProgramError, ReleaseLedgerError) as error:
+            print(f"ERROR release or recovery program is invalid: {error}")
             return EXIT_FAILED
+
+        # Phase-aware "next": the release ledger says what is genuinely *actionable*
+        # (all its dependencies closed), not merely what is dependency-ready inside the
+        # recovery program. A runtime obligation held behind an open phase boundary is
+        # reported as held, never silently skipped and never offered prematurely.
+        if release_state["open_blockers"]:
+            open_count = release_state["open_blocker_count"]
+            actionable = release_state["actionable_blockers"]
+            print(
+                f"Release ledger: {open_count} open release blocker(s); "
+                f"{len(actionable)} actionable."
+            )
+            if actionable:
+                head = actionable[0]
+                print()
+                print(f"NEXT RELEASE BLOCKER: {head['id']}")
+                if head.get("name"):
+                    print(f"  {head['name']}")
+                print(
+                    f"  phase {head['phase']}; its dependency gates are closed so this is "
+                    "the next item to close"
+                )
+                if head.get("note"):
+                    print(f"  {head['note']}")
+                for dep in head.get("depends_on", []):
+                    state = release_state["closed_by_id"].get(dep)
+                    print(f"  gate ({dep}): {'closed' if state else 'open' if state is False else 'unknown'}")
+                residual = head.get("residual_obligations")
+                if residual:
+                    print(f"  owes obligations: {', '.join(residual)}")
+                    first_id = residual[0]
+                    match = next(
+                        (o for o in obligations if o["id"] == first_id), None
+                    )
+                    if match:
+                        if match["wave_id"]:
+                            command = WaveRunner.full_depth_command(
+                                match["suite_id"], match["wave_id"]
+                            )
+                            print("  run:", command or
+                                "no existing command can discharge this obligation; "
+                                "the authentic runtime boundary must be implemented")
+                        else:
+                            print(
+                                "  run: no one-shot command; accumulate the governed "
+                                "authentic-use receipt without manufacturing adoption"
+                            )
+                elif not head.get("obligation_refs"):
+                    # A global blocker is a process gate: it owns no obligation, so it
+                    # closes only by explicit authorship. Say so, or "next" names an
+                    # item with no stated way to discharge it.
+                    print(
+                        "  close: process gate; no obligation discharges it. Add a "
+                        "valid closure record (owner, evidence_ref to a retained JSON "
+                        "receipt, and frozen_boundaries digest bindings that match "
+                        "current bytes) for " + head["id"] + " in "
+                        "portfolio/release-ledger.json global_blockers."
+                    )
+                return EXIT_INCOMPLETE
+
+            # Blocker(s) exist but none are actionable: report the blocking gate edge.
+            print()
+            print("BLOCKED BEFORE RUNTIME RECOVERY: no release blocker is actionable.")
+            for b in release_state["open_blockers"]:
+                name = f" {b['name']}" if b.get("name") else ""
+                print(f"  phase {b['phase']} {b['id']}{name}")
+            print(
+                "  Each is held open by an undischarged dependency; close the "
+                "dependency gates before collecting authentic runtime evidence."
+            )
+            return EXIT_INCOMPLETE
 
         ready = [
             obligation
@@ -211,6 +299,62 @@ def _next() -> int:
         print(f"{suite_id} / {wave['id']}: {wave['objective']}")
         print(f"  acceptance: {wave['acceptance']}")
     return 0
+
+
+def _release_cmd(action: str) -> int:
+    """Inspect the portfolio-wide release/completion ledger."""
+    suites = load_suites()
+    try:
+        program = load_recovery_program()
+        ledger = load_release_ledger()
+        if action == "summary":
+            summary = release_state_summary(ledger, program, suites)
+            print(
+                f"Release ledger {summary['ledger_id']}: "
+                f"{summary['suites']} suites, {summary['criteria_total']} criteria "
+                f"({summary['criteria_closed']} closed, {summary['criteria_open']} open)."
+            )
+            print(
+                f"Release blockers: {summary['open_blockers']} open, "
+                f"{summary['actionable_blockers']} actionable."
+            )
+            print("Release phases:")
+            for phase, count in summary["release_phases"].items():
+                print(f"  {phase}: {count}")
+            at_target = summary["suites"] - summary["suites_under_score_target"]
+            print(f"Suites at tier score target: {at_target}/{summary['suites']}")
+            print("Zero release blockers:", "yes" if summary["has_no_blockers"] else "no")
+            print("Release ready:", "yes" if summary["release_ready"] else "no")
+            return EXIT_OK if summary["release_ready"] else EXIT_INCOMPLETE
+        if action == "blockers":
+            state = resolve_release_state(ledger, program, suites)
+            summary = release_state_summary(ledger, program, suites)
+            if state["open_blockers"]:
+                print(f"{state['open_blocker_count']} open release blocker(s):")
+                for blocker in state["open_blockers"]:
+                    actionable = blocker["id"] in {
+                        x["id"] for x in state["actionable_blockers"]
+                    }
+                    residual = blocker.get("residual_obligations")
+                    print(f"  [phase {blocker['phase']}] {blocker['id']} "
+                          f"({'actionable' if actionable else 'held'})")
+                    if residual:
+                        print(f"      owes obligations: {', '.join(residual)}")
+            else:
+                print("No open release blockers.")
+            deficits = summary["criteria_open"] or summary["suites_under_score_target"]
+            print(f"Open criteria: {summary['criteria_open']}, "
+                  f"suites under score target: {summary['suites_under_score_target']}.")
+            print("Release ready:",
+                  "yes" if summary["release_ready"] else
+                  "no (" + ("criteria or score deficits remain"
+                            if deficits else "no blocker, but not ready") + ")")
+            return EXIT_OK if summary["release_ready"] else EXIT_INCOMPLETE
+        print(f"ERROR unknown release action: {action}")
+        return EXIT_FAILED
+    except (RecoveryProgramError, ReleaseLedgerError) as error:
+        print(f"ERROR release or recovery program is invalid: {error}")
+        return EXIT_FAILED
 
 
 def _validate(as_json: bool, fast: bool = False) -> int:
@@ -687,6 +831,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="run every required verification gate instead of the fast probe",
     )
 
+    release_p = sub.add_parser("release", help="inspect the portfolio-wide release/completion ledger")
+    release_p.add_argument(
+        "action",
+        choices=["blockers", "summary"],
+        help="list open release blockers, or print release summary counts",
+    )
+
     serve_p = sub.add_parser("serve", help="launch local portfolio web dashboard server")
     serve_p.add_argument("--port", type=int, default=8383, help="port number (default: 8383)")
 
@@ -698,6 +849,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _status()
     if args.command == "next":
         return _next()
+    if args.command == "release":
+        return _release_cmd(args.action)
     if args.command == "drift":
         return _drift()
     if args.command == "baseline":

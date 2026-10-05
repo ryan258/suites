@@ -1,0 +1,282 @@
+{
+  "ledger_id": "portfolio-release-completion-v1",
+  "schema_version": "1.0.0",
+  "description": "Portfolio-wide release/completion ledger. Maps every suite v1 criterion to its governing recovery-program obligations and release blockers. Obligation-level truth stays authoritative in portfolio/recovery-program.json; this ledger only aggregates and adds the release-lifecycle axis.",
+  "policy": {
+    "release_phases": [
+      "alpha",
+      "beta",
+      "release-candidate",
+      "supported",
+      "deprecated",
+      "retired"
+    ],
+    "closure_outcomes": [
+      "implemented",
+      "already_covered",
+      "independently_retained",
+      "rejected",
+      "deferred_with_trigger"
+    ],
+    "minimum_authentic_uses_for_adoption": 3,
+    "silent_deletion": "forbidden",
+    "blanket_deferral": "forbidden",
+    "resolved_without_evidence_or_owner": "forbidden",
+    "phases_covered": ["0", "1", "2"]
+  },
+  "score_targets": {
+    "flagship": 9.0,
+    "production": 8.0,
+    "lab": 7.0
+  },
+  "suites": {
+    "accessibility": {
+      "release_phase": "alpha",
+      "release_phase_owner": null,
+      "recovery_depth": "parity_verified",
+      "score": null,
+      "score_status": "insufficient_dimension_evidence",
+      "criteria": [
+        {
+          "id": "accessibility.v1.runtime-parity",
+          "name": "every completed accessibility wave discharges its runtime-parity obligation",
+          "obligation_refs": [
+            { "id": "accessibility/A1" },
+            { "id": "accessibility/A3" },
+            { "id": "accessibility/A4" },
+            { "id": "accessibility/A5" }
+          ],
+          "status": "open"
+        },
+        {
+          "id": "accessibility.v1.adoption",
+          "name": "accessibility capability reaches authentic adoption",
+          "obligation_refs": [
+            { "id": "accessibility/A2-adoption" }
+          ],
+          "status": "open"
+        },
+        {
+          "id": "accessibility.v1.convergence",
+          "name": "accessibility runtime converges to a canonical implementation",
+          "obligation_refs": [
+            { "id": "accessibility/A6" }
+          ],
+          "status": "open"
+        }
+      ]
+    },
+    "operator-os": {
+      "release_phase": "alpha",
+      "release_phase_owner": null,
+      "recovery_depth": "source_executed",
+      "score": null,
+      "score_status": "insufficient_dimension_evidence",
+      "criteria": [
+        {
+          "id": "operator-os.v1.source-executed",
+          "name": "authentic source execution is retained for the running obligations",
+          "obligation_refs": [
+            { "id": "operator-os/O1" },
+            { "id": "operator-os/O4" }
+          ],
+          "status": "open"
+        },
+        {
+          "id": "operator-os.v1.resolution",
+          "name": "disposition obligations close with retained resolution evidence",
+          "obligation_refs": [
+            { "id": "operator-os/O2" },
+            { "id": "operator-os/O5" }
+          ],
+          "status": "open"
+        },
+        {
+          "id": "operator-os.v1.adoption",
+          "name": "operator-os reaches authentic adoption",
+          "obligation_refs": [
+            { "id": "operator-os/O1-adoption" }
+          ],
+          "status": "open"
+        },
+        {
+          "id": "operator-os.v1.runtime-parity",
+          "name": "remaining operator-os waves discharge runtime-parity obligations",
+          "obligation_refs": [
+            { "id": "operator-os/O3" },
+            { "id": "operator-os/O6" }
+          ],
+          "status": "open"
+        }
+      ]
+    },
+    "brand-publishing": {
+      "release_phase": "alpha",
+      "release_phase_owner": null,
+      "recovery_depth": "source_inspected",
+      "score": null,
+      "score_status": "insufficient_dimension_evidence",
+      "criteria": [
+        {
+          "id": "brand-publishing.v1.runtime-parity",
+          "name": "every brand-publishing wave discharges its runtime-parity obligation",
+          "obligation_refs": [
+            { "id": "brand-publishing/B1" },
+            { "id": "brand-publishing/B2" },
+            { "id": "brand-publishing/B3" },
+            { "id": "brand-publishing/B4" },
+            { "id": "brand-publishing/B5" },
+            { "id": "brand-publishing/B6" }
+          ],
+          "status": "open"
+        }
+      ]
+    },
+    "production-house": {
+      "release_phase": "alpha",
+      "release_phase_owner": null,
+      "recovery_depth": "source_inspected",
+      "score": null,
+      "score_status": "insufficient_dimension_evidence",
+      "criteria": [
+        {
+          "id": "production-house.v1.runtime-parity",
+          "name": "every production-house wave discharges its runtime-parity obligation",
+          "obligation_refs": [
+            { "id": "production-house/P1" },
+            { "id": "production-house/P2" },
+            { "id": "production-house/P3" },
+            { "id": "production-house/P4" },
+            { "id": "production-house/P5" }
+          ],
+          "status": "open"
+        }
+      ]
+    },
+    "discovery-decision": {
+      "release_phase": "alpha",
+      "release_phase_owner": null,
+      "recovery_depth": "source_inspected",
+      "score": null,
+      "score_status": "insufficient_dimension_evidence",
+      "criteria": [
+        {
+          "id": "discovery-decision.v1.runtime",
+          "name": "discovery runtime obligations discharge",
+          "obligation_refs": [
+            { "id": "discovery-decision/D1" },
+            { "id": "discovery-decision/D2" },
+            { "id": "discovery-decision/D3" },
+            { "id": "discovery-decision/D4" }
+          ],
+          "status": "open"
+        },
+        {
+          "id": "discovery-decision.v1.convergence",
+          "name": "discovery runtime converges",
+          "obligation_refs": [
+            { "id": "discovery-decision/D5" }
+          ],
+          "status": "open"
+        }
+      ]
+    },
+    "model-behavior-lab": {
+      "release_phase": "alpha",
+      "release_phase_owner": null,
+      "recovery_depth": "source_inspected",
+      "score": null,
+      "score_status": "insufficient_dimension_evidence",
+      "criteria": [
+        {
+          "id": "model-behavior-lab.v1.runtime",
+          "name": "model behavior runtime obligations discharge",
+          "obligation_refs": [
+            { "id": "model-behavior-lab/M1" },
+            { "id": "model-behavior-lab/M2" },
+            { "id": "model-behavior-lab/M3" },
+            { "id": "model-behavior-lab/M4" },
+            { "id": "model-behavior-lab/M5" }
+          ],
+          "status": "open"
+        }
+      ]
+    },
+    "agent-reliability": {
+      "release_phase": "alpha",
+      "release_phase_owner": null,
+      "recovery_depth": "source_inspected",
+      "score": null,
+      "score_status": "insufficient_dimension_evidence",
+      "criteria": [
+        {
+          "id": "agent-reliability.v1.runtime",
+          "name": "agent reliability runtime and disposition obligations discharge",
+          "obligation_refs": [
+            { "id": "agent-reliability/R1" },
+            { "id": "agent-reliability/R2" },
+            { "id": "agent-reliability/R3" },
+            { "id": "agent-reliability/R4" },
+            { "id": "agent-reliability/R5" }
+          ],
+          "status": "open"
+        }
+      ]
+    },
+    "game-design": {
+      "release_phase": "alpha",
+      "release_phase_owner": null,
+      "recovery_depth": "source_inspected",
+      "score": null,
+      "score_status": "insufficient_dimension_evidence",
+      "criteria": [
+        {
+          "id": "game-design.v1.runtime",
+          "name": "game design runtime obligations discharge",
+          "obligation_refs": [
+            { "id": "game-design/G1" },
+            { "id": "game-design/G2" },
+            { "id": "game-design/G3" },
+            { "id": "game-design/G4" },
+            { "id": "game-design/G5" }
+          ],
+          "status": "open"
+        }
+      ]
+    }
+  },
+  "global_blockers": [
+    {
+      "id": "phase0.release-ledger",
+      "phase": "0",
+      "name": "release/completion ledger is implemented, valid, and registry-enforced",
+      "depends_on": [],
+      "closure": null
+    },
+    {
+      "id": "phase1.contract-state-freeze",
+      "phase": "1",
+      "name": "six v1 contracts and persistent state formats are frozen before authentic runtime integration",
+      "depends_on": [],
+      "closure": null
+    },
+    {
+      "id": "phase1.stable-surface",
+      "phase": "1",
+      "name": "stable CLI/API control-plane surface is frozen",
+      "depends_on": [],
+      "closure": null
+    }
+  ],
+  "release_blockers": [
+    {
+      "id": "brand-publishing.v1.b1-runtime",
+      "phase": "1",
+      "name": "B1 authentic producer-to-external-consumer runtime parity path",
+      "depends_on": ["phase1.contract-state-freeze"],
+      "obligation_refs": ["brand-publishing/B1"],
+      "note": "no existing command can discharge this obligation; requires the authentic Brand Maker runtime boundary"
+    }
+  ],
+  "snapshot_at": "2026-08-28T00:00:00Z"
+}

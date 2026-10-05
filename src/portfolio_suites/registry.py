@@ -28,7 +28,14 @@ from .paths import (
     open_confined_directory,
 )
 from .provenance import is_meaningful_git_fingerprint, is_sensitive_path  # noqa: F401 -- predicate identity is asserted by tests
+from .release_state import (
+    ReleaseLedgerError,
+    load_release_ledger,
+    resolve_release_state,
+    validate_release_ledger,
+)
 from .recovery_program import (
+    RecoveryProgramError,
     load_recovery_program,
     resolve_recovery_obligations,
     validate_recovery_program,
@@ -693,6 +700,48 @@ def get_portfolio_summary() -> dict[str, Any]:
         "states": obligation_states,
     }
 
+    # Release ledger: the v1 exit gate. Same-derived-by-construction rule as the recovery
+    # program, but scoped to the whole release ledger. If the ledger fails validation the
+    # portfolio loses its machine-checkable v1 truth, so a failure surfaces as an explicit
+    # flag rather than a silent zero-blocker claim.
+    try:
+        release_ledger = load_release_ledger()
+        release_state = resolve_release_state(release_ledger, load_recovery_program(), suites)
+        release_ledger_report = {
+            "ledger_id": release_state["ledger_id"],
+            "open_blockers": release_state["open_blocker_count"],
+            "actionable_blockers": release_state["actionable_blocker_count"],
+            "criteria_open": sum(
+                row["criteria_open"] for row in release_state["suites"].values()
+            ),
+            "criteria_total": sum(
+                row["criteria_total"] for row in release_state["suites"].values()
+            ),
+            "release_phases": {
+                phase: sum(
+                    1
+                    for row in release_state["suites"].values()
+                    if row["release_phase"] == phase
+                )
+                for phase in set(
+                    row["release_phase"] for row in release_state["suites"].values()
+                )
+            },
+            "has_no_blockers": release_state["open_blocker_count"] == 0,
+            "error": None,
+        }
+    except (ReleaseLedgerError, RecoveryProgramError) as error:
+        release_ledger_report = {
+            "ledger_id": None,
+            "open_blockers": None,
+            "actionable_blockers": None,
+            "criteria_open": None,
+            "criteria_total": None,
+            "release_phases": {},
+            "has_no_blockers": False,
+            "error": str(error),
+        }
+
     return {
         "snapshot_at": ledger.get("snapshot_at"),
         "total_projects": total_projects,
@@ -716,6 +765,7 @@ def get_portfolio_summary() -> dict[str, Any]:
         "converged_runtime_behaviors": converged_runtime_behaviors,
         "resolved_capabilities": resolved_capabilities,
         "recovery_program": recovery_program_counts,
+        "release_ledger": release_ledger_report,
         "adopted_capabilities": adopted_capabilities,
         # The adopted 9/10 rubric is dimension-weighted. Existing receipts do not yet carry
         # per-dimension scores, so manufacturing a numeric recovery score from milestone count
@@ -778,6 +828,7 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
         nested = load_nested_ledger()
         standard = load_recovery_standard()
         recovery_program = load_recovery_program()
+        release_ledger = load_release_ledger()
         execution_trace_contract = load_execution_trace_contract()
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as error:
         report.errors.append(f"registry load failed: {error}")
@@ -787,6 +838,8 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
         report.errors.append("suite IDs are missing or duplicated")
     for error in validate_recovery_program(recovery_program, suites):
         report.errors.append(f"recovery program: {error}")
+    for error in validate_release_ledger(release_ledger, recovery_program, suites):
+        report.errors.append(f"release ledger: {error}")
     for error in validate_execution_trace_contract(execution_trace_contract):
         report.errors.append(f"execution trace contract: {error}")
 

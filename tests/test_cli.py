@@ -48,7 +48,10 @@ class CLITests(unittest.TestCase):
         f = io.StringIO()
         with redirect_stdout(f):
             code = main(["next"])
-        self.assertEqual(code, 0)
+        # Open release blockers hold the recovery queue, so "next" reports incomplete
+        # and names the gate. See tests/test_recovery_cli.py for the phase-gate rules.
+        self.assertEqual(code, 2)
+        self.assertIn("NEXT RELEASE BLOCKER:", f.getvalue())
 
     def test_drift_command(self):
         f = io.StringIO()
