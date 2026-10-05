@@ -37,7 +37,15 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
   `allys-tools` now emits a needs-review finding for every invalid control. Retained receipts
   were not re-recorded.
 
-Verification: targeted modules (catalog, candidate, operator state, release, CLI, recovery CLI,
+- **Review repairs and validation hardening.** Blocker dependencies must be explicit
+  lists (rejects missing/null lists). Support promises require validated retained execution
+  evidence matching or exceeding declared recovery depth. Retirement receipts require
+  content-bound `supporting_evidence_sha256` digest mappings in canonical approval payloads.
+  Malformed closure and retirement fields fail closed. Defensive catalog alias validation
+  protects exact resolution. Web forms pause during pending saves and preserve concurrent tab
+  drafts. Focused regressions added in `tests/test_review_regressions.py` and `tests/test_review_regressions.js`.
+
+Verification: targeted modules (catalog, candidate, operator state, release, review regressions, CLI, recovery CLI,
 docs) pass; `validate --fast` returned 0 errors and 0 warnings; `wave --all --no-record` reports
 no failed gates. Wheel smoke remains opt-in (`SUITES_WHEEL_SMOKE=1`) and was not run.
 

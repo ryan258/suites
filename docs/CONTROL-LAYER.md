@@ -83,6 +83,10 @@ an undo backup, then restores only operator fields with fresh revisions. Release
 evidence, approvals, and source fingerprints are outside this operation. See
 [the recovery and compatibility boundary](PLATFORM-OPERATIONS.md).
 
+The form pauses editing while a save is pending and enables it again after
+success or failure. A successful response clears only the submitted draft; a newer
+draft written by another browser tab is preserved.
+
 Unsaved form edits are retained in this browser's local storage. A refresh restores
 the draft and its original record revision. If another session changed the record,
 the stale draft is shown with an explicit conflict and cannot overwrite it. Copy any

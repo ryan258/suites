@@ -165,6 +165,19 @@ returned HTTP 200. The full suite and opt-in wheel gate remain owner-run; the cu
 interpreter lacks the declared setuptools >=68 build prerequisite. No authentic
 donor run, approval, publication, or personal-use acceptance was recorded.
 
+**Review repairs and validation hardening (October 5, 2026):** runtime blocker
+dependencies require explicit lists and cannot silently omit predecessors.
+Support promises require validated retained execution evidence matching or
+exceeding the declared recovery depth. Retirement receipts require
+`supporting_evidence_sha256` content digests bound to the canonical approval
+payload alongside suite, donor, decision, and disposition. Malformed closure
+and retirement fields fail closed with strict validation errors. Defensive
+app-entry alias validation protects exact catalog resolution. Web form editing
+pauses during pending saves, preserving newer drafts from concurrent tabs, and
+the overview next-step card directly reads `/api/catalog/release`.
+Focused regression coverage passed across `tests/test_review_regressions.py` and
+Node browser-logic checks, wired into `.github/workflows/ci.yml`.
+
 ---
 
 ## What “Complete” Means for v1.0
@@ -348,7 +361,9 @@ Release-blocking severity policy:
   provenance, incomplete untracked fingerprints, and status copied from the wave objective.
 
 **Exit:** the control plane can list every remaining release blocker and can prove zero blockers
-without converting plans or fixtures into implementation evidence.
+without converting plans or fixtures into implementation evidence. Runtime blocker edges,
+retained support-promise evidence at recovery depth, and content-bound retirement
+receipts with verified SHA-256 digests are strictly enforced by the validator.
 
 ### 2. Contract and state-format freeze
 

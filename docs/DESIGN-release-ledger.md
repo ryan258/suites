@@ -287,6 +287,36 @@ edit: the ledger rejects any bare flag, and B1's `depends_on` keeps it held (nev
 frozen record lands. The validator enforces this, so the CLI stop handing out B1 as "the next thing"
 before the boundary is genuinely frozen.
 
+## Review repairs: evidence and interface boundaries
+
+Runtime blocker dependencies must be explicit string lists, including when empty;
+an absent or null list is invalid. Required freeze and predecessor edges remain
+mandatory and cannot disappear through an omitted field.
+
+Support-promise phases require validated retained execution evidence at the declared
+recovery depth or above. Completed waves use the registry's receipt validation and
+ownership checks; discharged lifecycle obligations use the recovery-program resolver.
+An authored `recovery_depth` string cannot substitute for those receipts.
+
+Retirement receipts require `supporting_evidence_sha256`, an exact mapping from every
+`supporting_evidence_refs` path to its host-computed SHA-256. This mapping is part of
+the canonical approval payload, alongside suite, donor, decision, disposition, and
+sorted supporting references. Each supporting artifact must also pass its owning
+wave or discharged lifecycle receipt validator and remain unchanged across validation.
+Existing path-only approvals are insufficient under this boundary: preserve them as
+history and obtain a new out-of-band approval for the content-bound payload. The
+control plane never issues or silently upgrades an approval.
+
+The overview next-step card reads `/api/catalog/release`, using the same ordered
+actionable blockers as the CLI. A failed release read displays unavailable state;
+it never falls back to a wave ranking or treats an empty partial queue as readiness.
+
+Malformed closure and retirement fields return validation errors, including arrays
+or objects where an outcome, operation, decision, or evidence-reference string belongs.
+Focused regression coverage is in `tests/test_review_regressions.py` and its small
+Node browser-logic companion. No browser, assistive-technology, or personal-use
+acceptance is implied by those checks.
+
 ## 9. Out of scope (deliberately)
 
 - The B1 authentic producer→external-consumer runtime path itself (its own follow-up increment).
