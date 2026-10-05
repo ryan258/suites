@@ -10,6 +10,7 @@ import os
 import re
 import stat
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from pathlib import PurePosixPath
@@ -901,6 +902,9 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
 
     claim_kinds = set(RECOVERY_CLAIM_KINDS)
     project_rows = ledger.get("projects", [])
+    # The catalog extends this ledger without changing migration enrollment or evidence.
+    from .catalog import validate_catalog
+    report.errors.extend(validate_catalog(ledger))
     if ledger.get("schema_version") != SCHEMA_VERSION or not isinstance(project_rows, list):
         report.errors.append("project ledger schema is invalid")
         return report
@@ -1169,7 +1173,11 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
             )
 
     if check_live:
-        expected = set(projects)
+        # The original array is dated migration enrollment. Catalog additions are
+        # reviewed locations too, but cannot add migration obligations or baselines.
+        from .catalog import catalog_rows
+        catalog_projects = {row["name"]: row for row in catalog_rows(ledger)}
+        expected = {name for name in catalog_projects if "/" not in name and name != "suites"}
         actual = {
             p.name
             for p in PROJECTS_ROOT.iterdir()
@@ -1183,7 +1191,10 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
         for name in sorted(actual - expected):
             report.errors.append(f"unreviewed top-level directory: {name}")
         for name in sorted(expected - actual):
-            report.errors.append(f"ledger source no longer exists: {name}")
+            if catalog_projects[name].get("operator", {}).get("identity_status") == "missing":
+                report.warnings.append(f"recorded unresolved catalog location is still missing: {name}")
+            else:
+                report.errors.append(f"ledger source no longer exists: {name}")
 
         for name, row in projects.items():
             drift = check_project_git_drift(name, row)
@@ -1218,7 +1229,10 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
         if nested.get("schema_version") != SCHEMA_VERSION or not isinstance(nested_rows, list):
             report.errors.append("nested repository ledger schema is invalid")
         else:
-            expected_markers = {row["path"] for row in nested_rows}
+            expected_markers = {row["path"] for row in nested_rows} | {
+                name for name, row in catalog_projects.items()
+                if row.get("operator", {}).get("inventory_kind") == "nested_repository"
+            }
             actual_markers: set[str] = set()
             for dirpath, dirnames, filenames in os.walk(PROJECTS_ROOT):
                 marker_parent = Path(dirpath)
@@ -1244,7 +1258,10 @@ def validate_registry(check_live: bool = True) -> ValidationReport:
             for path in sorted(actual_markers - expected_markers):
                 report.errors.append(f"unreviewed nested Git marker: {path}")
             for path in sorted(expected_markers - actual_markers):
-                report.errors.append(f"nested Git marker no longer exists: {path}")
+                if catalog_projects.get(path, {}).get("operator", {}).get("identity_status") == "missing":
+                    report.warnings.append(f"recorded unresolved nested location is still missing: {path}")
+                else:
+                    report.errors.append(f"nested Git marker no longer exists: {path}")
 
     return report
 
@@ -1343,12 +1360,21 @@ def _ledger_lock():
     """
     directory_fd = open_confined_directory(SUITES_ROOT, "portfolio")
     try:
-        handle = os.open(
-            f"{_LEDGER_PATH.name}.lock",
-            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
-            0o600,
-            dir_fd=directory_fd,
-        )
+        # Under concurrent directory mutation (rename exchange/unlink) on APFS/macOS,
+        # openat with O_CREAT can momentarily return ENOENT before directory metadata settles.
+        for attempt in range(10):
+            try:
+                handle = os.open(
+                    f"{_LEDGER_PATH.name}.lock",
+                    os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
+                    0o600,
+                    dir_fd=directory_fd,
+                )
+                break
+            except FileNotFoundError:
+                if attempt == 9:
+                    raise
+                time.sleep(0.002)
     finally:
         os.close(directory_fd)
     try:

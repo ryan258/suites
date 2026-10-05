@@ -144,7 +144,10 @@ class SuitesApp {
     });
 
     // Refresh button
-    document.getElementById('btn-refresh').addEventListener('click', () => this.refreshData());
+    document.getElementById('btn-refresh').addEventListener('click', () => {
+      if (document.getElementById('tab-catalog').classList.contains('active')) window.projectCatalog?.refresh();
+      else this.refreshData();
+    });
 
     // Run all waves buttons
     document.getElementById('btn-run-all-waves').addEventListener('click', () => this.runAllWaves());
@@ -215,6 +218,8 @@ class SuitesApp {
   }
 
   switchTab(tabId) {
+    document.body.classList.toggle('operator-catalog-view', tabId === 'catalog');
+    if (tabId !== 'catalog') history.replaceState(null, '', '#view=' + encodeURIComponent(tabId));
     const target = document.getElementById(`tab-${tabId}`);
     if (!target) return;
     document.querySelectorAll('.nav-item').forEach(btn => {
@@ -233,16 +238,16 @@ class SuitesApp {
   }
 
   async refreshData() {
-    this.announce('Refreshing local suite manifests, evidence, projects, and drift…');
+    this.announce('Refreshing saved suite manifests, evidence, and migration records…');
     try {
       const [sumRes, suitesRes, projRes, nestedRes, driftRes, contractsRes, valRes, wavesRes, aiRes] = await Promise.all([
         this.fetchJSON('/api/summary'),
         this.fetchJSON('/api/suites'),
         this.fetchJSON('/api/projects'),
         this.fetchJSON('/api/nested'),
-        this.fetchJSON('/api/drift'),
+        Promise.resolve(this.state.drift), // Live drift is an explicit operator action.
         this.fetchJSON('/api/contracts'),
-        this.fetchJSON('/api/validate'),
+        this.fetchJSON('/api/validate?fast=true'),
         this.fetchJSON('/api/waves'),
         this.fetchJSON('/api/ai/status').catch(error => ({
           provider: 'openrouter', configured: false, free_only: true, roles: {}, warnings: [error.message]
@@ -417,7 +422,7 @@ class SuitesApp {
         <div class="suite-card">
           <div class="suite-card-top">
             <div class="suite-card-header">
-              <span class="suite-name">${escapeHtml(s.name)}</span>
+              <span class="suite-name">${escapeHtml(window.operatorHomes?.[s.id] || s.name)}</span>
               <span class="pill-badge badge-blue">${escapeHtml(s.state)}</span>
             </div>
             <div class="suite-promise">${escapeHtml(s.promise)}</div>
@@ -444,7 +449,7 @@ class SuitesApp {
         <div class="card" style="margin-bottom: 24px;" id="suite-card-${escapeHtml(s.id)}">
           <div class="card-header-row">
             <div>
-              <h2 style="font-size: 18px; font-weight: 700;">${escapeHtml(s.name)} <span style="font-size: 12px; color: var(--text-dim); font-family: var(--font-mono);">(${escapeHtml(s.id)})</span></h2>
+              <h2 style="font-size: 18px; font-weight: 700;">${escapeHtml(window.operatorHomes?.[s.id] || s.name)} <span style="font-size: 12px; color: var(--text-dim); font-family: var(--font-mono);">(${escapeHtml(s.id)})</span></h2>
               <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">${escapeHtml(s.promise)}</p>
             </div>
             <span class="pill-badge badge-purple">${escapeHtml(s.state)}</span>
@@ -1051,7 +1056,7 @@ class Toolbench {
     this.redactedArgumentValue = policy.redacted_value;
     const suiteSel = this.el('tb-suite');
     suiteSel.innerHTML = Object.keys(this.catalog)
-      .map(id => `<option value="${escapeHtml(id)}">${escapeHtml(id)}</option>`).join('');
+      .map(id => `<option value="${escapeHtml(id)}">${escapeHtml(window.operatorHomes?.[id] || id)}</option>`).join('');
     suiteSel.addEventListener('change', () => this.renderActions());
     this.el('tb-action').addEventListener('change', () => this.renderSignature());
     this.el('tb-run').addEventListener('click', () => this.run());

@@ -46,6 +46,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check src/portfolio_suites/web/app.js
+          node --check src/portfolio_suites/web/catalog.js
           node --check src/portfolio_suites/adapters/donor_wcag_331_browser_probe.mjs
 
       - name: Run fast portfolio validation
@@ -55,6 +56,8 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m unittest \
             tests.test_approvals \
+            tests.test_catalog \
+            tests.test_candidate \
             tests.test_chain_preflight \
             tests.test_contract_keyword_validation \
             tests.test_contracts \
@@ -64,6 +67,7 @@ jobs:
             tests.test_integrity_boundaries \
             tests.test_lab_engine_hardening \
             tests.test_mutation_confinement \
+            tests.test_operator_state \
             tests.test_provenance \
             tests.test_provenance_strictness \
             tests.test_execution_trace \

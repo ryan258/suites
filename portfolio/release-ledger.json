@@ -22,7 +22,14 @@
     "silent_deletion": "forbidden",
     "blanket_deferral": "forbidden",
     "resolved_without_evidence_or_owner": "forbidden",
-    "phases_covered": ["0", "1", "2"]
+    "phases_covered": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+    ]
   },
   "score_targets": {
     "flagship": 9.0,
@@ -41,10 +48,18 @@
           "id": "accessibility.v1.runtime-parity",
           "name": "every completed accessibility wave discharges its runtime-parity obligation",
           "obligation_refs": [
-            { "id": "accessibility/A1" },
-            { "id": "accessibility/A3" },
-            { "id": "accessibility/A4" },
-            { "id": "accessibility/A5" }
+            {
+              "id": "accessibility/A1"
+            },
+            {
+              "id": "accessibility/A3"
+            },
+            {
+              "id": "accessibility/A4"
+            },
+            {
+              "id": "accessibility/A5"
+            }
           ],
           "status": "open"
         },
@@ -52,7 +67,9 @@
           "id": "accessibility.v1.adoption",
           "name": "accessibility capability reaches authentic adoption",
           "obligation_refs": [
-            { "id": "accessibility/A2-adoption" }
+            {
+              "id": "accessibility/A2-adoption"
+            }
           ],
           "status": "open"
         },
@@ -60,7 +77,9 @@
           "id": "accessibility.v1.convergence",
           "name": "accessibility runtime converges to a canonical implementation",
           "obligation_refs": [
-            { "id": "accessibility/A6" }
+            {
+              "id": "accessibility/A6"
+            }
           ],
           "status": "open"
         }
@@ -77,8 +96,12 @@
           "id": "operator-os.v1.source-executed",
           "name": "authentic source execution is retained for the running obligations",
           "obligation_refs": [
-            { "id": "operator-os/O1" },
-            { "id": "operator-os/O4" }
+            {
+              "id": "operator-os/O1"
+            },
+            {
+              "id": "operator-os/O4"
+            }
           ],
           "status": "open"
         },
@@ -86,8 +109,12 @@
           "id": "operator-os.v1.resolution",
           "name": "disposition obligations close with retained resolution evidence",
           "obligation_refs": [
-            { "id": "operator-os/O2" },
-            { "id": "operator-os/O5" }
+            {
+              "id": "operator-os/O2"
+            },
+            {
+              "id": "operator-os/O5"
+            }
           ],
           "status": "open"
         },
@@ -95,7 +122,9 @@
           "id": "operator-os.v1.adoption",
           "name": "operator-os reaches authentic adoption",
           "obligation_refs": [
-            { "id": "operator-os/O1-adoption" }
+            {
+              "id": "operator-os/O1-adoption"
+            }
           ],
           "status": "open"
         },
@@ -103,8 +132,12 @@
           "id": "operator-os.v1.runtime-parity",
           "name": "remaining operator-os waves discharge runtime-parity obligations",
           "obligation_refs": [
-            { "id": "operator-os/O3" },
-            { "id": "operator-os/O6" }
+            {
+              "id": "operator-os/O3"
+            },
+            {
+              "id": "operator-os/O6"
+            }
           ],
           "status": "open"
         }
@@ -121,12 +154,24 @@
           "id": "brand-publishing.v1.runtime-parity",
           "name": "every brand-publishing wave discharges its runtime-parity obligation",
           "obligation_refs": [
-            { "id": "brand-publishing/B1" },
-            { "id": "brand-publishing/B2" },
-            { "id": "brand-publishing/B3" },
-            { "id": "brand-publishing/B4" },
-            { "id": "brand-publishing/B5" },
-            { "id": "brand-publishing/B6" }
+            {
+              "id": "brand-publishing/B1"
+            },
+            {
+              "id": "brand-publishing/B2"
+            },
+            {
+              "id": "brand-publishing/B3"
+            },
+            {
+              "id": "brand-publishing/B4"
+            },
+            {
+              "id": "brand-publishing/B5"
+            },
+            {
+              "id": "brand-publishing/B6"
+            }
           ],
           "status": "open"
         }
@@ -143,11 +188,21 @@
           "id": "production-house.v1.runtime-parity",
           "name": "every production-house wave discharges its runtime-parity obligation",
           "obligation_refs": [
-            { "id": "production-house/P1" },
-            { "id": "production-house/P2" },
-            { "id": "production-house/P3" },
-            { "id": "production-house/P4" },
-            { "id": "production-house/P5" }
+            {
+              "id": "production-house/P1"
+            },
+            {
+              "id": "production-house/P2"
+            },
+            {
+              "id": "production-house/P3"
+            },
+            {
+              "id": "production-house/P4"
+            },
+            {
+              "id": "production-house/P5"
+            }
           ],
           "status": "open"
         }
@@ -164,10 +219,18 @@
           "id": "discovery-decision.v1.runtime",
           "name": "discovery runtime obligations discharge",
           "obligation_refs": [
-            { "id": "discovery-decision/D1" },
-            { "id": "discovery-decision/D2" },
-            { "id": "discovery-decision/D3" },
-            { "id": "discovery-decision/D4" }
+            {
+              "id": "discovery-decision/D1"
+            },
+            {
+              "id": "discovery-decision/D2"
+            },
+            {
+              "id": "discovery-decision/D3"
+            },
+            {
+              "id": "discovery-decision/D4"
+            }
           ],
           "status": "open"
         },
@@ -175,7 +238,9 @@
           "id": "discovery-decision.v1.convergence",
           "name": "discovery runtime converges",
           "obligation_refs": [
-            { "id": "discovery-decision/D5" }
+            {
+              "id": "discovery-decision/D5"
+            }
           ],
           "status": "open"
         }
@@ -192,11 +257,21 @@
           "id": "model-behavior-lab.v1.runtime",
           "name": "model behavior runtime obligations discharge",
           "obligation_refs": [
-            { "id": "model-behavior-lab/M1" },
-            { "id": "model-behavior-lab/M2" },
-            { "id": "model-behavior-lab/M3" },
-            { "id": "model-behavior-lab/M4" },
-            { "id": "model-behavior-lab/M5" }
+            {
+              "id": "model-behavior-lab/M1"
+            },
+            {
+              "id": "model-behavior-lab/M2"
+            },
+            {
+              "id": "model-behavior-lab/M3"
+            },
+            {
+              "id": "model-behavior-lab/M4"
+            },
+            {
+              "id": "model-behavior-lab/M5"
+            }
           ],
           "status": "open"
         }
@@ -213,11 +288,21 @@
           "id": "agent-reliability.v1.runtime",
           "name": "agent reliability runtime and disposition obligations discharge",
           "obligation_refs": [
-            { "id": "agent-reliability/R1" },
-            { "id": "agent-reliability/R2" },
-            { "id": "agent-reliability/R3" },
-            { "id": "agent-reliability/R4" },
-            { "id": "agent-reliability/R5" }
+            {
+              "id": "agent-reliability/R1"
+            },
+            {
+              "id": "agent-reliability/R2"
+            },
+            {
+              "id": "agent-reliability/R3"
+            },
+            {
+              "id": "agent-reliability/R4"
+            },
+            {
+              "id": "agent-reliability/R5"
+            }
           ],
           "status": "open"
         }
@@ -234,11 +319,21 @@
           "id": "game-design.v1.runtime",
           "name": "game design runtime obligations discharge",
           "obligation_refs": [
-            { "id": "game-design/G1" },
-            { "id": "game-design/G2" },
-            { "id": "game-design/G3" },
-            { "id": "game-design/G4" },
-            { "id": "game-design/G5" }
+            {
+              "id": "game-design/G1"
+            },
+            {
+              "id": "game-design/G2"
+            },
+            {
+              "id": "game-design/G3"
+            },
+            {
+              "id": "game-design/G4"
+            },
+            {
+              "id": "game-design/G5"
+            }
           ],
           "status": "open"
         }
@@ -271,11 +366,560 @@
   "release_blockers": [
     {
       "id": "brand-publishing.v1.b1-runtime",
-      "phase": "1",
+      "phase": "2",
       "name": "B1 authentic producer-to-external-consumer runtime parity path",
-      "depends_on": ["phase1.contract-state-freeze"],
-      "obligation_refs": ["brand-publishing/B1"],
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "brand-publishing/B1"
+      ],
       "note": "no existing command can discharge this obligation; requires the authentic Brand Maker runtime boundary"
+    },
+    {
+      "id": "accessibility.v1.a2-adoption-runtime",
+      "phase": "5",
+      "name": "accessibility/A2-adoption: adopted evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "accessibility/A2-adoption"
+      ],
+      "note": "Required environment: provisioned-accessibility-runtime; receipt: portfolio-adoption-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "operator-os.v1.o1-runtime",
+      "phase": "2",
+      "name": "operator-os/O1: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "operator-os/O1"
+      ],
+      "note": "Required environment: provisioned-local-portfolio; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "accessibility.v1.a1-runtime",
+      "phase": "2",
+      "name": "accessibility/A1: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "accessibility/A1"
+      ],
+      "note": "Required environment: provisioned-accessibility-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "brand-publishing.v1.b2-runtime",
+      "phase": "2",
+      "name": "brand-publishing/B2: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "brand-publishing.v1.b1-runtime"
+      ],
+      "obligation_refs": [
+        "brand-publishing/B2"
+      ],
+      "note": "Required environment: brand-maker-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "operator-os.v1.o4-runtime",
+      "phase": "2",
+      "name": "operator-os/O4: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "operator-os.v1.o1-runtime"
+      ],
+      "obligation_refs": [
+        "operator-os/O4"
+      ],
+      "note": "Required environment: permanent-operator-environment; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "brand-publishing.v1.b5-runtime",
+      "phase": "2",
+      "name": "brand-publishing/B5: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "brand-publishing.v1.b2-runtime"
+      ],
+      "obligation_refs": [
+        "brand-publishing/B5"
+      ],
+      "note": "Required environment: brand-maker-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "brand-publishing.v1.b3-runtime",
+      "phase": "2",
+      "name": "brand-publishing/B3: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "brand-publishing.v1.b1-runtime",
+        "brand-publishing.v1.b5-runtime"
+      ],
+      "obligation_refs": [
+        "brand-publishing/B3"
+      ],
+      "note": "Required environment: brand-maker-and-vcc; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "brand-publishing.v1.b4-runtime",
+      "phase": "2",
+      "name": "brand-publishing/B4: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "brand-publishing.v1.b1-runtime"
+      ],
+      "obligation_refs": [
+        "brand-publishing/B4"
+      ],
+      "note": "Required environment: external-brand-consumer; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "brand-publishing.v1.b6-runtime",
+      "phase": "2",
+      "name": "brand-publishing/B6: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "brand-publishing.v1.b3-runtime"
+      ],
+      "obligation_refs": [
+        "brand-publishing/B6"
+      ],
+      "note": "Required environment: vcc; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "accessibility.v1.a4-runtime",
+      "phase": "2",
+      "name": "accessibility/A4: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "accessibility.v1.a1-runtime"
+      ],
+      "obligation_refs": [
+        "accessibility/A4"
+      ],
+      "note": "Required environment: provisioned-accessibility-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "accessibility.v1.a5-runtime",
+      "phase": "2",
+      "name": "accessibility/A5: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "accessibility.v1.a4-runtime"
+      ],
+      "obligation_refs": [
+        "accessibility/A5"
+      ],
+      "note": "Required environment: allys-tools-and-a11y-kitchen; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "accessibility.v1.a3-runtime",
+      "phase": "2",
+      "name": "accessibility/A3: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "accessibility/A3"
+      ],
+      "note": "Required environment: browser-overlay-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "accessibility.v1.a6-runtime",
+      "phase": "2",
+      "name": "accessibility/A6: converged evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "accessibility.v1.a3-runtime"
+      ],
+      "obligation_refs": [
+        "accessibility/A6"
+      ],
+      "note": "Required environment: browser-overlay-runtime; receipt: portfolio-convergence-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "operator-os.v1.o3-runtime",
+      "phase": "2",
+      "name": "operator-os/O3: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "operator-os/O3"
+      ],
+      "note": "Required environment: jarvis-and-operator-os; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "operator-os.v1.o6-runtime",
+      "phase": "2",
+      "name": "operator-os/O6: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "operator-os.v1.o3-runtime"
+      ],
+      "obligation_refs": [
+        "operator-os/O6"
+      ],
+      "note": "Required environment: jarvis-and-operator-os; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "operator-os.v1.o2-runtime",
+      "phase": "2",
+      "name": "operator-os/O2: None evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "operator-os/O2"
+      ],
+      "note": "Required environment: dotfiles; receipt: portfolio-resolution-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "operator-os.v1.o5-runtime",
+      "phase": "2",
+      "name": "operator-os/O5: None evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "operator-os.v1.o2-runtime"
+      ],
+      "obligation_refs": [
+        "operator-os/O5"
+      ],
+      "note": "Required environment: dotfiles-and-donor-runtimes; receipt: portfolio-resolution-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "production-house.v1.p1-runtime",
+      "phase": "3",
+      "name": "production-house/P1: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "production-house/P1"
+      ],
+      "note": "Required environment: production-house-and-groundwire; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "production-house.v1.p2-runtime",
+      "phase": "3",
+      "name": "production-house/P2: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "production-house/P2"
+      ],
+      "note": "Required environment: production-house-and-formatter; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "production-house.v1.p3-runtime",
+      "phase": "3",
+      "name": "production-house/P3: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "production-house/P3"
+      ],
+      "note": "Required environment: production-house-and-writers-room; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "production-house.v1.p5-runtime",
+      "phase": "3",
+      "name": "production-house/P5: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "production-house.v1.p3-runtime"
+      ],
+      "obligation_refs": [
+        "production-house/P5"
+      ],
+      "note": "Required environment: production-house-and-writers-room; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "production-house.v1.p4-runtime",
+      "phase": "3",
+      "name": "production-house/P4: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "production-house.v1.p1-runtime"
+      ],
+      "obligation_refs": [
+        "production-house/P4"
+      ],
+      "note": "Required environment: production-house-documentary-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "discovery-decision.v1.d1-runtime",
+      "phase": "3",
+      "name": "discovery-decision/D1: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "discovery-decision/D1"
+      ],
+      "note": "Required environment: sif-and-forge; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "discovery-decision.v1.d3-runtime",
+      "phase": "3",
+      "name": "discovery-decision/D3: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "discovery-decision/D3"
+      ],
+      "note": "Required environment: insight-excavator; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "discovery-decision.v1.d2-runtime",
+      "phase": "3",
+      "name": "discovery-decision/D2: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "discovery-decision.v1.d1-runtime"
+      ],
+      "obligation_refs": [
+        "discovery-decision/D2"
+      ],
+      "note": "Required environment: forge; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "discovery-decision.v1.d4-runtime",
+      "phase": "3",
+      "name": "discovery-decision/D4: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "discovery-decision.v1.d1-runtime"
+      ],
+      "obligation_refs": [
+        "discovery-decision/D4"
+      ],
+      "note": "Required environment: forge; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "discovery-decision.v1.d5-runtime",
+      "phase": "3",
+      "name": "discovery-decision/D5: converged evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "discovery-decision.v1.d1-runtime",
+        "discovery-decision.v1.d3-runtime"
+      ],
+      "obligation_refs": [
+        "discovery-decision/D5"
+      ],
+      "note": "Required environment: forge-and-insight-excavator; receipt: portfolio-convergence-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "model-behavior-lab.v1.m1-runtime",
+      "phase": "4",
+      "name": "model-behavior-lab/M1: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "model-behavior-lab/M1"
+      ],
+      "note": "Required environment: model-experiment-runtime; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "model-behavior-lab.v1.m2-runtime",
+      "phase": "4",
+      "name": "model-behavior-lab/M2: None evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "model-behavior-lab.v1.m1-runtime"
+      ],
+      "obligation_refs": [
+        "model-behavior-lab/M2"
+      ],
+      "note": "Required environment: model-lab-consumers; receipt: portfolio-resolution-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "model-behavior-lab.v1.m3-runtime",
+      "phase": "4",
+      "name": "model-behavior-lab/M3: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "model-behavior-lab/M3"
+      ],
+      "note": "Required environment: chess-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "model-behavior-lab.v1.m4-runtime",
+      "phase": "4",
+      "name": "model-behavior-lab/M4: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "model-behavior-lab.v1.m3-runtime"
+      ],
+      "obligation_refs": [
+        "model-behavior-lab/M4"
+      ],
+      "note": "Required environment: chess-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "model-behavior-lab.v1.m5-runtime",
+      "phase": "4",
+      "name": "model-behavior-lab/M5: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "model-behavior-lab.v1.m1-runtime",
+        "model-behavior-lab.v1.m4-runtime"
+      ],
+      "obligation_refs": [
+        "model-behavior-lab/M5"
+      ],
+      "note": "Required environment: model-experiment-runtime; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "agent-reliability.v1.r1-runtime",
+      "phase": "4",
+      "name": "agent-reliability/R1: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "agent-reliability/R1"
+      ],
+      "note": "Required environment: live-bounded-agent; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "agent-reliability.v1.r2-runtime",
+      "phase": "4",
+      "name": "agent-reliability/R2: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "agent-reliability.v1.r1-runtime"
+      ],
+      "obligation_refs": [
+        "agent-reliability/R2"
+      ],
+      "note": "Required environment: three-agent-harnesses; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "agent-reliability.v1.r3-runtime",
+      "phase": "4",
+      "name": "agent-reliability/R3: None evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "agent-reliability.v1.r2-runtime"
+      ],
+      "obligation_refs": [
+        "agent-reliability/R3"
+      ],
+      "note": "Required environment: shared-component-consumers; receipt: portfolio-resolution-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "agent-reliability.v1.r4-runtime",
+      "phase": "4",
+      "name": "agent-reliability/R4: None evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "agent-reliability.v1.r3-runtime"
+      ],
+      "obligation_refs": [
+        "agent-reliability/R4"
+      ],
+      "note": "Required environment: shared-component-consumers; receipt: portfolio-resolution-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "agent-reliability.v1.r5-runtime",
+      "phase": "4",
+      "name": "agent-reliability/R5: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "agent-reliability.v1.r1-runtime"
+      ],
+      "obligation_refs": [
+        "agent-reliability/R5"
+      ],
+      "note": "Required environment: live-bounded-agent; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "game-design.v1.g1-runtime",
+      "phase": "4",
+      "name": "game-design/G1: source_executed evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "game-design/G1"
+      ],
+      "note": "Required environment: tucked-in-terrors-simulator; receipt: portfolio-runtime-source-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "game-design.v1.g2-runtime",
+      "phase": "4",
+      "name": "game-design/G2: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "game-design.v1.g1-runtime"
+      ],
+      "obligation_refs": [
+        "game-design/G2"
+      ],
+      "note": "Required environment: storyweaver; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "game-design.v1.g4-runtime",
+      "phase": "4",
+      "name": "game-design/G4: parity_verified evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "game-design.v1.g2-runtime"
+      ],
+      "obligation_refs": [
+        "game-design/G4"
+      ],
+      "note": "Required environment: storyweaver; receipt: portfolio-runtime-parity-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "game-design.v1.g3-runtime",
+      "phase": "4",
+      "name": "game-design/G3: None evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "game-design/G3"
+      ],
+      "note": "Required environment: authored-game-owner; receipt: portfolio-resolution-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "game-design.v1.g5-runtime",
+      "phase": "4",
+      "name": "game-design/G5: None evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze"
+      ],
+      "obligation_refs": [
+        "game-design/G5"
+      ],
+      "note": "Required environment: authored-game-owner; receipt: portfolio-resolution-v1. Recovery program owns execution and acceptance requirements."
+    },
+    {
+      "id": "operator-os.v1.o1-adoption-runtime",
+      "phase": "5",
+      "name": "operator-os/O1-adoption: adopted evidence",
+      "depends_on": [
+        "phase1.contract-state-freeze",
+        "operator-os.v1.o1-runtime"
+      ],
+      "obligation_refs": [
+        "operator-os/O1-adoption"
+      ],
+      "note": "Required environment: provisioned-local-portfolio; receipt: portfolio-adoption-v1. Recovery program owns execution and acceptance requirements."
     }
   ],
   "snapshot_at": "2026-08-28T00:00:00Z"

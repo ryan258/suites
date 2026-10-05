@@ -40,6 +40,22 @@ class ReleaseLedgerTests(unittest.TestCase):
     def test_baseline_ledger_is_valid(self):
         self.assertEqual(validate_release_ledger(self.ledger, self.program, self.suites), [])
 
+    def test_every_obligation_has_one_queue_entry_and_cannot_be_dropped(self):
+        refs = [ref for row in self.ledger['release_blockers'] for ref in row['obligation_refs']]
+        self.assertCountEqual(refs, [o['id'] for o in self.program['obligations']])
+        ledger = deepcopy(self.ledger)
+        ledger['release_blockers'].pop()
+        errors = validate_release_ledger(ledger, self.program, self.suites)
+        self.assertTrue(any('exactly one release blocker' in error for error in errors), errors)
+
+    def test_runtime_dependencies_and_contract_freeze_cannot_be_removed(self):
+        for field in ('freeze', 'predecessor'):
+            ledger = deepcopy(self.ledger)
+            target = next(b for b in ledger['release_blockers'] if len(b['depends_on']) > 1)
+            target['depends_on'].pop(0 if field == 'freeze' else -1)
+            errors = validate_release_ledger(ledger, self.program, self.suites)
+            self.assertTrue(any('missing governed dependencies' in error for error in errors), errors)
+
     def test_ledger_cannot_omit_registered_suites(self):
         # Dropping a registered suite from the ledger could hide its weakest gates and
         # report release_ready anyway -- the suite set must match the registry exactly.
@@ -667,13 +683,21 @@ class ReleaseLedgerTests(unittest.TestCase):
             "portfolio_suites.release_state.resolve_release_state", return_value=state
         ):
             ready = release_state_summary(self.ledger, self.program, self.suites)
-        self.assertTrue(ready["release_ready"])
+        self.assertFalse(ready["release_ready"])
+        self.assertEqual(ready['unmodeled_exit_phases'], ['6', '7', '8'])
+
+        # Isolate criterion enforcement from the independently incomplete phase map.
+        with mock.patch('portfolio_suites.release_state.UNMODELED_EXIT_PHASES', ()), mock.patch(
+            'portfolio_suites.release_state.resolve_release_state', return_value=state
+        ):
+            ready = release_state_summary(self.ledger, self.program, self.suites)
+        self.assertTrue(ready['release_ready'])
 
         state["suites"]["brand-publishing"]["criteria_open"] = 1
         state["suites"]["brand-publishing"]["criteria_closed"] = 0
         with mock.patch(
             "portfolio_suites.release_state.resolve_release_state", return_value=state
-        ):
+        ), mock.patch('portfolio_suites.release_state.UNMODELED_EXIT_PHASES', ()):
             ready = release_state_summary(self.ledger, self.program, self.suites)
         self.assertFalse(ready["release_ready"])
 

@@ -1,4 +1,5 @@
 import io
+import json
 import unittest
 from contextlib import redirect_stdout
 
@@ -6,6 +7,27 @@ from portfolio_suites.cli import main
 
 
 class ReleaseCLIIntegrationTests(unittest.TestCase):
+    def test_json_queue_exposes_every_open_obligation_and_remaining_phase_gates(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main(['release', 'blockers', '--json'])
+        result = json.loads(output.getvalue())
+        self.assertEqual(code, 2)
+        refs = [ref for row in result['open_blockers'] for ref in row.get('residual_obligations', [])]
+        self.assertEqual(len(refs), 42)
+        self.assertEqual(len(set(refs)), len(refs))
+        self.assertEqual(result['unmodeled_exit_phases'], ['6', '7', '8'])
+        b1 = next(row for row in result['open_blockers'] if row['id'] == 'brand-publishing.v1.b1-runtime')
+        self.assertEqual(b1['requirements'][0]['runtime_environment'], 'brand-maker-and-external-consumer')
+
+    def test_json_summary_remains_incomplete(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main(['release', 'summary', '--json'])
+        result = json.loads(output.getvalue())
+        self.assertEqual(code, 2)
+        self.assertFalse(result['release_ready'])
+
     def test_release_blockers_lists_open_and_held(self):
         output = io.StringIO()
         with redirect_stdout(output):
@@ -13,7 +35,7 @@ class ReleaseCLIIntegrationTests(unittest.TestCase):
 
         self.assertEqual(code, 2)
         rendered = output.getvalue()
-        self.assertIn("4 open release blocker(s):", rendered)
+        self.assertIn("45 open release blocker(s):", rendered)
         self.assertIn("phase0.release-ledger (actionable)", rendered)
         self.assertIn("phase1.contract-state-freeze (actionable)", rendered)
         self.assertIn("phase1.stable-surface (actionable)", rendered)
@@ -31,7 +53,7 @@ class ReleaseCLIIntegrationTests(unittest.TestCase):
         rendered = output.getvalue()
         self.assertIn("8 suites", rendered)
         self.assertIn("14 criteria (0 closed, 14 open)", rendered)
-        self.assertIn("4 open, 3 actionable", rendered)
+        self.assertIn("45 open, 3 actionable", rendered)
         self.assertIn("Zero release blockers: no", rendered)
 
     @staticmethod

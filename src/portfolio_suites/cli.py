@@ -46,6 +46,7 @@ from .registry import (
     validate_registry,
 )
 from .server import serve
+from .catalog import HOMES, add_cli as add_catalog_cli, run_cli as run_catalog_cli
 from .waves import WaveRunner, format_wave_tag
 
 
@@ -60,7 +61,7 @@ EXIT_INCOMPLETE = 2
 def _list() -> int:
     suites = load_suites()
     for manifest in suites.values():
-        print(f"{manifest['id']:<22} {manifest['state']:<10} {manifest['promise']}")
+        print(f"{manifest['id']:<22} {HOMES[manifest['id']]} · {manifest['state']} · {manifest['promise']}")
     return 0
 
 
@@ -325,6 +326,8 @@ def _release_cmd(action: str) -> int:
             print(f"Suites at tier score target: {at_target}/{summary['suites']}")
             print("Zero release blockers:", "yes" if summary["has_no_blockers"] else "no")
             print("Release ready:", "yes" if summary["release_ready"] else "no")
+            if summary.get("unmodeled_exit_phases"):
+                print("Additional roadmap exit gates remain outside this queue: phases " + ", ".join(summary["unmodeled_exit_phases"]) + ".")
             return EXIT_OK if summary["release_ready"] else EXIT_INCOMPLETE
         if action == "blockers":
             state = resolve_release_state(ledger, program, suites)
@@ -766,6 +769,7 @@ def _ai_cmd(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="suites", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
+    add_catalog_cli(sub)
 
     sub.add_parser("list", help="list suite promises and states")
     sub.add_parser("status", help="show portfolio coverage and next waves")
@@ -834,14 +838,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     release_p = sub.add_parser("release", help="inspect the portfolio-wide release/completion ledger")
     release_p.add_argument(
         "action",
-        choices=["blockers", "summary"],
+        choices=["blockers", "summary", "candidate"],
         help="list open release blockers, or print release summary counts",
     )
+    release_p.add_argument("--json", action="store_true", help="emit structured release evidence")
+    doctor_p = sub.add_parser("doctor", help="inspect local prerequisites offline without running donors")
+    doctor_p.add_argument("--json", action="store_true")
+    state_p = sub.add_parser("state", help="back up or restore local project return points")
+    state_p.add_argument("action", choices=["backup", "restore"])
+    state_p.add_argument("backup", nargs="?")
+    state_p.add_argument("--apply", action="store_true", help="apply a previewed restore; retain an undo backup")
 
     serve_p = sub.add_parser("serve", help="launch local portfolio web dashboard server")
     serve_p.add_argument("--port", type=int, default=8383, help="port number (default: 8383)")
 
     args = parser.parse_args(argv)
+
+    if args.command in {"projects", "p", "project", "now", "n", "action", "a", "resume", "r"}:
+        return run_catalog_cli(args)
 
     if args.command == "list":
         return _list()
@@ -850,7 +864,54 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "next":
         return _next()
     if args.command == "release":
+        if args.action == "candidate":
+            from .candidate import inspect_candidate
+            result = inspect_candidate()
+            if args.json:
+                print(json.dumps(result, indent=2))
+            elif result["complete"]:
+                print(f"Candidate: {result['sha256']}")
+                print(f"HEAD: {result['head']}; {result['tracked_files']} tracked, {result['untracked_files']} untracked files.")
+                print("Scope: tracked and non-ignored untracked source. Ignored runtime/build files excluded.")
+            else:
+                print("Candidate incomplete: " + ", ".join(result["errors"]))
+            return EXIT_OK if result["complete"] else EXIT_INCOMPLETE
+        if args.json:
+            try:
+                result = (release_state_summary if args.action == "summary" else resolve_release_state)(
+                    load_release_ledger(), load_recovery_program(), load_suites())
+            except (ReleaseLedgerError, RecoveryProgramError, OSError, ValueError) as error:
+                print(json.dumps({"ok": False, "error": {"category": "invalid_release_state", "message": str(error)}}))
+                return EXIT_INCOMPLETE
+            print(json.dumps(result, indent=2))
+            ready = result.get("release_ready", False) if args.action == "summary" else release_state_summary(
+                load_release_ledger(), load_recovery_program(), load_suites())["release_ready"]
+            return EXIT_OK if ready else EXIT_INCOMPLETE
         return _release_cmd(args.action)
+    if args.command == "doctor":
+        from .diagnostics import inspect_environment
+        result = inspect_environment()
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            for check in result["checks"]:
+                print(f"{check['status'].upper()} {check['name']}: {check['detail']}")
+            print("Not probed: " + "; ".join(result["not_probed"]))
+        return EXIT_OK if result["ok"] else EXIT_INCOMPLETE
+    if args.command == "state":
+        from .operator_state import manage_state
+        try:
+            if args.action == "backup" and (args.backup or args.apply):
+                raise ValueError("state backup takes no filename or --apply")
+            result = manage_state(args.action, args.backup, args.apply)
+            print(json.dumps(result, indent=2))
+            return EXIT_OK
+        except CommitUnverified as error:
+            print(json.dumps({"status": "committed_unverified", "message": str(error)}))
+            return EXIT_INCOMPLETE
+        except (ValueError, OSError) as error:
+            print(json.dumps({"status": "refused", "message": str(error)}))
+            return EXIT_INCOMPLETE
     if args.command == "drift":
         return _drift()
     if args.command == "baseline":

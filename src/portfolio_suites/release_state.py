@@ -67,12 +67,9 @@ EXPECTED_POLICY = {
     "silent_deletion": "forbidden",
     "blanket_deferral": "forbidden",
     "resolved_without_evidence_or_owner": "forbidden",
-    # The roadmap defines release phases 0 through 8. This ledger is a partial view: it
-    # truthfully covers only phases 0-2 and enforces that blocker phases fall in that
-    # range, rather than pretending to be the full-v1 ledger or inventing phase 3-8
-    # blockers with no substance. A future increment extends this range and migrates the
-    # remaining phases into the ledger.
-    "phases_covered": ["0", "1", "2"],
+    # Runtime and adoption work through beta. Candidate verification, authorized
+    # distribution, and stabilization remain separate roadmap exit gates.
+    "phases_covered": ["0", "1", "2", "3", "4", "5"],
 }
 
 # Phases that assert a support promise and therefore require a defensible recovery depth.
@@ -82,6 +79,7 @@ SUPPORT_PROMISE_PHASES = frozenset({"supported", "beta", "release-candidate"})
 MIN_SUPPORT_PROMISE_LEVEL = "source_executed"
 # Blocker phases this partial ledger truthfully covers (roadmap defines 0-8).
 PHASES_COVERED = frozenset(EXPECTED_POLICY["phases_covered"])
+UNMODELED_EXIT_PHASES = tuple(str(i) for i in range(9) if str(i) not in PHASES_COVERED)
 
 # The score targets come from the adopted tier rubric, not authored freely in the ledger.
 EXPECTED_SCORE_TARGETS = {tier: float(cfg["target_score"]) for tier, cfg in RECOVERY_TIERS.items()}
@@ -105,6 +103,7 @@ GLOBAL_BLOCKER_SPECS: dict[str, dict[str, frozenset[str]]] = {
         "release_ledger": frozenset({"portfolio/release-ledger.json"}),
         "recovery_program": frozenset({"portfolio/recovery-program.json"}),
         "recovery_standard": frozenset({"portfolio/recovery-standard.json"}),
+        "enforcement": frozenset({"src/portfolio_suites/release_state.py", "src/portfolio_suites/registry.py"}),
     },
     "phase1.contract-state-freeze": {
         "contracts_schemas": frozenset({
@@ -117,15 +116,26 @@ GLOBAL_BLOCKER_SPECS: dict[str, dict[str, frozenset[str]]] = {
         }),
         "persistent_state_formats": frozenset({
             "portfolio/execution-trace-contract.json",
-            "portfolio/project-ledger.json",
-            "portfolio/recovery-program.json",
-            "portfolio/recovery-standard.json",
+            "src/portfolio_suites/approvals.py",
+            "src/portfolio_suites/catalog.py",
+            "src/portfolio_suites/operator_state.py",
+            "src/portfolio_suites/recovery_program.py",
+            "src/portfolio_suites/receipts.py",
+            "src/portfolio_suites/contracts.py",
+            "src/portfolio_suites/ai.py",
+            "docs/PLATFORM-OPERATIONS.md",
         }),
     },
     "phase1.stable-surface": {
         "stable_cli_api_surfaces": frozenset({
             "src/portfolio_suites/cli.py",
             "src/portfolio_suites/registry.py",
+            "src/portfolio_suites/server.py",
+            "src/portfolio_suites/catalog.py",
+            "src/portfolio_suites/operator_state.py",
+            "src/portfolio_suites/candidate.py",
+            "src/portfolio_suites/diagnostics.py",
+            "src/portfolio_suites/web/catalog.js",
         }),
     },
 }
@@ -656,6 +666,7 @@ def validate_release_ledger(
         "release_blockers", ledger.get("release_blockers"), errors
     )
     blocker_by_id: dict[str, dict[str, Any]] = {}
+    runtime_owners: dict[str, list[str]] = {}
     for index, blocker in enumerate(blocker_entries):
         blocker_id = blocker.get("id")
         if not isinstance(blocker_id, str) or not blocker_id:
@@ -697,6 +708,32 @@ def validate_release_ledger(
                     errors.append(
                         f"{blocker_id}: unknown obligation_ref {obligation_id!r}"
                     )
+                else:
+                    runtime_owners.setdefault(obligation_id, []).append(blocker_id)
+
+    # Every obligation gets one visible queue entry. Criterion coverage alone cannot
+    # stop `next` from hiding most of the work behind a single exemplar blocker.
+    for obligation_id in sorted(governed_obligation_ids):
+        owners = runtime_owners.get(obligation_id, [])
+        if len(owners) != 1:
+            errors.append(f"{obligation_id}: requires exactly one release blocker; found {len(owners)}")
+            continue
+        blocker = blocker_by_id[owners[0]]
+        obligation = obligation_by_id[obligation_id]
+        suite_id = obligation_id.split('/', 1)[0]
+        expected_phase = ('5' if obligation.get('target_claim_kind') == 'adoption' else
+                          '2' if suite_id in {'accessibility', 'operator-os', 'brand-publishing'} else
+                          '3' if suite_id in {'production-house', 'discovery-decision'} else '4')
+        if blocker.get('phase') != expected_phase:
+            errors.append(f"{blocker['id']}: governed obligation belongs to phase {expected_phase}")
+        required_dependencies = {"phase1.contract-state-freeze"}
+        for dependency in obligation.get("dependencies", []):
+            required_dependencies.update(runtime_owners.get(dependency, []))
+        actual_dependencies = blocker.get("depends_on")
+        if isinstance(actual_dependencies, list) and all(isinstance(x, str) for x in actual_dependencies):
+            missing = required_dependencies - set(actual_dependencies)
+            if missing:
+                errors.append(f"{blocker['id']}: missing governed dependencies: {sorted(missing)}")
 
     global_blocker_entries = _fail_closed_blocker_entries(
         "global_blockers", ledger.get("global_blockers"), errors
@@ -1297,6 +1334,7 @@ def resolve_release_state(
             "open": b.get("closure") is None,
         })
 
+    obligations_by_id = {o['id']: o for o in program['obligations']}
     blockers = []
     for b in _dicts(ledger.get("release_blockers", [])):
         obligation_refs = b.get("obligation_refs") or []
@@ -1312,6 +1350,10 @@ def resolve_release_state(
             "obligation_refs": obligation_refs,
             "residual_obligations": residual,
             "open": bool(residual),
+            "sequence": min(obligations_by_id[ref]['sequence'] for ref in obligation_refs),
+            "requirements": [{key: obligations_by_id[ref].get(key) for key in (
+                'id', 'runtime_environment', 'owner_gate', 'receipt_contract', 'acceptance_checks', 'target_level'
+            )} for ref in obligation_refs],
         })
 
     all_blockers = blockers + global_blockers
@@ -1326,6 +1368,7 @@ def resolve_release_state(
         key=lambda b: (
             phase_order.get(b.get("phase"), 99),
             not is_actionable(b),
+            b.get('sequence', 0),
             b.get("id"),
         )
     )
@@ -1334,6 +1377,8 @@ def resolve_release_state(
     return {
         "ledger_id": ledger.get("ledger_id"),
         "schema_version": ledger.get("schema_version"),
+        "phases_covered": sorted(PHASES_COVERED),
+        "unmodeled_exit_phases": list(UNMODELED_EXIT_PHASES),
         "suites": suite_rows,
         "open_blockers": ordered_open,
         "actionable_blockers": actionable,
@@ -1374,6 +1419,8 @@ def release_state_summary(
                     closure_counts[outcome] = closure_counts.get(outcome, 0) + 1
     return {
         "ledger_id": state["ledger_id"],
+        "phases_covered": sorted(PHASES_COVERED),
+        "unmodeled_exit_phases": list(UNMODELED_EXIT_PHASES),
         "suites": len(state["suites"]),
         "criteria_total": total_criteria,
         "criteria_open": open_criteria,
@@ -1392,5 +1439,6 @@ def release_state_summary(
             state["open_blocker_count"] == 0
             and suites_under_score_target == 0
             and open_criteria == 0
+            and not UNMODELED_EXIT_PHASES
         ),
     }

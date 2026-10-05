@@ -18,6 +18,9 @@ skipping: a skipped class still exits 0, which is exactly the false milestone ev
 this file exists to prevent. `unittest` has no third status, so an environment genuinely
 unable to build (no network for build deps) reports failure with the captured output --
 "could not verify" rather than "verified", which is the honest direction to round.
+Build prerequisites (pip, setuptools >=68, wheel) must already exist in the invoking
+interpreter. Build isolation and package indexes are disabled; this gate never installs
+build dependencies. The fresh target virtualenv is used only for the offline wheel install.
 """
 
 import os
@@ -33,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_PACKAGE_DATA = (
     "portfolio_suites/web/index.html",
     "portfolio_suites/web/app.js",
+    "portfolio_suites/web/catalog.js",
     "portfolio_suites/web/styles.css",
     "portfolio_suites/adapters/donor_wcag_331_browser_probe.mjs",
 )
@@ -63,10 +67,8 @@ class WheelSmokeTests(unittest.TestCase):
         cls._tmp = tempfile.mkdtemp(prefix="suites-wheel-smoke-")
         tmp = Path(cls._tmp)
 
-        # The venv comes first and does the building. pip is itself a PEP 517 build
-        # frontend, so the gate needs no `build` distribution installed anywhere -- the
-        # previous `python -m build` step made an uninstalled helper a hard prerequisite,
-        # and the gate had never run on a machine that lacked it.
+        # Build with the explicitly provisioned interpreter; install only the resulting
+        # wheel in a fresh venv. Neither operation may fetch dependencies implicitly.
         venv = tmp / "venv"
         subprocess.run(
             [sys.executable, "-m", "venv", str(venv)], check=True, timeout=300, env=_clean_env()
@@ -74,7 +76,8 @@ class WheelSmokeTests(unittest.TestCase):
         cls.bin = venv / ("Scripts" if os.name == "nt" else "bin")
 
         build = subprocess.run(
-            [str(cls.bin / "pip"), "wheel", "--no-deps", "--wheel-dir", str(tmp / "dist"), str(ROOT)],
+            [sys.executable, "-m", "pip", "wheel", "--no-deps", "--no-index", "--no-build-isolation",
+             "--wheel-dir", str(tmp / "dist"), str(ROOT)],
             capture_output=True, text=True, timeout=600, env=_clean_env(),
             # Never run from ROOT: a stale ROOT/build/ artifact directory on sys.path has
             # shadowed real distributions here before. ROOT is passed as an argument.
@@ -99,7 +102,7 @@ class WheelSmokeTests(unittest.TestCase):
         cls.wheel = next((tmp / "dist").glob("*.whl"))
 
         install = subprocess.run(
-            [str(cls.bin / "pip"), "install", "--no-input", str(cls.wheel)],
+            [str(cls.bin / "pip"), "install", "--no-input", "--no-index", "--no-deps", str(cls.wheel)],
             capture_output=True, text=True, timeout=600, env=_clean_env(),
         )
         if install.returncode != 0:

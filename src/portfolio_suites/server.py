@@ -43,6 +43,12 @@ from .registry import (
     validate_registry,
 )
 from .waves import WaveRunner, classify_wave_spec
+from .catalog import (
+    CatalogError, CatalogConflict, catalog_view, project_view, resolve_project,
+    update_project, open_resume,
+)
+from .paths import CommitUnverified
+from .release_state import load_release_ledger, resolve_release_state
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_JSON_BODY_BYTES = 1_048_576
@@ -216,7 +222,13 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
 
     def _handle_api_get(self, path: str, query: dict[str, list[str]]) -> None:
         try:
-            if path == "/api/summary":
+            if path == "/api/catalog":
+                self._send_json(200, catalog_view())
+            elif path == "/api/catalog/project":
+                self._send_json(200, project_view(resolve_project(query.get("name", [""])[0])))
+            elif path == "/api/catalog/release":
+                self._send_json(200, resolve_release_state(load_release_ledger(), load_recovery_program(), load_suites()))
+            elif path == "/api/summary":
                 self._send_json(200, get_portfolio_summary())
             elif path == "/api/recovery":
                 try:
@@ -402,6 +414,8 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json(200, {"path": str(target_file), "content": content})
             else:
                 self._send_json(404, {"error": f"Unknown endpoint: {path}"})
+        except CatalogError as error:
+            self._send_json(400, {"error": str(error)})
         except Exception:
             traceback.print_exc()
             self._send_json(500, {"error": "Internal server error"})
@@ -413,7 +427,29 @@ class PortfolioAPIHandler(http.server.SimpleHTTPRequestHandler):
         path = parsed.path.rstrip("/")
 
         try:
-            if path.startswith("/api/contracts/") and path.endswith("/validate"):
+            if path in ("/api/catalog/update", "/api/catalog/open"):
+                if not self._execution_request_is_trusted():
+                    self._send_json(403, {"error": "cross-origin operator actions are refused"})
+                    return
+                body = self._read_json_body()
+                if not isinstance(body, dict) or type(body.get("revision")) is not int:
+                    self._send_json(400, {"error": "Provide a project name and its current integer revision."})
+                    return
+                try:
+                    if path.endswith("/update"):
+                        result = update_project(body.get("name"), body.get("changes"), body["revision"])
+                    else:
+                        result = open_resume(body.get("name"), body["revision"])
+                    self._send_json(200, result)
+                except CatalogConflict as error:
+                    self._send_json(409, {"error": str(error)})
+                except CatalogError as error:
+                    self._send_json(400, {"error": str(error)})
+                except CommitUnverified as error:
+                    self._send_json(503, {"error": str(error), "save_state": "committed_durability_unverified"})
+                except OSError as error:
+                    self._send_json(503, {"error": "Operator action could not complete: " + str(error)})
+            elif path.startswith("/api/contracts/") and path.endswith("/validate"):
                 parts = path.split("/")
                 if len(parts) != 5 or not parts[3]:
                     self._send_json(404, {"error": f"Unknown POST endpoint: {path}"})

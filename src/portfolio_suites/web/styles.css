@@ -1109,3 +1109,58 @@ body.modal-open {
   color: var(--red, #b3261e);
   font-weight: 600;
 }
+
+/* Personal return view: readable labels, normal flow, and no pointer-only controls. */
+#tab-catalog { font-size: 1.125rem; line-height: 1.6; max-width: 90rem; }
+#tab-catalog h2 { margin: 1rem 0 .65rem; }
+#tab-catalog h3 { margin-bottom: .5rem; font-size: 1.2em; }
+#tab-catalog p { margin: .45rem 0; }
+#tab-catalog a { color: #a9d1ff; text-decoration: underline; text-underline-offset: .15em; }
+#tab-catalog button, #tab-catalog input, #tab-catalog select, #tab-catalog textarea { font: inherit; min-height: 48px; }
+#tab-catalog input, #tab-catalog select, #tab-catalog textarea { color: var(--text-main); background: #171c24; border: 1px solid #818b98; border-radius: .3rem; padding: .65rem; width: 100%; }
+#tab-catalog textarea { resize: vertical; }
+#tab-catalog summary { cursor: pointer; min-height: 48px; padding: .6rem 0; }
+#tab-catalog summary:focus-visible { outline: 3px solid #a9d1ff; outline-offset: 3px; }
+#tab-catalog details { border-bottom: 1px solid #6c7785; margin: .8rem 0; padding-bottom: .7rem; }
+#tab-catalog ul, #tab-catalog ol { padding-left: 1.6rem; }
+#tab-catalog li { margin-bottom: .55rem; overflow-wrap: anywhere; }
+.operator-tools { display: flex; flex-wrap: wrap; gap: .65rem; margin: .9rem 0; }
+.operator-tools .btn { white-space: normal; }
+.operator-now, .operator-resume { background: #172322; border: 1px solid #718f88; border-radius: .6rem; padding: 1rem; margin: 1rem 0; }
+#operator-homes { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.3rem 0; }
+#tab-catalog .operator-home { display: inline-block; padding: .65rem .85rem; border: 1px solid #77899e; border-radius: .5rem; min-height: 48px; text-decoration: none; }
+#tab-catalog .operator-home[aria-current="page"] { color: #101820; background: #b5d7ed; border-color: #b5d7ed; }
+.operator-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 1rem; }
+.operator-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 1rem; }
+.operator-card { min-width: 0; background: var(--bg-card); border: 1px solid #56616f; border-radius: .6rem; padding: 1.1rem; overflow-wrap: anywhere; }
+.operator-card a { display: inline-block; padding: .4rem 0; }
+.operator-meta { color: #bbc4ce; }
+.operator-warning, .operator-error { color: #ffcd88; }
+.operator-error { border-left: 4px solid #ffcd88; padding: .7rem; }
+.operator-form { display: grid; gap: .6rem; max-width: 52rem; margin: 1rem 0; }
+.operator-form label { margin-top: .55rem; }
+.operator-form details > label { display: block; }
+.operator-path, #operator-detail { overflow-wrap: anywhere; }
+.operator-form input, .operator-form textarea, .operator-form select { min-width: 0; }
+#operator-detail > a { display: inline-block; padding: .7rem 0; }
+.operator-large { font-size: 18px; }
+.operator-large #tab-catalog { font-size: 1.4rem; }
+@media (max-width: 800px) {
+  .app-header { height: auto; min-height: 60px; flex-wrap: wrap; padding: .75rem; gap: .65rem; position: static; }
+  .app-layout { display: block; }
+  .app-sidebar { width: 100%; height: auto; position: static; }
+  .sidebar-nav { display: flex; flex-wrap: wrap; gap: .25rem; }
+  .sidebar-nav .nav-section-title, .sidebar-footer { display: none; }
+  .sidebar-nav .nav-item, .sidebar-nav .nav-link-item { width: auto; min-height: 44px; flex: 1 1 10rem; white-space: normal; }
+  .app-main { padding: 1rem; min-width: 0; }
+  .header-metrics { flex-wrap: wrap; }
+  .operator-filters { grid-template-columns: minmax(0, 1fr); }
+  .operator-large .brand-title { font-size: 1rem; }
+  #tab-catalog .pane-title { font-size: 1.6em; }
+  #tab-catalog .btn { white-space: normal; }
+}
+#tab-catalog input[type="checkbox"] { width: 1.5em; min-height: 1.5em; vertical-align: middle; margin-right: .5em; }
+/* The return view has its own status region; keep old fixed notices off its text. */
+.operator-catalog-view .app-status-strip,
+.operator-catalog-view .header-metrics,
+.operator-catalog-view #btn-run-all-waves { display: none; }

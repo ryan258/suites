@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ryan Project Suites — Portfolio Control Plane</title>
-  <meta name="description" content="Local-first, evidence-bound portfolio control plane for Ryan's 8 interoperable product suites.">
+  <meta name="description" content="Local-first, evidence-bound portfolio control plane for Ryan's eight personal project suites.">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="dark-theme">
+<body class="dark-theme operator-catalog-view">
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <div class="app-status-strip" id="app-status" role="status" aria-live="polite">
     Loading the local portfolio state…
@@ -19,7 +19,7 @@
         <span class="logo-icon">◈</span>
         <div class="logo-text">
           <span class="brand-title">RYAN PROJECT SUITES</span>
-          <span class="brand-subtitle">PORTFOLIO CONTROL PLANE v1.0.0</span>
+          <span class="brand-subtitle">PERSONAL PROJECT CONTROL LAYER</span>
         </div>
       </div>
     </div>
@@ -59,6 +59,8 @@
     <!-- Sidebar Navigation -->
     <aside class="app-sidebar">
       <nav class="sidebar-nav">
+        <div class="nav-section-title">RETURN TO WORK</div>
+        <button class="nav-item active" data-tab="catalog" aria-current="page">Your projects &amp; Now</button>
         <div class="nav-section-title">TOOLS</div>
         <button class="nav-item" data-tab="toolbench">
           <span class="nav-icon">▶</span> Toolbench
@@ -68,14 +70,14 @@
         </button>
 
         <div class="nav-section-title">CONTROL PLANE</div>
-        <button class="nav-item active" data-tab="overview">
+        <button class="nav-item" data-tab="overview">
           <span class="nav-icon">◫</span> Overview & Metrics
         </button>
         <button class="nav-item" data-tab="suites">
-          <span class="nav-icon">❖</span> Eight Product Suites
+          <span class="nav-icon">❖</span> Suite evidence
         </button>
         <button class="nav-item" data-tab="projects">
-          <span class="nav-icon">☰</span> Project Ledger (<span id="nav-project-count">—</span>)
+          <span class="nav-icon">☰</span> Migration Ledger (<span id="nav-project-count">—</span>)
         </button>
         <button class="nav-item" data-tab="contracts">
           <span class="nav-icon">⚖</span> Contracts Studio
@@ -108,6 +110,25 @@
 
     <!-- Main Content Area -->
     <main class="app-main" id="main-content" tabindex="-1">
+      <section id="tab-catalog" class="tab-pane active" aria-label="Your projects">
+        <div class="pane-header"><div><h1 class="pane-title">A way back to your projects</h1>
+        <p class="pane-desc">Find a home, choose a small action, and stop when it is done for now.</p></div></div>
+        <div id="operator-status" role="status" aria-live="polite">Loading saved project records…</div>
+        <div class="operator-tools"><button type="button" class="btn btn-secondary" id="operator-refresh">Reload saved records</button>
+        <button type="button" class="btn btn-secondary" id="operator-text" aria-pressed="false">Larger text</button></div>
+        <details class="operator-release"><summary id="operator-release-summary">Release obligations — loading separately</summary><div id="operator-release-body"></div></details>
+        <div id="operator-browser">
+          <section aria-labelledby="operator-now-title" class="operator-now"><h2 id="operator-now-title">Now <span id="operator-now-count"></span></h2><div id="operator-now"></div></section>
+          <nav id="operator-homes" aria-label="Project homes"></nav>
+          <div class="operator-filters">
+            <label for="operator-search">Find a project<input id="operator-search" type="search" placeholder="Name or purpose" autocomplete="off"></label>
+            <label for="operator-attention">Attention<select id="operator-attention"><option value="all">Any attention</option><option value="unassigned">Unassigned</option><option value="now">Now</option><option value="in-use">In use</option><option value="waiting">Waiting</option><option value="parked">Parked</option></select></label>
+          </div>
+          <p id="operator-results" role="status"></p><div id="operator-projects" class="operator-grid"></div>
+          <details class="operator-unresolved"><summary>Unresolved identities and app shortcuts</summary><ul id="operator-unresolved"></ul></details>
+        </div>
+        <section id="operator-detail" hidden aria-labelledby="operator-project-title"></section>
+      </section>
       <!-- TAB 1: OVERVIEW & COMMAND CENTER -->
       <section id="tab-toolbench" class="tab-pane">
         <div class="pane-header">
@@ -247,7 +268,7 @@
         </div>
       </section>
 
-      <section id="tab-overview" class="tab-pane active">
+      <section id="tab-overview" class="tab-pane">
         <div class="pane-header">
           <div>
             <h1 class="pane-title">Portfolio Command Center</h1>
@@ -346,7 +367,7 @@
         <!-- Suites Grid in Overview -->
         <div class="section-block">
           <div class="section-header-row">
-            <h2 class="section-heading">Eight Product Suites</h2>
+            <h2 class="section-heading">Suite evidence</h2>
             <button class="btn btn-sm btn-secondary" data-app-action="switch-tab" data-tab="suites">View Full Suites Detail →</button>
           </div>
           <div class="suites-overview-grid" id="suites-overview-grid">
@@ -359,7 +380,7 @@
       <section id="tab-suites" class="tab-pane">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Eight Product Suites</h1>
+            <h1 class="pane-title">Suite evidence</h1>
             <p class="pane-desc">Explore promises, member repositories, anchors, shared contracts, and migration waves.</p>
           </div>
         </div>
@@ -373,7 +394,7 @@
       <section id="tab-projects" class="tab-pane">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Project Ledger (<span id="project-heading-count">—</span> Repositories)</h1>
+            <h1 class="pane-title">Migration Ledger (<span id="project-heading-count">—</span> Repositories)</h1>
             <p class="pane-desc">Comprehensive inventory of all top-level checkouts with suite ownership and dispositions.</p>
           </div>
         </div>
@@ -585,5 +606,6 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="catalog.js"></script>
 </body>
 </html>
