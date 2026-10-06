@@ -88,6 +88,7 @@ jobs:
             tests.test_review_regressions \
             tests.test_server \
             tests.test_source_root \
+            tests.test_stable_surface \
             tests.test_txn \
             tests.test_web_security
 

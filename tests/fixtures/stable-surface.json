@@ -1,0 +1,460 @@
+{
+  "api_error_statuses": [
+    400,
+    403,
+    404,
+    405,
+    409,
+    422,
+    500,
+    503
+  ],
+  "api_routes": [
+    "/api",
+    "/api/ai/assist",
+    "/api/ai/status",
+    "/api/catalog",
+    "/api/catalog/open",
+    "/api/catalog/project",
+    "/api/catalog/release",
+    "/api/catalog/update",
+    "/api/chains/run",
+    "/api/contracts",
+    "/api/contracts/",
+    "/api/docs",
+    "/api/docs/",
+    "/api/drift",
+    "/api/engines",
+    "/api/engines/",
+    "/api/evidence",
+    "/api/graph",
+    "/api/nested",
+    "/api/projects",
+    "/api/projects/",
+    "/api/recovery",
+    "/api/security-policy",
+    "/api/suites",
+    "/api/suites/",
+    "/api/summary",
+    "/api/validate",
+    "/api/waves",
+    "/api/waves/"
+  ],
+  "cli": {
+    "commands": {
+      "a": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ]
+        ],
+        "positionals": []
+      },
+      "action": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ]
+        ],
+        "positionals": []
+      },
+      "ai": {
+        "commands": {},
+        "options": [
+          [
+            "--context"
+          ],
+          [
+            "--json"
+          ],
+          [
+            "--role"
+          ],
+          [
+            "--status"
+          ],
+          [
+            "--suite"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "prompt",
+            "nargs": "*"
+          }
+        ]
+      },
+      "baseline": {
+        "commands": {},
+        "options": [
+          [
+            "--accept"
+          ],
+          [
+            "--dry-run"
+          ]
+        ],
+        "positionals": []
+      },
+      "chain": {
+        "commands": {},
+        "options": [
+          [
+            "--quiet"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "spec",
+            "nargs": null
+          }
+        ]
+      },
+      "contract": {
+        "commands": {},
+        "options": [],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "name",
+            "nargs": null
+          },
+          {
+            "choices": [
+              "sample",
+              "spec",
+              "validate"
+            ],
+            "dest": "action",
+            "nargs": null
+          },
+          {
+            "choices": [],
+            "dest": "file",
+            "nargs": "?"
+          }
+        ]
+      },
+      "doctor": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ]
+        ],
+        "positionals": []
+      },
+      "drift": {
+        "commands": {},
+        "options": [],
+        "positionals": []
+      },
+      "engine": {
+        "commands": {},
+        "options": [
+          [
+            "--args"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "suite",
+            "nargs": "?"
+          },
+          {
+            "choices": [],
+            "dest": "action",
+            "nargs": "?"
+          }
+        ]
+      },
+      "export": {
+        "commands": {},
+        "options": [],
+        "positionals": []
+      },
+      "inspect": {
+        "commands": {},
+        "options": [],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "target",
+            "nargs": null
+          }
+        ]
+      },
+      "list": {
+        "commands": {},
+        "options": [],
+        "positionals": []
+      },
+      "n": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ],
+          [
+            "--order"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "target",
+            "nargs": "?"
+          }
+        ]
+      },
+      "next": {
+        "commands": {},
+        "options": [],
+        "positionals": []
+      },
+      "now": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ],
+          [
+            "--order"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "target",
+            "nargs": "?"
+          }
+        ]
+      },
+      "p": {
+        "commands": {},
+        "options": [
+          [
+            "--home"
+          ],
+          [
+            "--json"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "query",
+            "nargs": "?"
+          }
+        ]
+      },
+      "project": {
+        "commands": {},
+        "options": [
+          [
+            "--attention"
+          ],
+          [
+            "--done"
+          ],
+          [
+            "--json"
+          ],
+          [
+            "--kind"
+          ],
+          [
+            "--next"
+          ],
+          [
+            "--note"
+          ],
+          [
+            "--order"
+          ],
+          [
+            "--purpose"
+          ],
+          [
+            "--resume"
+          ],
+          [
+            "--revision"
+          ],
+          [
+            "--trigger"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "target",
+            "nargs": null
+          }
+        ]
+      },
+      "projects": {
+        "commands": {},
+        "options": [
+          [
+            "--home"
+          ],
+          [
+            "--json"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "query",
+            "nargs": "?"
+          }
+        ]
+      },
+      "r": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ],
+          [
+            "--open"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "target",
+            "nargs": "?"
+          }
+        ]
+      },
+      "release": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [
+              "blockers",
+              "candidate",
+              "summary"
+            ],
+            "dest": "action",
+            "nargs": null
+          }
+        ]
+      },
+      "resume": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ],
+          [
+            "--open"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "target",
+            "nargs": "?"
+          }
+        ]
+      },
+      "serve": {
+        "commands": {},
+        "options": [
+          [
+            "--port"
+          ]
+        ],
+        "positionals": []
+      },
+      "state": {
+        "commands": {},
+        "options": [
+          [
+            "--apply"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [
+              "backup",
+              "restore"
+            ],
+            "dest": "action",
+            "nargs": null
+          },
+          {
+            "choices": [],
+            "dest": "backup",
+            "nargs": "?"
+          }
+        ]
+      },
+      "status": {
+        "commands": {},
+        "options": [],
+        "positionals": []
+      },
+      "validate": {
+        "commands": {},
+        "options": [
+          [
+            "--fast",
+            "--offline"
+          ],
+          [
+            "--json"
+          ]
+        ],
+        "positionals": []
+      },
+      "wave": {
+        "commands": {},
+        "options": [
+          [
+            "--all"
+          ],
+          [
+            "--full"
+          ],
+          [
+            "--no-record",
+            "--record"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "suite",
+            "nargs": "?"
+          },
+          {
+            "choices": [],
+            "dest": "wave_id",
+            "nargs": "?"
+          }
+        ]
+      }
+    },
+    "options": [],
+    "positionals": []
+  },
+  "exit_codes": {
+    "failed": 1,
+    "incomplete": 2,
+    "ok": 0
+  }
+}
