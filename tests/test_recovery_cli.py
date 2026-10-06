@@ -15,11 +15,11 @@ class RecoveryCLIIntegrationTests(unittest.TestCase):
 
         self.assertEqual(code, 2)
         rendered = output.getvalue()
-        # The release ledger is phase-aware: the phase-0 release-ledger gate is the next
-        # dischargeable release blocker, and B1 runtime evidence stays gated on the later
-        # contract-state-freeze boundary.
+        # The release ledger is phase-aware: with the phase-0 release-ledger gate closed, the
+        # contract-state-freeze gate is the next dischargeable release blocker, and B1 runtime
+        # evidence stays gated behind it.
         self.assertIn(
-            "NEXT RELEASE BLOCKER: phase0.release-ledger",
+            "NEXT RELEASE BLOCKER: phase1.contract-state-freeze",
             rendered,
         )
         # B1 must not be offered while its boundary gate is open.

@@ -24,7 +24,11 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 - **Producer/consumer proofs.** Out-of-process donor probes for `ExperimentRun`, `InvestigationRecord`,
   and `ProductionJob` (new) and the existing `SourceRecord` and `A11yFinding` producers are each
   validated by a separate consumer process (`tests/test_donor_*_probe.py`); donor claims are recomputed
-  host-side and the donor checkouts are left unchanged. `BrandPackage` remains unproven. No gate was closed.
+  host-side and the donor checkouts are left unchanged. `BrandPackage` remains unproven. The two phase-1 freeze gates stay open.
+- **`phase0.release-ledger` closed by owner (Ryan).** The closure receipt is
+  `operator-os/evidence/GLOBAL-PHASE0-RELEASE-LEDGER-CLOSURE.json`, declared as ancillary evidence in
+  `operator-os/suite.json`, and bound to digests of the release ledger, recovery program and standard,
+  `release_state.py`, and `registry.py`. Release blockers: 44 open, 2 actionable; release ready: no.
 
 ## 2026-10-05 — Personal control layer (C0–C2), release ledger, and donor-drift repairs
 

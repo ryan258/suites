@@ -189,5 +189,12 @@
         ]
       }
     }
+  ],
+  "supporting_evidence": [
+    {
+      "path": "operator-os/evidence/GLOBAL-PHASE0-RELEASE-LEDGER-CLOSURE.json",
+      "role": "ancillary",
+      "reason": "Owner-bound closure receipt for the portfolio-wide phase0.release-ledger gate; governed by release_state.GLOBAL_CLOSURE_RECEIPT_CONTRACT and not an operator-os wave artifact."
+    }
   ]
 }

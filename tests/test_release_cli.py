@@ -35,8 +35,8 @@ class ReleaseCLIIntegrationTests(unittest.TestCase):
 
         self.assertEqual(code, 2)
         rendered = output.getvalue()
-        self.assertIn("45 open release blocker(s):", rendered)
-        self.assertIn("phase0.release-ledger (actionable)", rendered)
+        self.assertIn("44 open release blocker(s):", rendered)
+        self.assertNotIn("phase0.release-ledger", rendered)  # closed by owner receipt
         self.assertIn("phase1.contract-state-freeze (actionable)", rendered)
         self.assertIn("phase1.stable-surface (actionable)", rendered)
         self.assertIn("brand-publishing.v1.b1-runtime (held)", rendered)
@@ -53,7 +53,7 @@ class ReleaseCLIIntegrationTests(unittest.TestCase):
         rendered = output.getvalue()
         self.assertIn("8 suites", rendered)
         self.assertIn("14 criteria (0 closed, 14 open)", rendered)
-        self.assertIn("45 open, 3 actionable", rendered)
+        self.assertIn("44 open, 2 actionable", rendered)
         self.assertIn("Zero release blockers: no", rendered)
 
     @staticmethod

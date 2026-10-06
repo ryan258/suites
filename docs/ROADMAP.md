@@ -190,8 +190,10 @@ a migration fixture. Narrow producer/consumer proofs now exist for five contract
 out of process, recomputes donor claims host-side, and validates in a separate consumer process, but
 the mapping into the contract is this repository's, so they show donor output is accepted, not that
 the donor emits the contract natively. `BrandPackage` is unproven: it needs a real owner-approved
-brand and no fixture substitutes for that approval. No global-blocker closure was recorded:
-`phase0.release-ledger` awaits Ryan's owner closure, `phase1.contract-state-freeze` stays open until
+brand and no fixture substitutes for that approval. Ryan closed `phase0.release-ledger` as owner
+(receipt `operator-os/evidence/GLOBAL-PHASE0-RELEASE-LEDGER-CLOSURE.json`, digest-bound to the ledger,
+recovery files, `release_state.py`, and `registry.py`; editing any of them re-opens the gate).
+`phase1.contract-state-freeze` stays open until
 `BrandPackage` is proven, and `phase1.stable-surface` stays open pending a clean-install run and
 coverage of statuses set through exception attributes. The full suite passed (679 tests, 4 skipped);
 no donor was modified.

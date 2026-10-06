@@ -157,7 +157,7 @@ The format freeze binds validators and compatibility policy instead of live proj
 values, so saving an attention record does not invalidate a format boundary. The
 stable-surface freeze includes the server and catalog interfaces, recovery commands,
 candidate inspection, and diagnostics. The pinned surface and its compatibility rules are in
-[STABLE-SURFACE.md](STABLE-SURFACE.md). No freeze closure was recorded in this increment.
+[STABLE-SURFACE.md](STABLE-SURFACE.md). The `phase0.release-ledger` gate has an owner closure; the two phase-1 freeze gates remain open.
 
 - A **release blocker** owns `obligation_refs`; it is open while any referenced obligation is not
   `discharged` and closes automatically once all its obligations discharge.

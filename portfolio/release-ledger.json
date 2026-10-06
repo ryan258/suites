@@ -346,7 +346,41 @@
       "phase": "0",
       "name": "release/completion ledger is implemented, valid, and registry-enforced",
       "depends_on": [],
-      "closure": null
+      "closure": {
+        "owner": "ryan",
+        "outcome": "implemented",
+        "evidence_ref": "operator-os/evidence/GLOBAL-PHASE0-RELEASE-LEDGER-CLOSURE.json",
+        "frozen_boundaries": {
+          "release_ledger": [
+            {
+              "path": "portfolio/release-ledger.json",
+              "sha256": "bde8e7e2b1e68ce71da37ef6d0f3ff77bc2e633865d1c5c3bf89f5e5ba56e137"
+            }
+          ],
+          "recovery_program": [
+            {
+              "path": "portfolio/recovery-program.json",
+              "sha256": "2e6cbe094ad5f677fbf812df526729369d3305af17149a08bd81b1c4d30d571d"
+            }
+          ],
+          "recovery_standard": [
+            {
+              "path": "portfolio/recovery-standard.json",
+              "sha256": "c2df4bf9bc1141ba53e4fcc10079f0bbd3f7ae9727c8c407b9f3f9291e0ed8e5"
+            }
+          ],
+          "enforcement": [
+            {
+              "path": "src/portfolio_suites/registry.py",
+              "sha256": "cb933c3589ec099063cfe594fa8a055b64a375d6e9687ddd0dbf178e2af1c598"
+            },
+            {
+              "path": "src/portfolio_suites/release_state.py",
+              "sha256": "f2a3344119e0bb4903b550a3f1ef6f695c67231fef2b6a34512255b3ffc4d51b"
+            }
+          ]
+        }
+      }
     },
     {
       "id": "phase1.contract-state-freeze",
