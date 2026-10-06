@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0.0",
+  "snapshot_at": "2026-08-19T18:00:00-05:00",
+  "project_root": "/Users/ryanjohnson/Projects",
+  "projects": [
+    {
+      "name": "_docs",
+      "primary_suite": null,
+      "role": "shared archive",
+      "disposition": "rehome-by-owner",
+      "migration": "preserve-then-route",
+      "source_snapshot": {
+        "git": false
+      }
+    },
+    {
+      "name": "a11y kitchen",
+      "primary_suite": "accessibility",
+      "role": "interactive learning anchor",
+      "disposition": "anchor",
+      "migration": "retain-and-integrate",
+      "source_snapshot": {
+        "git": true,
+        "branch": "main",
+        "head": "2b82dd1",
+        "status_lines": 0
+      }
+    },
+    {
+      "name": "a11y-lab",
+      "primary_suite": "accessibility",
+      "role": "reference and curriculum",
+      "disposition": "component",
+      "migration": "retain-and-link",
+      "source_snapshot": {
+        "git": true,
+        "branch": "main",
+        "head": "802499c",
+        "status_lines": 0
+      }
+    }
+  ]
+}

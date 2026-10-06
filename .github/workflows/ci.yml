@@ -69,6 +69,11 @@ jobs:
             tests.test_contract_keyword_validation \
             tests.test_contracts \
             tests.test_docs \
+            tests.test_donor_a11y_finding_probe \
+            tests.test_donor_experiment_run_probe \
+            tests.test_donor_investigation_record_probe \
+            tests.test_donor_production_job_probe \
+            tests.test_donor_source_record_probe \
             tests.test_engine_action_json_boundary \
             tests.test_engine_actions \
             tests.test_integrity_boundaries \

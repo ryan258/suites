@@ -230,3 +230,17 @@ class ReconciledCatalogTests(unittest.TestCase):
         self.assertTrue(any(e.get('reason') and e.get('project') is None for e in doc['catalog']['app_entries']))
         for suite in registry.load_suites().values():
             for member in suite['members']: self.assertIsNotNone(catalog.resolve_project(member['project'],doc))
+
+
+class LegacyLedgerMigrationTests(unittest.TestCase):
+    # Fixture: first three rows of the ledger as committed in 5e64694, before the catalog extension.
+    FIXTURE = Path(__file__).parent / 'fixtures' / 'legacy-project-ledger-5e64694.json'
+
+    def test_legacy_ledger_stays_readable_and_is_refused_for_operator_use(self):
+        doc = json.loads(self.FIXTURE.read_text(encoding='utf-8'))
+        self.assertNotIn('catalog', doc)
+        self.assertEqual(catalog.validate_catalog(doc), [])
+        self.assertEqual(len(catalog.catalog_rows(doc)), 3)
+        with patch.object(registry, 'load_ledger', return_value=doc):
+            with self.assertRaises(catalog.CatalogError):
+                catalog.load_catalog_ledger()

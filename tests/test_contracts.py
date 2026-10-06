@@ -25,6 +25,18 @@ class ContractTests(unittest.TestCase):
             self.assertIsInstance(validated, dict)
             self.assertEqual(validated["schema_version"], "1.0.0")
 
+    def test_every_required_field_and_version_is_enforced(self):
+        for name, spec in CONTRACTS.items():
+            sample = generate_sample(name)
+            for field in sorted(spec.required):
+                broken = {k: v for k, v in sample.items() if k != field}
+                with self.subTest(contract=name, missing=field):
+                    with self.assertRaises(ContractError):
+                        validate_contract(name, broken)
+            with self.subTest(contract=name, bad="schema_version"):
+                with self.assertRaises(ContractError):
+                    validate_contract(name, {**sample, "schema_version": "2.0.0"})
+
     def test_deterministic_a11y_finding_requires_evidence(self):
         finding = {
             "schema_version": "1.0.0",
