@@ -228,8 +228,15 @@ class ProjectCatalog {
     const form = this.el('operator-form');
     if (!form) return;
     form.setAttribute('aria-busy', String(saving));
+    // Disabling the focused control drops focus to <body>; remember it and put it back.
+    if (saving) this.focusBeforeSave = document.activeElement?.id || null;
     form.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = saving; });
-    if (!saving) this.attentionControls();
+    if (!saving) {
+      this.attentionControls();
+      const active = document.activeElement;
+      if (this.focusBeforeSave && (!active || active === document.body)) this.el(this.focusBeforeSave)?.focus?.();
+      this.focusBeforeSave = null;
+    }
   }
   async save(form) {
     if (this.saving) return;
