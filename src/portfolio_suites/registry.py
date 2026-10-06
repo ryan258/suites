@@ -284,6 +284,11 @@ def _untracked_content_digest(source: Path, untracked_paths: list[str]) -> tuple
     """Stream-hash non-sensitive untracked entries without following symlinks.
 
     Returns (digest, is_incomplete).
+
+    This is the donor-drift fingerprint, deliberately separate from `candidate.py` (the
+    release-candidate identity, with its own caps and descriptor-confined reads). Its caps and
+    hashing rules are baked into every recorded `source_snapshot`; aligning the two would move
+    each existing baseline, so change them only together with a reviewed `baseline --accept`.
     """
     if not untracked_paths:
         return "", False

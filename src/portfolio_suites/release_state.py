@@ -353,244 +353,7 @@ def validate_release_ledger(
                     f"{suite_id}: retired phase requires a release_phase_owner "
                     "(retirement requires explicit owner approval per recovery standard)"
                 )
-            retirement = suite_block.get("retirement")
-            if not isinstance(retirement, dict):
-                errors.append(
-                    f"{suite_id}: retired phase requires a governed retirement disposition "
-                    "record with owner approval and disposition evidence"
-                )
-            else:
-                ret_owner = retirement.get("owner")
-                if not isinstance(ret_owner, str) or not ret_owner.strip():
-                    errors.append(f"{suite_id}: retirement record requires an owner")
-                elif isinstance(owner, str) and ret_owner != owner:
-                    errors.append(
-                        f"{suite_id}: retirement owner {ret_owner!r} does not match release_phase_owner {owner!r}"
-                    )
-                disposition = retirement.get("disposition") or retirement.get("rationale")
-                if not isinstance(disposition, str) or not disposition.strip():
-                    errors.append(f"{suite_id}: retirement record requires a disposition rationale")
-                ret_evidence = retirement.get("evidence_ref")
-                if not isinstance(ret_evidence, str) or not ret_evidence.strip():
-                    errors.append(f"{suite_id}: retirement record requires an evidence_ref")
-                else:
-                    from .registry import resolve_declared_evidence_path
-
-                    ev_path = resolve_declared_evidence_path(ret_evidence, suite_id)
-                    if ev_path is None or not ev_path.is_file():
-                        errors.append(
-                            f"{suite_id}: retirement evidence artifact is missing on disk: {ret_evidence!r}"
-                        )
-                    else:
-                        try:
-                            doc = json.loads(ev_path.read_text(encoding="utf-8"))
-                            if not isinstance(doc, dict):
-                                errors.append(f"{suite_id}: retirement evidence must be a JSON object")
-                            else:
-                                version = doc.get("receipt_version")
-                                if version != SUITE_RETIREMENT_RECEIPT_CONTRACT:
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence receipt_version must equal "
-                                        f"{SUITE_RETIREMENT_RECEIPT_CONTRACT!r}; found {version!r}"
-                                    )
-                                rec_suite = doc.get("suite_id")
-                                if rec_suite != suite_id:
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence suite_id {rec_suite!r} "
-                                        f"does not match retired suite {suite_id!r}"
-                                    )
-                                rec_owner = doc.get("owner")
-                                if isinstance(owner, str) and rec_owner != owner:
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence owner {rec_owner!r} "
-                                        f"does not match release_phase_owner {owner!r}"
-                                    )
-                                decision = doc.get("decision")
-                                if not isinstance(decision, str) or decision not in {"retire", "retired"}:
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence decision must be 'retire' or 'retired'; "
-                                        f"found {decision!r}"
-                                    )
-                                rec_disposition = doc.get("disposition")
-                                if not isinstance(rec_disposition, str) or not rec_disposition.strip():
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence requires a non-empty 'disposition' statement"
-                                    )
-                                elif isinstance(disposition, str) and disposition.strip() and rec_disposition.strip() != disposition.strip():
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence disposition does not match ledger retirement disposition"
-                                    )
-                                donor = doc.get("donor")
-                                if not isinstance(donor, str) or not donor.strip():
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence requires a non-empty 'donor' identifier"
-                                    )
-                                supporting = doc.get("supporting_evidence_refs")
-                                valid_supporting = (
-                                    isinstance(supporting, list) and bool(supporting)
-                                    and all(isinstance(ref, str) and ref.strip() for ref in supporting)
-                                    and len(set(supporting)) == len(supporting)
-                                )
-                                support_hashes = doc.get("supporting_evidence_sha256")
-                                valid_hashes = (
-                                    valid_supporting and isinstance(support_hashes, dict)
-                                    and set(support_hashes) == set(supporting)
-                                    and all(isinstance(value, str) and SHA256_HEX.fullmatch(value)
-                                            for value in support_hashes.values())
-                                )
-                                if not valid_supporting:
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence requires a non-empty, distinct "
-                                        "'supporting_evidence_refs' string list of recovery/parity evidence"
-                                    )
-                                if not valid_hashes:
-                                    errors.append(
-                                        f"{suite_id}: retirement supporting_evidence_sha256 must bind "
-                                        "exactly every supporting reference to a SHA-256 digest"
-                                    )
-                                else:
-                                    errors.extend(_retirement_supporting_evidence_errors(
-                                        suite_id, support_hashes, program, suites
-                                    ))
-
-                                # Operator approval authority verification
-                                approval = doc.get("approval")
-                                if not isinstance(approval, dict):
-                                    errors.append(
-                                        f"{suite_id}: retirement evidence requires a verified operator 'approval' record "
-                                        "from the independent approval authority"
-                                    )
-                                else:
-                                    schema = approval.get("schema")
-                                    if schema != APPROVAL_SCHEMA:
-                                        errors.append(
-                                            f"{suite_id}: retirement approval schema must be {APPROVAL_SCHEMA!r}; "
-                                            f"found {schema!r}"
-                                        )
-                                    app_id = approval.get("approval_id")
-                                    if not isinstance(app_id, str) or not app_id.strip():
-                                        errors.append(
-                                            f"{suite_id}: retirement approval requires an 'approval_id'"
-                                        )
-                                    token_hash = approval.get("token_sha256")
-                                    if not isinstance(token_hash, str) or not token_hash.strip():
-                                        errors.append(
-                                            f"{suite_id}: retirement approval requires 'token_sha256'"
-                                        )
-                                    consumed_bindings = approval.get("consumed_bindings")
-                                    if not isinstance(consumed_bindings, dict):
-                                        errors.append(
-                                            f"{suite_id}: retirement approval requires 'consumed_bindings'"
-                                        )
-                                    operation = approval.get("operation")
-                                    if not isinstance(operation, str) or operation not in {"suite-retirement", "retire"}:
-                                        errors.append(
-                                            f"{suite_id}: retirement approval operation must be 'suite-retirement'; "
-                                            f"found {operation!r}"
-                                        )
-                                    reviewer = approval.get("reviewer")
-                                    if isinstance(owner, str) and reviewer != owner:
-                                        errors.append(
-                                            f"{suite_id}: retirement approval reviewer {reviewer!r} "
-                                            f"does not match release_phase_owner {owner!r}"
-                                        )
-                                    app_decision = approval.get("decision")
-                                    if app_decision != decision:
-                                        errors.append(
-                                            f"{suite_id}: retirement approval decision {app_decision!r} "
-                                            f"does not match receipt decision {decision!r}"
-                                        )
-                                    consumed = approval.get("consumed")
-                                    if consumed is not True:
-                                        errors.append(
-                                            f"{suite_id}: retirement approval must be consumed (consumed=True)"
-                                        )
-                                    # Validate timezone-aware ISO timestamps and chronology
-                                    parsed_times: dict[str, datetime.datetime] = {}
-                                    for time_field in ("issued_at", "expires_at", "consumed_at"):
-                                        val = approval.get(time_field)
-                                        try:
-                                            parsed_t = datetime.datetime.fromisoformat(str(val))
-                                            if parsed_t.tzinfo is None:
-                                                errors.append(
-                                                    f"{suite_id}: retirement approval {time_field} must be timezone-aware"
-                                                )
-                                            else:
-                                                parsed_times[time_field] = parsed_t
-                                        except (ValueError, TypeError):
-                                            errors.append(
-                                                f"{suite_id}: retirement approval {time_field} is not a valid ISO timestamp: {val!r}"
-                                            )
-                                    if len(parsed_times) == 3:
-                                        if parsed_times["expires_at"] <= parsed_times["issued_at"]:
-                                            errors.append(
-                                                f"{suite_id}: retirement approval expires at or before it was issued"
-                                            )
-                                        if parsed_times["consumed_at"] < parsed_times["issued_at"]:
-                                            errors.append(
-                                                f"{suite_id}: retirement approval was consumed before it was issued"
-                                            )
-                                        if parsed_times["consumed_at"] > parsed_times["expires_at"]:
-                                            errors.append(
-                                                f"{suite_id}: retirement approval was consumed after it expired"
-                                            )
-                                    # Validate bound payload canonical digest
-                                    expected_digest = None
-                                    if (isinstance(donor, str) and donor.strip() and isinstance(rec_disposition, str)
-                                            and isinstance(decision, str) and valid_hashes):
-                                        expected_payload = {
-                                            "suite_id": suite_id,
-                                            "donor": donor,
-                                            "decision": decision,
-                                            "disposition": rec_disposition,
-                                            "supporting_evidence_refs": sorted(supporting),
-                                            "supporting_evidence_sha256": support_hashes,
-                                        }
-                                        expected_digest = canonical_digest(expected_payload)
-                                        payload_sha256 = approval.get("payload_sha256")
-                                        if payload_sha256 != expected_digest:
-                                            errors.append(
-                                                f"{suite_id}: retirement approval payload_sha256 does not bind "
-                                                f"exact retirement payload: expected {expected_digest[:12]}… but got {payload_sha256!r}"
-                                            )
-                                    # Verify against independent out-of-band authority store
-                                    if expected_digest is not None and isinstance(app_id, str) and app_id.strip():
-                                        expected_bindings = {
-                                            "suite_id": suite_id,
-                                            "donor": donor,
-                                            "decision": decision,
-                                            "operation": operation,
-                                            "reviewer": owner,
-                                            "payload_sha256": expected_digest,
-                                        }
-                                        try:
-                                            verified_record = verify_consumed_operator_approval(
-                                                app_id,
-                                                bindings=expected_bindings,
-                                            )
-                                            for check_key in (
-                                                "approval_id",
-                                                "schema",
-                                                "token_sha256",
-                                                "operation",
-                                                "decision",
-                                                "reviewer",
-                                                "payload_sha256",
-                                                "consumed",
-                                                "consumed_at",
-                                            ):
-                                                if approval.get(check_key) != verified_record.get(check_key):
-                                                    errors.append(
-                                                        f"{suite_id}: retirement approval field {check_key!r} "
-                                                        "differs from authority store record"
-                                                    )
-                                        except ApprovalError as err:
-                                            errors.append(
-                                                f"{suite_id}: retirement approval could not be verified against "
-                                                f"independent authority: {err}"
-                                            )
-                        except (OSError, ValueError) as err:
-                            errors.append(f"{suite_id}: retirement evidence is not readable JSON: {err}")
+            errors.extend(_retired_suite_errors(suite_id, owner, suite_block, program, suites))
 
         score_status = suite_block.get("score_status")
         score = suite_block.get("score")
@@ -852,6 +615,256 @@ def validate_release_ledger(
     return errors
 
 
+def _retired_suite_errors(
+    suite_id: str,
+    owner: Any,
+    suite_block: dict[str, Any],
+    program: dict[str, Any],
+    suites: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Validate a retired suite's retirement record, its receipt, and the consumed approval."""
+    errors: list[str] = []
+    retirement = suite_block.get("retirement")
+    if not isinstance(retirement, dict):
+        errors.append(
+            f"{suite_id}: retired phase requires a governed retirement disposition "
+            "record with owner approval and disposition evidence"
+        )
+    else:
+        ret_owner = retirement.get("owner")
+        if not isinstance(ret_owner, str) or not ret_owner.strip():
+            errors.append(f"{suite_id}: retirement record requires an owner")
+        elif isinstance(owner, str) and ret_owner != owner:
+            errors.append(
+                f"{suite_id}: retirement owner {ret_owner!r} does not match release_phase_owner {owner!r}"
+            )
+        disposition = retirement.get("disposition") or retirement.get("rationale")
+        if not isinstance(disposition, str) or not disposition.strip():
+            errors.append(f"{suite_id}: retirement record requires a disposition rationale")
+        ret_evidence = retirement.get("evidence_ref")
+        if not isinstance(ret_evidence, str) or not ret_evidence.strip():
+            errors.append(f"{suite_id}: retirement record requires an evidence_ref")
+        else:
+            from .registry import resolve_declared_evidence_path
+
+            ev_path = resolve_declared_evidence_path(ret_evidence, suite_id)
+            if ev_path is None or not ev_path.is_file():
+                errors.append(
+                    f"{suite_id}: retirement evidence artifact is missing on disk: {ret_evidence!r}"
+                )
+            else:
+                try:
+                    doc = json.loads(ev_path.read_text(encoding="utf-8"))
+                    if not isinstance(doc, dict):
+                        errors.append(f"{suite_id}: retirement evidence must be a JSON object")
+                    else:
+                        version = doc.get("receipt_version")
+                        if version != SUITE_RETIREMENT_RECEIPT_CONTRACT:
+                            errors.append(
+                                f"{suite_id}: retirement evidence receipt_version must equal "
+                                f"{SUITE_RETIREMENT_RECEIPT_CONTRACT!r}; found {version!r}"
+                            )
+                        rec_suite = doc.get("suite_id")
+                        if rec_suite != suite_id:
+                            errors.append(
+                                f"{suite_id}: retirement evidence suite_id {rec_suite!r} "
+                                f"does not match retired suite {suite_id!r}"
+                            )
+                        rec_owner = doc.get("owner")
+                        if isinstance(owner, str) and rec_owner != owner:
+                            errors.append(
+                                f"{suite_id}: retirement evidence owner {rec_owner!r} "
+                                f"does not match release_phase_owner {owner!r}"
+                            )
+                        decision = doc.get("decision")
+                        if not isinstance(decision, str) or decision not in {"retire", "retired"}:
+                            errors.append(
+                                f"{suite_id}: retirement evidence decision must be 'retire' or 'retired'; "
+                                f"found {decision!r}"
+                            )
+                        rec_disposition = doc.get("disposition")
+                        if not isinstance(rec_disposition, str) or not rec_disposition.strip():
+                            errors.append(
+                                f"{suite_id}: retirement evidence requires a non-empty 'disposition' statement"
+                            )
+                        elif isinstance(disposition, str) and disposition.strip() and rec_disposition.strip() != disposition.strip():
+                            errors.append(
+                                f"{suite_id}: retirement evidence disposition does not match ledger retirement disposition"
+                            )
+                        donor = doc.get("donor")
+                        if not isinstance(donor, str) or not donor.strip():
+                            errors.append(
+                                f"{suite_id}: retirement evidence requires a non-empty 'donor' identifier"
+                            )
+                        supporting = doc.get("supporting_evidence_refs")
+                        valid_supporting = (
+                            isinstance(supporting, list) and bool(supporting)
+                            and all(isinstance(ref, str) and ref.strip() for ref in supporting)
+                            and len(set(supporting)) == len(supporting)
+                        )
+                        support_hashes = doc.get("supporting_evidence_sha256")
+                        valid_hashes = (
+                            valid_supporting and isinstance(support_hashes, dict)
+                            and set(support_hashes) == set(supporting)
+                            and all(isinstance(value, str) and SHA256_HEX.fullmatch(value)
+                                    for value in support_hashes.values())
+                        )
+                        if not valid_supporting:
+                            errors.append(
+                                f"{suite_id}: retirement evidence requires a non-empty, distinct "
+                                "'supporting_evidence_refs' string list of recovery/parity evidence"
+                            )
+                        if not valid_hashes:
+                            errors.append(
+                                f"{suite_id}: retirement supporting_evidence_sha256 must bind "
+                                "exactly every supporting reference to a SHA-256 digest"
+                            )
+                        else:
+                            errors.extend(_retirement_supporting_evidence_errors(
+                                suite_id, support_hashes, program, suites
+                            ))
+
+                        # Operator approval authority verification
+                        approval = doc.get("approval")
+                        if not isinstance(approval, dict):
+                            errors.append(
+                                f"{suite_id}: retirement evidence requires a verified operator 'approval' record "
+                                "from the independent approval authority"
+                            )
+                        else:
+                            schema = approval.get("schema")
+                            if schema != APPROVAL_SCHEMA:
+                                errors.append(
+                                    f"{suite_id}: retirement approval schema must be {APPROVAL_SCHEMA!r}; "
+                                    f"found {schema!r}"
+                                )
+                            app_id = approval.get("approval_id")
+                            if not isinstance(app_id, str) or not app_id.strip():
+                                errors.append(
+                                    f"{suite_id}: retirement approval requires an 'approval_id'"
+                                )
+                            token_hash = approval.get("token_sha256")
+                            if not isinstance(token_hash, str) or not token_hash.strip():
+                                errors.append(
+                                    f"{suite_id}: retirement approval requires 'token_sha256'"
+                                )
+                            consumed_bindings = approval.get("consumed_bindings")
+                            if not isinstance(consumed_bindings, dict):
+                                errors.append(
+                                    f"{suite_id}: retirement approval requires 'consumed_bindings'"
+                                )
+                            operation = approval.get("operation")
+                            if not isinstance(operation, str) or operation not in {"suite-retirement", "retire"}:
+                                errors.append(
+                                    f"{suite_id}: retirement approval operation must be 'suite-retirement'; "
+                                    f"found {operation!r}"
+                                )
+                            reviewer = approval.get("reviewer")
+                            if isinstance(owner, str) and reviewer != owner:
+                                errors.append(
+                                    f"{suite_id}: retirement approval reviewer {reviewer!r} "
+                                    f"does not match release_phase_owner {owner!r}"
+                                )
+                            app_decision = approval.get("decision")
+                            if app_decision != decision:
+                                errors.append(
+                                    f"{suite_id}: retirement approval decision {app_decision!r} "
+                                    f"does not match receipt decision {decision!r}"
+                                )
+                            consumed = approval.get("consumed")
+                            if consumed is not True:
+                                errors.append(
+                                    f"{suite_id}: retirement approval must be consumed (consumed=True)"
+                                )
+                            # Validate timezone-aware ISO timestamps and chronology
+                            parsed_times: dict[str, datetime.datetime] = {}
+                            for time_field in ("issued_at", "expires_at", "consumed_at"):
+                                val = approval.get(time_field)
+                                try:
+                                    parsed_t = datetime.datetime.fromisoformat(str(val))
+                                    if parsed_t.tzinfo is None:
+                                        errors.append(
+                                            f"{suite_id}: retirement approval {time_field} must be timezone-aware"
+                                        )
+                                    else:
+                                        parsed_times[time_field] = parsed_t
+                                except (ValueError, TypeError):
+                                    errors.append(
+                                        f"{suite_id}: retirement approval {time_field} is not a valid ISO timestamp: {val!r}"
+                                    )
+                            if len(parsed_times) == 3:
+                                if parsed_times["expires_at"] <= parsed_times["issued_at"]:
+                                    errors.append(
+                                        f"{suite_id}: retirement approval expires at or before it was issued"
+                                    )
+                                if parsed_times["consumed_at"] < parsed_times["issued_at"]:
+                                    errors.append(
+                                        f"{suite_id}: retirement approval was consumed before it was issued"
+                                    )
+                                if parsed_times["consumed_at"] > parsed_times["expires_at"]:
+                                    errors.append(
+                                        f"{suite_id}: retirement approval was consumed after it expired"
+                                    )
+                            # Validate bound payload canonical digest
+                            expected_digest = None
+                            if (isinstance(donor, str) and donor.strip() and isinstance(rec_disposition, str)
+                                    and isinstance(decision, str) and valid_hashes):
+                                expected_payload = {
+                                    "suite_id": suite_id,
+                                    "donor": donor,
+                                    "decision": decision,
+                                    "disposition": rec_disposition,
+                                    "supporting_evidence_refs": sorted(supporting),
+                                    "supporting_evidence_sha256": support_hashes,
+                                }
+                                expected_digest = canonical_digest(expected_payload)
+                                payload_sha256 = approval.get("payload_sha256")
+                                if payload_sha256 != expected_digest:
+                                    errors.append(
+                                        f"{suite_id}: retirement approval payload_sha256 does not bind "
+                                        f"exact retirement payload: expected {expected_digest[:12]}… but got {payload_sha256!r}"
+                                    )
+                            # Verify against independent out-of-band authority store
+                            if expected_digest is not None and isinstance(app_id, str) and app_id.strip():
+                                expected_bindings = {
+                                    "suite_id": suite_id,
+                                    "donor": donor,
+                                    "decision": decision,
+                                    "operation": operation,
+                                    "reviewer": owner,
+                                    "payload_sha256": expected_digest,
+                                }
+                                try:
+                                    verified_record = verify_consumed_operator_approval(
+                                        app_id,
+                                        bindings=expected_bindings,
+                                    )
+                                    for check_key in (
+                                        "approval_id",
+                                        "schema",
+                                        "token_sha256",
+                                        "operation",
+                                        "decision",
+                                        "reviewer",
+                                        "payload_sha256",
+                                        "consumed",
+                                        "consumed_at",
+                                    ):
+                                        if approval.get(check_key) != verified_record.get(check_key):
+                                            errors.append(
+                                                f"{suite_id}: retirement approval field {check_key!r} "
+                                                "differs from authority store record"
+                                            )
+                                except ApprovalError as err:
+                                    errors.append(
+                                        f"{suite_id}: retirement approval could not be verified against "
+                                        f"independent authority: {err}"
+                                    )
+                except (OSError, ValueError) as err:
+                    errors.append(f"{suite_id}: retirement evidence is not readable JSON: {err}")
+    return errors
+
+
 def _support_promise_evidence_errors(
     suite_id: str,
     declared_depth: str,
@@ -902,6 +915,7 @@ def _retirement_supporting_evidence_errors(
     errors: list[str] = []
     ownership = build_evidence_ownership_index(suites)
     waves = suites[suite_id].get("waves", [])
+    resolved: list[dict[str, Any]] | None = None  # resolved lazily, at most once
     for ref, expected in hashes.items():
         if resolve_declared_evidence_path(ref, suite_id) is None:
             errors.append(f"{suite_id}: retirement supporting evidence must stay in its canonical suite evidence directory: {ref}")
@@ -927,7 +941,8 @@ def _retirement_supporting_evidence_errors(
                 errors.append(f"{suite_id}: retirement supporting evidence has no unique governed receipt owner: {ref}")
             else:
                 try:
-                    resolved = resolve_recovery_obligations(program, suites)
+                    if resolved is None:
+                        resolved = resolve_recovery_obligations(program, suites)
                     if not any(o["id"] == lifecycle[0]["id"] and o["effective_state"] == "discharged" for o in resolved):
                         errors.append(f"{suite_id}: retirement supporting lifecycle evidence is not discharged: {ref}")
                 except RecoveryProgramError as error:

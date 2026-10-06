@@ -17,7 +17,6 @@ import stat
 import subprocess
 import sys
 from urllib.parse import urlsplit
-from zoneinfo import ZoneInfo
 
 from . import registry
 from .paths import CommitUnverified, open_confined_directory
@@ -270,7 +269,7 @@ def render_ledger(doc):
 def prepare_resume(kind, target, location):
     if not isinstance(target, str) or not target.strip() or len(target) > 8000 or not isinstance(kind, str): raise CatalogError('Choose a target type and nonempty target text.')
     if Path(location).resolve() != Path(location): raise CatalogError('Project location changed identity. Review the canonical path first.')
-    resume = {'kind': kind, 'target': target, 'observed_at': dt.datetime.now(ZoneInfo('America/Chicago')).date().isoformat(), 'sha256': None}
+    resume = {'kind': kind, 'target': target, 'observed_at': dt.datetime.now().astimezone().date().isoformat(), 'sha256': None}
     if kind in ('file', 'directory'):
         p = Path(target).expanduser()
         p = p if p.is_absolute() else Path(location)/p
