@@ -78,6 +78,9 @@ are verified. No restore auto-opens a target or invokes a launcher.
 
 ## Compatibility boundary
 
+The CLI/API surface, exit codes, and error categories are governed separately by
+[the stable-surface policy](STABLE-SURFACE.md).
+
 | Persisted surface | Current reader/boundary | Compatibility behavior |
 |---|---|---|
 | Six shared contracts | `contracts/*.schema.json`, `contracts.py` | Existing required fields and semantic validation remain authoritative. Samples: `./s contract NAME sample`; validation: `./s contract NAME validate FILE`. |
@@ -92,9 +95,23 @@ The contract/state freeze now binds format validators and this policy instead of
 changing project ledger's current values. Saving a return point must not invalidate
 an interface freeze. Any format-policy or validator change invalidates its recorded
 freeze digest and requires review. CLI/API freeze includes server, catalog, recovery,
-candidate, and diagnostic entry points. The freeze remains **open**: authentic
-producer/consumer checks and migration fixtures for every retained prerelease format
-have not yet been supplied. The focused return-point rollback drill is narrower than
+candidate, and diagnostic entry points. The freeze remains **open**: narrow producer/consumer proofs exist for `ExperimentRun` (ai-ethics-comparator stats),
+`SourceRecord` (PKos CAS acquisition), `A11yFinding` (allys-tools aria-validator), and
+`InvestigationRecord` (Forge loading a retained model-driven investigation), and `ProductionJob`
+(Production House's engine running its Groundwire tasks on a private temp state; `filelock` is
+stubbed when not installed and the probe reports it); each runs the
+donor out of process, recomputes donor claims host-side, and validates in a separate consumer
+process (`tests/test_donor_*_probe.py`). They map donor output to the contract in this repository,
+so they show the mapping is accepted, not that the donor emits the contract natively.
+`BrandPackage` is unproven; `BrandPackage` needs a
+real owner-approved brand and no fixture substitutes for that approval. Migration fixtures for
+every retained prerelease format are supplied only as inventoried below. Migration inventory (October 5, 2026): the only retained
+pre-v1 state shape is the project ledger before the catalog extension (`projects` only, as
+committed in `5e64694`); `tests/fixtures/legacy-project-ledger-5e64694.json` proves it stays
+readable and is refused for operator use until reconciled. The other persisted formats
+(return-point backup, release ledger, recovery program, execution trace, approvals) have
+exactly one version, so there is no earlier form to fixture; unversioned retained evidence
+receipts remain governed by their wave-specific validators. The focused return-point rollback drill is narrower than
 a complete platform upgrade/rollback acceptance.
 
 ## Environment and distribution

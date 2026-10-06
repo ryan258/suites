@@ -22,6 +22,8 @@ source under review, and `./s state backup` to preserve saved return points.
 Restore previews and undo instructions are in [platform operations](docs/PLATFORM-OPERATIONS.md).
 `./s release blockers --json` includes every governed recovery obligation and its
 prerequisites. Candidate/release/stabilization exit gates remain explicitly pending.
+The supported CLI/API surface, exit codes, and error categories are pinned and described in
+[the stable-surface policy](docs/STABLE-SURFACE.md).
 
 ## Release and engine tools
 

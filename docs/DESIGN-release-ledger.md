@@ -156,7 +156,8 @@ described in [platform operations](PLATFORM-OPERATIONS.md).
 The format freeze binds validators and compatibility policy instead of live project
 values, so saving an attention record does not invalidate a format boundary. The
 stable-surface freeze includes the server and catalog interfaces, recovery commands,
-candidate inspection, and diagnostics. No freeze closure was recorded in this increment.
+candidate inspection, and diagnostics. The pinned surface and its compatibility rules are in
+[STABLE-SURFACE.md](STABLE-SURFACE.md). No freeze closure was recorded in this increment.
 
 - A **release blocker** owns `obligation_refs`; it is open while any referenced obligation is not
   `discharged` and closes automatically once all its obligations discharge.

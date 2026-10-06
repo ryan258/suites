@@ -12,6 +12,20 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
 
 ---
 
+## 2026-10-06 — Stable-surface pin and contract-freeze proofs
+
+- **Stable surface.** `tests/test_stable_surface.py` pins the CLI command tree, `/api` routes,
+  error statuses, and exit codes against `tests/fixtures/stable-surface.json`; the policy and error
+  taxonomy are in [STABLE-SURFACE.md](STABLE-SURFACE.md).
+- **Contract compatibility.** Additive, breaking, and security-change rules are published in
+  `contracts/README.md`, with a test that rejects every missing required field and a wrong
+  `schema_version` for all six contracts. A pre-catalog project-ledger fixture proves the legacy
+  shape stays readable and is refused for operator use until reconciled.
+- **Producer/consumer proofs.** Out-of-process donor probes for `ExperimentRun`, `InvestigationRecord`,
+  and `ProductionJob` (new) and the existing `SourceRecord` and `A11yFinding` producers are each
+  validated by a separate consumer process (`tests/test_donor_*_probe.py`); donor claims are recomputed
+  host-side and the donor checkouts are left unchanged. `BrandPackage` remains unproven. No gate was closed.
+
 ## 2026-10-05 — Personal control layer (C0–C2), release ledger, and donor-drift repairs
 
 - **Release ledger and phase gates.** `portfolio/release-ledger.json` and

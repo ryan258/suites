@@ -180,6 +180,22 @@ reviewed handlers with typed outcome blocks. Hermetic CI gates test across Linux
 (Python 3.11 floor, 3.12) and macOS (Python 3.14). Focused regression coverage passed
 across `tests/test_review_regressions.py` and Node browser-logic checks.
 
+**Stable surface and contract-freeze progress (October 6, 2026):** the supported CLI commands,
+aliases, options, `/api` routes, error statuses, and exit codes are pinned by
+`tests/fixtures/stable-surface.json` and documented, with compatibility and error-category rules,
+in [STABLE-SURFACE.md](STABLE-SURFACE.md). The six contracts have published compatibility rules and a
+negative-example test, and the one retained pre-v1 state shape (the pre-catalog project ledger) has
+a migration fixture. Narrow producer/consumer proofs now exist for five contracts: `ExperimentRun`,
+`SourceRecord`, `A11yFinding`, `InvestigationRecord`, and `ProductionJob`. Each runs the donor
+out of process, recomputes donor claims host-side, and validates in a separate consumer process, but
+the mapping into the contract is this repository's, so they show donor output is accepted, not that
+the donor emits the contract natively. `BrandPackage` is unproven: it needs a real owner-approved
+brand and no fixture substitutes for that approval. No global-blocker closure was recorded:
+`phase0.release-ledger` awaits Ryan's owner closure, `phase1.contract-state-freeze` stays open until
+`BrandPackage` is proven, and `phase1.stable-surface` stays open pending a clean-install run and
+coverage of statuses set through exception attributes. The full suite passed (679 tests, 4 skipped);
+no donor was modified.
+
 ---
 
 ## What “Complete” Means for v1.0
