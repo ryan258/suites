@@ -307,9 +307,6 @@ class DocumentedCommandTests(unittest.TestCase):
                 )
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class CITestCoverageTests(unittest.TestCase):
     """Every test module must be a deliberate CI decision, not an oversight.
@@ -358,3 +355,7 @@ class CITestCoverageTests(unittest.TestCase):
         """The donor-dependent exclusions are only safe while some job runs discover."""
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         self.assertIn("unittest discover -s tests", workflow)
+
+
+if __name__ == "__main__":
+    unittest.main()

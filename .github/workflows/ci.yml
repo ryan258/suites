@@ -16,8 +16,15 @@ concurrency:
 
 jobs:
   hermetic:
-    name: Hermetic Control-Plane Gates
-    runs-on: ubuntu-latest
+    name: Hermetic Gates (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: "3.11"}  # declared requires-python floor
+          - {os: ubuntu-latest, python: "3.12"}
+          - {os: macos-latest, python: "3.14"}   # the development platform
 
     steps:
       - name: Checkout repository
@@ -28,7 +35,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
           cache: "pip"
 
       - name: Set up Node.js
