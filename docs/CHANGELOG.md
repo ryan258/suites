@@ -42,8 +42,11 @@ This document records genuine, verified milestones for the `/Users/ryanjohnson/P
   evidence matching or exceeding declared recovery depth. Retirement receipts require
   content-bound `supporting_evidence_sha256` digest mappings in canonical approval payloads.
   Malformed closure and retirement fields fail closed. Defensive catalog alias validation
-  protects exact resolution. Web forms pause during pending saves and preserve concurrent tab
-  drafts. Focused regressions added in `tests/test_review_regressions.py` and `tests/test_review_regressions.js`.
+  protects exact resolution. Web forms pause during pending saves, preserve concurrent tab
+  drafts, and restore control focus upon completion. Operator OS JARVIS actions are modularized
+  into isolated reviewed handlers (`_jarvis_*`) with typed outcome blocks. Hermetic CI gates
+  are configured for multi-OS and Python versions (Linux 3.11 floor, 3.12, and macOS 3.14).
+  Focused regressions added in `tests/test_review_regressions.py` and `tests/test_review_regressions.js`.
 
 Verification: targeted modules (catalog, candidate, operator state, release, review regressions, CLI, recovery CLI,
 docs) pass; `validate --fast` returned 0 errors and 0 warnings; `wave --all --no-record` reports

@@ -42,7 +42,7 @@ Running tests, subagents, and heavy external runtimes consumes time, tokens, and
 
 ## 2. Operating Context & Architecture Invariants
 
-- **Architecture:** Local-first, zero-dependency Python stdlib control plane governing 70 repositories across 8 suites.
+- **Architecture:** Local-first, zero-dependency Python stdlib control plane governing 8 suites over 70 top-level portfolio directories (58 monitored Git repositories; a dated snapshot, live counts come from `suites drift`).
 - **Contract Enforcement:** All inter-suite data exchange uses versioned JSON contracts (`SourceRecord`, `BrandPackage`, `ProductionJob`, `ExperimentRun`, `InvestigationRecord`, `A11yFinding`) validated by `portfolio_suites.contracts`.
 - **Fail-Closed Boundaries:** Unapproved destructive or mutating actions must fail closed without manufacturing synthetic human approval tokens.
 - **Immutable Provenance:** Retain content-addressed sha256 fingerprints, source origin paths, and author attribution on all extracted artifacts.

@@ -21,10 +21,12 @@ Project instructions live in AGENTS.md — read it in full, it is canonical for 
 - When the generated block requires `impact` or `detect_changes`, request Ryan's local result. This changes who runs the query, not the safety gate.
 - Invoke GitNexus directly only when Ryan explicitly delegates that operation in the current prompt.
 
+> The generated GitNexus code-intelligence block lives once, in `AGENTS.md` (imported above). Refresh the index with `node .gitnexus/run.cjs analyze --index-only` so it does not re-add a second copy here.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **suites** (3057 symbols, 6733 relationships, 261 execution flows).
+This project is indexed by GitNexus as **suites** (3118 symbols, 7021 relationships, 266 execution flows).
 
 > Index stale? Run `node .gitnexus/run.cjs analyze --index-only` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? Bootstrap with `npx`, `bunx`, or `pnpm dlx` — e.g. `bunx gitnexus@latest analyze` (npm 11 npx crash; #1939).
 

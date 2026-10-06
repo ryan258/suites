@@ -173,10 +173,12 @@ exceeding the declared recovery depth. Retirement receipts require
 payload alongside suite, donor, decision, and disposition. Malformed closure
 and retirement fields fail closed with strict validation errors. Defensive
 app-entry alias validation protects exact catalog resolution. Web form editing
-pauses during pending saves, preserving newer drafts from concurrent tabs, and
-the overview next-step card directly reads `/api/catalog/release`.
-Focused regression coverage passed across `tests/test_review_regressions.py` and
-Node browser-logic checks, wired into `.github/workflows/ci.yml`.
+pauses during pending saves, preserving newer drafts from concurrent tabs and
+restoring control focus upon completion, and the overview next-step card directly reads
+`/api/catalog/release`. Operator OS action dispatchers are modularized into isolated
+reviewed handlers with typed outcome blocks. Hermetic CI gates test across Linux
+(Python 3.11 floor, 3.12) and macOS (Python 3.14). Focused regression coverage passed
+across `tests/test_review_regressions.py` and Node browser-logic checks.
 
 ---
 

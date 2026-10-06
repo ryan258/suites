@@ -100,8 +100,9 @@ a complete platform upgrade/rollback acceptance.
 ## Environment and distribution
 
 Python 3.11+ is declared in `pyproject.toml`. POSIX descriptor/locking operations are
-required. The October 5, 2026 focused checks ran on macOS with Python 3.14.7; Linux
-Python 3.12 is configured in CI. That configuration is not a completed support matrix.
+required. The October 5, 2026 focused checks ran on macOS with Python 3.14.7. The hermetic CI job is
+configured for Linux Python 3.11 (the declared floor) and 3.12, and macOS Python 3.14; its first results
+are not yet recorded, so this is not a completed support matrix.
 Other Python/OS combinations, donor Node versions, and assistive-technology/browser
 combinations still need the roadmap's clean-install and real-use evidence.
 

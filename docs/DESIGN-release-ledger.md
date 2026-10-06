@@ -11,8 +11,8 @@ Before this increment, the CLI's "next" answer and portfolio summary answered so
 dispositions on the roadmap's terms, and no per-suite release-score computation. The roadmap names a
 release/completion ledger that maps every suite criterion, wave follow-up, unique capability, runtime,
 owner, contract, evidence artifact, adoption record, recovery score, and final disposition
-(ROADMAP.md:175-177), and requires "release status cannot be derived from milestone counts"
-(ROADMAP.md:584-585 in the original design baseline). The implementation now lives in
+(ROADMAP.md, "Release truth and completion ledger" workstream), and requires "release status cannot be derived from milestone counts"
+(ROADMAP.md, "Release truth and completion ledger" workstream and Phase 0 exit). The implementation now lives in
 `release_state.py`, `portfolio/release-ledger.json`, and focused release tests.
 
 The existing `project-ledger.json` (`registry.load_ledger`, registry.py:181) is the **project**
@@ -24,10 +24,10 @@ The release ledger **subsumes and references**, never forks nor duplicates, the 
 `recovery-program.json` stays authoritative for execution order, target evidence, runtime
 environment, owner gates, and receipt contracts. The release ledger adds what the recovery program
 lacks and becomes the single source that CLI, Toolbench/API, export, and docs all derive from
-(ROADMAP.md:182). This mirrors how AGENTS.md already treats the recovery program as an overlay over
+(ROADMAP.md, "Release truth and completion ledger": derive CLI, Toolbench, export, and docs from one ledger). This mirrors how AGENTS.md already treats the recovery program as an overlay over
 suite manifests (recovery_program.py:1-8): one more overlay, broader scope, same rule.
 
-Two axes stay separate forever (ROADMAP.md:178-179):
+Two axes stay separate forever (ROADMAP.md, "Release truth and completion ledger": lifecycle vs recovery depth):
 
 - **Release lifecycle** (`alpha`, `beta`, `release-candidate`, `supported`, `deprecated`, `retired`)
 - **Recovery depth** (`specified` ... `converged`, from recovery_policy.py:16-25)
@@ -176,7 +176,7 @@ route through the same openness rule in `resolve_release_state`.
 `resolve_release_state(ledger, program, suites)`:
 
 1. **Validate the ledger** (fail closed, mirrors `validate_recovery_program`).
-   Negative checks the roadmap demands (ROADMAP.md:183-184), plus exhaustive coverage:
+   Negative checks the roadmap demands (ROADMAP.md, "Release truth and completion ledger": negative tests), plus exhaustive coverage:
    - the ledger's `suites` set must equal the registry exactly (a ledger that omits a
      registered suite, or lists an unknown one, could report release_ready by dropping the
      weakest members); every criterion must carry a non-empty `obligation_refs` list of objects,
@@ -221,15 +221,15 @@ route through the same openness rule in `resolve_release_state`.
    - then runtime recovery obligations in the recovery program's priority order.
    `cli._next` switches to this queue. B1 stays behind `phase1.contract-state-freeze` until the frozen
    boundary is recorded, so authentic runtime evidence is not collected against a moving contract
-   (ROADMAP.md:203-205, 599).
+   (ROADMAP.md, "Contract and state-format freeze" and Phase 1 exit).
 
 ## 6. CLI surface
 
 Decision (Q1): **add a new `suites release` verb**, and make it the phase-aware source that
 `next` and `status` read from. Rationale: the roadmap freezes the stable CLI surface at the end of
-Phase 0 (item 4, ROADMAP.md:230-239), so introducing one narrow, well-scoped verb now and freezing
+Phase 0 ("Stable control-plane surface" workstream, ROADMAP.md), so introducing one narrow, well-scoped verb now and freezing
 it later is the intended trajectory. A dedicated `release` surface also gives the "list every
-remaining blocker / prove zero blockers" exit gate (ROADMAP.md:186-187) a first-class,
+remaining blocker / prove zero blockers" exit gate (ROADMAP.md, "Release truth and completion ledger" exit) a first-class,
 README-documented home instead of burying it inside `next` prose output.
 
 `suites release blockers` — the complete remaining-work list: every open release blocker with
@@ -282,7 +282,7 @@ This is a **precondition for B1**, not a blocker on all runtime work. Existing a
 (O1, O4) and any Phase-0 runtime probes may proceed. The rule is narrow: B1-style parity evidence is
 not release-usable until the `phase1.contract-state-freeze` global blocker carries a valid closure
 record — owner, retained evidence receipt, and `frozen_boundaries` digest bindings that recompute
-host-side to the current bytes (ROADMAP.md:205). Closing that gate is a real action, not a boolean
+host-side to the current bytes (ROADMAP.md, "Contract and state-format freeze"). Closing that gate is a real action, not a boolean
 edit: the ledger rejects any bare flag, and B1's `depends_on` keeps it held (never "next") until the
 frozen record lands. The validator enforces this, so the CLI stop handing out B1 as "the next thing"
 before the boundary is genuinely frozen.

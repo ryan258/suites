@@ -68,7 +68,9 @@ alone never refreshes a stale target. The web form includes an explicit checkbox
 for refreshing an observation after review. Commands are never executed by the
 control layer. Links are opened by the browser only after a click and remain labelled
 unverified; no network availability test is performed. OS-open success only means
-the request was handed to the opener.
+the request was handed to the opener. The saved hash is checked immediately before the
+hand-off, but the opener receives a path, so a file replaced in that instant is not caught;
+this is an accepted single-user limit, not a guarantee.
 
 Saved records live in `portfolio/project-ledger.json`, so CLI and Toolbench share
 them across process restarts. Writes use the existing sidecar lock and atomic,
