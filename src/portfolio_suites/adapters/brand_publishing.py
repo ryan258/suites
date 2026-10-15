@@ -4,19 +4,22 @@ from __future__ import annotations
 
 import ast
 import datetime
+import json
+import os
+import subprocess
+import sys
 import time
+from pathlib import Path
 from typing import Any
 
 from ..contracts import SCHEMA_VERSION, compute_sha256, validate_contract
 from ..engines.brand_publishing import BrandPublishingEngine
-from .common import get_git_fingerprint, get_repo_path, is_meaningful_git_fingerprint
+from .common import donor_env, get_git_fingerprint, get_repo_path, is_meaningful_git_fingerprint
+from . import donor_brand_package_probe
 
 BRAND_MAKER_DIR = get_repo_path("brand-maker-spec", "BRAND_MAKER_DIR")
 BRAND_WORKSHOP_DIR = get_repo_path("brand-workshop", "BRAND_WORKSHOP_DIR")
 CYBORG_DIR = get_repo_path("cyborg", "CYBORG_DIR")
-
-
-CYBORG_BRAND_PACKAGE_APPROVED_AT = "2026-08-19T18:00:00+00:00"
 
 
 class BrandPublishingSourceAdapter:
@@ -24,12 +27,11 @@ class BrandPublishingSourceAdapter:
 
     @classmethod
     def execute_b1_brand_package_export(cls) -> dict[str, Any]:
-        """Build a source-informed BrandPackage projection and verify dry-run mutation protection."""
+        """Export only an actually published Brand Maker version, without donor writes."""
         target_fp = get_git_fingerprint(BRAND_MAKER_DIR)
         consumer_fp = get_git_fingerprint(CYBORG_DIR)
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        # Parse live developer_exports.py via AST for deep source-derived assertions
         dev_exports_path = BRAND_MAKER_DIR / "src" / "brand_maker" / "publishing" / "developer_exports.py"
         spec_path = BRAND_MAKER_DIR / "spec.md"
         living_spec_path = BRAND_MAKER_DIR / "docs" / "specs" / "living-brand-system.md"
@@ -37,49 +39,40 @@ class BrandPublishingSourceAdapter:
         has_spec = spec_path.is_file()
         has_living_spec = living_spec_path.is_file()
 
-        extracted_functions: list[str] = []
+        extracted_functions: set[str] = set()
         extracted_exports: set[str] = set()
         extracted_token_categories: set[str] = set()
         extracted_voice_sections: set[str] = set()
-
         if has_dev_exports:
             try:
-                source_code = dev_exports_path.read_text(encoding="utf-8")
-                tree = ast.parse(source_code)
+                tree = ast.parse(dev_exports_path.read_text(encoding="utf-8"))
                 for node in ast.walk(tree):
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        extracted_functions.append(node.name)
+                        extracted_functions.add(node.name)
                     elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-                        val = node.value
-                        if val.endswith((".css", ".json", ".js", ".pdf", ".md")):
-                            extracted_exports.add(val)
-                        if val in {"color", "font", "dimension", "duration"}:
-                            extracted_token_categories.add(val)
-                        if val.startswith("section."):
-                            extracted_voice_sections.add(val)
-            except Exception:
+                        value = node.value
+                        if value.endswith((".css", ".json", ".js")):
+                            extracted_exports.add(value)
+                        if value in {"color", "font", "dimension", "duration"}:
+                            extracted_token_categories.add(value)
+                        if value.startswith("section."):
+                            extracted_voice_sections.add(value)
+            except (OSError, SyntaxError, UnicodeError):
                 pass
 
-        extracted_audiences: list[str] = []
-        if has_living_spec:
-            spec_text = living_spec_path.read_text(encoding="utf-8").lower()
-            for aud in ["solo creators", "professional designers", "small businesses", "agencies"]:
-                if aud in spec_text:
-                    extracted_audiences.append(aud)
-
         expected_functions = {"export_draft_tokens", "export_developer_package", "build_brand_kit_zip"}
-        expected_exports = {"tokens.css", "tokens.json", "tailwind.config.js", "rules.json", "patterns.json", "voice-context.json", "change-manifest.json"}
+        expected_exports = {
+            "tokens.css", "tokens.json", "rules.json", "patterns.json",
+            "voice-context.json", "change-manifest.json",
+        }
         expected_token_types = {"color", "font", "dimension", "duration"}
         expected_voice_sections = {"section.voice", "section.messaging", "section.strategy"}
-
         sensitivity_passed = (
-            expected_functions.issubset(set(extracted_functions))
+            expected_functions.issubset(extracted_functions)
             and expected_exports.issubset(extracted_exports)
             and expected_token_types.issubset(extracted_token_categories)
             and expected_voice_sections.issubset(extracted_voice_sections)
-            and len(extracted_audiences) == 4
         )
-
         source_derived_assertions = {
             "donor_source_path": "src/brand_maker/publishing/developer_exports.py",
             "spec_source_path": "docs/specs/living-brand-system.md",
@@ -87,158 +80,11 @@ class BrandPublishingSourceAdapter:
             "asserted_functions": sorted(extracted_functions),
             "asserted_token_categories": sorted(extracted_token_categories),
             "asserted_voice_sections": sorted(extracted_voice_sections),
-            "asserted_audiences": sorted(extracted_audiences),
             "sensitivity_test_passed": sensitivity_passed,
         }
 
-        # Verify live cyborg downstream consumer on disk
         cyborg_manual_path = CYBORG_DIR / "MANUAL.md"
-        cyborg_blog_path = CYBORG_DIR / "my-ms-ai-blog"
         has_consumer_manual = cyborg_manual_path.is_file()
-        has_consumer_blog = cyborg_blog_path.is_dir()
-
-        # Build canonical BrandPackage for Cyborg Systems with preserved approval timestamp
-        brand_pkg_raw = {
-            "schema_version": SCHEMA_VERSION,
-            "package_id": "pkg-cyborg-brand-v1",
-            "brand_id": "brand-cyborg-systems",
-            "version": "1.0.0",
-            "approved_at": CYBORG_BRAND_PACKAGE_APPROVED_AT,
-            "identity": {
-                "brand_name": "Cyborg Systems",
-                "tagline": "Cognitive infrastructure for the modern operator",
-                "mission": "Turn high-context vision into durable, compoundable production systems without cognitive drag.",
-                "color_palette": {
-                    "primary": "#0F172A",
-                    "accent": "#38BDF8",
-                    "background": "#F8FAFC",
-                    "surface": "#FFFFFF",
-                },
-                "typography": {
-                    "display": "Outfit",
-                    "body": "Inter",
-                    "code": "JetBrains Mono",
-                },
-            },
-            "voice": {
-                "archetype": "Architect-Operator",
-                "tone_adjectives": ["lucid", "rigorous", "unvarnished", "composed"],
-                "taboo_words": ["synergy", "paradigm", "disruptive", "game-changing"],
-                "say_never_say": [
-                    {"say": "Verified against test fixtures", "never_say": "Completely bug-free"},
-                    {"say": "Compoundable capability", "never_say": "Next-gen silver bullet"},
-                ],
-            },
-            "audience": {
-                "primary": "Autonomous solo builders and technical leaders",
-                "pain_points": ["Context thrashing", "Drifting unowned repos", "Prompt fatigue"],
-                "desired_outcomes": ["Durable compounding assets", "Traceable provenance", "Clean cognitive state"],
-            },
-            "approved_claims": [
-                {
-                    "claim_id": "claim-001",
-                    "claim": "Zero-dependency local-first portfolio control plane",
-                    "verification": "Standalone stdlib-only Python architecture verified across 70 repositories.",
-                },
-                {
-                    "claim_id": "claim-002",
-                    "claim": "Full evidence provenance before donor retirement",
-                    "verification": "Automated multi-stage gate and content-addressed hash receipts required for wave completion.",
-                },
-            ],
-            "assets": [
-                {
-                    "asset_id": "asset-logo-svg",
-                    "name": "Cyborg Monogram",
-                    "kind": "vector_logo",
-                    "path": "assets/brand/logo.svg",
-                    "sha256": compute_sha256(b"<svg>cyborg</svg>"),
-                }
-            ],
-            "usage_rules": [
-                "Never publish unapproved claims without verifiable evidence.",
-                "Always preserve operator attribution on human-authored decisions.",
-                "Version-bump required on any voice or identity token modifications.",
-            ],
-            "provenance": [
-                {
-                    "source": "brand-maker-spec",
-                    "commit": target_fp.get("head", "HEAD"),
-                    "operator": "Ryan Johnson",
-                    "timestamp": CYBORG_BRAND_PACKAGE_APPROVED_AT,
-                    "derivation": "verified_against, not_compiled_from",
-                }
-            ],
-        }
-
-        validated_pkg = validate_contract("BrandPackage", brand_pkg_raw)
-
-        # Source record for dry run with exact byte-level accounting
-        manifesto_text = "# Manifesto\nZero-dependency local-first portfolio control plane with full evidence provenance."
-        manifesto_bytes = manifesto_text.encode("utf-8")
-        source_record_raw = {
-            "schema_version": SCHEMA_VERSION,
-            "source_id": "src-manifesto-draft-001",
-            "acquired_at": now_iso,
-            "sha256": compute_sha256(manifesto_bytes),
-            "size_bytes": len(manifesto_bytes),
-            "media_type": "text/markdown",
-            "origin": "docs/manifesto.md",
-            "provenance": {
-                "author": "Ryan Johnson",
-                "channel": "blog",
-                "system": "cyborg",
-            },
-        }
-        validated_src = validate_contract("SourceRecord", source_record_raw)
-
-        # Genuine multi-case mutation protection verification (Testing real failure modes)
-        mutation_tests = []
-
-        # Case 1: Unmodified candidate -> Must pass with 0 violations
-        ok1, v1 = BrandPublishingEngine.verify_immutability(validated_pkg, dict(validated_pkg))
-        mutation_tests.append({"case": "unmodified_identical", "passed": ok1 and len(v1) == 0, "violations": v1})
-
-        # Case 2: Identity altered under same version pin -> Must fail closed
-        mutated_identity = dict(validated_pkg)
-        mutated_identity["identity"] = dict(validated_pkg["identity"], brand_name="Rogue Mutated Brand")
-        ok2, v2 = BrandPublishingEngine.verify_immutability(validated_pkg, mutated_identity)
-        mutation_tests.append({"case": "mutated_identity_detected", "passed": (not ok2) and len(v2) >= 1, "violations": v2})
-
-        # Case 3: Voice altered under same version pin -> Must fail closed
-        mutated_voice = dict(validated_pkg)
-        mutated_voice["voice"] = dict(validated_pkg["voice"], taboo_words=["allowed_now"])
-        ok3, v3 = BrandPublishingEngine.verify_immutability(validated_pkg, mutated_voice)
-        mutation_tests.append({"case": "mutated_voice_detected", "passed": (not ok3) and len(v3) >= 1, "violations": v3})
-
-        # Case 4: Approved claims altered under same version pin -> Must fail closed
-        mutated_claims = dict(validated_pkg)
-        mutated_claims["approved_claims"] = []
-        ok4, v4 = BrandPublishingEngine.verify_immutability(validated_pkg, mutated_claims)
-        mutation_tests.append({"case": "mutated_claims_detected", "passed": (not ok4) and len(v4) >= 1, "violations": v4})
-
-        all_mutation_checks_passed = all(t["passed"] for t in mutation_tests)
-
-        # Execute downstream dry-run publication check against approved claims
-        draft_content = manifesto_text
-        claims = [c["claim"] for c in validated_pkg["approved_claims"]]
-        matched_claims = [c for c in claims if c.lower() in draft_content.lower()]
-
-        receipt = {
-            "receipt_id": f"pub-dry-{int(time.time())}",
-            "channel": "blog",
-            "status": "dry_run_verified",
-            "timestamp": now_iso,
-            "brand_package_id": validated_pkg["package_id"],
-            "brand_version": validated_pkg["version"],
-            "source_id": validated_src["source_id"],
-            "source_sha256": validated_src["sha256"],
-            "matched_approved_claims_count": len(matched_claims),
-            "matched_claims": matched_claims,
-            "mutation_protection_verified": all_mutation_checks_passed,
-            "dry_run_only": True,
-            "live_published": False,
-        }
         source_verified = (
             is_meaningful_git_fingerprint(target_fp)
             and is_meaningful_git_fingerprint(consumer_fp)
@@ -246,43 +92,389 @@ class BrandPublishingSourceAdapter:
             and has_spec
             and has_living_spec
             and has_consumer_manual
-            and has_consumer_blog
-            and sensitivity_passed
-        )
-        all_stages_passed = (
-            source_verified
-            and all_mutation_checks_passed
-            and receipt["status"] == "dry_run_verified"
-            and receipt["matched_approved_claims_count"] >= 1
             and sensitivity_passed
         )
 
+        database_path = Path(
+            os.environ.get(
+                "BRAND_MAKER_DATABASE_PATH",
+                str(BRAND_MAKER_DIR / ".brand-maker" / "brands.db"),
+            )
+        ).expanduser().resolve()
+        selected_brand_id = os.environ.get("BRAND_MAKER_BRAND_ID", "").strip()
+        command = [
+            sys.executable,
+            str(Path(donor_brand_package_probe.__file__).resolve()),
+            str(BRAND_MAKER_DIR),
+            str(database_path),
+        ]
+        if selected_brand_id:
+            command.append(selected_brand_id)
+
+        try:
+            db_sha256_before = (
+                compute_sha256(database_path.read_bytes()) if database_path.is_file() else None
+            )
+        except OSError as error:
+            return {
+                "wave": "B1",
+                "status": "environment_blocked",
+                "blocker": "brand_maker_database_unreadable",
+                "next_action": "Resolve read-only access to the configured Brand Maker database, then rerun B1.",
+                "all_stages_passed": False,
+                "source_verification_passed": source_verified,
+                "source_derived_assertions": source_derived_assertions,
+                "target": {"name": "brand-maker-spec", "path": str(BRAND_MAKER_DIR), "fingerprint": target_fp},
+                "consumer": {"name": "cyborg", "path": str(CYBORG_DIR), "fingerprint": consumer_fp},
+                "database_error": type(error).__name__,
+            }
+        started = time.monotonic()
+        try:
+            produced = subprocess.run(
+                command,
+                cwd=BRAND_MAKER_DIR,
+                env=donor_env({"PYTHONDONTWRITEBYTECODE": "1"}),
+                capture_output=True,
+                text=True,
+                timeout=90,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            return {
+                "wave": "B1",
+                "status": "environment_blocked",
+                "blocker": type(error).__name__,
+                "next_action": "Run the Brand Maker export probe in its supported local Python environment.",
+                "all_stages_passed": False,
+                "source_verification_passed": source_verified,
+                "source_derived_assertions": source_derived_assertions,
+                "target": {"name": "brand-maker-spec", "path": str(BRAND_MAKER_DIR), "fingerprint": target_fp},
+                "consumer": {"name": "cyborg", "path": str(CYBORG_DIR), "fingerprint": consumer_fp},
+            }
+        duration_ms = round((time.monotonic() - started) * 1000, 2)
+        try:
+            db_sha256_after = (
+                compute_sha256(database_path.read_bytes()) if database_path.is_file() else None
+            )
+        except OSError:
+            db_sha256_after = None
+        database_unchanged = db_sha256_before == db_sha256_after
+        invocation = {
+            "command": command,
+            "exit_code": produced.returncode,
+            "duration_ms": duration_ms,
+            "working_directory": str(BRAND_MAKER_DIR),
+            "environment_policy": "donor_env_without_HOME_or_PYTHONPATH",
+        }
+        if produced.returncode == donor_brand_package_probe.EXIT_IMPORT_FAILED:
+            return {
+                "wave": "B1",
+                "status": "environment_blocked",
+                "blocker": "brand_maker_import_failed",
+                "next_action": "Install or select the Brand Maker runtime dependencies, then rerun B1.",
+                "all_stages_passed": False,
+                "source_invocation": invocation,
+                "source_verification_passed": source_verified,
+                "source_derived_assertions": source_derived_assertions,
+                "target": {"name": "brand-maker-spec", "path": str(BRAND_MAKER_DIR), "fingerprint": target_fp},
+                "consumer": {"name": "cyborg", "path": str(CYBORG_DIR), "fingerprint": consumer_fp},
+            }
+        if produced.returncode != 0:
+            return {
+                "wave": "B1",
+                "status": "probe_failed",
+                "blocker": "brand_maker_export_probe_failed",
+                "next_action": "Inspect the probe error and rerun B1 after correcting the donor environment.",
+                "all_stages_passed": False,
+                "source_invocation": invocation,
+                "probe_stderr": produced.stderr[-2000:],
+                "source_verification_passed": source_verified,
+                "source_derived_assertions": source_derived_assertions,
+                "target": {"name": "brand-maker-spec", "path": str(BRAND_MAKER_DIR), "fingerprint": target_fp},
+                "consumer": {"name": "cyborg", "path": str(CYBORG_DIR), "fingerprint": consumer_fp},
+            }
+        try:
+            probe_result = json.loads(produced.stdout.strip().splitlines()[-1])
+        except (IndexError, json.JSONDecodeError):
+            probe_result = {"status": "invalid_probe_output"}
+
+        common = {
+            "source_invocation": invocation,
+            "database_unchanged": database_unchanged,
+            "database_sha256": db_sha256_after or "",
+            "source_verification_passed": source_verified,
+            "source_derived_assertions": source_derived_assertions,
+            "target": {
+                "name": "brand-maker-spec", "path": str(BRAND_MAKER_DIR), "fingerprint": target_fp,
+                "has_developer_exports": has_dev_exports, "has_spec": has_spec,
+                "has_living_spec": has_living_spec,
+            },
+            "consumer": {
+                "name": "cyborg", "path": str(CYBORG_DIR), "fingerprint": consumer_fp,
+                "has_manual": has_consumer_manual,
+            },
+        }
+        probe_status = probe_result.get("status")
+        if not database_unchanged:
+            return {
+                "wave": "B1", "status": "probe_failed", "blocker": "donor_database_changed",
+                "next_action": "Inspect the database state; the read-only export probe did not preserve its file hash.",
+                "all_stages_passed": False, "probe": probe_result, **common,
+            }
+        if probe_status != "exported":
+            blocker_by_status = {
+                "no_published_version": (
+                    "owner_approval_required",
+                    "Create, owner-approve, and publish the intended Brand Maker brand; then rerun B1.",
+                ),
+                "database_missing": (
+                    "brand_maker_database_missing",
+                    "Start Brand Maker with its intended local database, then rerun B1.",
+                ),
+                "publication_schema_unavailable": (
+                    "brand_maker_publication_schema_unavailable",
+                    "Update the adapter to the current Brand Maker publication schema before rerunning B1.",
+                ),
+                "database_unavailable": (
+                    "brand_maker_database_unavailable",
+                    "Resolve the read-only database access issue, then rerun B1.",
+                ),
+                "brand_selection_required": (
+                    "brand_selection_required",
+                    "Set BRAND_MAKER_BRAND_ID to the intended published brand UUID, then rerun B1.",
+                ),
+                "selected_brand_not_published": (
+                    "selected_brand_not_published",
+                    "Select a brand UUID that has an owner-approved published version, then rerun B1.",
+                ),
+            }
+            blocker, next_action = blocker_by_status.get(
+                str(probe_status),
+                ("brand_maker_export_unavailable", "Resolve the reported Brand Maker export blocker, then rerun B1."),
+            )
+            return {
+                "wave": "B1", "status": blocker, "blocker": blocker, "next_action": next_action,
+                "all_stages_passed": False, "probe": probe_result, **common,
+                "brand_package_emitted": False,
+                "source_record_emitted": False,
+                "publishing_receipt_emitted": False,
+            }
+
+        try:
+            published = probe_result["published_version"]
+            snapshot = published["snapshot"]
+            approvals = published["approvals"]
+            exports = probe_result["developer_export"]
+            if not isinstance(snapshot, dict) or not isinstance(approvals, list) or not approvals:
+                raise ValueError("published version is missing its snapshot or owner approvals")
+            if not isinstance(exports, dict) or not expected_exports.issubset(exports):
+                raise ValueError("Brand Maker developer export is incomplete")
+            if any(not isinstance(exports[name], str) for name in expected_exports):
+                raise ValueError("Brand Maker developer export contains non-text artifacts")
+
+            content_payload = json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            host_content_hash = compute_sha256(content_payload)
+            if host_content_hash != published.get("content_hash"):
+                raise ValueError("host-recomputed published snapshot hash does not match Brand Maker")
+            brand_id = str(published["brand_id"])
+            version = str(published["version"])
+            owner = snapshot.get("owner") or {}
+            owner_id = owner.get("id")
+            owner_name = owner.get("display_name")
+            revision = published.get("draft_revision")
+            section_ids = [section.get("id") for section in snapshot.get("sections", [])]
+            if (
+                snapshot.get("brand_id") != brand_id
+                or snapshot.get("revision") != revision
+                or snapshot.get("status") != "approved"
+                or snapshot.get("maturity") != "approved"
+                or published.get("publisher_id") != owner_id
+                or published.get("manifest", {}).get("draft_revision") != revision
+                or published.get("manifest", {}).get("section_ids") != section_ids
+                or not owner_id
+                or not owner_name
+            ):
+                raise ValueError("published version, owner, manifest, and snapshot do not align")
+            for approval in approvals:
+                if (
+                    approval.get("brand_id") != brand_id
+                    or approval.get("draft_revision") != revision
+                    or approval.get("owner_id") != owner_id
+                    or approval.get("outcome") != "approved"
+                ):
+                    raise ValueError("published version contains an approval outside its owner or revision")
+            approval_times = [
+                datetime.datetime.fromisoformat(item["approved_at"].replace("Z", "+00:00"))
+                for item in approvals
+            ]
+            if any(moment.tzinfo is None or moment.utcoffset() is None for moment in approval_times):
+                raise ValueError("Brand Maker approval timestamps must include a timezone")
+            approved_at = max(approval_times).astimezone(datetime.timezone.utc).isoformat()
+            expected_module_paths = {
+                "brand_maker.publishing.developer_exports": "src/brand_maker/publishing/developer_exports.py",
+                "brand_maker.brand_system.models": "src/brand_maker/brand_system/models.py",
+            }
+            module_fingerprints = probe_result.get("module_fingerprints")
+            if not isinstance(module_fingerprints, dict) or set(module_fingerprints) != set(expected_module_paths):
+                raise ValueError("Brand Maker probe did not report the complete expected module set")
+            for module_name, expected_path in expected_module_paths.items():
+                record = module_fingerprints[module_name]
+                if not isinstance(record, dict) or record.get("path") != expected_path:
+                    raise ValueError(f"Brand Maker probe reported an unexpected module path for {module_name}")
+                module_path = BRAND_MAKER_DIR / expected_path
+                if compute_sha256(module_path.read_bytes()) != record.get("sha256"):
+                    raise ValueError(f"host module fingerprint did not agree for {module_name}")
+
+            token_export = json.loads(exports["tokens.json"])
+            rule_export = json.loads(exports["rules.json"])
+            voice_export = json.loads(exports["voice-context.json"])
+            manifest_export = exports["change-manifest.json"]
+            pattern_export = json.loads(exports["patterns.json"])
+            expected_tokens = [token for section in snapshot.get("sections", []) for token in section.get("tokens", [])]
+            expected_rules = [rule for section in snapshot.get("sections", []) for rule in section.get("rules", [])]
+            expected_patterns = [pattern for section in snapshot.get("sections", []) for pattern in section.get("patterns", [])]
+            expected_voice_sections = [
+                section for section in snapshot.get("sections", [])
+                if section.get("id") in {"section.voice", "section.messaging", "section.strategy"}
+            ]
+            if token_export.get("tokens") != expected_tokens:
+                raise ValueError("Brand Maker token export does not match the published snapshot")
+            if rule_export.get("rules") != expected_rules:
+                raise ValueError("Brand Maker rule export does not match the published snapshot")
+            if pattern_export.get("patterns") != expected_patterns:
+                raise ValueError("Brand Maker pattern export does not match the published snapshot")
+            if voice_export.get("sections") != expected_voice_sections:
+                raise ValueError("Brand Maker voice-context export does not match the published snapshot")
+            change_manifest = json.loads(manifest_export)
+            if (
+                change_manifest.get("manifest") != published.get("manifest")
+                or sorted(change_manifest.get("approval_ids", [])) != sorted(item.get("id") for item in approvals)
+            ):
+                raise ValueError("Brand Maker change manifest does not match the published version")
+            for name in ("tokens.json", "rules.json", "patterns.json", "voice-context.json", "change-manifest.json"):
+                artifact = json.loads(exports[name])
+                if artifact.get("version") != version or artifact.get("content_hash") != published["content_hash"]:
+                    raise ValueError(f"Brand Maker export {name} does not match its immutable version")
+            if published["content_hash"] not in exports["tokens.css"]:
+                raise ValueError("Brand Maker CSS export is not bound to the published content hash")
+
+            package_id = f"pkg-{brand_id.replace('-', '')}-{version.replace('.', '-')}"
+            brand_pkg_raw = {
+                "schema_version": SCHEMA_VERSION,
+                "package_id": package_id,
+                "brand_id": brand_id,
+                "version": version,
+                "approved_at": approved_at,
+                "identity": {
+                    "brand_name": snapshot["brand_name"],
+                    "brand_context": snapshot.get("brand_context"),
+                    "developer_tokens": token_export.get("tokens", []),
+                },
+                "voice": {"sections": voice_export.get("sections", [])},
+                "audience": {"brief": snapshot.get("brief", {})},
+                # Brand Maker currently has no separately verified approved-claims registry.
+                # Messaging prose is not promoted into factual claims by this adapter.
+                "approved_claims": [],
+                "assets": [
+                    {
+                        "asset_id": asset["id"],
+                        "name": asset["name"],
+                        "kind": asset["media_type"],
+                        "path": f"brand-maker://{brand_id}/assets/{asset['id']}",
+                        "sha256": asset["content_hash"],
+                        "storage": asset["storage"],
+                    }
+                    for asset in snapshot.get("assets", [])
+                ],
+                "usage_rules": [
+                    rule["description"]
+                    for rule in rule_export.get("rules", [])
+                    if isinstance(rule, dict) and isinstance(rule.get("description"), str) and rule["description"].strip()
+                ],
+                "provenance": [{
+                    "source": "brand-maker-spec",
+                    "operator": owner_name,
+                    "timestamp": approved_at,
+                    "brand_version": version,
+                    "published_content_sha256": published["content_hash"],
+                    "approval_ids": [item["id"] for item in approvals],
+                    "derivation": "native Brand Maker developer export from an immutable published version",
+                }],
+            }
+            validated_pkg = validate_contract("BrandPackage", brand_pkg_raw)
+            manifest_bytes = manifest_export.encode("utf-8")
+            validated_src = validate_contract("SourceRecord", {
+                "schema_version": SCHEMA_VERSION,
+                "source_id": f"src-brand-maker-{brand_id}-{version}",
+                "acquired_at": now_iso,
+                "sha256": compute_sha256(manifest_bytes),
+                "size_bytes": len(manifest_bytes),
+                "media_type": "application/json",
+                "origin": f"brand-maker-spec://{brand_id}/{version}/change-manifest.json",
+                "provenance": {
+                    "donor_repo": "brand-maker-spec",
+                    "method": "export_developer_package",
+                    "brand_version": version,
+                    "published_content_sha256": published["content_hash"],
+                },
+            })
+        except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+            return {
+                "wave": "B1", "status": "export_unverified", "blocker": "brand_maker_export_invalid",
+                "next_action": "Inspect the producer output and mapping error before accepting a BrandPackage.",
+                "all_stages_passed": False, "probe": probe_result, "validation_error": str(error), **common,
+            }
+
+        mutation_tests: list[dict[str, Any]] = []
+        ok, violations = BrandPublishingEngine.verify_immutability(validated_pkg, dict(validated_pkg))
+        mutation_tests.append({"case": "unmodified_identical", "passed": ok and not violations, "violations": violations})
+        mutated_identity = dict(validated_pkg)
+        mutated_identity["identity"] = dict(validated_pkg["identity"], brand_name="Unauthorized Mutation")
+        ok, violations = BrandPublishingEngine.verify_immutability(validated_pkg, mutated_identity)
+        mutation_tests.append({"case": "mutated_identity_detected", "passed": not ok and bool(violations), "violations": violations})
+        mutated_voice = dict(validated_pkg)
+        mutated_voice["voice"] = dict(validated_pkg["voice"], mutation_probe=True)
+        ok, violations = BrandPublishingEngine.verify_immutability(validated_pkg, mutated_voice)
+        mutation_tests.append({"case": "mutated_voice_detected", "passed": not ok and bool(violations), "violations": violations})
+        mutated_provenance = dict(validated_pkg)
+        mutated_provenance["provenance"] = [dict(validated_pkg["provenance"][0], mutation_probe=True)]
+        ok, violations = BrandPublishingEngine.verify_immutability(validated_pkg, mutated_provenance)
+        mutation_tests.append({"case": "mutated_provenance_detected", "passed": not ok and bool(violations), "violations": violations})
+        all_mutation_checks_passed = all(item["passed"] for item in mutation_tests)
+
+        receipt = BrandPublishingEngine.dry_run_publish(
+            validated_pkg,
+            validated_src,
+            manifest_export,
+            channel="brand-maker-developer-export",
+        )
+        all_stages_passed = (
+            source_verified
+            and database_unchanged
+            and all_mutation_checks_passed
+            and receipt.get("status") == "dry_run_verified"
+            and receipt.get("dry_run_only") is True
+            and receipt.get("live_published") is False
+        )
+        export_hashes = {
+            name: compute_sha256(value.encode("utf-8"))
+            for name, value in sorted(exports.items())
+        }
         return {
             "wave": "B1",
             "status": "verified_candidate" if all_stages_passed else "source_unverified",
             "brand_package": validated_pkg,
             "source_record": validated_src,
+            "source_content": manifest_export,
             "publishing_receipt": receipt,
             "mutation_tests": mutation_tests,
             "mutation_protection_passed": all_mutation_checks_passed,
             "source_verification_passed": source_verified,
             "all_stages_passed": all_stages_passed,
+            "source_invocation": invocation,
+            "probe": {"status": probe_status, "module_fingerprints": probe_result.get("module_fingerprints", {})},
+            "export_sha256s": export_hashes,
             "source_derived_assertions": source_derived_assertions,
-            "target": {
-                "name": "brand-maker-spec",
-                "path": str(BRAND_MAKER_DIR),
-                "fingerprint": target_fp,
-                "has_developer_exports": has_dev_exports,
-                "has_spec": has_spec,
-                "has_living_spec": has_living_spec,
-            },
-            "consumer": {
-                "name": "cyborg",
-                "path": str(CYBORG_DIR),
-                "fingerprint": consumer_fp,
-                "has_manual": has_consumer_manual,
-                "has_blog": has_consumer_blog,
-            },
+            **common,
         }
 
     @classmethod

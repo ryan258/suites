@@ -1,14 +1,10 @@
 {
-  "receipt_id": "pub-dry-52b5e37ca3a5406fbda8aa7b2eb50cae",
-  "channel": "cyborg-vcc",
-  "status": "dry_run_verified",
-  "timestamp": "2026-08-22T23:04:04.366466+00:00",
-  "brand_package_id": "pkg-cyborg-brand-v1",
-  "brand_version": "1.0.0",
-  "source_id": "src-manifesto-draft-001",
-  "source_sha256": "b058afcc9f6feea84f00e027ef5aec6d2b1a750e923d17a0559beec453560c73",
-  "matched_approved_claims_count": 1,
-  "dry_run_only": true,
-  "live_published": false,
-  "notes": "Draft successfully verified against brand constraints. Awaiting explicit manual release."
+  "wave": "B3",
+  "status": "blocked",
+  "blocker": "brand_package_unavailable",
+  "next_action": "Complete B1 with a real owner-approved Brand Maker publication before running B3.",
+  "all_stages_passed": false,
+  "upstream_probe": {
+    "status": "owner_approval_required"
+  }
 }

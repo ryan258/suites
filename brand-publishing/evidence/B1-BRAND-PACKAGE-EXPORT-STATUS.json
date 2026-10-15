@@ -1,0 +1,16 @@
+{
+  "wave": "B1",
+  "status": "owner_approval_required",
+  "blocker": "owner_approval_required",
+  "next_action": "Create, owner-approve, and publish the intended brand in Brand Maker, then rerun B1.",
+  "all_stages_passed": false,
+  "source_verification_passed": true,
+  "database_unchanged": true,
+  "probe": {
+    "status": "no_published_version",
+    "published_version_count": 0
+  },
+  "brand_package_emitted": false,
+  "source_record_emitted": false,
+  "publishing_receipt_emitted": false
+}

@@ -8,6 +8,7 @@ is refused rather than waved through.
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -179,29 +180,8 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
     # portfolio-runtime-source-v1 receipt that proves the invocation, so they are validated by
     # _portfolio_runtime_receipt_errors and never reach an analysis spec.
     "brand-publishing/B1": {
-        "equals": {
-            "wave": "B1",
-            "status": "verified_candidate",
-            "mutation_protection_passed": True,
-            "publishing_receipt.dry_run_only": True,
-            "publishing_receipt.live_published": False,
-            "source_derived_assertions.sensitivity_test_passed": True,
-        },
-        "objects": ["brand_package", "source_record", "publishing_receipt", "target", "consumer", "source_derived_assertions"],
-        "lists": [
-            "mutation_tests",
-            "source_derived_assertions.asserted_exports",
-            "source_derived_assertions.asserted_functions",
-            "source_derived_assertions.asserted_token_categories",
-            "source_derived_assertions.asserted_voice_sections",
-            "source_derived_assertions.asserted_audiences",
-        ],
-        "strings": [
-            "source_derived_assertions.donor_source_path",
-            "source_derived_assertions.spec_source_path",
-        ],
-        "fingerprints": ["target.fingerprint", "consumer.fingerprint"],
-        "contracts": {"brand_package": "BrandPackage", "source_record": "SourceRecord"},
+        "equals": {"wave": "B1"},
+        "strings": ["status"],
     },
     "brand-publishing/B2": {
         "equals": {
@@ -214,21 +194,10 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "fingerprints": ["donor.fingerprint", "target.fingerprint"],
     },
     "brand-publishing/B3": {
-        "equals": {"status": "dry_run_verified", "dry_run_only": True, "live_published": False},
-        "strings": ["brand_package_id", "source_id", "source_sha256"],
-        "minimums": {"matched_approved_claims_count": 1},
+        "equals": {"wave": "B3"},
     },
     "brand-publishing/B4": {
-        "equals": {
-            "status": "verified",
-            "consumer_1.status": "verified",
-            "consumer_1.version_match": True,
-            "consumer_1.mutation_shield_active": True,
-            "consumer_2.status": "verified",
-            "consumer_2.version_match": True,
-            "consumer_2.mutation_shield_active": True,
-        },
-        "objects": ["consumer_1", "consumer_2"],
+        "equals": {"wave": "B4"},
     },
     "brand-publishing/B5": {
         "equals": {
@@ -243,17 +212,7 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "contracts": {"resulting_package": "BrandPackage"},
     },
     "brand-publishing/B6": {
-        "equals": {
-            "approved_review.status": "simulated_review_passed",
-            "approved_review.simulated_gate.boundary_check": "stopped_before_live_publish",
-            "approved_review.simulated_gate.decision_source": "simulated_fixture",
-            "approved_review.simulated_gate.human_confirmation_claimed": False,
-            "approved_review.dry_run_receipt.dry_run_only": True,
-            "approved_review.dry_run_receipt.live_published": False,
-            "rejected_probe_status": "simulated_blocked_rejected",
-            "unmatched_probe_status": "simulated_blocked_unmatched_claims",
-        },
-        "objects": ["approved_review"],
+        "equals": {"wave": "B6"},
     },
     "production-house/P1": {
         "equals": {
@@ -552,19 +511,6 @@ ANALYSIS_RECEIPT_SPECS: dict[str, dict[str, Any]] = {
         "lists": ["mined_modules"],
         "fingerprints": ["ai_staff_fingerprint", "agentic_harness_fingerprint"],
     },
-    "game-design/G1": {
-        "equals": {"wave_id": "G1", "donor": "tucked-in-terrors", "game_version_dirty": False},
-        "objects": ["outcome_distribution", "metric_tolerances", "configuration"],
-        "lists": ["objectives_exercised"],
-        "strings": [
-            "game_version_fingerprint",
-            "cards_sha256",
-            "objectives_sha256",
-            "results_sha256",
-            "projection_markdown",
-        ],
-        "minimums": {"cards_count": 31, "objectives_count": 8, "recorded_runs": 1000},
-    },
     "game-design/G2": {
         "equals": {
             "wave": "G2",
@@ -769,23 +715,635 @@ def _analysis_receipt_semantic_errors(
             except (ContractError, TypeError) as error:
                 errors.append(f"catalog_evaluation.evaluations.{index}.finding violates A11yFinding: {error}")
     elif spec_key == "brand-publishing/B1":
-        mutation_tests = document.get("mutation_tests", [])
-        if any(not isinstance(test, dict) or test.get("passed") is not True for test in mutation_tests):
-            errors.append("every B1 mutation test must retain an explicit pass")
+        status = document.get("status")
+        probe = document.get("probe")
+        if status == "owner_approval_required":
+            expected_blocker = {
+                "blocker": "owner_approval_required",
+                "all_stages_passed": False,
+                "database_unchanged": True,
+                "source_verification_passed": True,
+                "probe.status": "no_published_version",
+                "brand_package_emitted": False,
+                "source_record_emitted": False,
+                "publishing_receipt_emitted": False,
+            }
+            for dotted_path, expected in expected_blocker.items():
+                actual = _receipt_value(document, dotted_path)
+                if actual is _MISSING or actual != expected or type(actual) is not type(expected):
+                    errors.append(f"{dotted_path} must equal {expected!r} for the B1 blocker receipt")
+            if not isinstance(document.get("next_action"), str) or not document["next_action"].strip():
+                errors.append("owner_approval_required B1 receipt must provide a next_action")
+            if any(key in document for key in ("brand_package", "source_record", "publishing_receipt")):
+                errors.append("B1 blocker receipt must not contain an emitted package, source, or publishing receipt")
+        elif status == "verified_candidate":
+            def require(condition: bool, message: str) -> None:
+                if not condition:
+                    errors.append(message)
+
+            require(document.get("all_stages_passed") is True, "verified B1 export must retain all_stages_passed true")
+            require(document.get("database_unchanged") is True, "verified B1 export must prove the donor database stayed unchanged")
+            require(document.get("source_verification_passed") is True, "verified B1 export must retain source verification")
+            require(isinstance(probe, dict) and probe.get("status") == "exported", "verified B1 export must retain an exported probe result")
+
+            invocation = document.get("source_invocation")
+            command = invocation.get("command") if isinstance(invocation, dict) else None
+            require(
+                isinstance(invocation, dict)
+                and isinstance(command, list)
+                and len(command) >= 2
+                and all(isinstance(item, str) and item.strip() for item in command)
+                and Path(command[1]).name == "donor_brand_package_probe.py"
+                and invocation.get("exit_code") == 0
+                and isinstance(invocation.get("duration_ms"), (int, float))
+                and not isinstance(invocation.get("duration_ms"), bool)
+                and invocation.get("duration_ms", -1) >= 0
+                and invocation.get("environment_policy") == "donor_env_without_HOME_or_PYTHONPATH",
+                "verified B1 export must retain a successful out-of-process Brand Maker probe invocation",
+            )
+            database_sha256 = document.get("database_sha256")
+            require(
+                isinstance(database_sha256, str) and SHA256_HEX.fullmatch(database_sha256) is not None,
+                "verified B1 export must retain the unchanged database SHA-256",
+            )
+            target = document.get("target")
+            consumer = document.get("consumer")
+            require(
+                isinstance(target, dict)
+                and is_meaningful_git_fingerprint(target.get("fingerprint"))
+                and target.get("has_developer_exports") is True
+                and target.get("has_spec") is True
+                and target.get("has_living_spec") is True,
+                "verified B1 export must retain Brand Maker source fingerprints and inspected export/spec files",
+            )
+            require(
+                isinstance(consumer, dict)
+                and is_meaningful_git_fingerprint(consumer.get("fingerprint"))
+                and consumer.get("has_manual") is True,
+                "verified B1 export must retain the Cyborg consumer fingerprint and manual presence",
+            )
+            assertions = document.get("source_derived_assertions")
+            asserted_functions = assertions.get("asserted_functions") if isinstance(assertions, dict) else None
+            asserted_exports = assertions.get("asserted_exports") if isinstance(assertions, dict) else None
+            require(
+                isinstance(assertions, dict)
+                and assertions.get("sensitivity_test_passed") is True
+                and isinstance(asserted_functions, list)
+                and "export_developer_package" in asserted_functions
+                and isinstance(asserted_exports, list)
+                and "change-manifest.json" in asserted_exports,
+                "verified B1 export must retain the donor-derived export seam assertions",
+            )
+
+            brand_package = document.get("brand_package")
+            source_record = document.get("source_record")
+            package_valid = source_valid = False
+            if not isinstance(brand_package, dict):
+                errors.append("verified B1 export must retain a BrandPackage object")
+            else:
+                try:
+                    validate_contract("BrandPackage", brand_package)
+                    package_valid = True
+                except (ContractError, TypeError, ValueError) as error:
+                    errors.append(f"B1 brand_package violates BrandPackage: {error}")
+            if not isinstance(source_record, dict):
+                errors.append("verified B1 export must retain a SourceRecord object")
+            else:
+                try:
+                    validate_contract("SourceRecord", source_record)
+                    source_valid = True
+                except (ContractError, TypeError, ValueError) as error:
+                    errors.append(f"B1 source_record violates SourceRecord: {error}")
+
+            published = probe.get("published_version") if isinstance(probe, dict) else None
+            exports = probe.get("developer_export") if isinstance(probe, dict) else None
+            module_fingerprints = probe.get("module_fingerprints") if isinstance(probe, dict) else None
+            require(isinstance(published, dict), "verified B1 export must retain its published Brand Maker version")
+            require(isinstance(exports, dict), "verified B1 export must retain the native developer exports")
+            required_exports = {
+                "tokens.css", "tokens.json", "rules.json", "patterns.json",
+                "voice-context.json", "change-manifest.json",
+            }
+            if isinstance(exports, dict):
+                require(
+                    required_exports.issubset(exports)
+                    and all(isinstance(exports.get(name), str) for name in required_exports),
+                    "verified B1 export must retain every required native export as text",
+                )
+                export_sha256s = document.get("export_sha256s")
+                require(
+                    isinstance(export_sha256s, dict)
+                    and set(export_sha256s) == set(exports)
+                    and all(
+                        isinstance(value, str)
+                        and export_sha256s.get(name) == hashlib.sha256(value.encode("utf-8")).hexdigest()
+                        for name, value in exports.items()
+                    ),
+                    "verified B1 export hashes must match every retained native export",
+                )
+            expected_modules = {
+                "brand_maker.publishing.developer_exports": "src/brand_maker/publishing/developer_exports.py",
+                "brand_maker.brand_system.models": "src/brand_maker/brand_system/models.py",
+            }
+            require(
+                isinstance(module_fingerprints, dict)
+                and set(module_fingerprints) == set(expected_modules)
+                and all(
+                    isinstance(module_fingerprints.get(name), dict)
+                    and module_fingerprints[name].get("path") == path
+                    and isinstance(module_fingerprints[name].get("sha256"), str)
+                    and SHA256_HEX.fullmatch(module_fingerprints[name]["sha256"]) is not None
+                    for name, path in expected_modules.items()
+                ),
+                "verified B1 export must retain the exact donor exporter/model module fingerprints",
+            )
+
+            if package_valid and source_valid and isinstance(published, dict):
+                snapshot = published.get("snapshot")
+                approvals = published.get("approvals")
+                provenance = brand_package.get("provenance")
+                source_content = document.get("source_content")
+                published_hash = published.get("content_hash")
+                require(isinstance(snapshot, dict), "published B1 version must retain its immutable snapshot")
+                require(isinstance(approvals, list) and bool(approvals), "published B1 version must retain owner approvals")
+                try:
+                    snapshot_hash = hashlib.sha256(
+                        json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                    ).hexdigest()
+                    require(snapshot_hash == published_hash, "published B1 snapshot hash must reproduce the producer content hash")
+                except (TypeError, ValueError):
+                    errors.append("published B1 snapshot must be JSON-serializable for host-side hash verification")
+
+                owner = snapshot.get("owner", {}) if isinstance(snapshot, dict) else {}
+                owner = owner if isinstance(owner, dict) else {}
+                revision = published.get("draft_revision")
+                brand_id = published.get("brand_id")
+                version = published.get("version")
+                approval_ids: list[str] = []
+                approval_times: list[datetime.datetime] = []
+                if isinstance(approvals, list):
+                    for index, approval in enumerate(approvals):
+                        if not isinstance(approval, dict):
+                            errors.append(f"published B1 approval {index} must be an object")
+                            continue
+                        approval_ids.append(str(approval.get("id", "")))
+                        if not (
+                            approval.get("brand_id") == brand_id
+                            and approval.get("draft_revision") == revision
+                            and approval.get("owner_id") == owner.get("id")
+                            and approval.get("outcome") == "approved"
+                            and isinstance(approval.get("id"), str)
+                            and approval.get("id")
+                        ):
+                            errors.append(f"published B1 approval {index} must bind to the published owner and revision")
+                        try:
+                            approved_at = datetime.datetime.fromisoformat(
+                                str(approval.get("approved_at", "")).replace("Z", "+00:00")
+                            )
+                            if approved_at.tzinfo is None or approved_at.utcoffset() is None:
+                                raise ValueError("timezone required")
+                            approval_times.append(approved_at)
+                        except (TypeError, ValueError):
+                            errors.append(f"published B1 approval {index} must retain a timezone-aware approved_at")
+
+                require(
+                    isinstance(snapshot, dict)
+                    and snapshot.get("brand_id") == brand_id
+                    and snapshot.get("revision") == revision
+                    and snapshot.get("status") == "approved"
+                    and snapshot.get("maturity") == "approved"
+                    and isinstance(owner, dict)
+                    and bool(owner.get("id"))
+                    and bool(owner.get("display_name"))
+                    and published.get("publisher_id") == owner.get("id"),
+                    "published B1 version, snapshot, publisher, and owner must align",
+                )
+                section_ids = [
+                    section.get("id") for section in snapshot.get("sections", [])
+                    if isinstance(section, dict)
+                ] if isinstance(snapshot, dict) and isinstance(snapshot.get("sections"), list) else []
+                require(
+                    isinstance(snapshot, dict) and isinstance(snapshot.get("sections"), list),
+                    "published B1 snapshot must retain its section list",
+                )
+                published_manifest = published.get("manifest")
+                require(
+                    isinstance(published_manifest, dict)
+                    and published_manifest.get("draft_revision") == revision
+                    and published_manifest.get("section_ids") == section_ids,
+                    "published B1 manifest must match the snapshot revision and section ids",
+                )
+                if (
+                    isinstance(snapshot, dict)
+                    and isinstance(exports, dict)
+                    and required_exports.issubset(exports)
+                    and all(isinstance(exports.get(name), str) for name in required_exports)
+                ):
+                    try:
+                        token_export = json.loads(exports["tokens.json"])
+                        rule_export = json.loads(exports["rules.json"])
+                        pattern_export = json.loads(exports["patterns.json"])
+                        voice_export = json.loads(exports["voice-context.json"])
+                        change_manifest = json.loads(exports["change-manifest.json"])
+                    except (TypeError, json.JSONDecodeError):
+                        errors.append("B1 native JSON exports must remain parseable")
+                    else:
+                        if not all(
+                            isinstance(artifact, dict)
+                            for artifact in (token_export, rule_export, pattern_export, voice_export, change_manifest)
+                        ):
+                            errors.append("B1 native JSON exports must each contain an object")
+                        token_export = token_export if isinstance(token_export, dict) else {}
+                        rule_export = rule_export if isinstance(rule_export, dict) else {}
+                        pattern_export = pattern_export if isinstance(pattern_export, dict) else {}
+                        voice_export = voice_export if isinstance(voice_export, dict) else {}
+                        change_manifest = change_manifest if isinstance(change_manifest, dict) else {}
+                        sections = snapshot.get("sections", [])
+                        sections = sections if isinstance(sections, list) else []
+                        snapshot_assets = snapshot.get("assets", [])
+                        if not isinstance(snapshot_assets, list):
+                            errors.append("published B1 snapshot assets must be a list")
+                            snapshot_assets = []
+                        expected_section_values: dict[str, list[Any]] = {}
+                        section_values_valid = True
+                        for field in ("tokens", "rules", "patterns"):
+                            values: list[Any] = []
+                            for section in sections:
+                                if not isinstance(section, dict):
+                                    section_values_valid = False
+                                    continue
+                                items = section.get(field, [])
+                                if not isinstance(items, list):
+                                    section_values_valid = False
+                                    continue
+                                values.extend(items)
+                            expected_section_values[field] = values
+                        expected_tokens = [
+                            *expected_section_values["tokens"]
+                        ]
+                        expected_rules = [
+                            *expected_section_values["rules"]
+                        ]
+                        expected_patterns = [
+                            *expected_section_values["patterns"]
+                        ]
+                        expected_voice_sections = [
+                            section for section in sections
+                            if isinstance(section, dict)
+                            and section.get("id") in {"section.voice", "section.messaging", "section.strategy"}
+                        ]
+                        exported_rules = rule_export.get("rules", [])
+                        if not isinstance(exported_rules, list):
+                            errors.append("B1 native rules export must retain a rule list")
+                            exported_rules = []
+                        require(
+                            section_values_valid
+                            and token_export.get("tokens") == expected_tokens
+                            and rule_export.get("rules") == expected_rules
+                            and pattern_export.get("patterns") == expected_patterns
+                            and voice_export.get("sections") == expected_voice_sections,
+                            "B1 native token, rule, pattern, and voice exports must match the immutable snapshot",
+                        )
+                        for export_name, artifact in (
+                            ("tokens.json", token_export),
+                            ("rules.json", rule_export),
+                            ("patterns.json", pattern_export),
+                            ("voice-context.json", voice_export),
+                            ("change-manifest.json", change_manifest),
+                        ):
+                            require(
+                                artifact.get("version") == version
+                                and artifact.get("content_hash") == published_hash,
+                                f"B1 {export_name} must bind to the published version and content hash",
+                            )
+                        exported_approval_ids = change_manifest.get("approval_ids")
+                        require(
+                            published_hash in exports["tokens.css"]
+                            and change_manifest.get("manifest") == published.get("manifest")
+                            and isinstance(exported_approval_ids, list)
+                            and all(isinstance(item, str) for item in exported_approval_ids)
+                            and sorted(exported_approval_ids) == sorted(approval_ids),
+                            "B1 CSS and change manifest must bind to the published hash, manifest, and approvals",
+                        )
+                        expected_usage_rules = [
+                            rule["description"] for rule in exported_rules
+                            if isinstance(rule, dict)
+                            and isinstance(rule.get("description"), str)
+                            and rule["description"].strip()
+                        ]
+                        expected_assets = [
+                            {
+                                "asset_id": asset["id"],
+                                "name": asset["name"],
+                                "kind": asset["media_type"],
+                                "path": f"brand-maker://{brand_id}/assets/{asset['id']}",
+                                "sha256": asset["content_hash"],
+                                "storage": asset["storage"],
+                            }
+                            for asset in snapshot_assets
+                            if isinstance(asset, dict)
+                            and all(key in asset for key in ("id", "name", "media_type", "content_hash", "storage"))
+                        ]
+                        require(
+                            brand_package.get("identity", {}).get("brand_name") == snapshot.get("brand_name")
+                            and brand_package.get("identity", {}).get("brand_context") == snapshot.get("brand_context")
+                            and brand_package.get("identity", {}).get("developer_tokens") == expected_tokens
+                            and brand_package.get("voice", {}).get("sections") == expected_voice_sections
+                            and brand_package.get("audience", {}).get("brief") == snapshot.get("brief", {})
+                            and brand_package.get("assets") == expected_assets
+                            and brand_package.get("usage_rules") == expected_usage_rules,
+                            "B1 BrandPackage fields must be projected from the matching native exports and snapshot",
+                        )
+                require(
+                    package_valid
+                    and brand_package.get("brand_id") == brand_id
+                    and brand_package.get("version") == version
+                    and brand_package.get("package_id") == f"pkg-{str(brand_id).replace('-', '')}-{str(version).replace('.', '-')}"
+                    and brand_package.get("approved_claims") == [],
+                    "B1 BrandPackage must match the published identity and must not invent approved claims",
+                )
+                source_content_bytes = source_content.encode("utf-8") if isinstance(source_content, str) else b""
+                require(
+                    source_valid
+                    and isinstance(source_content, str)
+                    and source_record.get("sha256") == hashlib.sha256(source_content_bytes).hexdigest()
+                    and source_record.get("size_bytes") == len(source_content_bytes)
+                    and source_record.get("source_id") == f"src-brand-maker-{brand_id}-{version}"
+                    and source_record.get("origin") == f"brand-maker-spec://{brand_id}/{version}/change-manifest.json"
+                    and source_record.get("media_type") == "application/json"
+                    and isinstance(source_record.get("provenance"), dict)
+                    and source_record["provenance"].get("donor_repo") == "brand-maker-spec"
+                    and source_record["provenance"].get("method") == "export_developer_package"
+                    and source_record["provenance"].get("brand_version") == version
+                    and source_record["provenance"].get("published_content_sha256") == published_hash,
+                    "B1 SourceRecord must content-address the exact exported change manifest",
+                )
+                require(
+                    isinstance(exports, dict)
+                    and isinstance(source_content, str)
+                    and exports.get("change-manifest.json") == source_content,
+                    "B1 source content must be the exact native change-manifest export",
+                )
+
+                if (
+                    isinstance(provenance, list)
+                    and len(provenance) == 1
+                    and isinstance(provenance[0], dict)
+                    and isinstance(owner, dict)
+                ):
+                    origin = provenance[0]
+                    origin_approval_ids = origin.get("approval_ids")
+                    require(
+                        origin.get("source") == "brand-maker-spec"
+                        and origin.get("operator") == owner.get("display_name")
+                        and origin.get("brand_version") == version
+                        and origin.get("published_content_sha256") == published_hash
+                        and isinstance(origin_approval_ids, list)
+                        and all(isinstance(item, str) for item in origin_approval_ids)
+                        and sorted(origin_approval_ids) == sorted(approval_ids)
+                        and origin.get("derivation") == "native Brand Maker developer export from an immutable published version",
+                        "B1 BrandPackage provenance must retain the real publisher, version, digest, and approval ids",
+                    )
+                    if approval_times:
+                        approved_at = max(approval_times).astimezone(datetime.timezone.utc).isoformat()
+                        require(
+                            origin.get("timestamp") == approved_at
+                            and brand_package.get("approved_at") == approved_at,
+                            "B1 BrandPackage approval time must match the latest owner approval",
+                        )
+                else:
+                    errors.append("B1 BrandPackage must retain one matching Brand Maker provenance record")
+
+            receipt = document.get("publishing_receipt")
+            require(isinstance(receipt, dict), "verified B1 export must retain a dry-run publishing receipt")
+            if isinstance(receipt, dict) and package_valid and source_valid:
+                try:
+                    package_digest = hashlib.sha256(
+                        json.dumps(
+                            brand_package,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                            ensure_ascii=False,
+                            allow_nan=False,
+                        ).encode("utf-8")
+                    ).hexdigest()
+                except (TypeError, ValueError):
+                    errors.append("B1 BrandPackage must be JSON-serializable for publishing receipt verification")
+                else:
+                    require(
+                        receipt.get("status") == "dry_run_verified"
+                        and receipt.get("channel") == "brand-maker-developer-export"
+                        and receipt.get("dry_run_only") is True
+                        and receipt.get("live_published") is False
+                        and receipt.get("human_review_required") is True
+                        and receipt.get("brand_package_id") == brand_package.get("package_id")
+                        and receipt.get("brand_version") == brand_package.get("version")
+                        and receipt.get("brand_package_sha256") == package_digest
+                        and receipt.get("source_id") == source_record.get("source_id")
+                        and receipt.get("source_sha256") == source_record.get("sha256")
+                        and receipt.get("matched_approved_claims_count") == 0
+                        and receipt.get("matched_approved_claims") == []
+                        and receipt.get("unmatched_approved_claims") == [],
+                        "B1 publishing receipt must bind the validated package and source to a non-live dry run",
+                    )
+
+            mutation_tests = document.get("mutation_tests")
+            expected_mutations = {
+                "unmodified_identical": True,
+                "mutated_identity_detected": False,
+                "mutated_voice_detected": False,
+                "mutated_provenance_detected": False,
+            }
+            observed_mutations = {
+                item.get("case"): item
+                for item in mutation_tests
+                if isinstance(item, dict)
+            } if isinstance(mutation_tests, list) else {}
+            require(
+                set(observed_mutations) == set(expected_mutations)
+                and all(
+                    observed_mutations[name].get("passed") is True
+                    and bool(observed_mutations[name].get("violations")) is (not identical)
+                    for name, identical in expected_mutations.items()
+                )
+                and document.get("mutation_protection_passed") is True,
+                "verified B1 export must retain passing identical-package and three mutation-protection cases",
+            )
+        else:
+            errors.append(f"B1 status {status!r} is not a supported retained receipt state")
+    elif spec_key in {"brand-publishing/B3", "brand-publishing/B4", "brand-publishing/B6"}:
+        def require(condition: bool, message: str) -> None:
+            if not condition:
+                errors.append(message)
+
+        def require_text(value: Any, label: str) -> None:
+            require(isinstance(value, str) and bool(value.strip()), f"{label} must be a non-empty string")
+
+        def package_source_identity() -> tuple[Any, Any]:
+            package_id = document.get("brand_package_id")
+            source_id = document.get("source_id")
+            require_text(package_id, "brand_package_id")
+            require_text(source_id, "source_id")
+            return package_id, source_id
+
+        def validate_no_claims_blocker() -> None:
+            package_id, source_id = package_source_identity()
+            probe = document.get("upstream_probe")
+            require(document.get("blocker") == "no_verified_approved_claims", "blocker must be no_verified_approved_claims")
+            require(document.get("all_stages_passed") is False, "claims blocker must set all_stages_passed false")
+            require(document.get("brand_package_approved_claims_count") == 0, "claims blocker must prove the exported package has zero approved claims")
+            require_text(document.get("next_action"), "next_action")
+            require(
+                isinstance(probe, dict)
+                and probe.get("status") == "verified_candidate"
+                and probe.get("brand_package_id") == package_id
+                and probe.get("source_id") == source_id
+                and probe.get("brand_package_approved_claims_count") == 0,
+                "claims blocker upstream_probe must bind the verified package, source, and empty claims list",
+            )
+            require(
+                not any(key in document for key in ("publishing_receipt", "approved_review", "matched_approved_claims")),
+                "claims blocker must not imply a publishing or review decision was attempted",
+            )
+
+        status = document.get("status")
+        blocker = document.get("blocker")
+        if status == "blocked":
+            require(document.get("all_stages_passed") is False, "blocked brand publishing receipt must set all_stages_passed false")
+            require_text(document.get("next_action"), "blocked brand publishing next_action")
+            probe = document.get("upstream_probe")
+            require(isinstance(probe, dict) and bool(probe), "blocked brand publishing receipt must retain an upstream_probe")
+            if blocker == "brand_package_unavailable":
+                require_text(probe.get("status"), "upstream_probe.status")
+            elif blocker == "no_verified_approved_claims" and spec_key in {"brand-publishing/B3", "brand-publishing/B6"}:
+                validate_no_claims_blocker()
+            elif blocker == "no_approved_claim_match" and spec_key == "brand-publishing/B3":
+                package_id, source_id = package_source_identity()
+                receipt = document.get("publishing_receipt")
+                require(isinstance(receipt, dict), "no-match B3 receipt must retain the dry-run publishing receipt")
+                if isinstance(receipt, dict):
+                    require(
+                        receipt.get("brand_package_id") == package_id
+                        and receipt.get("source_id") == source_id
+                        and receipt.get("status") == "dry_run_verified"
+                        and receipt.get("matched_approved_claims_count") == 0
+                        and receipt.get("matched_approved_claims") == []
+                        and receipt.get("dry_run_only") is True
+                        and receipt.get("live_published") is False,
+                        "no-match B3 receipt must bind a zero-match dry run that stopped before publication",
+                    )
+            else:
+                errors.append(f"{spec_key} has an unsupported blocker {blocker!r}")
+        elif spec_key == "brand-publishing/B3" and status == "dry_run_verified":
+            package_id, source_id = package_source_identity()
+            receipt = document.get("publishing_receipt")
+            package_sha256 = document.get("brand_package_sha256")
+            source_sha256 = document.get("source_sha256")
+            require(isinstance(package_sha256, str) and SHA256_HEX.fullmatch(package_sha256) is not None, "B3 must retain the BrandPackage SHA-256")
+            require(isinstance(source_sha256, str) and SHA256_HEX.fullmatch(source_sha256) is not None, "B3 must retain the SourceRecord SHA-256")
+            require_text(document.get("brand_version"), "brand_version")
+            require(document.get("all_stages_passed") is True, "verified B3 receipt must set all_stages_passed true")
+            require(isinstance(receipt, dict), "B3 must retain its publishing receipt")
+            if isinstance(receipt, dict):
+                matched = receipt.get("matched_approved_claims")
+                require(
+                    receipt.get("status") == "dry_run_verified"
+                    and receipt.get("channel") == "cyborg-vcc"
+                    and receipt.get("brand_package_id") == package_id
+                    and receipt.get("brand_version") == document.get("brand_version")
+                    and receipt.get("brand_package_sha256") == package_sha256
+                    and receipt.get("source_id") == source_id
+                    and receipt.get("source_sha256") == source_sha256
+                    and isinstance(matched, list)
+                    and bool(matched)
+                    and all(isinstance(item, str) and item.strip() for item in matched)
+                    and receipt.get("matched_approved_claims_count") == len(matched)
+                    and receipt.get("dry_run_only") is True
+                    and receipt.get("live_published") is False
+                    and receipt.get("human_review_required") is True,
+                    "B3 dry-run receipt must bind a matched approved claim to the same package and source without live publication",
+                )
+        elif spec_key == "brand-publishing/B4" and status == "verified":
+            package_id = document.get("brand_package_id")
+            brand_version = document.get("brand_version")
+            package_sha256 = document.get("brand_package_sha256")
+            require_text(package_id, "brand_package_id")
+            require_text(brand_version, "brand_version")
+            require(isinstance(package_sha256, str) and SHA256_HEX.fullmatch(package_sha256) is not None, "B4 must retain the BrandPackage SHA-256")
+            require(document.get("all_stages_passed") is True, "verified B4 receipt must set all_stages_passed true")
+            consumers = [document.get("consumer_1"), document.get("consumer_2")]
+            if not all(isinstance(consumer, dict) and bool(consumer) for consumer in consumers):
+                errors.append("B4 must retain both consumer verification objects")
+            else:
+                for index, consumer in enumerate(consumers, start=1):
+                    require(
+                        consumer.get("status") == "verified"
+                        and consumer.get("package_id") == package_id
+                        and consumer.get("package_version") == brand_version
+                        and consumer.get("pinned_version") == brand_version
+                        and consumer.get("version_match") is True
+                        and consumer.get("read_only_intent") is True
+                        and consumer.get("digest_match") is True
+                        and consumer.get("mutation_shield_active") is True
+                        and consumer.get("package_sha256") == package_sha256
+                        and consumer.get("expected_package_sha256") == package_sha256,
+                        f"B4 consumer_{index} must verify the same pinned package digest read-only",
+                    )
+                require(
+                    consumers[0].get("consumer_name") != consumers[1].get("consumer_name"),
+                    "B4 must verify two independently named consumers",
+                )
+        elif spec_key == "brand-publishing/B6" and status == "simulated_gate_verified":
+            package_id, source_id = package_source_identity()
+            brand_version = document.get("brand_version")
+            package_sha256 = document.get("brand_package_sha256")
+            source_sha256 = document.get("source_sha256")
+            require_text(brand_version, "brand_version")
+            require(isinstance(package_sha256, str) and SHA256_HEX.fullmatch(package_sha256) is not None, "B6 must retain the BrandPackage SHA-256")
+            require(isinstance(source_sha256, str) and SHA256_HEX.fullmatch(source_sha256) is not None, "B6 must retain the SourceRecord SHA-256")
+            require(document.get("all_stages_passed") is True, "verified B6 receipt must set all_stages_passed true")
+            approved = document.get("approved_review")
+            require(isinstance(approved, dict) and bool(approved), "B6 must retain the simulated approved review branch")
+            if isinstance(approved, dict):
+                gate = approved.get("simulated_gate")
+                dry_run = approved.get("dry_run_receipt")
+                require(
+                    approved.get("status") == "simulated_review_passed"
+                    and approved.get("brand_package_id") == package_id
+                    and approved.get("source_id") == source_id
+                    and isinstance(gate, dict)
+                    and gate.get("decision") == "approved"
+                    and gate.get("decision_source") == "simulated_fixture"
+                    and gate.get("human_confirmation_claimed") is False
+                    and gate.get("boundary_check") == "stopped_before_live_publish",
+                    "B6 approved branch must remain a fixture simulation and stop before live publication",
+                )
+                require(
+                    isinstance(dry_run, dict)
+                    and dry_run.get("status") == "dry_run_verified"
+                    and dry_run.get("channel") == "vcc-focus-group"
+                    and dry_run.get("brand_package_id") == package_id
+                    and dry_run.get("brand_version") == brand_version
+                    and dry_run.get("brand_package_sha256") == package_sha256
+                    and dry_run.get("source_id") == source_id
+                    and dry_run.get("source_sha256") == source_sha256
+                    and dry_run.get("dry_run_only") is True
+                    and dry_run.get("live_published") is False
+                    and dry_run.get("human_review_required") is True
+                    and isinstance(dry_run.get("matched_approved_claims"), list)
+                    and bool(dry_run.get("matched_approved_claims")),
+                    "B6 approved branch must bind a matched-claims dry run without publishing",
+                )
+            require(document.get("rejected_probe_status") == "simulated_blocked_rejected", "B6 must retain the rejected-decision branch")
+            require(document.get("unmatched_probe_status") == "simulated_blocked_unmatched_claims", "B6 must retain the unmatched-claims branch")
+        else:
+            errors.append(f"{spec_key} has an unsupported status {status!r}")
     elif spec_key == "brand-publishing/B2":
         if len(document.get("phase_mappings", [])) != 9:
             errors.append("B2 must retain exactly nine phase mappings")
     elif spec_key == "brand-publishing/B5":
         if len(document.get("intake_log", [])) != 9:
             errors.append("B5 must retain exactly nine intake phases")
-    elif spec_key == "brand-publishing/B6":
-        app_rev = document.get("approved_review", {})
-        sim_gate = app_rev.get("simulated_gate") or app_rev.get("human_gate", {})
-        if isinstance(sim_gate, dict):
-            if sim_gate.get("decision_source") == "simulated_fixture" and sim_gate.get("human_confirmation_claimed") is not False:
-                errors.append("B6 simulated review gate must declare human_confirmation_claimed as false")
-            if sim_gate.get("decision_source") == "simulated_fixture" and app_rev.get("status") == "ready_for_operator_release":
-                errors.append("B6 simulated review cannot claim ready_for_operator_release without explicit operator approval")
     elif spec_key in {"production-house/P1", "production-house/P2", "production-house/P3", "production-house/P4"}:
         job = document.get("job", {})
         expected_collection = "inputs" if wave_id == "P3" else "outputs"

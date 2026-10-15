@@ -1,33 +1,10 @@
 {
-  "approved_review": {
-    "review_id": "vcc-rev-addbc9a5ca05433fbac822b7b4f51afe",
-    "brand_package_id": "pkg-cyborg-brand-v1",
-    "source_id": "src-manifesto-draft-001",
-    "dry_run_receipt": {
-      "receipt_id": "pub-dry-77cdee5cd8ea425ea301c3dde245f1ad",
-      "channel": "vcc-focus-group",
-      "status": "dry_run_verified",
-      "timestamp": "2026-08-22T23:41:26.004773+00:00",
-      "brand_package_id": "pkg-cyborg-brand-v1",
-      "brand_version": "1.0.0",
-      "source_id": "src-manifesto-draft-001",
-      "source_sha256": "b058afcc9f6feea84f00e027ef5aec6d2b1a750e923d17a0559beec453560c73",
-      "matched_approved_claims_count": 1,
-      "dry_run_only": true,
-      "live_published": false,
-      "notes": "Draft successfully verified against brand constraints. Awaiting explicit manual release."
-    },
-    "simulated_gate": {
-      "actor": "simulated_fixture_reviewer",
-      "decision": "approved",
-      "decision_source": "simulated_fixture",
-      "human_confirmation_claimed": false,
-      "timestamp": "2026-08-22T23:41:26.004812+00:00",
-      "boundary_check": "stopped_before_live_publish",
-      "notes": "Verified against BrandPackage truth; gate simulation executed; authentic operator approval authority preserved."
-    },
-    "status": "simulated_review_passed"
-  },
-  "rejected_probe_status": "simulated_blocked_rejected",
-  "unmatched_probe_status": "simulated_blocked_unmatched_claims"
+  "wave": "B6",
+  "status": "blocked",
+  "blocker": "brand_package_unavailable",
+  "next_action": "Complete B1 with a real owner-approved Brand Maker publication before running B6.",
+  "all_stages_passed": false,
+  "upstream_probe": {
+    "status": "owner_approval_required"
+  }
 }

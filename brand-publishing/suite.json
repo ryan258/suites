@@ -66,21 +66,21 @@
       "id": "B1",
       "order": 12,
       "status": "complete",
-      "objective": "Build a canonical BrandPackage in the suite-local engine and consume it in a downstream dry run.",
-      "acceptance": "Schema validation, version pinning, provenance, and mutation protection are evidenced, and the receipt is dry-run only with no live publishing side-effect.",
-      "runtime_followup": "Export the package from the real Brand Maker runtime and consume it in a downstream consumer outside this repository.",
-      "evidence": "brand-publishing/evidence/B1-BRAND-PACKAGE-DRY-RUN.json",
+      "objective": "Export only an owner-approved immutable Brand Maker publication, and fail closed when none exists.",
+      "acceptance": "The read-only export probe emits a BrandPackage only from a real published version. Without one, it reports owner_approval_required and emits no package, SourceRecord, or publishing receipt.",
+      "runtime_followup": "After Ryan creates, approves, and publishes the intended brand in Brand Maker, export that version and consume it in a downstream consumer outside this repository.",
+      "evidence": "brand-publishing/evidence/B1-BRAND-PACKAGE-EXPORT-STATUS.json",
       "recovery_claim": {
         "kind": "analysis",
         "level": "source_inspected",
         "real_runtime": false,
         "evidence_basis": [
-          "target",
-          "consumer",
-          "brand_package",
-          "source_record",
-          "publishing_receipt",
-          "mutation_tests"
+          "wave",
+          "status",
+          "all_stages_passed",
+          "database_unchanged",
+          "source_verification_passed",
+          "probe"
         ]
       }
     },
@@ -107,7 +107,7 @@
     {
       "id": "B3",
       "order": 32,
-      "status": "complete",
+      "status": "blocked",
       "objective": "Model sourced draft to VCC review to dry-run publishing receipt through the suite-local engine.",
       "acceptance": "SourceRecord, BrandPackage, claim matching, and dry-run status remain linked on a single receipt. Nothing is submitted to VCC.",
       "runtime_followup": "Route a real draft through the actual VCC review path and produce the receipt from that system.",
@@ -116,18 +116,13 @@
         "kind": "analysis",
         "level": "prototype",
         "real_runtime": false,
-        "evidence_basis": [
-          "brand_package_id",
-          "source_sha256",
-          "matched_approved_claims_count",
-          "dry_run_only"
-        ]
+        "evidence_basis": ["wave", "status", "all_stages_passed"]
       }
     },
     {
       "id": "B4",
       "order": 42,
-      "status": "complete",
+      "status": "blocked",
       "objective": "Verify version-pinning and mutation-protection boundaries across two independent suite-local BrandPackage consumers.",
       "acceptance": "Both consumers resolve the same pinned package id and version, and mutation protection holds across them.",
       "runtime_followup": "Wire a consumer outside this repository and verify the same boundary across a process or repository seam.",
@@ -136,10 +131,7 @@
         "kind": "analysis",
         "level": "prototype",
         "real_runtime": false,
-        "evidence_basis": [
-          "consumer_1",
-          "consumer_2"
-        ]
+        "evidence_basis": ["wave", "status", "all_stages_passed"]
       }
     },
     {
@@ -166,7 +158,7 @@
     {
       "id": "B6",
       "order": 62,
-      "status": "complete",
+      "status": "blocked",
       "objective": "Extend the dry-run receipt chain with a simulated VCC human approval gate.",
       "acceptance": "Approved, rejected, and unmatched-claim decisions each produce their distinct status, and the approved path stops before live publish, preserving operator publish authority.",
       "runtime_followup": "Replace the simulated gate with real human signoff in VCC.",
@@ -175,11 +167,7 @@
         "kind": "analysis",
         "level": "prototype",
         "real_runtime": false,
-        "evidence_basis": [
-          "approved_review",
-          "rejected_probe_status",
-          "unmatched_probe_status"
-        ]
+        "evidence_basis": ["wave", "status", "all_stages_passed"]
       }
     }
   ]

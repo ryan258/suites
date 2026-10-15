@@ -392,12 +392,48 @@ class EngineTests(unittest.TestCase):
         self.assertNotEqual(sim_review["status"], "ready_for_operator_release")
 
     def test_rerunning_prototype_does_not_rewrite_existing_package_approval_time(self):
-        from portfolio_suites.adapters.brand_publishing import BrandPublishingSourceAdapter, CYBORG_BRAND_PACKAGE_APPROVED_AT
-        export1 = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
-        export2 = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
-        self.assertEqual(export1["brand_package"]["approved_at"], CYBORG_BRAND_PACKAGE_APPROVED_AT)
-        self.assertEqual(export2["brand_package"]["approved_at"], CYBORG_BRAND_PACKAGE_APPROVED_AT)
-        self.assertEqual(export1["brand_package"]["approved_at"], export2["brand_package"]["approved_at"])
+        """The former fixture timestamp stays absent when the donor has no publication."""
+        import os
+        import sqlite3
+        from unittest.mock import patch
+
+        from portfolio_suites.adapters import brand_publishing as adapter
+        from portfolio_suites.adapters.brand_publishing import BrandPublishingSourceAdapter
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "brand-maker-spec"
+            root.mkdir()
+            database = root / "brands.db"
+            connection = sqlite3.connect(database)
+            try:
+                connection.execute(
+                    """CREATE TABLE published_brand_versions (
+                        brand_id TEXT NOT NULL, version TEXT NOT NULL, published_at TEXT NOT NULL,
+                        publisher_id TEXT NOT NULL, draft_revision INTEGER NOT NULL,
+                        change_summary TEXT NOT NULL, content_hash TEXT NOT NULL,
+                        manifest_json TEXT NOT NULL, approvals_json TEXT NOT NULL, snapshot_json TEXT NOT NULL,
+                        PRIMARY KEY (brand_id, version)
+                    )"""
+                )
+                connection.commit()
+            finally:
+                connection.close()
+            before = adapter.compute_sha256(database.read_bytes())
+            with (
+                patch.object(adapter, "BRAND_MAKER_DIR", root),
+                patch.dict(os.environ, {"BRAND_MAKER_DATABASE_PATH": str(database)}, clear=False),
+            ):
+                export1 = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
+                export2 = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
+
+            for result in (export1, export2):
+                self.assertEqual(result["status"], "owner_approval_required")
+                self.assertFalse(result["all_stages_passed"])
+                self.assertEqual(result["probe"]["status"], "no_published_version")
+                self.assertNotIn("brand_package", result)
+                self.assertNotIn("source_record", result)
+                self.assertNotIn("publishing_receipt", result)
+            self.assertEqual(adapter.compute_sha256(database.read_bytes()), before)
 
     @staticmethod
     def _issue_approval(tmpdir, **record):

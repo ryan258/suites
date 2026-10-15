@@ -20,7 +20,7 @@ SOURCE_INSPECTED = {
     "model-behavior-lab": ["M1", "M2", "M3", "M4", "M5"],
     "discovery-decision": ["D1", "D2", "D3", "D4", "D5"],
     "agent-reliability": ["R1", "R2", "R3", "R4", "R5"],
-    "game-design": ["G1", "G2", "G3", "G4", "G5"],
+    "game-design": ["G2", "G3", "G4", "G5"],
 }
 
 # Remaining suite-local engines that do not read donor artifacts.
@@ -37,7 +37,7 @@ FAIL_CLOSED_CASES = [
     ("discovery-decision", "D3", "discovery_decision", ["INSIGHT_DIR"]),
     ("agent-reliability", "R1", "agent_reliability", ["LOOPING_BOX_DIR"]),
     ("agent-reliability", "R5", "agent_reliability", ["AI_STAFF_DIR", "AGENTIC_HARNESS_DIR"]),
-    ("game-design", "G1", "game_design", ["TUCKED_IN_TERRORS_DIR"]),
+    ("game-design", "G1", "game_design_runtime", ["DONOR_ROOT"]),
     ("game-design", "G4", "game_design", ["STORYWEAVER_DIR"]),
     ("production-house", "P1", "production_house", ["GROUNDWIRE_DIR"]),
     ("production-house", "P4", "production_house", ["GROUNDWIRE_DIR", "PRODUCTION_HOUSE_DIR"]),
