@@ -1,0 +1,72 @@
+{
+  "blocker_id": "phase1.contract-state-freeze",
+  "frozen_boundaries": {
+    "contracts_schemas": [
+      {
+        "path": "contracts/a11y-finding.schema.json",
+        "sha256": "14b5bf57e49a1de14c06272df0c7f95812821e59820ceaa1be6d48e5a2c7d243"
+      },
+      {
+        "path": "contracts/brand-package.schema.json",
+        "sha256": "0427b7ac885ce23f3ca3ac66f132d111d9fbbc3ce78cfc2b38da2d7f46a099c5"
+      },
+      {
+        "path": "contracts/experiment-run.schema.json",
+        "sha256": "1f9d4dd263b5c74fda60968c11b0536ff3646dba36488ae888f6a3265bd8b4d9"
+      },
+      {
+        "path": "contracts/investigation-record.schema.json",
+        "sha256": "d23d9a630f8af3729346b46e14b2fefba0eab7fd9c2a27960f6ec995ab849258"
+      },
+      {
+        "path": "contracts/production-job.schema.json",
+        "sha256": "7a7e44d5cd33b1ee003f26f590a6b4a3d025c0396bd986075214eb918e6350af"
+      },
+      {
+        "path": "contracts/source-record.schema.json",
+        "sha256": "dcb907737c6e8b67a396cb7dc74fe2955e7a6ae29b9345dad97e3ff455b8f584"
+      }
+    ],
+    "persistent_state_formats": [
+      {
+        "path": "docs/PLATFORM-OPERATIONS.md",
+        "sha256": "cf4c0f67b11bd844103279fff8fffcf4e7a89fa983cd30fd01e89915a3a5bffa"
+      },
+      {
+        "path": "portfolio/execution-trace-contract.json",
+        "sha256": "8c82fe64db54316f1efdb4f983eacd3547bcf23bc44f595dbc61f3ab6b622060"
+      },
+      {
+        "path": "src/portfolio_suites/ai.py",
+        "sha256": "edc096d64a0d5e372ce8c2e80d816ecc959bfd2993706e69409540f4309951f6"
+      },
+      {
+        "path": "src/portfolio_suites/approvals.py",
+        "sha256": "651dfaa60d0a00b08b429f6653ec3f3bc249c2c789063d7a158a9e67764c02fe"
+      },
+      {
+        "path": "src/portfolio_suites/catalog.py",
+        "sha256": "bfa864acbc2c63dc8418e0aa46164721eecb76268e425b1a199333dc4160d57d"
+      },
+      {
+        "path": "src/portfolio_suites/contracts.py",
+        "sha256": "e6a3599c54b6299db6b362d3bd64eab184c883ed6f6e46bced08666d0c56a2c4"
+      },
+      {
+        "path": "src/portfolio_suites/operator_state.py",
+        "sha256": "96ac981cfcf9b01458f9889b7144d669a384f576c46f3a2d4c6eec01aeb75f6d"
+      },
+      {
+        "path": "src/portfolio_suites/receipts.py",
+        "sha256": "bafcb3568b88ad82603a30d19bc71ed1c4a60818b00e3b20476ac66c8908af30"
+      },
+      {
+        "path": "src/portfolio_suites/recovery_program.py",
+        "sha256": "f87f1e0426ff388da1dcc7702a446df8a80be4efb3c61a49018e6dfb86868e33"
+      }
+    ]
+  },
+  "outcome": "implemented",
+  "owner": "ryan",
+  "receipt_version": "portfolio-global-closure-v1"
+}

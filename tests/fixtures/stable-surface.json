@@ -5,9 +5,13 @@
     404,
     405,
     409,
+    413,
     422,
+    429,
     500,
-    503
+    502,
+    503,
+    504
   ],
   "api_routes": [
     "/api",
@@ -110,6 +114,21 @@
           {
             "choices": [],
             "dest": "spec",
+            "nargs": null
+          }
+        ]
+      },
+      "connect": {
+        "commands": {},
+        "options": [
+          [
+            "--json"
+          ]
+        ],
+        "positionals": [
+          {
+            "choices": [],
+            "dest": "location",
             "nargs": null
           }
         ]

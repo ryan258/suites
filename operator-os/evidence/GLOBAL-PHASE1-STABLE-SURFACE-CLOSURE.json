@@ -1,0 +1,42 @@
+{
+  "blocker_id": "phase1.stable-surface",
+  "frozen_boundaries": {
+    "stable_cli_api_surfaces": [
+      {
+        "path": "src/portfolio_suites/candidate.py",
+        "sha256": "138d704b4265643467f5d3f522067e022960b461bc5c8b5655b7a706962ab2ea"
+      },
+      {
+        "path": "src/portfolio_suites/catalog.py",
+        "sha256": "bfa864acbc2c63dc8418e0aa46164721eecb76268e425b1a199333dc4160d57d"
+      },
+      {
+        "path": "src/portfolio_suites/cli.py",
+        "sha256": "366b5f1f5c117289c0730aafa64e5ed983a62ccdf1924b2c0198ab1bf61c0aca"
+      },
+      {
+        "path": "src/portfolio_suites/diagnostics.py",
+        "sha256": "d0fd5a6de12410046689f3e635ff0ae62b66beada4b12a5f7482db784acfb450"
+      },
+      {
+        "path": "src/portfolio_suites/operator_state.py",
+        "sha256": "96ac981cfcf9b01458f9889b7144d669a384f576c46f3a2d4c6eec01aeb75f6d"
+      },
+      {
+        "path": "src/portfolio_suites/registry.py",
+        "sha256": "cb933c3589ec099063cfe594fa8a055b64a375d6e9687ddd0dbf178e2af1c598"
+      },
+      {
+        "path": "src/portfolio_suites/server.py",
+        "sha256": "0a22dfac71716bffbafd050074cd40122cde50a9482aa4b025137f9009ba0e8b"
+      },
+      {
+        "path": "src/portfolio_suites/web/catalog.js",
+        "sha256": "8438b6592128a6086aa22c0f8459b56c1a81c562f46037fceb447800d8c9a6c4"
+      }
+    ]
+  },
+  "outcome": "implemented",
+  "owner": "ryan",
+  "receipt_version": "portfolio-global-closure-v1"
+}

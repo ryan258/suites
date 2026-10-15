@@ -2,8 +2,9 @@
 
 The supported control-plane surface is pinned by `tests/fixtures/stable-surface.json` and checked by
 `tests/test_stable_surface.py`. The golden file records every CLI command, alias, option, positional
-and choice, every `/api` route literal in `server.py`, and the exit codes. A failing check means the
-surface changed and needs a compatibility decision.
+and choice, every `/api` route literal in `server.py`, and the exit codes. Its HTTP error-status set
+includes direct responses and codes carried through `RequestBodyError.status` and
+`AIError.http_status`. A failing check means the surface changed and needs a compatibility decision.
 
 ## Frozen
 
@@ -29,12 +30,25 @@ for the AI endpoints. Status classes are fixed; the golden file pins the exact s
 | 404 | not found | unknown endpoint, suite, project, document, or evidence file |
 | 405 | wrong method | the action needs the documented POST endpoint |
 | 409 | conflict | stale revision or concurrent writer; reload and retry |
+| 413 | too large | request body exceeds the configured size limit |
 | 422 | action failed | an engine action ran and reported failure |
+| 429 | rate limited | the provider throttled an assistance request |
 | 500 | internal | unexpected fault; details withheld |
+| 502 | provider failure | an assistance provider failed or rejected upstream authentication |
 | 503 | unavailable | the action could not complete; `save_state` reports whether a commit may have happened |
+| 504 | provider timeout | an assistance provider did not respond in time |
 
 CLI errors use the exit codes above. AI errors keep their `code` strings (for example
 `not_configured`, `invalid_input`, `rate_limited`); `not_configured` and `invalid_input` exit `2`.
+
+## Independent project connection
+
+`suites connect ABSOLUTE_PATH [--json]` reads the project's `.suites` descriptor and adds a
+catalog-only entry to the local project ledger. It does not run project code or enroll a suite.
+Invalid descriptors and identity/location conflicts are refused with exit `1`; an uncertain or
+unavailable ledger write returns exit `2` so the operator reloads state before retrying. The
+`--json` form returns the project projection on success and a status/message object on refusal or
+incomplete writes.
 
 ## May evolve
 
