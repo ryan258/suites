@@ -1,3 +1,5 @@
+import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +12,8 @@ from portfolio_suites.registry import (
     evidence_ineligibility_reason,
     get_suite,
 )
-from portfolio_suites.waves import WaveRunner, _record_evidence
+from portfolio_suites.contracts import generate_sample
+from portfolio_suites.waves import TABLE_RUNNERS, TableRunner, WaveRunner, _record_evidence
 
 
 def _wave(suite_id: str, wave_id: str) -> dict:
@@ -19,6 +22,78 @@ def _wave(suite_id: str, wave_id: str) -> dict:
 
 
 class WaveTests(unittest.TestCase):
+    def test_brand_publishing_export_receipt_shapes_fail_closed(self):
+        package = generate_sample("BrandPackage")
+        source = generate_sample("SourceRecord")
+        source_content = "Zero-dependency local-first portfolio control plane"
+        exported = {
+            "status": "verified_candidate",
+            "all_stages_passed": True,
+            "brand_package": package,
+            "source_record": source,
+            "source_content": source_content,
+        }
+
+        def assert_receipt_valid(wave_id: str, receipt: dict) -> None:
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / f"{wave_id}.json"
+                path.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertEqual(
+                    evidence_errors(_wave("brand-publishing", wave_id), path, "brand-publishing"),
+                    [],
+                    f"{wave_id} receipt should satisfy its declared evidence contract",
+                )
+
+        successful_receipts: dict[str, dict] = {}
+        with patch(
+            "portfolio_suites.waves.BrandPublishingSourceAdapter.execute_b1_brand_package_export",
+            return_value=exported,
+        ):
+            for wave_id in ("B3", "B4", "B6"):
+                with self.subTest(wave_id=wave_id, state="verified-export"):
+                    result = WaveRunner.run_wave("brand-publishing", wave_id, write_evidence=False)
+                    self.assertTrue(result.passed, result.message)
+                    self.assertIsInstance(result.data, dict)
+                    assert_receipt_valid(wave_id, result.data)
+                    successful_receipts[wave_id] = result.data
+
+        package_without_claims = dict(package, approved_claims=[])
+        unverified_claim_export = dict(exported, brand_package=package_without_claims)
+        with patch(
+            "portfolio_suites.waves.BrandPublishingSourceAdapter.execute_b1_brand_package_export",
+            return_value=unverified_claim_export,
+        ):
+            for wave_id in ("B3", "B6"):
+                with self.subTest(wave_id=wave_id, state="claims-unavailable"):
+                    result = WaveRunner.run_wave("brand-publishing", wave_id, write_evidence=False)
+                    self.assertFalse(result.passed)
+                    self.assertEqual(result.data.get("blocker"), "no_verified_approved_claims")
+                    assert_receipt_valid(wave_id, result.data)
+
+        unsafe_b3 = copy.deepcopy(successful_receipts["B3"])
+        unsafe_b3["publishing_receipt"]["live_published"] = True
+        with self.subTest(wave_id="B3", state="live-publication-claimed"):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "B3-unsafe.json"
+                path.write_text(json.dumps(unsafe_b3), encoding="utf-8")
+                self.assertTrue(evidence_errors(_wave("brand-publishing", "B3"), path, "brand-publishing"))
+
+        unsafe_b4 = copy.deepcopy(successful_receipts["B4"])
+        unsafe_b4["consumer_1"]["mutation_shield_active"] = False
+        with self.subTest(wave_id="B4", state="mutation-shield-disabled"):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "B4-unsafe.json"
+                path.write_text(json.dumps(unsafe_b4), encoding="utf-8")
+                self.assertTrue(evidence_errors(_wave("brand-publishing", "B4"), path, "brand-publishing"))
+
+        unsafe_b6 = copy.deepcopy(successful_receipts["B6"])
+        unsafe_b6["approved_review"]["simulated_gate"]["human_confirmation_claimed"] = True
+        with self.subTest(wave_id="B6", state="synthetic-human-approval"):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "B6-unsafe.json"
+                path.write_text(json.dumps(unsafe_b6), encoding="utf-8")
+                self.assertTrue(evidence_errors(_wave("brand-publishing", "B6"), path, "brand-publishing"))
+
     def test_environment_blocker_is_neither_pass_nor_product_failure(self):
         receipt = {
             "all_stages_passed": False,
@@ -44,7 +119,28 @@ class WaveTests(unittest.TestCase):
             "portfolio_suites.registry._load_json",
             wraps=registry_module._load_json,
         ) as load_json:
-            results = WaveRunner.run_all(write_evidence=False)
+            with patch(
+                "portfolio_suites.waves.BrandPublishingSourceAdapter.execute_b1_brand_package_export",
+                return_value={
+                    "status": "owner_approval_required",
+                    "blocker": "owner_approval_required",
+                    "next_action": "Publish an owner-approved Brand Maker version.",
+                    "all_stages_passed": False,
+                    "database_unchanged": True,
+                    "source_verification_passed": True,
+                    "probe": {"status": "no_published_version"},
+                },
+            ), patch.dict(
+                TABLE_RUNNERS,
+                {
+                    ("game-design", "G1"): TableRunner(
+                        lambda: {"status": "source_executed", "all_stages_passed": True},
+                        "mock G1 runtime",
+                        "gate_summary",
+                    )
+                },
+            ):
+                results = WaveRunner.run_all(write_evidence=False)
         manifest_reads = [
             call
             for call in load_json.call_args_list
@@ -54,9 +150,9 @@ class WaveTests(unittest.TestCase):
         self.assertEqual(len(results), 43)
 
         verified = [r for r in results if r.passed]
-        # Every complete wave passes when the environment has what its gate needs; A2's
-        # browser-driven gate is the one run that can legitimately come up short.
-        self.assertIn(len(verified), {42, 43})
+        # Brand Maker's real package is absent, so B3/B4/B6 stay blocked. A2's
+        # browser-driven gate is the only other wave that can legitimately come up short.
+        self.assertIn(len(verified), {39, 40})
         a1 = next(r for r in results if r.suite_id == "accessibility" and r.wave_id == "A1")
         self.assertEqual(a1.execution_kind, "verified_analysis")
         self.assertTrue(a1.passed)
@@ -78,20 +174,23 @@ class WaveTests(unittest.TestCase):
         self.assertTrue(a4.passed)
 
         verified_analysis = [r for r in results if r.execution_kind == "verified_analysis"]
-        self.assertEqual(len(verified_analysis), 40)
+        self.assertEqual(len(verified_analysis), 36)
 
-        # O1 and O4 left the analysis census when they started retaining proof of the PKos
-        # invocation rather than a parse of what the invocation produced.
-        for o_wave_id, expectation in (("O1", "verified_source_execution"), ("O4", "verified_source_execution")):
+        # O1, O4, and G1 retain donor invocation evidence rather than analysis receipts.
+        for suite_id, o_wave_id in (("operator-os", "O1"), ("operator-os", "O4"), ("game-design", "G1")):
             with self.subTest(wave_id=o_wave_id):
                 wave = next(
                     r for r in results
-                    if r.suite_id == "operator-os" and r.wave_id == o_wave_id
+                    if r.suite_id == suite_id and r.wave_id == o_wave_id
                 )
-                self.assertEqual(wave.execution_kind, expectation)
+                self.assertEqual(wave.execution_kind, "verified_source_execution")
                 self.assertTrue(wave.passed)
         for r in verified_analysis:
             self.assertTrue(r.passed, f"Verified analysis for {r.suite_id}/{r.wave_id} failed: {r.message}")
+        for wave_id in ("B3", "B4", "B6"):
+            blocked = next(r for r in results if r.suite_id == "brand-publishing" and r.wave_id == wave_id)
+            self.assertFalse(blocked.passed)
+            self.assertEqual(blocked.data.get("blocker"), "brand_package_unavailable")
 
         self.assertFalse(any(r.execution_kind == "unintegrated_specification" for r in results))
         self.assertFalse(any(r.execution_kind == "error" for r in results))
@@ -111,7 +210,13 @@ class WaveTests(unittest.TestCase):
         a2 = WaveRunner.run_wave("accessibility", "A2", write_evidence=False)
         if a2.execution_kind == "fast_probe":
             self.assertTrue(a2.passed)
-            self.assertEqual(a2.data.get("receipt_kind"), "clean_commit_receipt")
+            target_fingerprint = a2.data.get("target", {}).get("fingerprint", {})
+            expected_receipt_kind = (
+                "local_working_tree_candidate_receipt"
+                if target_fingerprint.get("is_dirty")
+                else "clean_commit_receipt"
+            )
+            self.assertEqual(a2.data.get("receipt_kind"), expected_receipt_kind)
             self.assertEqual(a2.data.get("status"), "parity_verified")
             self.assertIsNone(a2.evidence_path)
             self.assertTrue(a2.data.get("all_stages_passed"))
@@ -127,7 +232,8 @@ class WaveTests(unittest.TestCase):
             self.assertTrue(res.passed)
             self.assertEqual(res.execution_kind, "verified_analysis")
 
-        # All waves across all other suites are verified analysis milestones.
+        # The broad wave survey stubs G1's external simulator; its isolated adapter contract
+        # is checked separately, and the suite test keeps its analysis-only runtime cost.
         for suite_id, wave_ids in (
             ("operator-os", ("O2", "O3", "O5", "O6")),
             ("brand-publishing", ("B1", "B2", "B3", "B4", "B5", "B6")),
@@ -138,7 +244,37 @@ class WaveTests(unittest.TestCase):
             ("game-design", ("G1", "G2", "G3", "G4", "G5")),
         ):
             for wave_id in wave_ids:
-                res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
+                if suite_id == "brand-publishing":
+                    with patch(
+                        "portfolio_suites.waves.BrandPublishingSourceAdapter.execute_b1_brand_package_export",
+                        return_value={
+                            "status": "owner_approval_required",
+                            "blocker": "owner_approval_required",
+                            "next_action": "Publish an owner-approved Brand Maker version.",
+                            "all_stages_passed": False,
+                            "database_unchanged": True,
+                            "source_verification_passed": True,
+                            "probe": {"status": "no_published_version"},
+                        },
+                    ):
+                        res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
+                    if wave_id in {"B3", "B4", "B6"}:
+                        self.assertFalse(res.passed, f"{suite_id}/{wave_id} must block without a BrandPackage")
+                        self.assertEqual(res.data.get("blocker"), "brand_package_unavailable")
+                        continue
+                elif suite_id == "game-design" and wave_id == "G1":
+                    fake_entry = TableRunner(
+                        lambda: {"status": "source_executed", "all_stages_passed": True},
+                        "mock G1 runtime",
+                        "gate_summary",
+                    )
+                    with patch.dict(TABLE_RUNNERS, {(suite_id, wave_id): fake_entry}):
+                        res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
+                    self.assertTrue(res.passed, f"{suite_id}/{wave_id}: {res.message}")
+                    self.assertEqual(res.execution_kind, "verified_source_execution")
+                    continue
+                else:
+                    res = WaveRunner.run_wave(suite_id, wave_id, write_evidence=False)
                 self.assertTrue(res.passed, f"{suite_id}/{wave_id}: {res.message}")
                 self.assertEqual(res.execution_kind, "verified_analysis")
 

@@ -19,6 +19,7 @@ from .adapters.agent_reliability import AgentReliabilitySourceAdapter
 from .adapters.brand_publishing import BrandPublishingSourceAdapter
 from .adapters.discovery_decision import DiscoveryDecisionSourceAdapter
 from .adapters.game_design import GameDesignSourceAdapter
+from .adapters.game_design_runtime import GameDesignRuntimeAdapter
 from .adapters.model_behavior import ModelBehaviorSourceAdapter
 from .adapters.operator_os import OperatorOSSourceAdapter
 from .adapters.production_house import ProductionHouseSourceAdapter
@@ -525,9 +526,9 @@ TABLE_RUNNERS: dict[tuple[str, str], TableRunner] = {
         "curriculum_fixtures",
     ),
     ("game-design", "G1"): TableRunner(
-        GameDesignSourceAdapter.execute_g1_tucked_in_terrors_fingerprint,
-        "Fingerprinted the donor's real rules data and 1000 recorded runs into a parity fixture.",
-        "outcome_distribution",
+        GameDesignRuntimeAdapter.execute_g1_tucked_in_terrors_runtime,
+        "Executed 1,000 donor simulations and host-verified the output, imported modules, and read-only recovery behavior; independent parity remains unclaimed.",
+        "gate_summary",
     ),
     ("game-design", "G2"): TableRunner(
         GameDesignSourceAdapter.execute_g2_storyweaver_pack_parity,
@@ -1019,13 +1020,28 @@ class WaveRunner:
         result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
         receipt = result.get("publishing_receipt", {})
         pkg = result.get("brand_package", {})
-        passed = (
+        package_exported = (
             result.get("all_stages_passed") is True
             and result.get("mutation_protection_passed") is True
             and receipt.get("dry_run_only") is True
-            and receipt.get("matched_approved_claims_count", 0) >= 1
             and receipt.get("live_published") is False
             and pkg.get("schema_version") == "1.0.0"
+        )
+        fail_closed_without_publication = (
+            result.get("status") == "owner_approval_required"
+            and result.get("probe", {}).get("status") == "no_published_version"
+            and result.get("database_unchanged") is True
+            and result.get("source_verification_passed") is True
+            and not result.get("brand_package")
+            and not result.get("source_record")
+            and not result.get("publishing_receipt")
+        )
+        passed = package_exported or fail_closed_without_publication
+        message = (
+            "Confirmed the Brand Maker export fails closed without an owner-approved publication; "
+            "no package, source record, or dry-run receipt was created."
+            if fail_closed_without_publication
+            else "Exported an immutable Brand Maker publication and verified its suite-local package projection; publishing remained dry-run only."
         )
         return cls._settle(
             suite,
@@ -1033,9 +1049,10 @@ class WaveRunner:
             write_evidence,
             passed,
             result,
-            "Built and validated a suite-local BrandPackage projection from inspected donor sources; "
-            "the publishing boundary remained dry-run only.",
+            message,
             result.get("publishing_receipt"),
+            failure_message="Blocked: Brand Maker has no owner-approved published version; no BrandPackage was created."
+            if not passed and result.get("blocker") == "owner_approval_required" else None,
         )
 
     @classmethod
@@ -1055,57 +1072,161 @@ class WaveRunner:
     @classmethod
     def _run_brand_publishing_b3(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         b1_result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
-        pkg = b1_result["brand_package"]
-        src = b1_result["source_record"]
+        pkg = b1_result.get("brand_package")
+        src = b1_result.get("source_record")
+        if not b1_result.get("all_stages_passed") or not isinstance(pkg, dict) or not isinstance(src, dict):
+            blocked = {
+                "wave": "B3",
+                "status": "blocked",
+                "blocker": "brand_package_unavailable",
+                "next_action": b1_result.get("next_action"),
+                "upstream_probe": {
+                    "status": b1_result.get("status"),
+                    "blocker": b1_result.get("blocker"),
+                    "next_action": b1_result.get("next_action"),
+                },
+                "all_stages_passed": False,
+            }
+            return cls._settle(
+                suite, wave_id, write_evidence, False, blocked,
+                "Exercised the suite-local SourceRecord -> BrandPackage -> VCC review projection and produced a dry-run publishing receipt.",
+                blocked,
+                failure_message="Blocked: an authentic Brand Maker BrandPackage and export SourceRecord are required before B3 can run.",
+            )
+        if not pkg.get("approved_claims"):
+            blocked = {
+                "wave": "B3",
+                "status": "blocked",
+                "blocker": "no_verified_approved_claims",
+                "next_action": (
+                    "Establish a separately verified approved-claims registry in Brand Maker; "
+                    "messaging prose cannot supply claim authority. Then rerun B1 and B3."
+                ),
+                "upstream_probe": {
+                    "status": b1_result.get("status"),
+                    "brand_package_id": pkg.get("package_id"),
+                    "source_id": src.get("source_id"),
+                    "brand_package_approved_claims_count": 0,
+                },
+                "brand_package_id": pkg.get("package_id"),
+                "source_id": src.get("source_id"),
+                "brand_package_approved_claims_count": 0,
+                "all_stages_passed": False,
+            }
+            return cls._settle(
+                suite, wave_id, write_evidence, False, blocked,
+                "Exercised the suite-local SourceRecord -> BrandPackage -> VCC review projection and produced a dry-run publishing receipt.",
+                blocked,
+                failure_message="Blocked: Brand Maker does not expose a separately verified approved-claims registry for this package.",
+            )
         receipt = BrandPublishingEngine.dry_run_publish(
-            pkg, src, "Zero-dependency local-first portfolio control plane verified through Cyborg VCC review.", channel="cyborg-vcc"
+            pkg, src, b1_result.get("source_content", ""), channel="cyborg-vcc"
         )
         passed = (
             b1_result.get("all_stages_passed") is True
             and receipt.get("status") == "dry_run_verified"
-            and receipt.get("brand_package_id") == "pkg-cyborg-brand-v1"
-            and receipt.get("source_id") == "src-manifesto-draft-001"
+            and receipt.get("brand_package_id") == pkg.get("package_id")
+            and receipt.get("source_id") == src.get("source_id")
             and receipt.get("matched_approved_claims_count", 0) >= 1
             and receipt.get("dry_run_only") is True
         )
+        result = {
+            "wave": "B3",
+            "status": "dry_run_verified" if passed else "verification_failed",
+            "all_stages_passed": passed,
+            "brand_package_id": pkg.get("package_id"),
+            "brand_version": pkg.get("version"),
+            "brand_package_sha256": canonical_digest(pkg),
+            "source_id": src.get("source_id"),
+            "source_sha256": src.get("sha256"),
+            "publishing_receipt": receipt,
+        }
+        if receipt.get("matched_approved_claims_count") == 0:
+            result.update({
+                "status": "blocked",
+                "blocker": "no_approved_claim_match",
+                "next_action": "Review the sourced draft against the authentic approved claims, then rerun B3.",
+                "upstream_probe": {
+                    "status": b1_result.get("status"),
+                    "brand_package_id": pkg.get("package_id"),
+                    "source_id": src.get("source_id"),
+                },
+            })
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
             passed,
-            receipt,
+            result,
             "Exercised the suite-local SourceRecord -> BrandPackage -> VCC review projection and "
             "produced a dry-run publishing receipt.",
-            receipt,
+            result,
         )
 
     @classmethod
     def _run_brand_publishing_b4(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         b1_result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
-        pkg = b1_result["brand_package"]
+        pkg = b1_result.get("brand_package")
+        if not b1_result.get("all_stages_passed") or not isinstance(pkg, dict):
+            blocked = {
+                "wave": "B4",
+                "status": "blocked",
+                "blocker": "brand_package_unavailable",
+                "next_action": b1_result.get("next_action"),
+                "upstream_probe": {
+                    "status": b1_result.get("status"),
+                    "blocker": b1_result.get("blocker"),
+                    "next_action": b1_result.get("next_action"),
+                },
+                "all_stages_passed": False,
+            }
+            return cls._settle(
+                suite, wave_id, write_evidence, False, blocked,
+                "Exercised two suite-local BrandPackage consumer projections and verified version-pinning and mutation-protection boundaries.",
+                blocked,
+                failure_message="Blocked: an authentic Brand Maker BrandPackage is required before B4 can verify consumers.",
+            )
         package_sha256 = canonical_digest(pkg)
         v1 = BrandPublishingEngine.verify_package_consumer(
-            pkg, "site-fixture-consumer", "1.0.0", expected_package_sha256=package_sha256
+            pkg, "site-fixture-consumer", pkg["version"], expected_package_sha256=package_sha256
         )
         v2 = BrandPublishingEngine.verify_package_consumer(
-            pkg, "portfolio-validator-consumer", "1.0.0", expected_package_sha256=package_sha256
+            pkg, "portfolio-validator-consumer", pkg["version"], expected_package_sha256=package_sha256
         )
         passed = (
             b1_result.get("all_stages_passed") is True
             and v1.get("status") == "verified"
             and v2.get("status") == "verified"
-            and v1.get("package_id") == "pkg-cyborg-brand-v1"
-            and v2.get("package_id") == "pkg-cyborg-brand-v1"
+            and v1.get("package_id") == pkg.get("package_id")
+            and v2.get("package_id") == pkg.get("package_id")
+            and v1.get("pinned_version") == pkg.get("version")
+            and v2.get("pinned_version") == pkg.get("version")
+            and v1.get("package_sha256") == package_sha256
+            and v2.get("package_sha256") == package_sha256
+            and v1.get("expected_package_sha256") == package_sha256
+            and v2.get("expected_package_sha256") == package_sha256
+            and v1.get("mutation_shield_active") is True
+            and v2.get("mutation_shield_active") is True
         )
+        result = {
+            "wave": "B4",
+            "status": "verified" if passed else "verification_failed",
+            "all_stages_passed": passed,
+            "brand_package_id": pkg.get("package_id"),
+            "brand_version": pkg.get("version"),
+            "brand_package_sha256": package_sha256,
+            "consumer_1": v1,
+            "consumer_2": v2,
+        }
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
             passed,
-            {"consumer_1": v1, "consumer_2": v2, "status": "verified"},
+            result,
             "Exercised two suite-local BrandPackage consumer projections and verified version-pinning "
             "and mutation-protection boundaries.",
-            {"consumers_verified": 2},
+            result,
         )
 
     @classmethod
@@ -1131,8 +1252,53 @@ class WaveRunner:
     @classmethod
     def _run_brand_publishing_b6(cls, suite: dict[str, Any], wave_id: str, write_evidence: bool) -> WaveRunResult:
         b1_result = BrandPublishingSourceAdapter.execute_b1_brand_package_export()
-        pkg = b1_result["brand_package"]
-        src = b1_result["source_record"]
+        pkg = b1_result.get("brand_package")
+        src = b1_result.get("source_record")
+        if not b1_result.get("all_stages_passed") or not isinstance(pkg, dict) or not isinstance(src, dict):
+            blocked = {
+                "wave": "B6",
+                "status": "blocked",
+                "blocker": "brand_package_unavailable",
+                "next_action": b1_result.get("next_action"),
+                "upstream_probe": {
+                    "status": b1_result.get("status"),
+                    "blocker": b1_result.get("blocker"),
+                    "next_action": b1_result.get("next_action"),
+                },
+                "all_stages_passed": False,
+            }
+            return cls._settle(
+                suite, wave_id, write_evidence, False, blocked,
+                "Simulated VCC editorial review with human approval gate; verified rejection and claim validation branching.",
+                blocked,
+                failure_message="Blocked: an authentic Brand Maker package and export SourceRecord are required before B6 can run.",
+            )
+        if not pkg.get("approved_claims"):
+            blocked = {
+                "wave": "B6",
+                "status": "blocked",
+                "blocker": "no_verified_approved_claims",
+                "next_action": (
+                    "Establish a separately verified approved-claims registry in Brand Maker; "
+                    "messaging prose cannot supply claim authority. Then rerun B1 and B6."
+                ),
+                "upstream_probe": {
+                    "status": b1_result.get("status"),
+                    "brand_package_id": pkg.get("package_id"),
+                    "source_id": src.get("source_id"),
+                    "brand_package_approved_claims_count": 0,
+                },
+                "brand_package_id": pkg.get("package_id"),
+                "source_id": src.get("source_id"),
+                "brand_package_approved_claims_count": 0,
+                "all_stages_passed": False,
+            }
+            return cls._settle(
+                suite, wave_id, write_evidence, False, blocked,
+                "Simulated VCC editorial review with human approval gate; verified rejection and claim validation branching.",
+                blocked,
+                failure_message="Blocked: B6 requires verified approved claims before it can evaluate claim-gated review branches.",
+            )
 
         approved_receipt = BrandPublishingEngine.simulate_vcc_human_approval(
             pkg, src, "Zero-dependency local-first portfolio control plane verified.", human_decision="approved"
@@ -1153,21 +1319,30 @@ class WaveRunner:
             and sim_gate.get("boundary_check") == "stopped_before_live_publish"
             and sim_gate.get("decision_source") == "simulated_fixture"
             and sim_gate.get("human_confirmation_claimed") is False
-            and approved_receipt.get("brand_package_id") == "pkg-cyborg-brand-v1"
-            and approved_receipt.get("source_id") == "src-manifesto-draft-001"
+            and approved_receipt.get("brand_package_id") == pkg.get("package_id")
+            and approved_receipt.get("source_id") == src.get("source_id")
         )
+        result = {
+            "wave": "B6",
+            "status": "simulated_gate_verified" if passed else "verification_failed",
+            "all_stages_passed": passed,
+            "brand_package_id": pkg.get("package_id"),
+            "brand_version": pkg.get("version"),
+            "brand_package_sha256": canonical_digest(pkg),
+            "source_id": src.get("source_id"),
+            "source_sha256": src.get("sha256"),
+            "approved_review": approved_receipt,
+            "rejected_probe_status": rejected_receipt.get("status"),
+            "unmatched_probe_status": unmatched_receipt.get("status"),
+        }
         return cls._settle(
             suite,
             wave_id,
             write_evidence,
             passed,
-            {
-                "approved_review": approved_receipt,
-                "rejected_probe_status": rejected_receipt.get("status"),
-                "unmatched_probe_status": unmatched_receipt.get("status"),
-            },
+            result,
             "Simulated VCC editorial review with human approval gate; verified rejection and claim validation branching.",
-            approved_receipt,
+            result,
         )
 
 

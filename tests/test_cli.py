@@ -28,11 +28,11 @@ class CLITests(unittest.TestCase):
         self.assertIn("Recovery standard: 9.0/10 target", output)
         # Both axes, and specifically the prototype count: the milestone line alone reads
         # as a recovered portfolio, which is the reporting defect this asserts against.
-        self.assertIn("Wave milestone progress: 43/43", output)
-        self.assertIn("Completed wave milestones: 40 analysis, 3 runtime", output)
+        self.assertIn("Wave milestone progress: 40/43", output)
+        self.assertIn("Completed wave milestones: 36 analysis, 4 runtime", output)
         self.assertIn(
-            "Wave evidence promotion: 4 prototype, 1 reviewed historical, 35 source inspected, "
-            "2 source executed, 1 parity verified, 0 adopted, 0 converged, 0 resolved",
+            "Wave evidence promotion: 1 prototype, 1 reviewed historical, 34 source inspected, "
+            "3 source executed, 1 parity verified, 0 adopted, 0 converged, 0 resolved",
             output,
         )
         self.assertIn(
@@ -142,18 +142,36 @@ class CLITests(unittest.TestCase):
 
     def test_wave_all_reports_consistent_classifications(self):
         f = io.StringIO()
-        with redirect_stdout(f):
-            code = main(["wave", "--all", "--no-record"])
+        # Keep the missing owner-approved package boundary deterministic even if Ryan later
+        # publishes a Brand Maker version on this machine. The downstream waves must remain
+        # blocked until that real export is available; this test does not manufacture one.
+        with patch(
+            "portfolio_suites.waves.BrandPublishingSourceAdapter.execute_b1_brand_package_export",
+            return_value={
+                "status": "owner_approval_required",
+                "blocker": "owner_approval_required",
+                "next_action": "Publish an owner-approved Brand Maker version.",
+                "all_stages_passed": False,
+                "database_unchanged": True,
+                "source_verification_passed": True,
+                "probe": {"status": "no_published_version"},
+            },
+        ):
+            with redirect_stdout(f):
+                code = main(["wave", "--all", "--no-record"])
         output = f.getvalue()
-        self.assertIn(code, {0, 2})
-        self.assertIn("36 verified analyses", output)
-        self.assertIn("4 prototype checks passed", output)
+        # B3/B4/B6 are incomplete prototype gates without B1's authentic package, so the
+        # aggregate correctly returns the product-failure code while preserving their blockers.
+        self.assertEqual(code, 1, output)
+        self.assertIn("35 verified analyses", output)
+        self.assertIn("1 prototype checks passed", output)
         self.assertIn("0 runtime recoveries", output)
-        if code == 0:
-            self.assertIn("1 fast probes", output)
-        else:
-            self.assertIn("[UNVERIFIABLE]", output)
-            self.assertIn("1 environment-unverifiable", output)
+        self.assertIn("3 checks failed", output)
+        for wave_id in ("B3", "B4", "B6"):
+            self.assertRegex(
+                output,
+                rf"\[FAIL\]\s+brand-publishing\s+{wave_id}\s+.*Blocked:",
+            )
 
     def test_drift_command_surfaces_incomplete_untracked_fingerprint(self):
         incomplete = {

@@ -150,11 +150,16 @@ def _next() -> int:
     candidates = []
     for manifest in suites.values():
         for wave in manifest["waves"]:
-            if wave["status"] != "complete":
-                candidates.append((wave["order"], manifest["id"], wave))
+            if wave["status"] == "complete":
+                continue
+            # A blocked wave is the suite's current stopping point. Do not offer it
+            # as runnable, and do not skip past it to a later scheduled wave.
+            if wave["status"] == "blocked":
                 break
+            candidates.append((wave["order"], manifest["id"], wave))
+            break
     if not candidates:
-        print("All migration waves across all 8 suites are scheduled complete.")
+        print("No runnable scheduled wave remains; checking release and recovery state.")
         try:
             program = load_recovery_program()
             obligations = resolve_recovery_obligations(program, suites)
@@ -777,6 +782,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     sub.add_parser("drift", help="scan live git status and report drift against baseline snapshots")
     sub.add_parser("export", help="export consolidated portfolio data as JSON")
 
+    connect_p = sub.add_parser(
+        "connect",
+        help="register an independent project from its .suites descriptor",
+    )
+    connect_p.add_argument("location", help="absolute path to a project containing .suites")
+    connect_p.add_argument("--json", action="store_true", help="emit the connected project view as JSON")
+
     baseline_p = sub.add_parser("baseline", help="record status_sha256 fingerprints for baselines that lack one")
     baseline_p.add_argument("--dry-run", action="store_true", help="report what would change without writing the ledger")
     baseline_p.add_argument("--accept", action="store_true", help="accept live git state as the new baseline for drifted repos")
@@ -853,6 +865,41 @@ def main(argv: Sequence[str] | None = None) -> int:
     serve_p.add_argument("--port", type=int, default=8383, help="port number (default: 8383)")
 
     args = parser.parse_args(argv)
+
+    if args.command == "connect":
+        from .catalog import CatalogError
+        from .project_registration import ProjectRegistrationUncertain, connect_project
+
+        try:
+            view = connect_project(args.location)
+        except ProjectRegistrationUncertain as error:
+            if args.json:
+                print(json.dumps({"status": "committed_unverified", "message": str(error)}))
+            else:
+                print("CONNECTION STATUS UNCERTAIN:", error)
+            return EXIT_INCOMPLETE
+        except CatalogError as error:
+            if args.json:
+                print(json.dumps({"status": "refused", "message": str(error)}))
+            else:
+                print("ERROR:", error)
+            return EXIT_FAILED
+        except (OSError, ValueError) as error:
+            if args.json:
+                print(json.dumps({"status": "incomplete", "message": str(error)}))
+            else:
+                print("INCOMPLETE:", error)
+            return EXIT_INCOMPLETE
+        if args.json:
+            print(json.dumps(view, indent=2))
+        else:
+            connection = view["project_connection"]
+            capabilities = connection["declared_capabilities"]
+            print(f"Connected {view['id']} at {view['location']}")
+            print("Declared capabilities:", ", ".join(capabilities) if capabilities else "none")
+            print("Declarations are unverified; this entry is catalog-only and has no suite enrollment.")
+            print(f"Inspect it with: ./s project {view['id']} --json")
+        return EXIT_OK
 
     if args.command in {"projects", "p", "project", "now", "n", "action", "a", "resume", "r"}:
         return run_catalog_cli(args)
