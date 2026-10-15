@@ -265,8 +265,8 @@ class RegistryTests(unittest.TestCase):
     def test_summary_separates_analysis_from_runtime_recovery(self):
         summary = get_portfolio_summary()
         self.assertEqual(summary["recovery_target_score"], 9.0)
-        self.assertEqual(summary["completed_analysis_milestones"], 40)
-        self.assertEqual(summary["completed_runtime_milestones"], 3)
+        self.assertEqual(summary["completed_analysis_milestones"], 36)
+        self.assertEqual(summary["completed_runtime_milestones"], 4)
         self.assertEqual(summary["recovered_runtime_behaviors"], 1)
         self.assertEqual(summary["adopted_runtime_behaviors"], 0)
         self.assertEqual(summary["adopted_capabilities"], 1)
@@ -290,24 +290,22 @@ class RegistryTests(unittest.TestCase):
         )
 
     def test_summary_reports_promotion_level_as_its_own_axis(self):
-        """Milestone completion must not be able to stand in for evidence depth.
+        """Milestone completion and evidence depth are independent portfolio axes.
 
-        Every wave is complete, so any count derived from incompleteness reports zero
-        prototypes. These counts come from `recovery_claim.level` instead, and the sum
-        pins them to the wave total so a level going unclassified cannot pass silently.
+        Promotion counts come from `recovery_claim.level`; their sum covers completed
+        waves while blocked or otherwise open waves remain outside that axis.
         """
         summary = get_portfolio_summary()
         levels = summary["promotion_counts"]
-        self.assertEqual(summary["completed_waves"], summary["total_waves"])
-        self.assertEqual(levels["prototype"], 4)
+        self.assertEqual(levels["prototype"], 1)
         self.assertEqual(levels["reviewed_historical_analysis"], 1)
-        self.assertEqual(levels["source_inspected"], 35)
-        self.assertEqual(levels["source_executed"], 2)
+        self.assertEqual(levels["source_inspected"], 34)
+        self.assertEqual(levels["source_executed"], 3)
         self.assertEqual(levels["parity_verified"], 1)
         self.assertEqual(levels["adopted"], 0)
         self.assertEqual(levels["converged"], 0)
         self.assertEqual(summary["resolved_capabilities"], 0)
-        self.assertEqual(sum(levels.values()), summary["total_waves"])
+        self.assertEqual(sum(levels.values()), summary["completed_waves"])
         self.assertEqual(summary["wave_claim_counts"], levels)
         self.assertEqual(summary["prototype_level_claims"], levels["prototype"])
 

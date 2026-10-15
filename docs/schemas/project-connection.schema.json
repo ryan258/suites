@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ryan-suites:ProjectConnection:1.0.0",
+  "title": "ProjectConnection",
+  "description": "Read-only project identity and declared capabilities in a project-root .suites file.",
+  "type": "object",
+  "required": ["schema_version", "project_id", "capabilities"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "project_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_][A-Za-z0-9._:/-]{0,127}$"
+    },
+    "capabilities": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 96,
+        "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+      }
+    }
+  },
+  "additionalProperties": true
+}

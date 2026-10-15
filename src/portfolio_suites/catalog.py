@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 
 from . import registry
 from .paths import CommitUnverified, open_confined_directory
+from .project_connection import read_project_connection
 from .txn import CommitUncertain, OccupantConflict, commit_replacement, write_temp_payload
 
 HOMES = {
@@ -230,6 +231,7 @@ def project_view(row, suites=None):
     evidence = {'suite_id': suite['id'], 'recorded_state': suite['state'], 'wave_claims': [{'id':w['id'],'kind':w.get('recovery_claim',{}).get('kind'),'level':w.get('recovery_claim',{}).get('level'),'runtime_followup':w.get('runtime_followup')} for w in suite['waves']]} if suite else None
     return {**op, 'suite_evidence': evidence, 'suite_evidence_error': 'Suite manifest unavailable; no evidence inferred.' if row.get('primary_suite') and not suite else None, 'name': row['name'], 'home_label': HOMES[op['primary_home']], 'attention_label': ATTENTION[op['attention']],
             'resume_status': resume_status(op), 'location_exists': Path(op['location']).is_dir(), 'incomplete': missing,
+            'project_connection': read_project_connection(op['location']),
             'migration': {'enrolled': row.get('disposition') != 'catalog-only',
                           'primary_suite': row.get('primary_suite'), 'disposition': row.get('disposition'),
                           'migration': row.get('migration'), 'source_snapshot': row.get('source_snapshot')},

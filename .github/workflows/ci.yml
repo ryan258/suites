@@ -76,12 +76,15 @@ jobs:
             tests.test_donor_source_record_probe \
             tests.test_engine_action_json_boundary \
             tests.test_engine_actions \
+            tests.test_game_design_runtime \
             tests.test_integrity_boundaries \
             tests.test_lab_engine_hardening \
             tests.test_mutation_confinement \
             tests.test_operator_state \
             tests.test_provenance \
             tests.test_provenance_strictness \
+            tests.test_project_connection \
+            tests.test_project_registration \
             tests.test_execution_trace \
             tests.test_recovery_api \
             tests.test_recovery_cli \

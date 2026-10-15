@@ -15,14 +15,16 @@ class RecoveryCLIIntegrationTests(unittest.TestCase):
 
         self.assertEqual(code, 2)
         rendered = output.getvalue()
-        # The release ledger is phase-aware: with the phase-0 release-ledger gate closed, the
-        # contract-state-freeze gate is the next dischargeable release blocker, and B1 runtime
-        # evidence stays gated behind it.
+        # The frozen contract-state gate is closed. The release ledger exposes B1 as the first
+        # actionable runtime blocker, while blocked B3 remains a suite stopping point rather
+        # than being presented as a runnable scheduled wave.
         self.assertIn(
-            "NEXT RELEASE BLOCKER: phase1.contract-state-freeze",
+            "NEXT RELEASE BLOCKER: brand-publishing.v1.b1-runtime",
             rendered,
         )
-        # B1 must not be offered while its boundary gate is open.
+        self.assertIn("gate (phase1.contract-state-freeze): closed", rendered)
+        self.assertNotIn("brand-publishing / B3:", rendered)
+        # The phase-aware release blocker queue owns B1 while release blockers remain open.
         self.assertNotIn("NEXT RECOVERY OBLIGATION: brand-publishing/B1", rendered)
 
     def test_next_fails_closed_when_recovery_program_cannot_load(self):

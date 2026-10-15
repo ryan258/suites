@@ -147,12 +147,28 @@ class ProjectCatalog {
     const p = draft ? {...project, ...draft.values} : project;
     this.formRevision = draft ? draft.revision : project.revision;
     const target = p.resume || {kind:'file', target:''};
+    const connection = project.project_connection || {state:'unavailable'};
+    const connectionState = {
+      declared: 'Declaration read · behavior unverified',
+      not_connected: 'Not connected',
+      invalid: 'Descriptor rejected',
+      unavailable: 'Unavailable'
+    }[connection.state] || 'Unavailable';
+    const connectionCapabilities = Array.isArray(connection.declared_capabilities) ? connection.declared_capabilities : [];
+    const connectionErrors = Array.isArray(connection.errors) ? connection.errors : [];
     const options = {'unassigned':'Unassigned', now:'Now', 'in-use':'In use', waiting:'Waiting', parked:'Parked'};
     const detail = this.el('operator-detail');
     detail.innerHTML = `<a href="#home=${this.home}">← Back to projects</a><h2 id="operator-project-title" tabindex="-1">${escapeHtml(project.name)}</h2>
       <p>${escapeHtml(project.home_label)} · ${escapeHtml(project.inventory_kind.replaceAll('_',' '))} · ${escapeHtml(project.attention_label)}</p>
       <p>${escapeHtml(project.purpose || 'Purpose unknown')}</p>
       <p>Owner: ${escapeHtml(project.owner)}</p><p class="operator-path">Location: ${escapeHtml(project.location)} ${project.location_exists ? '' : '(missing)'}</p>
+      <details class="operator-connection"><summary>Project connection: ${escapeHtml(connectionState)}</summary>
+      <p>Descriptor: <code>${escapeHtml(connection.manifest || '.suites')}</code> in this project root.</p>
+      ${connection.state === 'declared' ? `<p>Project ID: <code>${escapeHtml(connection.project_id)}</code></p><p>Schema version: ${escapeHtml(connection.schema_version)}</p>
+      <p>Declared capabilities${connection.runtime_verified === true ? ':' : ' · not independently verified:'}</p>
+      ${connectionCapabilities.length ? '<ul>' + connectionCapabilities.map(value => `<li><code>${escapeHtml(value)}</code></li>`).join('') + '</ul>' : '<p>No capabilities declared.</p>'}
+      <p>Runtime verified: ${connection.runtime_verified === true ? 'Yes' : 'No'}. Suites does not execute project code or treat declarations as approval.</p>` : `<p>${connection.state === 'not_connected' ? 'No .suites descriptor is present.' : 'The descriptor was not accepted as a valid project declaration.'}</p>`}
+      ${connectionErrors.length ? '<p>Reader notes:</p><ul>' + connectionErrors.map(value => `<li>${escapeHtml(value)}</li>`).join('') + '</ul>' : ''}</details>
       <p>Related homes: ${project.related_suites.map(x => `<a href="#home=${x}">${escapeHtml(this.data.homes[x])}</a>`).join(', ') || 'None recorded'}</p>
       <div class="operator-resume"><h3>Resume</h3><p class="operator-path">${escapeHtml(project.resume?.target || 'No target recorded')}</p><p>${escapeHtml(project.resume_status.message)}</p>
       ${project.resume_status.can_open ? '<button type="button" class="btn btn-primary" data-operator-action="open">Open saved target</button>' : ''}

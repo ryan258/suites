@@ -16,6 +16,12 @@ The JSON Schemas document interchange. `portfolio_suites.contracts` supplies the
 runtime invariants used by this control plane. Apps may use stricter internal schemas but cannot
 silently weaken these boundary requirements.
 
+The opt-in project-root `.suites` descriptor has its own schema at
+[`docs/schemas/project-connection.schema.json`](../docs/schemas/project-connection.schema.json) and
+reader documented in [`docs/PROJECT-CONNECTION.md`](../docs/PROJECT-CONNECTION.md). It is local
+project metadata, not an inter-suite evidence contract: its capability names are declarations and
+grant no authority. The six files in this directory remain the complete shared evidence-contract set.
+
 ## Compatibility rules (v1 freeze)
 
 - **Additive, compatible:** a new optional field, or a new enum value that existing consumers can

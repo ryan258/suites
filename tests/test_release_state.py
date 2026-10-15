@@ -377,17 +377,16 @@ class ReleaseLedgerTests(unittest.TestCase):
         state = resolve_release_state(self.ledger, self.program, self.suites)
         b1 = next(b for b in state["open_blockers"] if b["id"] == "brand-publishing.v1.b1-runtime")
         self.assertTrue(b1["open"])
-        self.assertNotIn(
-            b1["id"], {b["id"] for b in state["actionable_blockers"]}
-        )
+        self.assertTrue(state["closed_by_id"]["phase1.contract-state-freeze"])
+        self.assertIn(b1["id"], {b["id"] for b in state["actionable_blockers"]})
 
     def test_contract_freeze_is_actionable(self):
         state = resolve_release_state(self.ledger, self.program, self.suites)
-        freeze = next(
-            b for b in state["open_blockers"]
-            if b["id"] == "phase1.contract-state-freeze"
+        self.assertTrue(state["closed_by_id"]["phase1.contract-state-freeze"])
+        self.assertNotIn(
+            "phase1.contract-state-freeze",
+            {b["id"] for b in state["open_blockers"]},
         )
-        self.assertIn(freeze["id"], {b["id"] for b in state["actionable_blockers"]})
 
     def test_blocker_dependency_chain_holds_runtime(self):
         ledger = deepcopy(self.ledger)
