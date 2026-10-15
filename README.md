@@ -25,6 +25,30 @@ prerequisites. Candidate/release/stabilization exit gates remain explicitly pend
 The supported CLI/API surface, exit codes, and error categories are pinned and described in
 [the stable-surface policy](docs/STABLE-SURFACE.md).
 
+## Connect an independent project
+
+Add this UTF-8 JSON file to the project root:
+
+```json
+{
+  "schema_version": "1.0.0",
+  "project_id": "my-project",
+  "capabilities": ["resume.read.v1"]
+}
+```
+
+Then connect the project by its absolute path and inspect the catalog record:
+
+```sh
+./s connect /absolute/path/to/project
+./s project my-project --json
+```
+
+This adds a catalog-only entry to the Suites ledger. Capability names are self-reported and
+unverified; connection does not write to the project, run its code, enroll a release suite, or
+change its ownership. See the [project connection guide](docs/PROJECT-CONNECTION.md) and
+[descriptor schema](docs/schemas/project-connection.schema.json).
+
 ## Release and engine tools
 
 
@@ -73,18 +97,20 @@ BIBLE: Done
 CAST: Done as operator and system-role profiles
 CRAFT RULES: Done
 SKILL FILE: Staged locally; not installed outside this workspace
-WORK STATE: 43/43 waves complete (40 analysis milestones + 3 runtime waves)
-WAVE EVIDENCE: 4 prototype | 1 reviewed historical | 35 source inspected | 2 source executed
+STATUS SNAPSHOT: 2026-10-15
+WORK STATE: 40/43 waves complete (36 analysis milestones + 4 runtime waves)
+WAVE EVIDENCE: 1 prototype | 1 reviewed historical | 34 source inspected | 3 source executed
                1 parity verified | 0 adopted | 0 converged | 0 resolved
 RECOVERY PROGRAM: 2/44 obligations discharged | 42 open
 LIFECYCLE: 1 adopted capability | 0 converged | 0 resolved
-OUTSTANDING: 42/43 completed waves still owe a live run
+OUTSTANDING: 39/43 completed waves still owe a live run
 ```
 
 Those are two independent axes and both are load-bearing. The first says every scheduled analysis
-milestone is finished. The second says what those milestones demonstrated: most waves now parse
-authentic donor artifacts (`source_inspected`), four remain suite-local fixtures (`A5`, `B3`,
-`B4`, `B6`), two waves (`O1`, `O4`) are at `source_executed`, and one runtime recovery (`A2`) is at
+milestone status remains separate from the evidence each wave can support. The second says what
+completed milestones demonstrated: most waves now parse authentic donor artifacts
+(`source_inspected`), one remains a suite-local fixture (`A5`), three waves (`O1`, `O4`, `G1`) are at
+`source_executed`, and one runtime recovery (`A2`) is at
 `parity_verified`. A completed wave at
 `prototype` is a finished piece of work and is not a recovery. A2 has one discharged lifecycle
 adoption obligation backed by three accepted uses; no wave claim has reached adoption, and no
@@ -101,10 +127,10 @@ module that ran — each one recomputed by this process and required to match th
 reported for itself. Scaling real day-to-day intake into the permanent vault is a separate,
 owner-gated claim (`operator-os/O1-adoption`), not a footnote on this receipt.
 
-The remaining 41 waves reach `source_inspected` at best for the reason `O1` used to: an analysis
-receipt has no field that can carry an argv, an exit code, or a fingerprint of the module that ran,
-so the claim is capped at what the receipt can prove and the gap is written down in each wave's
-`runtime_followup`. Reaching the rung means re-declaring the wave as a runtime claim behind a
+For waves still at analysis depth, an analysis receipt has no field that can carry an argv, an exit
+code, or a fingerprint of the module that ran, so the claim is capped at what the receipt can prove
+and the gap is written down in each wave's `runtime_followup`. Reaching the runtime rung means
+re-declaring the wave as a runtime claim behind a
 receipt that proves the invocation, not raising a boolean in its manifest.
 
 ## The eight suites
@@ -162,7 +188,7 @@ PYTHONPATH=src python3 -m portfolio_suites contract A11yFinding sample
 PYTHONPATH=src python3 -m portfolio_suites contract BrandPackage spec
 PYTHONPATH=src python3 -m portfolio_suites contract SourceRecord validate <file.json>
 
-# Ephemeral wave checks (40 analysis milestones + 3 runtime waves; all 43 verified)
+# Ephemeral wave checks (B3/B4 need a real package; B3/B6 also need verified approved claims)
 # Without --full, A2 runs a fast probe and is reported as [FAST-PROBE], not a runtime recovery.
 PYTHONPATH=src python3 -m portfolio_suites wave --all --no-record
 PYTHONPATH=src python3 -m portfolio_suites wave accessibility A2

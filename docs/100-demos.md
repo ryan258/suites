@@ -628,7 +628,7 @@ throws it away, leaving the retained receipt untouched.
 PYTHONPATH=src python3 -m portfolio_suites wave game-design G1
 ```
 
-Look for: an `[INSPECTED]` tag and a one-line result. Nothing was written.
+Look for: a `[SOURCE-RUN]` tag and a one-line result. Without `--record`, no receipt is written.
 
 ### 58. Run every wave in the portfolio
 
@@ -637,7 +637,7 @@ PYTHONPATH=src python3 -m portfolio_suites wave --all
 ```
 
 Look for: 43 results in about ten seconds, ending in a summary line that counts each outcome kind
-separately. Without `--full` you should see 36 verified analyses, 2 source execution, and 4
+separately. Without `--full` you should see 35 verified analyses, 3 source execution, and 4
 prototype checks passed. `A2` occupies the remaining slot: its shallow run reports 1 fast probe
 when the browser runtime is available, or 1 environment-unverifiable when that runtime cannot be
 opened. The latter is an honest "cannot check" rather than a failure.
@@ -648,7 +648,7 @@ opened. The latter is an honest "cannot check" rather than a failure.
 PYTHONPATH=src python3 -m portfolio_suites wave --all | grep -oE '^\[[A-Z-]+\]' | sort | uniq -c
 ```
 
-Look for: `4 [PROTOTYPE]`, `35 [INSPECTED]`, `1 [HISTORICAL]`, `2 [SOURCE-RUN]`, and one
+Look for: `4 [PROTOTYPE]`, `34 [INSPECTED]`, `1 [HISTORICAL]`, `3 [SOURCE-RUN]`, and one
 `A2` depth tag: either `1 [FAST-PROBE]` or `1 [UNVERIFIABLE]`. Each tag is a different strength
 of claim and they are deliberately not interchangeable — `[RECOVERED]` does not appear here at
 all, because earning it requires the full-depth run in demo 61.

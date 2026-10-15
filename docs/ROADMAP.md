@@ -41,9 +41,9 @@ ownership; branches are not a claim that every planned runtime integration alrea
 | Layer | Owns | Boundary |
 |---|---|---|
 | Ryan and Cyborg operator policy | Intent, priorities, approvals, and operating rules | `suites` cannot grant itself authority or replace the manual. |
-| `suites` shared control layer | Project catalog, suite relationships, attention/resume metadata, and projections of release/evidence state | Reuse existing ledgers and manifests; reference project content at its owner. |
+| `suites` shared control layer | Project catalog, suite relationships, attention/resume metadata, and projections of release/evidence state | Reuse existing ledgers and manifests; read an optional project-root `.suites` descriptor for self-declared identity and capabilities; reference project content at its owner. |
 | Suite and project owners | Domain behavior, source content, runtime state, launchers, and supported outputs | A suite home does not require moving, merging, or retiring a repository. |
-| Independent projects | Their own purpose, implementation, and lifecycle | Catalog and link them; require integration only for an explicitly chosen shared capability. |
+| Independent projects | Their own purpose, implementation, and lifecycle | A root `.suites` file can declare identity and capabilities for the control plane to read; catalog and link projects without transferring lifecycle ownership, and require integration only for an explicitly chosen shared capability. |
 
 ### Stable homes: eight suites
 
@@ -194,8 +194,9 @@ brand and no fixture substitutes for that approval. Ryan closed `phase0.release-
 (receipt `operator-os/evidence/GLOBAL-PHASE0-RELEASE-LEDGER-CLOSURE.json`, digest-bound to the ledger,
 recovery files, `release_state.py`, and `registry.py`; editing any of them re-opens the gate).
 `phase1.contract-state-freeze` stays open until
-`BrandPackage` is proven, and `phase1.stable-surface` stays open pending a clean-install run and
-coverage of statuses set through exception attributes. The full suite passed (679 tests, 4 skipped);
+`BrandPackage` is proven. Exception-carried HTTP statuses are included in the stable-surface golden
+file and covered through the API; `phase1.stable-surface` stays open pending a clean-install run.
+The full suite passed (679 tests, 4 skipped);
 no donor was modified.
 
 ---
@@ -264,8 +265,17 @@ completion criteria, run authentic workloads, and support documented recovery.
 
 ## Recorded Baseline and Implementation Gaps
 
-The foundation and scheduled analysis program are complete. The eight-suite implementation and
-adoption program is not.
+**Status snapshot (2026-10-15):** the control-plane foundation is complete; 40 of 43 scheduled wave
+milestones are currently verified. The eight-suite implementation and adoption program is not.
+
+Ryan closed `phase1.contract-state-freeze` and `phase1.stable-surface` with owner-bound, digest-bound
+receipts on October 15. The stable-surface receipt follows the `.suites` catalog integration and
+the API-status correction; it does not close any suite runtime or adoption obligation. B1 is now
+actionable, but Brand Maker currently has no owner-approved published version, so it emits no
+`BrandPackage` and B3/B4/B6 remain blocked. A Ryan-run full test pass reported 695 tests with six
+failures, one error, and four skips. The live-directory inventory omissions from that run were
+subsequently added to the catalog and `validate --fast` returned zero errors and warnings; the
+subsequent pre-commit full suite passed all 702 tests (four skipped) cleanly.
 
 The figures below restate the registry and retained evidence, not a fresh census of the filesystem.
 The project ledger's inventory snapshot is dated August 19, 2026; C0 must reconcile later projects
@@ -275,12 +285,14 @@ on that implementation and verify its coverage rather than create a second ledge
 record, everyday suite labels, and operator-action view now extend that implementation, while
 actual personal resumption acceptance remains pending.
 
-- **Completed foundation and milestones:** 43/43 waves verified: 40 analysis milestones and three
-  runtime waves (`O1` and `O4` source-executed, `A2` parity-verified). Completed work is recorded
+- **Completed foundation and milestones:** 40/43 waves verified: 36 analysis milestones and four
+  runtime waves (`O1`, `O4`, and `G1` source-executed; `A2` parity-verified). B3, B4, and B6 were returned
+  to incomplete after their suite-local receipts were withdrawn because they depended on an
+  invented BrandPackage approval. Completed work is recorded
   in [CHANGELOG.md](CHANGELOG.md).
 - **70 Top-level projects** in the recorded ledger, dispositioned across 8 suite boundaries and
   independent/archive containers; this is not the current total of app entries or local projects.
-- **43 Migration wave specifications** defined; wave milestone progress is 43/43.
+- **43 Migration wave specifications** defined; current wave milestone progress is 40/43.
 - **6 Shared contracts implemented:** `A11yFinding`, `BrandPackage`, `ExperimentRun`, `InvestigationRecord`, `ProductionJob`, and `SourceRecord`.
 - **Current promotion target:** `allys-tools`, clean at `f2b4c6e` in retained historical evidence.
   This is not a live cleanliness claim.
@@ -290,17 +302,16 @@ actual personal resumption acceptance remains pending.
 
 Milestone completion and evidence depth are separate axes:
 
-- **4/43 prototype-level claims** — suite-owned fixtures or reference logic only (`A5`, `B3`,
-  `B4`, `B6`).
+- **1/43 prototype-level claims** — suite-owned fixture or reference logic only (`A5`).
 - **1/43 reviewed historical analysis** — `A1`, a hand-authored decision whose structure is checked.
-- **35/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
-- **2/43 source-executed claims** — `O1` and `O4`, whose receipts retain the argv, exit code,
-  duration, and host-recomputed digests of the PKos modules that ran.
+- **34/43 source-inspected claims** — donor source or retained artifacts parsed, not executed.
+- **3/43 source-executed claims** — `O1`, `O4`, and `G1`; their receipts retain invocation and
+  host-checked provenance for the donor code that ran.
 - **1/43 parity-verified runtime recoveries** — `A2`.
 - **Wave claims:** 0 adopted, 0 converged, 0 resolved.
 - **Lifecycle outcomes:** A2 has one discharged adoption obligation backed by three accepted
   uses; no capability is converged or resolved.
-- **42/43 completed waves still owe a live run** recorded in `runtime_followup`.
+- **39/43 completed waves still owe a live run** recorded in `runtime_followup`.
 
 The release cannot be declared complete until all 42 open obligations are discharged. A2 has
 authentic adoption evidence, while the two source-executed Operator OS waves still need their
@@ -317,7 +328,7 @@ work, not suite or release completion.
 |---|---:|---|---|
 | Accessibility | 6/6 | complete | All 6 scheduled milestones verified; 5 runtime follow-ups remain. |
 | Operator OS | 6/6 | complete | All 6 scheduled milestones verified; 6 runtime follow-ups remain. |
-| Brand + Publishing | 6/6 | complete | All 6 scheduled milestones verified; 6 runtime follow-ups remain. |
+| Brand + Publishing | 3/6 | `B3` | B1, B2, and B5 are complete; B3, B4, and B6 await a real owner-approved BrandPackage and truthful downstream evidence. B3/B6 also need verified approved claims; 6 runtime follow-ups remain. |
 | Production House | 5/5 | complete | All 5 scheduled milestones verified; 5 runtime follow-ups remain. |
 | Model Behavior Lab | 5/5 | complete | All 5 scheduled milestones verified; 5 runtime follow-ups remain. |
 | Discovery + Decision | 5/5 | complete | All 5 scheduled milestones verified; 5 runtime follow-ups remain. |
@@ -332,7 +343,7 @@ Every required row must have retained, reviewable evidence on the exact release 
 
 | Area | Required outcome | Minimum release evidence |
 |---|---|---|
-| Personal control layer | C0–C3 are complete: accurate project homes, independent entries, attention/resume metadata, and a minimal-input next-action view. | Reconciled records, preserved identity/provenance, targeted compatibility and accessible-navigation checks, and accepted interruption/resumption observations. |
+| Personal control layer | C0–C2 are implemented; C3 actual-use acceptance remains open. The layer provides accurate project homes, independent entries, attention/resume metadata, and a minimal-input next-action view. | Reconciled records, preserved identity/provenance, targeted compatibility and accessible-navigation checks, plus Ryan's accepted interruption/resumption observations for C3. |
 | Eight suite promises | Every suite completes its documented end-to-end user journey. | Clean-room walkthrough, authentic inputs and runtimes, typed outputs, failure and recovery exercise. |
 | Recovery program | Every current runtime follow-up has a verified implementation or approved final disposition; no unowned capability remains. | Updated runtime receipts, disposition decisions, provenance, and machine-checked zero outstanding release obligations. |
 | Adoption | Every suite has at least three authentic accepted uses across distinct inputs or days. | Adoption receipts that identify distinct uses without exposing private content. |
@@ -753,9 +764,9 @@ authored games remain independently owned unless a proven shared mechanic justif
 
 ### Implementation plan
 
-1. **G1 — Re-run the donor simulator.** Regenerate the Tucked in Terrors sample from versioned
-   rules, seed, code fingerprint, configuration, and run count rather than relying on the retained
-   sample alone.
+1. **G1 — Source execution recorded.** The isolated donor simulator ran 1,000 games and the host
+   checked the output and provenance. Next, materialize one versioned Storyweaver pack and compare
+   independently generated statistics and artifacts; human playtesting remains open.
 2. **G2 — Materialize and run the real pack.** Generate a complete Storyweaver pack, run it in the
    authentic engine, and compare independently produced distributions/statistics to donor results.
 3. **G4 — Generate an adventure pack through Storyweaver.** Produce the pack from authored input

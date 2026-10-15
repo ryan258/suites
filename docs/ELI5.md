@@ -91,19 +91,21 @@ converged                      One canonical owner; the duplicate is genuinely r
 Today's honest scoreboard (`status` prints this):
 
 ```
-4 prototype · 1 reviewed historical · 37 source inspected
-0 source executed · 1 parity verified · 0 adopted · 0 converged
+1 prototype · 1 reviewed historical · 34 source inspected
+3 source executed · 1 parity verified · 0 adopted · 0 converged
 ```
 
-**Read that carefully, because it is the whole point of the project.** All 43 waves are
-marked "complete," and it would be easy to call that 100% done. It is not. Complete means
-*the scheduled analysis finished*. Only **one** wave (`A2`) has ever been proven to run
-for real. 42 of the 43 still owe a live run. The project reports both numbers side by
-side, on purpose, so the good-looking one can never hide the honest one.
+**Read that carefully, because it is the whole point of the project.** Forty of 43 wave
+milestones are currently complete. G1 now has a source-execution receipt for 1,000 donor simulations;
+Storyweaver parity and human playtesting remain open. B3, B4, and B6 were returned to incomplete after their
+receipts were found to rely on an invented owner-approved BrandPackage. Only **one** wave (`A2`)
+has parity-verified runtime evidence; the completed waves separately report how much source they
+inspected or executed. The project keeps those counts separate so a milestone cannot stand in for
+real use.
 
 Two different questions, two different answers:
 
-- *"How much did we schedule and finish?"* → **43/43. 100%.**
+- *"How much did we schedule and finish?"* → **40/43 currently verified.**
 - *"How much is actually proven to work?"* → **1 of 43.**
 
 ---
@@ -334,7 +336,7 @@ CI runs all four on every push and PR. Green means the deterministic floor holds
 
 1. **Nothing promotes itself.** Evidence promotes things, and a human accepts the evidence.
 2. **A passing test is not a working feature.** Fixtures prove the harness, not the product.
-3. **Complete ≠ done.** 43/43 waves complete, 42 still owe a live run. Both true at once.
+3. **Complete ≠ done.** 40/43 waves are complete; 39 completed waves still owe live runs, and three brand-publishing waves are incomplete pending authentic evidence.
 4. **Live state belongs in live output.** Drift counts go in the CLI, never in a document.
 5. **The tool cannot grant itself authority.** Approvals come from outside, expire, and burn once.
 6. **Fail closed.** Unsure? Refuse and explain. Never guess and proceed.

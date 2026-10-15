@@ -1,13 +1,13 @@
 # Migration Program
 
-Tranche 0's control-plane foundation is complete and all 43 migration wave milestones are verified:
-three runtime waves (`O1` and `O4` source-executed, `A2` parity-verified) and 40 analysis
-milestones. Not every wave gate reads donor content:
-4 claims sit at `prototype` (`A5`, `B3`, `B4`, `B6`), meaning their runner exercised a suite-owned
-fixture or reference logic and read nothing donor-side. Donor content is read from
+**Status snapshot: 2026-10-15.** Tranche 0's control-plane foundation is complete. Current wave state
+is 40/43 milestones verified: four runtime waves (`O1`, `O4`, and `G1` source-executed; `A2`
+parity-verified) and 36 analysis milestones. B3, B4, and B6 are incomplete after their receipts were withdrawn because they depended
+on an invented owner-approved BrandPackage. One completed claim sits at `prototype` (`A5`), meaning
+its runner exercised suite-owned fixture or reference logic. Donor content is read from
 `source_inspected` upward. Each
 analysis milestone carries an undischarged `runtime_followup` obligation in its wave manifest; the
-two source-executed waves and the runtime recovery retain it too, as their receipts bound adoption
+three source-executed waves and the runtime recovery retain it too, as their receipts bind adoption
 behind an owner gate. A verified milestone proves what its runner exercised, not a completed migration.
 Real ports, adoption, retirement, and single-runtime convergence follow the
 [9/10 recovery standard](RECOVERY-STANDARD.md) and the [roadmap](ROADMAP.md). The wave-promotion
@@ -54,8 +54,9 @@ A scaffold, README, build, or passing narrow unit test is not completion.
 
 ## Tranche 1 — Prove the three active bets (waves verified)
 
-Accessibility, Operator OS, and Brand + Publishing are 6/6 verified each. `A2` is the portfolio's
-only runtime recovery: the narrow WCAG 3.3.1 ARIA error-association port, verified against the real
+Accessibility and Operator OS are 6/6 verified. Brand + Publishing is 3/6 verified; B3, B4, and B6
+remain incomplete pending authentic Brand Maker and downstream evidence. `A2` remains the portfolio's
+only parity-verified runtime recovery: the narrow WCAG 3.3.1 ARIA error-association port, verified against the real
 `allys-tools` runtime. The other seventeen waves in this tranche are analysis milestones, and every
 one still owes its `runtime_followup`.
 
@@ -77,12 +78,14 @@ one still owes its `runtime_followup`.
   at every path component, so a destination exchanged mid-approval is a refusal rather than an escape. Outstanding: execute the assigned donor ports in `dotfiles`
   backed by tests, scale live daily intake into the permanent vault, and accumulate authentic use
   receipts for these handlers before claiming adoption.
-- **Brand + Publishing (6/6):** `BrandPackage` export from live `brand-maker-spec` sources, the
-  nine-phase Brand Workshop mapping, the SourceRecord → draft → VCC review → publishing receipt
-  path, two-consumer version-pinning and mutation-protection boundaries, the fixture intake state
-  machine, and a simulated approval gate with verified rejection branching. Outstanding: run the
-  export from the real Brand Maker runtime into a consumer outside this repository, implement the
-  mapped gates, and replace the simulated gate with real human signoff.
+- **Brand + Publishing (3/6):** B1 now inspects the real export seam and fails closed when Brand Maker
+  has no owner-approved published version; B2 maps the nine Brand Workshop phases; B5 retains the
+  suite-local intake prototype. B3, B4, and B6 remain incomplete because their former receipts
+  depended on a fabricated owner-approved package. B3 and B6 also need a separately verified
+  approved-claims registry, which the current Brand Maker export does not supply. Outstanding: Ryan
+  must create, approve, and publish the intended brand; then the real export, external consumer, VCC
+  review, and human signoff paths need evidence. The mapped intake gates remain to be implemented in
+  Brand Maker.
 
 ## Tranche 2 — Prove the next systems (waves verified)
 
@@ -104,17 +107,18 @@ analysis milestones. Each still describes donor structure rather than live execu
 
 ## Tranche 3 — Internal labs and real reference packs (waves verified)
 
-Agent Reliability (5/5) and Game Design (5/5) are verified as analysis milestones:
+Agent Reliability (5/5) remains at analysis depth. Game Design (5/5) includes the G1 source-execution
+receipt; Storyweaver parity and human playtesting remain open:
 
 - **Agent Reliability:** fixtures derive from the donors' declared action policy, gate coverage is
   read from harness source, promoted components are inventoried, and the curriculum fixtures are
   verified. Outstanding: execute the fixture battery inside each of the three harness runtimes
   against live agent loops, and confirm each counted consumer imports shared components at runtime.
-- **Game Design:** the Tucked in Terrors run sample is fingerprinted and projected into the
-  Storyweaver pack vocabulary, authored-game boundaries for Oregon D&D and March Madness are
-  audited, and adventure-pack slot schemas are validated. Outstanding: re-run the donor simulator to
-  regenerate distributions, materialize packs and run them in Storyweaver, and compare independently
-  generated statistics against the donor sample.
+- **Game Design:** G1 now records an isolated 1,000-game Tucked in Terrors donor run with host-checked
+  output and provenance. G2 projects the donor into the Storyweaver pack vocabulary without measuring
+  parity; authored-game boundaries for Oregon D&D and March Madness are audited, and adventure-pack
+  slot schemas are validated. Outstanding: materialize and run packs in Storyweaver, compare
+  independently generated statistics against donor results, and complete human playtesting.
 
 ## Retirement procedure
 
