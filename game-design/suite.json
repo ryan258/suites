@@ -36,21 +36,25 @@
       "id": "G1",
       "order": 71,
       "status": "complete",
-      "objective": "Fingerprint Tucked in Terrors rules, seeds, metrics, and report outputs.",
-      "acceptance": "The parity fixture captures game version, configuration, runs, statistics, and expected tolerances.",
+      "objective": "Execute the Tucked in Terrors simulator from a reproducible representative input and retain host-verified runtime evidence.",
+      "acceptance": "A 1,000-simulation OBJ01/scoring_ai run completes with no invalid games; the host recomputes the result summary and imported module digests, fingerprints source and dependencies, and verifies temporary-output cleanup and an unchanged donor tree. Historical analysis is retained as reference only; independent parity and human playtesting are not claimed.",
       "evidence": "game-design/evidence/G1-TUCKED-IN-TERRORS-FINGERPRINT.json",
-      "runtime_followup": "Re-run the donor simulator to regenerate the sample instead of fingerprinting its retained run.",
+      "runtime_followup": "Measure independent Storyweaver output and artifact parity against the donor; human balance playtesting remains separate.",
       "recovery_claim": {
-        "kind": "analysis",
-        "level": "source_inspected",
-        "real_runtime": false,
+        "kind": "runtime",
+        "level": "source_executed",
+        "real_runtime": true,
+        "receipt_contract": "portfolio-runtime-source-v1",
         "evidence_basis": [
-          "game_version_fingerprint",
-          "cards_sha256",
-          "objectives_sha256",
-          "results_sha256",
-          "outcome_distribution",
-          "metric_tolerances"
+          "source_invocation",
+          "source_fingerprints",
+          "dependency_fingerprints",
+          "module_fingerprints",
+          "tool_dependencies",
+          "reproducible_commands",
+          "host_recomputed_claims",
+          "recovery_behavior",
+          "privacy_redaction"
         ]
       }
     },

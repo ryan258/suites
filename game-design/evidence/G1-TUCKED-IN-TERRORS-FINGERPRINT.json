@@ -1,63 +1,351 @@
 {
+  "receipt_version": "portfolio-runtime-source-v1",
   "wave_id": "G1",
   "donor": "tucked-in-terrors",
-  "game_version_fingerprint": "main@21511ab",
-  "game_version_dirty": false,
-  "cards_sha256": "43f0f300fa2e2b7d8dac418ec82506f1e55c7e68cf0d620824ec68b6e002fd0a",
-  "cards_count": 31,
-  "objectives_sha256": "059e14a20e41956618aa8d664964fefe1efced95c22d6edf5139f54fc25d04f9",
-  "objectives_count": 8,
-  "results_sha256": "b70aec649014a9b3ecbfcc24870d2dbfae875c54e803b4603f5366cc194d9e54",
-  "recorded_runs": 1000,
-  "objectives_exercised": [
-    "OBJ01_THE_FIRST_NIGHT"
-  ],
-  "outcome_distribution": {
-    "LOSS_NIGHTFALL": 926,
-    "PRIMARY_WIN": 74
+  "status": "source_executed",
+  "all_stages_passed": true,
+  "environment_blocked": false,
+  "source_invocation_status": "invoked",
+  "source_invocation": {
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-I",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_tucked_in_terrors_probe.py",
+      "/Users/ryanjohnson/Projects/TuckdInTerrors_MonteCarloSim",
+      "--objective",
+      "OBJ01",
+      "--policy",
+      "scoring_ai",
+      "--simulations",
+      "1000",
+      "--seed",
+      "0",
+      "--output-file",
+      "/var/folders/xy/slwljxr93j506j12yn9t7fsc0000gn/T/suites-g1-u8_aljlw/g1-output.json",
+      "--database",
+      "/var/folders/xy/slwljxr93j506j12yn9t7fsc0000gn/T/suites-g1-u8_aljlw/g1.sqlite3"
+    ],
+    "exit_code": 0,
+    "duration_ms": 2118.22,
+    "working_directory": "/Users/ryanjohnson/Projects/TuckdInTerrors_MonteCarloSim",
+    "environment_policy": "donor_env; HOME and PYTHONPATH withheld; temporary outputs outside donor"
   },
-  "metric_tolerances": {
-    "distinct_toys_played": {
-      "min": 0,
-      "max": 7,
-      "mean": 3.739,
-      "samples": 1000
-    },
-    "final_turn": {
-      "min": 3,
-      "max": 5,
-      "mean": 4.94,
-      "samples": 1000
-    },
-    "mana_from_effects": {
-      "min": 0,
-      "max": 0,
-      "mean": 0.0,
-      "samples": 1000
-    },
-    "memory_tokens": {
-      "min": 0,
-      "max": 0,
-      "mean": 0.0,
-      "samples": 1000
-    },
-    "spirit_tokens": {
-      "min": 0,
-      "max": 55,
-      "mean": 2.432,
-      "samples": 1000
-    },
-    "spirits_created": {
-      "min": 0,
-      "max": 55,
-      "mean": 2.432,
-      "samples": 1000
+  "planned_source_invocation": {
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-I",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_tucked_in_terrors_probe.py",
+      "/Users/ryanjohnson/Projects/TuckdInTerrors_MonteCarloSim",
+      "--objective",
+      "OBJ01",
+      "--policy",
+      "scoring_ai",
+      "--simulations",
+      "1000",
+      "--seed",
+      "0",
+      "--output-file",
+      "<TEMP_DIR>/g1-output.json",
+      "--database",
+      "<TEMP_DIR>/g1.sqlite3"
+    ],
+    "working_directory": "/Users/ryanjohnson/Projects/TuckdInTerrors_MonteCarloSim",
+    "environment_policy": "donor_env; HOME and PYTHONPATH withheld; temporary outputs outside donor"
+  },
+  "started_at": "2026-10-15T20:29:16.364397+00:00",
+  "finished_at": "2026-10-15T20:29:18.794981+00:00",
+  "source_fingerprints": {
+    "tucked_in_terrors": {
+      "branch": "main",
+      "head": "21511ab14721ce94d5089294c3e913cbc0269761",
+      "short": "main@21511ab",
+      "is_dirty": true,
+      "dirty_files_count": 23,
+      "dirty_files": [
+        "M PHASE_6_COMPLETION.md",
+        " M README.md",
+        " M ROADMAP.md",
+        " M SCORECARD_FEATURE.md",
+        " M SetupMyTuckInTerrorsSim.ps1",
+        " M USER_GUIDE.md",
+        " M WEB_QUICK_START.md",
+        " M data/objectives.json",
+        " M main.py",
+        " M pyproject.toml",
+        " M review.md",
+        " M web_app/README.md",
+        " M web_app/app.py",
+        " M web_app/requirements.txt",
+        "?? docs/",
+        "?? src/tuck_in_terrors_sim/__main__.py",
+        "?? src/tuck_in_terrors_sim/assets/",
+        "?? src/tuck_in_terrors_sim/catalog.py",
+        "?? src/tuck_in_terrors_sim/cli.py",
+        "?? src/tuck_in_terrors_sim/engine.py",
+        "?? src/tuck_in_terrors_sim/experiments.py",
+        "?? src/tuck_in_terrors_sim/web.py",
+        "?? tests_workbench/"
+      ],
+      "patch_sha256": "c7d1f6d5cd22aa271d27d085f3e555022165b5c69949d32027737191920a7f0e",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "data/cards.json": "43f0f300fa2e2b7d8dac418ec82506f1e55c7e68cf0d620824ec68b6e002fd0a",
+        "data/objectives.json": "2e76df34a5e321f64761d99d11331af22d12f63b1312370ec3412294fcd39eee",
+        "main.py": "f9301b2cfc51bb194be5477a159a5efa70cf252bf4652c7466a7e6a020ff6ccf",
+        "pyproject.toml": "91ceeea977c3d1565a2aeb8b0ce423571a8d4f3c6c85ed5847cad3b33bfec023",
+        "src/tuck_in_terrors_sim/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+        "src/tuck_in_terrors_sim/__main__.py": "4ff564c2a10b6ccf4b1d034a9ff0e20eea062ba4cb6117ca5e87868a630a937a",
+        "src/tuck_in_terrors_sim/ai/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+        "src/tuck_in_terrors_sim/ai/action_generator.py": "0fce09ce8a0a7c8e5043fc74426aadf52cba09125e4b8bdd4f1aa3b96812cacb",
+        "src/tuck_in_terrors_sim/ai/ai_player_base.py": "3b784eb31cccb0492f5357aca4a23e2d2fdd4d40fed578a561002a7896315072",
+        "src/tuck_in_terrors_sim/ai/ai_profiles/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+        "src/tuck_in_terrors_sim/ai/ai_profiles/greedy_ai.py": "3d7f3ce973e7dde34c2aa639208f72d0d92b49cced2e9a274269073a956cf77b",
+        "src/tuck_in_terrors_sim/ai/ai_profiles/random_ai.py": "913222964752ed0c4d1b7e7fe9d8c88a6aeaf5502ab690fc3ad558a3d2f6c081",
+        "src/tuck_in_terrors_sim/ai/ai_profiles/scoring_ai.py": "ab8aa195e7404f9b06aa7c62ad6490acd3de140a5367d54345b81928a91ed06f",
+        "src/tuck_in_terrors_sim/catalog.py": "aaf53224a79c3879bbceb886eb33338b89be3ae1b37c485d6667fa90cd25ae13",
+        "src/tuck_in_terrors_sim/cli.py": "c37ae6b4d5c3d8e4790fcce350cae6429d736153900b0105a88e3b9ea101a40a",
+        "src/tuck_in_terrors_sim/engine.py": "a4ac136421160c06f44e6fd149198f2c5c365ba64cf5e83cf5928c3fe07d5a8f",
+        "src/tuck_in_terrors_sim/experiments.py": "8c8ca5258a2346cbb8156757a148b5827f2b4a63634c7f816f71811698f2bebb",
+        "src/tuck_in_terrors_sim/game_elements/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+        "src/tuck_in_terrors_sim/game_elements/card.py": "867f3cd75d8878fc582cad2bf83cd59ac2f7f33d56f6027a195a2c93134f56df",
+        "src/tuck_in_terrors_sim/game_elements/data_loaders.py": "8f7525821b2046c1a82b4d6f169724daf8ab0515320ed0e64777cea5500e52fb",
+        "src/tuck_in_terrors_sim/game_elements/enums.py": "74d0a5c818d5914afac7f419b958333369e4128e94d43f9314d7b37775fde60f",
+        "src/tuck_in_terrors_sim/game_elements/objective.py": "bc2ef246d831b91e9f4e067217f499214fad9af17a26cfaf6c52973b8b11e431",
+        "src/tuck_in_terrors_sim/game_logic/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+        "src/tuck_in_terrors_sim/game_logic/action_resolver.py": "8ed5bea88de15481d7511853934f514404925397da12fa92d9195746eea35f0a",
+        "src/tuck_in_terrors_sim/game_logic/effect_engine.py": "ed33051e85582f15720944a8aeef72735aa56af70356673f227baed93c3f9bb4",
+        "src/tuck_in_terrors_sim/game_logic/game_setup.py": "71cb69fc5e79181dacb2a212a318686791eaccb63080bb107f6c95c795ea7eb9",
+        "src/tuck_in_terrors_sim/game_logic/game_state.py": "f27a3f50240bc431e1c6601dbe77ba65d6a38981271ac53e1729b68a5808609f",
+        "src/tuck_in_terrors_sim/game_logic/nightmare_creep.py": "19d69f43b4986b7805f048c2a238dc5658bea841522733d52f687bfbd0388e87",
+        "src/tuck_in_terrors_sim/game_logic/turn_manager.py": "fd128ffa8c8fea0a49419b1442418ee4c3ba425b62bfdfbd13594ddb79556b84",
+        "src/tuck_in_terrors_sim/game_logic/win_loss_checker.py": "68f3fb783ed8a657b77191ebbeec1981e3340c8a62f12b744d34e0772b2b4892",
+        "src/tuck_in_terrors_sim/models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "src/tuck_in_terrors_sim/models/game_action_model.py": "dea94d8b85edcd1511cd620571ea01830c076facd1f08baa91fbf4cb835216dc",
+        "src/tuck_in_terrors_sim/simulation/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+        "src/tuck_in_terrors_sim/simulation/analysis_engine.py": "0bc012b557c3e142cb5cbad6eae59f252604fa878e2cfed894049fd986322422",
+        "src/tuck_in_terrors_sim/simulation/balance_analyzer.py": "dcbcb117f1ae5de5b8ba57e79bf506a3d6306e9a9565f2f70be12dda58d7aeb3",
+        "src/tuck_in_terrors_sim/simulation/data_logger.py": "3f7c75fc6f64c3ea88b5b9d2d6709f7052f9f6696faf85e5ab40059a284a9b89",
+        "src/tuck_in_terrors_sim/simulation/scorecard_generator.py": "553272eddaabf67bc1db0a39c35c9b6b72810c1faa8e6c38a42d9f327bfaf599",
+        "src/tuck_in_terrors_sim/simulation/simulation_runner.py": "75bced21ae6fa2a57626a1ccec8ec9dc938272d6f7005f286356793dddc88f7c",
+        "src/tuck_in_terrors_sim/simulation/visualizer.py": "44090760cbe44f18fec52de3b6b26a35cd161d28d05789d53c7c9c3bd6329664",
+        "src/tuck_in_terrors_sim/ui/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+        "src/tuck_in_terrors_sim/ui/results_display.py": "6d23078291cf3c01d7f150c339f74e90c61112bcc9020e515804c30a464fe72a",
+        "src/tuck_in_terrors_sim/utils/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+        "src/tuck_in_terrors_sim/utils/shuffler.py": "4d7cd919efc12c5102ae7b3f0d7c3e786993fcc4eb4606fe31b6bc0c790af4c3",
+        "src/tuck_in_terrors_sim/web.py": "ec9861c0395ec9ea5fbd72f135b59f5fa1620d2bca916463bfc025578917b4ca",
+        "PHASE_6_COMPLETION.md": "049c9f39a8a4bf047935479e821fd04bab9a1b1589455b0035f6d933a9efa15e",
+        "README.md": "5a7064cc2555a99949032e68bd6518db589cd1290cc82fe74235b10e52fc6023",
+        "ROADMAP.md": "71d5174984837bf9f05405bd79e670dcb939ea6fcee27935a751c340ab528723",
+        "SCORECARD_FEATURE.md": "990414d5c3ad0cd910cf5396c9e91306d3addc56b7d15cbe8110116c30c0cf29",
+        "SetupMyTuckInTerrorsSim.ps1": "dd0581ac1e171f181aefb70324b6c661ec90fae3e569d7706fb8089f7c11c6ed",
+        "USER_GUIDE.md": "5146ed05ac8098d4896923585274beb37845f384e4e3c13ab1b07c8fa708493f",
+        "WEB_QUICK_START.md": "5211c43d01184a159b4c5b4047b7040b2fcaa1c622d6dcf0637ef4e35794e0b9",
+        "review.md": "c79ce0dd849af351eef0b54196bb690e744c214180b2bdc6f0cb0336f5435a62",
+        "web_app/README.md": "43e3bb43ef3b5d640d9c41a8272203a6a20ac2e37f9b927d7dcc89d2e0f944bb",
+        "web_app/app.py": "26fb8f51b2dc7bc5e70d30a57ebce43bbc52f7772a8a18dbc86fce70ad23551e",
+        "web_app/requirements.txt": "4b8b6394060d808df521e485c2572e7f5145f6913794edebfbfd9ac191fb2bec"
+      },
+      "target_state": "local_working_tree_candidate"
     }
   },
-  "configuration": {
-    "seed_policy": "donor run_01 corpus is the fixed reference sample; no reseeding is claimed.",
-    "expected_tolerances": "any replacement runtime must reproduce the distribution above per objective."
+  "dependency_fingerprints": {
+    "tucked_in_terrors": {
+      "branch": "main",
+      "head": "21511ab14721ce94d5089294c3e913cbc0269761",
+      "short": "main@21511ab",
+      "is_dirty": true,
+      "dirty_files_count": 23,
+      "dirty_files": [
+        "M PHASE_6_COMPLETION.md",
+        " M README.md",
+        " M ROADMAP.md",
+        " M SCORECARD_FEATURE.md",
+        " M SetupMyTuckInTerrorsSim.ps1",
+        " M USER_GUIDE.md",
+        " M WEB_QUICK_START.md",
+        " M data/objectives.json",
+        " M main.py",
+        " M pyproject.toml",
+        " M review.md",
+        " M web_app/README.md",
+        " M web_app/app.py",
+        " M web_app/requirements.txt",
+        "?? docs/",
+        "?? src/tuck_in_terrors_sim/__main__.py",
+        "?? src/tuck_in_terrors_sim/assets/",
+        "?? src/tuck_in_terrors_sim/catalog.py",
+        "?? src/tuck_in_terrors_sim/cli.py",
+        "?? src/tuck_in_terrors_sim/engine.py",
+        "?? src/tuck_in_terrors_sim/experiments.py",
+        "?? src/tuck_in_terrors_sim/web.py",
+        "?? tests_workbench/"
+      ],
+      "patch_sha256": "c7d1f6d5cd22aa271d27d085f3e555022165b5c69949d32027737191920a7f0e",
+      "lockfile_sha256": "",
+      "tested_files_fingerprint": {
+        "pyproject.toml": "91ceeea977c3d1565a2aeb8b0ce423571a8d4f3c6c85ed5847cad3b33bfec023",
+        "PHASE_6_COMPLETION.md": "049c9f39a8a4bf047935479e821fd04bab9a1b1589455b0035f6d933a9efa15e",
+        "README.md": "5a7064cc2555a99949032e68bd6518db589cd1290cc82fe74235b10e52fc6023",
+        "ROADMAP.md": "71d5174984837bf9f05405bd79e670dcb939ea6fcee27935a751c340ab528723",
+        "SCORECARD_FEATURE.md": "990414d5c3ad0cd910cf5396c9e91306d3addc56b7d15cbe8110116c30c0cf29",
+        "SetupMyTuckInTerrorsSim.ps1": "dd0581ac1e171f181aefb70324b6c661ec90fae3e569d7706fb8089f7c11c6ed",
+        "USER_GUIDE.md": "5146ed05ac8098d4896923585274beb37845f384e4e3c13ab1b07c8fa708493f",
+        "WEB_QUICK_START.md": "5211c43d01184a159b4c5b4047b7040b2fcaa1c622d6dcf0637ef4e35794e0b9",
+        "data/objectives.json": "2e76df34a5e321f64761d99d11331af22d12f63b1312370ec3412294fcd39eee",
+        "main.py": "f9301b2cfc51bb194be5477a159a5efa70cf252bf4652c7466a7e6a020ff6ccf",
+        "review.md": "c79ce0dd849af351eef0b54196bb690e744c214180b2bdc6f0cb0336f5435a62",
+        "web_app/README.md": "43e3bb43ef3b5d640d9c41a8272203a6a20ac2e37f9b927d7dcc89d2e0f944bb",
+        "web_app/app.py": "26fb8f51b2dc7bc5e70d30a57ebce43bbc52f7772a8a18dbc86fce70ad23551e",
+        "web_app/requirements.txt": "4b8b6394060d808df521e485c2572e7f5145f6913794edebfbfd9ac191fb2bec",
+        "src/tuck_in_terrors_sim/__main__.py": "4ff564c2a10b6ccf4b1d034a9ff0e20eea062ba4cb6117ca5e87868a630a937a",
+        "src/tuck_in_terrors_sim/catalog.py": "aaf53224a79c3879bbceb886eb33338b89be3ae1b37c485d6667fa90cd25ae13",
+        "src/tuck_in_terrors_sim/cli.py": "c37ae6b4d5c3d8e4790fcce350cae6429d736153900b0105a88e3b9ea101a40a",
+        "src/tuck_in_terrors_sim/engine.py": "a4ac136421160c06f44e6fd149198f2c5c365ba64cf5e83cf5928c3fe07d5a8f",
+        "src/tuck_in_terrors_sim/experiments.py": "8c8ca5258a2346cbb8156757a148b5827f2b4a63634c7f816f71811698f2bebb",
+        "src/tuck_in_terrors_sim/web.py": "ec9861c0395ec9ea5fbd72f135b59f5fa1620d2bca916463bfc025578917b4ca"
+      },
+      "target_state": "local_working_tree_candidate"
+    }
   },
-  "projection_markdown": "# G1 \u2014 Tucked in Terrors parity fixture\n\n- game_version_fingerprint: `main@21511ab` (dirty=False)\n- cards_sha256: `43f0f300fa2e2b7d8dac418ec82506f1e55c7e68cf0d620824ec68b6e002fd0a` (31 cards)\n- objectives_sha256: `059e14a20e41956618aa8d664964fefe1efced95c22d6edf5139f54fc25d04f9` (8 objectives)\n- results_sha256: `b70aec649014a9b3ecbfcc24870d2dbfae875c54e803b4603f5366cc194d9e54` (1000 recorded runs)\n- objectives_exercised: OBJ01_THE_FIRST_NIGHT\n\n## outcome_distribution\n\n| win_status | runs | share |\n| --- | ---: | ---: |\n| LOSS_NIGHTFALL | 926 | 0.926 |\n| PRIMARY_WIN | 74 | 0.074 |\n\n## metric_tolerances\n\n| metric | min | mean | max |\n| --- | ---: | ---: | ---: |\n| distinct_toys_played | 0 | 3.739 | 7 |\n| final_turn | 3 | 4.94 | 5 |\n| mana_from_effects | 0 | 0.0 | 0 |\n| memory_tokens | 0 | 0.0 | 0 |\n| spirit_tokens | 0 | 2.432 | 55 |\n| spirits_created | 0 | 2.432 | 55 |\n\n## configuration\n\n- seed_policy: donor run_01 corpus is the fixed reference sample; no reseeding is claimed.\n- expected_tolerances: any replacement runtime must reproduce the distribution above per objective.\n",
-  "all_stages_passed": true
+  "module_fingerprints": {
+    "tuck_in_terrors_sim": {
+      "path": "src/tuck_in_terrors_sim/__init__.py",
+      "donor_attested_sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+      "host_recomputed_sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+      "agrees": true
+    },
+    "tuck_in_terrors_sim.catalog": {
+      "path": "src/tuck_in_terrors_sim/catalog.py",
+      "donor_attested_sha256": "aaf53224a79c3879bbceb886eb33338b89be3ae1b37c485d6667fa90cd25ae13",
+      "host_recomputed_sha256": "aaf53224a79c3879bbceb886eb33338b89be3ae1b37c485d6667fa90cd25ae13",
+      "agrees": true
+    },
+    "tuck_in_terrors_sim.cli": {
+      "path": "src/tuck_in_terrors_sim/cli.py",
+      "donor_attested_sha256": "c37ae6b4d5c3d8e4790fcce350cae6429d736153900b0105a88e3b9ea101a40a",
+      "host_recomputed_sha256": "c37ae6b4d5c3d8e4790fcce350cae6429d736153900b0105a88e3b9ea101a40a",
+      "agrees": true
+    },
+    "tuck_in_terrors_sim.engine": {
+      "path": "src/tuck_in_terrors_sim/engine.py",
+      "donor_attested_sha256": "a4ac136421160c06f44e6fd149198f2c5c365ba64cf5e83cf5928c3fe07d5a8f",
+      "host_recomputed_sha256": "a4ac136421160c06f44e6fd149198f2c5c365ba64cf5e83cf5928c3fe07d5a8f",
+      "agrees": true
+    },
+    "tuck_in_terrors_sim.experiments": {
+      "path": "src/tuck_in_terrors_sim/experiments.py",
+      "donor_attested_sha256": "8c8ca5258a2346cbb8156757a148b5827f2b4a63634c7f816f71811698f2bebb",
+      "host_recomputed_sha256": "8c8ca5258a2346cbb8156757a148b5827f2b4a63634c7f816f71811698f2bebb",
+      "agrees": true
+    }
+  },
+  "tool_dependencies": {
+    "host_python": "3.14.7",
+    "host_implementation": "CPython",
+    "donor_python": "3.14.7",
+    "donor_implementation": "cpython",
+    "donor_probe_sha256": "2633783bc12bfab94b68f3c7021f94be2a79cc570d782d35c5eabfdb38fe9a8a",
+    "donor_cli_sha256": "c37ae6b4d5c3d8e4790fcce350cae6429d736153900b0105a88e3b9ea101a40a",
+    "donor_manifest_sha256": "91ceeea977c3d1565a2aeb8b0ce423571a8d4f3c6c85ed5847cad3b33bfec023"
+  },
+  "representative_inputs": [
+    {
+      "kind": "simulation_request",
+      "objective_alias": "OBJ01",
+      "objective_id": "OBJ01_THE_FIRST_NIGHT",
+      "policy": "scoring_ai",
+      "simulations": 1000,
+      "seed": 0
+    },
+    {
+      "kind": "rules_catalog",
+      "cards_sha256": "43f0f300fa2e2b7d8dac418ec82506f1e55c7e68cf0d620824ec68b6e002fd0a",
+      "objectives_sha256": "2e76df34a5e321f64761d99d11331af22d12f63b1312370ec3412294fcd39eee"
+    },
+    {
+      "kind": "simulation_runtime",
+      "donor_python": "3.14.7",
+      "donor_implementation": "cpython"
+    }
+  ],
+  "host_recomputed_claims": {
+    "requested_simulations": 1000,
+    "completed_games": 1000,
+    "valid_games": 1000,
+    "invalid_games": 0,
+    "outcome_counts": {
+      "ALTERNATIVE_WIN": 53,
+      "LOSS_NIGHTFALL": 248,
+      "PRIMARY_WIN": 699
+    },
+    "donor_summary_agrees": true,
+    "output_sha256": "7a864336209190615d569ad9752dd806bf6f4ace09b1f27c978e31f3a26cb235",
+    "output_bytes": 1354630,
+    "module_digest_agreement_count": 5,
+    "module_count": 5,
+    "source_fingerprint_unchanged": true,
+    "dependency_fingerprint_unchanged": true,
+    "temporary_outputs_removed": true,
+    "donor_status": "completed"
+  },
+  "run_summary": {
+    "games": 1000,
+    "valid_games": 1000,
+    "invalid_games": 0,
+    "wins": 752,
+    "losses": 248,
+    "outcomes": {
+      "ALTERNATIVE_WIN": 53,
+      "LOSS_NIGHTFALL": 248,
+      "PRIMARY_WIN": 699
+    }
+  },
+  "gate_summary": {
+    "environment_blocked": false,
+    "donor_status": "completed",
+    "requested_simulations": 1000,
+    "completed_games": 1000,
+    "invalid_games": 0,
+    "output_sha256": "7a864336209190615d569ad9752dd806bf6f4ace09b1f27c978e31f3a26cb235",
+    "operational_error_count": 0
+  },
+  "historical_analysis_reference": {
+    "basis": "retained source-inspection receipt; not compared to the current runtime sample",
+    "receipt_sha256": "31c936eee075f1b97b87ddedde0c56f6e8a2b1444f672e1e3191b9068aff2b80"
+  },
+  "reproducible_commands": [
+    [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-I",
+      "/Users/ryanjohnson/Projects/suites/src/portfolio_suites/adapters/donor_tucked_in_terrors_probe.py",
+      "/Users/ryanjohnson/Projects/TuckdInTerrors_MonteCarloSim",
+      "--objective",
+      "OBJ01",
+      "--policy",
+      "scoring_ai",
+      "--simulations",
+      "1000",
+      "--seed",
+      "0",
+      "--output-file",
+      "<TEMP_DIR>/g1-output.json",
+      "--database",
+      "<TEMP_DIR>/g1.sqlite3"
+    ]
+  ],
+  "recovery_behavior": {
+    "runtime_mutation_mode": "temporary_workspace_only",
+    "permanent_donor_write": false,
+    "donor_working_tree_unchanged": true,
+    "temporary_outputs_removed": true,
+    "rerun_safe": true,
+    "environment_failures_fail_closed": true,
+    "evidence_write_requires_explicit_record": true
+  },
+  "privacy_redaction": {
+    "raw_game_results_retained": false,
+    "credentials_retained": false,
+    "command_arguments_reviewed": true
+  },
+  "operational_errors": []
 }
